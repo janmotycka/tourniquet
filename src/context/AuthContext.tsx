@@ -1,17 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import {
-  onAuthStateChanged,
-  signInWithRedirect,
-  getRedirectResult,
-  signOut,
-  type User,
-} from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: () => void;
   logout: () => Promise<void>;
 }
 
@@ -22,20 +16,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Zpracujeme výsledek redirect přihlášení při návratu z Google
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          setUser(result.user);
-        }
-      })
-      .catch((err) => {
-        console.error('[Auth] Redirect result error:', err);
-      })
-      .finally(() => {
-        // onAuthStateChanged převezme kontrolu
-      });
-
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
@@ -43,9 +23,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const signInWithGoogle = async () => {
-    // Redirect: přesměruje na Google, po přihlášení vrátí zpět
-    await signInWithRedirect(auth, googleProvider);
+  // DŮLEŽITÉ: nesmí být async — popup musí být otevřen synchronně z click eventu
+  const signInWithGoogle = () => {
+    // DEV BYPASS: na localhostu přeskočíme Google auth (OAuth ještě nepropagoval)
+    if (window.location.hostname === 'localhost') {
+      setUser({
+        uid: 'dev-user-local',
+        displayName: 'Dev Trenér',
+        email: 'dev@localhost',
+        photoURL: null,
+      } as unknown as User);
+      setLoading(false);
+      return;
+    }
+    signInWithPopup(auth, googleProvider).catch((err) => {
+      console.error('[Auth] signInWithPopup error:', err?.code, err?.message);
+    });
   };
 
   const logout = async () => {

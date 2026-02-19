@@ -11,7 +11,7 @@ import { subscribeToPublicTournament } from '../../services/tournament.firebase'
 
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
-type Tab = 'standings' | 'results' | 'rules';
+type Tab = 'standings' | 'results' | 'scorers' | 'rules';
 
 // ─── Team badge (logo or color dot) ──────────────────────────────────────────
 function TeamBadge({ team, size = 12 }: { team: Team | undefined; size?: number }) {
@@ -475,6 +475,139 @@ function StandingsCriteriaBox() {
   );
 }
 
+// ─── Tabulka střelců ──────────────────────────────────────────────────────────
+function PublicScorers({ tournament }: { tournament: Tournament }) {
+  // Sestavíme tabulku střelců ze všech gólů ve všech zápasech
+  const scorerMap = new Map<string, { playerId: string; teamId: string; goals: number; ownGoals: number }>();
+
+  for (const match of tournament.matches) {
+    for (const goal of match.goals) {
+      if (goal.isOwnGoal) {
+        // Vlastní góly evidujeme zvlášť (nepočítají se jako gól hráče)
+        const key = `own-${goal.teamId}-${goal.playerId ?? 'unknown'}`;
+        const existing = scorerMap.get(key);
+        if (existing) {
+          existing.ownGoals += 1;
+        } else {
+          scorerMap.set(key, { playerId: goal.playerId ?? 'unknown', teamId: goal.teamId, goals: 0, ownGoals: 1 });
+        }
+        continue;
+      }
+      if (!goal.playerId) continue; // neznámý střelec — přeskočíme
+      const key = `${goal.teamId}-${goal.playerId}`;
+      const existing = scorerMap.get(key);
+      if (existing) {
+        existing.goals += 1;
+      } else {
+        scorerMap.set(key, { playerId: goal.playerId, teamId: goal.teamId, goals: 1, ownGoals: 0 });
+      }
+    }
+  }
+
+  // Seřadíme podle gólů sestupně
+  const scorers = Array.from(scorerMap.values())
+    .filter(s => s.goals > 0)
+    .sort((a, b) => b.goals - a.goals);
+
+  // Celkový počet gólů v turnaji (včetně neznámých)
+  const totalGoals = tournament.matches.reduce((sum, m) => sum + m.homeScore + m.awayScore, 0);
+  const knownGoals = scorers.reduce((sum, s) => sum + s.goals, 0);
+  const unknownGoals = totalGoals - knownGoals;
+
+  if (scorers.length === 0) {
+    return (
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--surface)', borderRadius: 14 }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>🥇</div>
+          <p style={{ fontSize: 14, fontWeight: 600 }}>Zatím žádné góly</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>Střelci se zobrazí po odehrání zápasů</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+        {/* Hlavička */}
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>🥇</span>
+          <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)' }}>Tabulka střelců</span>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>{totalGoals} gólů celkem</span>
+        </div>
+
+        {/* Řádky střelců */}
+        {scorers.map((scorer, idx) => {
+          const team = tournament.teams.find(t => t.id === scorer.teamId);
+          const player = team?.players.find(p => p.id === scorer.playerId);
+          const name = player?.name ?? 'Neznámý hráč';
+          const jersey = player?.jerseyNumber;
+
+          // Medaile pro top 3
+          const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
+          const isFirst = idx === 0;
+
+          return (
+            <div key={`${scorer.teamId}-${scorer.playerId}`} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '11px 16px',
+              borderBottom: idx < scorers.length - 1 ? '1px solid var(--border)' : 'none',
+              background: isFirst ? 'linear-gradient(90deg, rgba(255,193,7,.08) 0%, transparent 100%)' : 'transparent',
+            }}>
+              {/* Pořadí */}
+              <div style={{ width: 28, textAlign: 'center', flexShrink: 0 }}>
+                {medal ? (
+                  <span style={{ fontSize: 18 }}>{medal}</span>
+                ) : (
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>{idx + 1}.</span>
+                )}
+              </div>
+
+              {/* Tým badge */}
+              <TeamBadge team={team} size={16} />
+
+              {/* Jméno + tým */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {name}
+                  {jersey != null && (
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>#{jersey}</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {team?.name ?? '—'}
+                </div>
+              </div>
+
+              {/* Počet gólů */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: isFirst ? 'rgba(255,193,7,.2)' : 'var(--primary-light)',
+                borderRadius: 10, padding: '4px 10px', flexShrink: 0,
+              }}>
+                <span style={{ fontSize: 13 }}>⚽</span>
+                <span style={{ fontWeight: 800, fontSize: 16, color: isFirst ? '#B8860B' : 'var(--primary)' }}>
+                  {scorer.goals}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Neznámí střelci */}
+        {unknownGoals > 0 && (
+          <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 28, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>
+              + {unknownGoals} gól{unknownGoals === 1 ? '' : unknownGoals < 5 ? 'y' : 'ů'} bez přiřazeného střelce
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Propozice (read-only) ────────────────────────────────────────────────────
 function PublicRules({ tournament }: { tournament: Tournament }) {
   const rules = tournament.settings.rules;
@@ -610,12 +743,11 @@ export function TournamentPublicView({ tournamentId, navigate }: Props) {
   }
 
   const liveMatch = tournament.matches.find(m => m.status === 'live');
-  const hasRules = !!(tournament.settings.rules && tournament.settings.rules.trim() !== '');
-
   const TABS: { id: Tab; label: string }[] = [
     { id: 'standings', label: '🏅 Tabulka' },
     { id: 'results', label: '⚽ Výsledky' },
-    { id: 'rules', label: `📋 Propozice${hasRules ? '' : ''}` },
+    { id: 'scorers', label: '🥇 Střelci' },
+    { id: 'rules', label: '📋 Propozice' },
   ];
 
   return (
@@ -682,6 +814,7 @@ export function TournamentPublicView({ tournamentId, navigate }: Props) {
       <div style={{ flex: 1, overflowY: 'auto' }}>
         {tab === 'standings' && <PublicStandings tournament={tournament} selectedTeamId={null} />}
         {tab === 'results' && <PublicResults tournament={tournament} selectedTeamId={selectedTeamId} />}
+        {tab === 'scorers' && <PublicScorers tournament={tournament} />}
         {tab === 'rules' && <PublicRules tournament={tournament} />}
       </div>
 
