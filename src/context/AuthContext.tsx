@@ -1,5 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+  type User,
+} from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 
 interface AuthContextType {
@@ -16,6 +22,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Zpracujeme výsledek redirect přihlášení při návratu z Google
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          setUser(result.user);
+        }
+      })
+      .catch((err) => {
+        console.error('[Auth] Redirect result error:', err);
+      })
+      .finally(() => {
+        // onAuthStateChanged převezme kontrolu
+      });
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
@@ -24,7 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInWithGoogle = async () => {
-    await signInWithPopup(auth, googleProvider);
+    // Redirect: přesměruje na Google, po přihlášení vrátí zpět
+    await signInWithRedirect(auth, googleProvider);
   };
 
   const logout = async () => {
