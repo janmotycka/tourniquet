@@ -8,7 +8,7 @@ import type { Tournament, Match, Team, Player, Goal } from '../../types/tourname
 
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
-type Tab = 'standings' | 'matches' | 'settings';
+type Tab = 'standings' | 'matches' | 'scorers' | 'settings';
 
 // ─── Team logo/color badge ─────────────────────────────────────────────────────
 function TeamBadge({ team, size = 12 }: { team?: Team; size?: number }) {
@@ -1024,7 +1024,6 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
   onEditMatch: (match: Match) => void;
 }) {
   const [openGoalPanel, setOpenGoalPanel] = useState<{ matchId: string; side: 'home' | 'away' } | null>(null);
-  const rounds = [...new Set(tournament.matches.map(m => m.roundIndex))].sort((a, b) => a - b);
   const getTeam = (id: string) => tournament.teams.find(t => t.id === id);
 
   const toggleGoal = (matchId: string, side: 'home' | 'away') => {
@@ -1037,17 +1036,30 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
     return <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>Žádné zápasy.</div>;
   }
 
+  // Řazení: live → scheduled (podle času) → finished (od nejnovějšího)
+  const liveMatches = tournament.matches.filter(m => m.status === 'live');
+  const scheduledMatches = tournament.matches
+    .filter(m => m.status === 'scheduled')
+    .sort((a, b) => new Date(a.scheduledTime).getTime() - new Date(b.scheduledTime).getTime());
+  const finishedMatches = tournament.matches
+    .filter(m => m.status === 'finished')
+    .sort((a, b) => new Date(b.finishedAt ?? b.scheduledTime).getTime() - new Date(a.finishedAt ?? a.scheduledTime).getTime());
+
+  const sections: { label: string; matches: Match[]; color: string }[] = [
+    { label: '🔴 Právě hrají', matches: liveMatches, color: '#C62828' },
+    { label: '🕐 Nadcházející', matches: scheduledMatches, color: 'var(--text-muted)' },
+    { label: '✅ Odehrané', matches: finishedMatches, color: 'var(--text-muted)' },
+  ].filter(s => s.matches.length > 0);
+
   return (
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {rounds.map(roundIdx => {
-        const roundMatches = tournament.matches.filter(m => m.roundIndex === roundIdx);
-        return (
-          <div key={roundIdx}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-              Runda {roundIdx + 1}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {roundMatches.map(match => {
+      {sections.map(section => (
+        <div key={section.label}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: section.color, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            {section.label}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {section.matches.map(match => {
                 const homeT = getTeam(match.homeTeamId);
                 const awayT = getTeam(match.awayTeamId);
                 const isLive = match.status === 'live';
@@ -1292,8 +1304,113 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
               })}
             </div>
           </div>
-        );
-      })}
+        ))}
+    </div>
+  );
+}
+
+// ─── Scorers tab ──────────────────────────────────────────────────────────────
+function ScorersTab({ tournament }: { tournament: Tournament }) {
+  // Sestavíme tabulku střelců ze všech gólů
+  const scorerMap = new Map<string, { playerId: string; teamId: string; goals: number }>();
+
+  for (const match of tournament.matches) {
+    for (const goal of match.goals) {
+      if (goal.isOwnGoal || !goal.playerId) continue;
+      const key = `${goal.teamId}-${goal.playerId}`;
+      const existing = scorerMap.get(key);
+      if (existing) {
+        existing.goals += 1;
+      } else {
+        scorerMap.set(key, { playerId: goal.playerId, teamId: goal.teamId, goals: 1 });
+      }
+    }
+  }
+
+  const scorers = Array.from(scorerMap.values())
+    .filter(s => s.goals > 0)
+    .sort((a, b) => b.goals - a.goals);
+
+  const totalGoals = tournament.matches.reduce((sum, m) => sum + m.homeScore + m.awayScore, 0);
+  const knownGoals = scorers.reduce((sum, s) => sum + s.goals, 0);
+  const unknownGoals = totalGoals - knownGoals;
+
+  if (scorers.length === 0) {
+    return (
+      <div style={{ padding: '16px' }}>
+        <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--surface)', borderRadius: 14 }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>🥇</div>
+          <p style={{ fontSize: 14, fontWeight: 600 }}>Zatím žádné góly</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>Střelci se zobrazí po zadání gólů v zápasech</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+        {/* Hlavička */}
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>🥇</span>
+          <span style={{ fontWeight: 800, fontSize: 15 }}>Tabulka střelců</span>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>{totalGoals} gólů celkem</span>
+        </div>
+
+        {scorers.map((scorer, idx) => {
+          const team = tournament.teams.find(t => t.id === scorer.teamId);
+          const player = team?.players.find(p => p.id === scorer.playerId);
+          const name = player?.name ?? 'Neznámý hráč';
+          const jersey = player?.jerseyNumber;
+          const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
+          const isFirst = idx === 0;
+
+          return (
+            <div key={`${scorer.teamId}-${scorer.playerId}`} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '11px 16px',
+              borderBottom: idx < scorers.length - 1 ? '1px solid var(--border)' : 'none',
+              background: isFirst ? 'linear-gradient(90deg, rgba(255,193,7,.08) 0%, transparent 100%)' : 'transparent',
+            }}>
+              <div style={{ width: 28, textAlign: 'center', flexShrink: 0 }}>
+                {medal
+                  ? <span style={{ fontSize: 18 }}>{medal}</span>
+                  : <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>{idx + 1}.</span>
+                }
+              </div>
+              <TeamBadge team={team} size={16} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {name}
+                  {jersey != null && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>#{jersey}</span>}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {team?.name ?? '—'}
+                </div>
+              </div>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                background: isFirst ? 'rgba(255,193,7,.2)' : 'var(--primary-light)',
+                borderRadius: 10, padding: '4px 10px', flexShrink: 0,
+              }}>
+                <span style={{ fontSize: 13 }}>⚽</span>
+                <span style={{ fontWeight: 800, fontSize: 16, color: isFirst ? '#B8860B' : 'var(--primary)' }}>
+                  {scorer.goals}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+
+        {unknownGoals > 0 && (
+          <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 28, flexShrink: 0 }} />
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              + {unknownGoals} gól{unknownGoals === 1 ? '' : unknownGoals < 5 ? 'y' : 'ů'} bez přiřazeného střelce
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1590,6 +1707,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
   const TABS: { id: Tab; label: string }[] = [
     { id: 'standings', label: '🏅 Tabulka' },
     { id: 'matches', label: '⚽ Zápasy' },
+    { id: 'scorers', label: '🥇 Střelci' },
     { id: 'settings', label: '⚙️ Nastavení' },
   ];
 
@@ -1665,6 +1783,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
             onEditMatch={setSelectedMatch}
           />
         )}
+        {tab === 'scorers' && <ScorersTab tournament={tournament} />}
         {tab === 'settings' && <SettingsTab tournament={tournament} navigate={navigate} />}
       </div>
 
