@@ -7,6 +7,7 @@ import {
   formatMatchTime,
 } from '../../utils/tournament-schedule';
 import type { Tournament, Match, Team } from '../../types/tournament.types';
+import { subscribeToPublicTournament } from '../../services/tournament.firebase';
 
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
@@ -553,19 +554,27 @@ export function TournamentPublicView({ tournamentId, navigate }: Props) {
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
 
-  const tournament = useTournamentStore(s => s.getTournamentById(tournamentId));
+  // Firebase real-time listener — zobrazuje živá data bez přihlášení
+  const localTournament = useTournamentStore(s => s.getTournamentById(tournamentId));
+  const [firebaseTournament, setFirebaseTournament] = useState<Tournament | null>(null);
+  const [firebaseLoading, setFirebaseLoading] = useState(true);
+
+  useEffect(() => {
+    setFirebaseLoading(true);
+    const unsubscribe = subscribeToPublicTournament(tournamentId, (t) => {
+      setFirebaseTournament(t);
+      setFirebaseLoading(false);
+      setLastRefresh(new Date());
+    });
+    return unsubscribe;
+  }, [tournamentId]);
+
+  // Preferujeme Firebase data, fallback na lokální (pro případ offline)
+  const tournament = firebaseTournament ?? localTournament;
 
   const handleRefresh = useCallback(() => {
     setLastRefresh(new Date());
-    // Pokud bude Firebase, tady zavoláme refetch
-    // Pro teď stačí re-render (data jsou v Zustand)
   }, []);
-
-  // Automaticky obnovujeme každých 30 sekund (simulace real-time)
-  useEffect(() => {
-    const interval = setInterval(handleRefresh, 30000);
-    return () => clearInterval(interval);
-  }, [handleRefresh]);
 
   const timeSince = Math.round((Date.now() - lastRefresh.getTime()) / 1000);
   const timeSinceLabel = timeSince < 10
@@ -573,6 +582,16 @@ export function TournamentPublicView({ tournamentId, navigate }: Props) {
     : timeSince < 60
     ? `${timeSince} s zpět`
     : `${Math.round(timeSince / 60)} min zpět`;
+
+  if (firebaseLoading && !tournament) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '40px 20px' }}>
+        <div style={{ fontSize: 48 }}>⏳</div>
+        <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center' }}>Načítám turnaj…</h2>
+        <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 14 }}>Připojuji se k serveru</p>
+      </div>
+    );
+  }
 
   if (!tournament) {
     return (

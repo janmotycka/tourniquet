@@ -1,8 +1,11 @@
 import type { Page } from '../App';
+import { useAuth } from '../context/AuthContext';
 
 interface Props { navigate: (p: Page) => void; }
 
 export function HomePage({ navigate }: Props) {
+  const { user, logout } = useAuth();
+
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
@@ -17,10 +20,23 @@ export function HomePage({ navigate }: Props) {
         }}>
           ⚽
         </div>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>Ahoj, trenére!</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 2 }}>Co dnes chystáš?</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {user?.displayName ?? user?.email ?? 'Přihlášený uživatel'}
+          </p>
         </div>
+        <button
+          onClick={logout}
+          title="Odhlásit se"
+          style={{
+            flexShrink: 0, padding: '8px 14px', borderRadius: 12,
+            background: 'var(--surface)', border: '1.5px solid var(--border)',
+            color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          Odhlásit
+        </button>
       </div>
 
       {/* Module cards */}

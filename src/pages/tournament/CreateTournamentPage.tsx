@@ -359,7 +359,7 @@ export function CreateTournamentPage({ navigate }: Props) {
     setCreating(true);
     try {
       const pinHash = await hashPin(pin);
-      const tournament = createTournament({
+      const tournament = await createTournament({
         name: name.trim(),
         settings,
         teams: teams.map(t => ({
