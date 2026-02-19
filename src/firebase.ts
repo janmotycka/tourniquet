@@ -4,7 +4,7 @@ import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyC8pViQzByKbWDACt5TF9jG341c17SGI6w',
-  authDomain: 'tourniquet-7a123.firebaseapp.com',
+  authDomain: 'tourniquet-nu.vercel.app',
   databaseURL: 'https://tourniquet-7a123-default-rtdb.europe-west1.firebasedatabase.app',
   projectId: 'tourniquet-7a123',
   storageBucket: 'tourniquet-7a123.firebasestorage.app',
