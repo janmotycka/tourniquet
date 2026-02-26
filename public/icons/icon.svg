@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Pozadí -->
+  <rect width="512" height="512" rx="96" fill="#1B5E20"/>
+
+  <!-- Fotbalový míč - stylizovaný -->
+  <circle cx="256" cy="230" r="120" fill="white" opacity="0.95"/>
+
+  <!-- Míč - hexagonální vzor -->
+  <polygon points="256,140 302,167 302,221 256,248 210,221 210,167" fill="#1B5E20"/>
+  <polygon points="256,248 302,221 348,248 348,302 302,329 256,302" fill="#1B5E20" opacity="0.7"/>
+  <polygon points="256,248 210,221 164,248 164,302 210,329 256,302" fill="#1B5E20" opacity="0.7"/>
+
+  <!-- Písmeno T stylizované pod míčem -->
+  <rect x="176" y="380" width="160" height="24" rx="12" fill="white"/>
+  <rect x="240" y="380" width="32" height="72" rx="12" fill="white"/>
+</svg>
