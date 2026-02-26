@@ -1,0 +1,48 @@
+{
+  "rules": {
+
+    // ─── Turnaje (soukromá data vlastníka) ──────────────────────────────────
+    // Čtení i zápis povoleny pouze přihlášenému vlastníkovi
+    "tournaments": {
+      "$uid": {
+        ".read":  "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    // ─── Veřejný mirror (diváci přes QR/PIN) ────────────────────────────────
+    // Čtení: kdokoli (nepřihlášený divák, rodič, ...)
+    // Zápis: pouze přihlášený uživatel (vlastník nebo sdílený rozhodčí)
+    "public": {
+      "$tournamentId": {
+        ".read":  true,
+        ".write": "auth != null"
+      }
+    },
+
+    // ─── Uživatelská data ────────────────────────────────────────────────────
+    "users": {
+      "$uid": {
+        // Číst může jen vlastník
+        ".read": "auth != null && auth.uid === $uid",
+
+        // Předplatné — píše pouze server (Firebase Admin SDK v Cloud Functions)
+        // Admin SDK pravidla obchází, takže false zde klienty blokuje
+        "subscription": {
+          ".write": false
+        },
+
+        // Kluby — vlastník může číst i psát
+        "clubs": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+
+        // Připojené turnaje (přes PIN) — vlastník může číst i psát
+        "joinedTournaments": {
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    }
+
+  }
+}

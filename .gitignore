@@ -1,3 +1,11 @@
+# Environment variables — nikdy do gitu!
+.env
+.env.local
+.env.*.local
+
+# Firebase hosting cache
+.firebase/
+
 # Logs
 logs
 *.log

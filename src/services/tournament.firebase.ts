@@ -9,6 +9,7 @@
 import { ref, set, get, remove, onValue, off, DataSnapshot } from 'firebase/database';
 import { db } from '../firebase';
 import type { Tournament } from '../types/tournament.types';
+import { logger } from '../utils/logger';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -28,8 +29,69 @@ function toFirebase(t: Tournament): object {
   return JSON.parse(JSON.stringify(t));
 }
 
+/**
+ * Normalizuje data z Firebase — RTDB smaže prázdná pole ([]),
+ * takže musíme zajistit, že všechna pole budou vždy array.
+ */
+function normalizeArray(val: unknown): unknown[] {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'object' && val !== null) return Object.values(val);
+  return [];
+}
+
+// Interní typy pro raw Firebase data (před normalizací)
+interface RawTeam extends Record<string, unknown> {
+  players?: unknown;
+}
+
+interface RawMatch extends Record<string, unknown> {
+  goals?: unknown;
+  homeScore?: number;
+  awayScore?: number;
+  status?: string;
+  pausedAt?: string | null;
+  pausedElapsed?: number;
+  pitchNumber?: number;
+}
+
 function fromFirebase(data: unknown): Tournament {
-  return data as Tournament;
+  const raw = data as Record<string, unknown>;
+
+  // Normalizuj teams → vždy array, každý tým má players: array
+  const teams = normalizeArray(raw.teams).map((t: unknown) => {
+    const team = t as RawTeam;
+    return { ...team, players: normalizeArray(team?.players) };
+  });
+
+  // Normalizuj matches → vždy array, každý match má goals: array a defaulty pro chybějící fieldy
+  const matches = normalizeArray(raw.matches).map((m: unknown) => {
+    const match = m as RawMatch;
+    return {
+      ...match,
+      goals: normalizeArray(match?.goals),
+      homeScore: match?.homeScore ?? 0,
+      awayScore: match?.awayScore ?? 0,
+      status: match?.status ?? 'scheduled',
+      pausedAt: match?.pausedAt ?? null,
+      pausedElapsed: match?.pausedElapsed ?? 0,
+      pitchNumber: match?.pitchNumber ?? 1,
+    };
+  });
+
+  // Normalizuj settings — zajisti že klíčové fieldy existují
+  const rawSettings = (typeof raw.settings === 'object' && raw.settings !== null)
+    ? raw.settings as Record<string, unknown>
+    : {} as Record<string, unknown>;
+  const settings = {
+    ...rawSettings,
+    matchDurationMinutes: rawSettings.matchDurationMinutes ?? 10,
+    breakBetweenMatchesMinutes: rawSettings.breakBetweenMatchesMinutes ?? 2,
+    startDate: rawSettings.startDate ?? new Date().toISOString().split('T')[0],
+    startTime: rawSettings.startTime ?? '09:00',
+    numberOfPitches: rawSettings.numberOfPitches ?? 1,
+  };
+
+  return { ...raw, teams, matches, settings } as Tournament;
 }
 
 // ─── Zápis ────────────────────────────────────────────────────────────────────
@@ -41,6 +103,12 @@ export async function saveTournamentToFirebase(uid: string, tournament: Tourname
     set(tournamentRef(uid, tournament.id), data),
     set(publicRef(tournament.id), data),
   ]);
+}
+
+/** Zapíše turnaj POUZE do public mirror (pro non-owner kolaboranty) */
+export async function savePublicTournament(tournament: Tournament): Promise<void> {
+  const data = toFirebase(tournament);
+  await set(publicRef(tournament.id), data);
 }
 
 /** Smaže turnaj z DB */
@@ -73,14 +141,25 @@ export async function loadPublicTournament(tournamentId: string): Promise<Tourna
 /** Poslouchá změny public turnaje živě (pro diváky) */
 export function subscribeToPublicTournament(
   tournamentId: string,
-  callback: (tournament: Tournament | null) => void
+  callback: (tournament: Tournament | null) => void,
+  onError?: (error: Error) => void
 ): () => void {
   const r = publicRef(tournamentId);
 
   const handler = (snapshot: DataSnapshot) => {
-    callback(snapshot.exists() ? fromFirebase(snapshot.val()) : null);
+    try {
+      callback(snapshot.exists() ? fromFirebase(snapshot.val()) : null);
+    } catch (err) {
+      logger.error('[Firebase] fromFirebase() crashed:', err);
+      onError?.(err instanceof Error ? err : new Error(String(err)));
+    }
   };
 
-  onValue(r, handler);
+  const errorHandler = (error: Error) => {
+    logger.error('[Firebase] onValue error:', error.message);
+    onError?.(error);
+  };
+
+  onValue(r, handler, errorHandler);
   return () => off(r, 'value', handler);
 }
