@@ -62,6 +62,10 @@ jobs:
       - name: Deploy Firebase Hosting
         run: npx firebase-tools deploy --only hosting --project tourniquet-7a123
 
-      # 8) Deploy Cloud Functions + Database Rules
-      - name: Deploy Functions & DB Rules
-        run: npx firebase-tools deploy --only functions,database --project tourniquet-7a123
+      # 8) Deploy Database Rules
+      - name: Deploy Database Rules
+        run: npx firebase-tools deploy --only database --project tourniquet-7a123
+
+      # 9) Deploy Cloud Functions (--force skips extensions check)
+      - name: Deploy Cloud Functions
+        run: npx firebase-tools deploy --only functions --force --project tourniquet-7a123
