@@ -27,7 +27,18 @@ export const en: Record<TranslationKey, string> = {
 
   // ─── App ───────────────────────────────────────────────────────────────────
   'app.loading': 'Loading app…',
-  'app.premiumActivated': 'Premium activated!',
+  'app.premiumActivated': 'Premium activated! 🎉',
+
+  // ─── Onboarding ────────────────────────────────────────────────────────────
+  'onboarding.welcome': 'Welcome to TORQ!',
+  'onboarding.subtitle': 'Choose where to start. You can always return to the home screen.',
+  'onboarding.trainingTitle': 'Training Generator',
+  'onboarding.trainingDesc': 'AI-powered training plans for youth football by age group.',
+  'onboarding.tournamentTitle': 'Tournament Manager',
+  'onboarding.tournamentDesc': 'Live scoring, public QR view, standings.',
+  'onboarding.matchTitle': 'Season Matches',
+  'onboarding.matchDesc': 'Lineups, goals, cards and player ratings all season long.',
+  'onboarding.skip': 'Skip, I\'ll explore on my own',
 
   // ─── Login ─────────────────────────────────────────────────────────────────
   'login.subtitle': 'Tournaments & training for football coaches',

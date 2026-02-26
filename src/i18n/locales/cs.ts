@@ -25,7 +25,18 @@ export const cs = {
 
   // ─── App ───────────────────────────────────────────────────────────────────
   'app.loading': 'Načítám aplikaci…',
-  'app.premiumActivated': 'Premium aktivováno!',
+  'app.premiumActivated': 'Premium aktivováno! 🎉',
+
+  // ─── Onboarding ────────────────────────────────────────────────────────────
+  'onboarding.welcome': 'Vítej v TORQ!',
+  'onboarding.subtitle': 'Vyber, s čím chceš začít. Kdykoli se vrátíš na hlavní stránku.',
+  'onboarding.trainingTitle': 'Generátor tréninků',
+  'onboarding.trainingDesc': 'AI plány pro mládežnické fotbalové tréninky podle věku.',
+  'onboarding.tournamentTitle': 'Správa turnajů',
+  'onboarding.tournamentDesc': 'Živé skórování, veřejný pohled přes QR kód, tabulky.',
+  'onboarding.matchTitle': 'Sezónní zápasy',
+  'onboarding.matchDesc': 'Sestavy, góly, karty a hodnocení hráčů celou sezónu.',
+  'onboarding.skip': 'Přeskočit, prohlédnu si to sám',
 
   // ─── Login ─────────────────────────────────────────────────────────────────
   'login.subtitle': 'Turnaje a tréninky pro fotbalové trenéry',
