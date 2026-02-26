@@ -3,7 +3,7 @@ import type { Page } from '../../App';
 import { useTournamentStore } from '../../store/tournament.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useI18n } from '../../i18n';
-import { hashPin } from '../../utils/pin-hash';
+import { hashPin, generatePinSalt } from '../../utils/pin-hash';
 import { countRealMatches, estimateTournamentDuration, formatMatchTime, parseStartDateTime } from '../../utils/tournament-schedule';
 import type { TournamentSettings } from '../../types/tournament.types';
 import type { Club } from '../../types/club.types';
@@ -364,7 +364,8 @@ export function CreateTournamentPage({ navigate }: Props) {
     setPinError('');
     setCreating(true);
     try {
-      const pinHash = await hashPin(pin);
+      const pinSalt = generatePinSalt();
+      const pinHash = await hashPin(pin, pinSalt);
       const tournament = await createTournament({
         name: name.trim(),
         settings,
@@ -376,6 +377,7 @@ export function CreateTournamentPage({ navigate }: Props) {
           logoBase64: tm.logoBase64,
         })),
         pinHash,
+        pinSalt,
         matchOrder,
       });
       navigate({ name: 'tournament-detail', tournamentId: tournament.id });
@@ -497,6 +499,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder={t('tournament.create.namePlaceholder')}
+                  maxLength={200}
                   style={{
                     width: '100%', padding: '12px', borderRadius: 10, border: '1.5px solid var(--border)',
                     fontSize: 15, background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box',
@@ -551,6 +554,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                   value={rules}
                   onChange={e => setRules(e.target.value)}
                   placeholder={t('tournament.create.rulesPlaceholder')}
+                  maxLength={5000}
                   rows={4}
                   style={{
                     width: '100%', padding: '12px', borderRadius: 10, border: '1.5px solid var(--border)',
@@ -590,6 +594,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                   <input
                     value={team.name}
                     onChange={e => updateTeam(tIdx, { name: e.target.value })}
+                    maxLength={100}
                     style={{
                       flex: 1, fontWeight: 700, fontSize: 15, background: 'transparent',
                       border: 'none', color: 'var(--text)', outline: 'none',
@@ -687,6 +692,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                         value={newPlayerName[tIdx] ?? ''}
                         onChange={e => setNewPlayerName(prev => ({ ...prev, [tIdx]: e.target.value }))}
                         onKeyDown={e => e.key === 'Enter' && addPlayer(tIdx)}
+                        maxLength={100}
                         style={{
                           flex: 1, padding: '8px', borderRadius: 8, border: '1.5px solid var(--border)',
                           fontSize: 13, background: 'var(--bg)', color: 'var(--text)',

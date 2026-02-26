@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { Tournament, Match, Goal, CreateTournamentInput, TournamentSettings } from '../types/tournament.types';
 import { generateRoundRobinSchedule, generateId, computeMatchStartTime, parseStartDateTime } from '../utils/tournament-schedule';
 import { logger } from '../utils/logger';
+import { sanitizeTournamentInput, clampNumber, LIMITS } from '../utils/validation';
 import {
   saveTournamentToFirebase,
   savePublicTournament,
@@ -17,6 +18,7 @@ import {
   loadJoinedTournaments,
 } from '../services/user.firebase';
 import { verifyPin } from '../utils/pin-hash';
+import { useToastStore } from './toast.store';
 
 // ─── State interface ──────────────────────────────────────────────────────────
 
@@ -230,8 +232,9 @@ export const useTournamentStore = create<TournamentState>()(
           }
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
-          console.error('[Firebase] Load failed:', msg, err);
+          logger.error('[Firebase] Load failed:', msg, err);
           set({ firebaseUid: uid, syncError: `Načtení z Firebase selhalo: ${msg}` });
+          useToastStore.getState().show('error', `Načtení turnajů selhalo: ${msg.slice(0, 100)}`, 6000);
         }
       },
 
@@ -254,8 +257,8 @@ export const useTournamentStore = create<TournamentState>()(
         const tournament = await loadPublicTournament(tournamentId);
         if (!tournament) return { success: false, error: 'Turnaj nenalezen.' };
 
-        // Ověř PIN
-        const ok = await verifyPin(pin, tournament.pinHash);
+        // Ověř PIN (salt může chybět u starých turnajů → zpětná kompatibilita)
+        const ok = await verifyPin(pin, tournament.pinHash, tournament.pinSalt);
         if (!ok) return { success: false, error: 'Nesprávný PIN.' };
 
         // Přidej do joinnutých
@@ -309,7 +312,10 @@ export const useTournamentStore = create<TournamentState>()(
 
       // ── CRUD ──────────────────────────────────────────────────────────────
 
-      createTournament: async (input) => {
+      createTournament: async (rawInput) => {
+        // Sanitizovat vstup — ořízne stringy a čísla na bezpečné rozsahy
+        const input = sanitizeTournamentInput(rawInput);
+
         const now = new Date().toISOString();
         const uid = get().firebaseUid;
 
@@ -330,7 +336,7 @@ export const useTournamentStore = create<TournamentState>()(
         if (input.matchOrder && input.matchOrder.length > 0) {
           // Vlastní pořadí z wizardu — vytvořit zápasy dle zadaného pořadí
           const startDateTime = parseStartDateTime(input.settings);
-          const numberOfPitches = input.settings.numberOfPitches ?? 1;
+          const numberOfPitches = clampNumber(input.settings.numberOfPitches ?? 1, LIMITS.numberOfPitches.min, LIMITS.numberOfPitches.max);
 
           matches = input.matchOrder.map((entry, index) => {
             const slotIndex = Math.floor(index / numberOfPitches);
@@ -369,6 +375,7 @@ export const useTournamentStore = create<TournamentState>()(
           teams,
           matches,
           pinHash: input.pinHash,
+          pinSalt: input.pinSalt,
           firebaseSynced: false,
           lastSyncedAt: null,
         };

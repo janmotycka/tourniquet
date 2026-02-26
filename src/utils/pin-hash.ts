@@ -1,15 +1,31 @@
 // SHA-256 hash PINu pomocí Web Crypto API (nativní, bez závislostí)
 
-export async function hashPin(pin: string): Promise<string> {
+/** Vygeneruje kryptograficky bezpečný random salt (hex string) */
+export function generatePinSalt(): string {
+  const bytes = new Uint8Array(16); // 128-bit salt
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * SHA-256 hash PINu se solí.
+ * @param salt — pokud prázdný/undefined, hashuje bez soli (zpětná kompatibilita)
+ */
+export async function hashPin(pin: string, salt?: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(pin);
+  const payload = salt ? `${salt}:${pin}` : pin;
+  const data = encoder.encode(payload);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function verifyPin(pin: string, hash: string): Promise<boolean> {
-  const computed = await hashPin(pin);
+/**
+ * Ověří PIN proti uloženému hashi.
+ * @param salt — pokud prázdný/undefined, ověřuje bez soli (zpětná kompatibilita starých turnajů)
+ */
+export async function verifyPin(pin: string, hash: string, salt?: string): Promise<boolean> {
+  const computed = await hashPin(pin, salt);
   return computed === hash;
 }
 

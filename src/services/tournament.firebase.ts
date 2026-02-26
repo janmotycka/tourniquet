@@ -29,6 +29,23 @@ function toFirebase(t: Tournament): object {
   return JSON.parse(JSON.stringify(t));
 }
 
+/** Verze pro public mirror — odstraní citlivé osobní údaje (GDPR) */
+function toPublicFirebase(t: Tournament): object {
+  const sanitized = {
+    ...t,
+    teams: t.teams.map(team => ({
+      ...team,
+      players: team.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        jerseyNumber: p.jerseyNumber,
+        // birthYear záměrně VYNECHÁN — GDPR (osobní údaje nezletilých)
+      })),
+    })),
+  };
+  return JSON.parse(JSON.stringify(sanitized));
+}
+
 /**
  * Normalizuje data z Firebase — RTDB smaže prázdná pole ([]),
  * takže musíme zajistit, že všechna pole budou vždy array.
@@ -99,16 +116,17 @@ function fromFirebase(data: unknown): Tournament {
 /** Uloží/přepíše turnaj v DB (admin cesta + public mirror) */
 export async function saveTournamentToFirebase(uid: string, tournament: Tournament): Promise<void> {
   const data = toFirebase(tournament);
+  const publicData = toPublicFirebase(tournament);
   await Promise.all([
     set(tournamentRef(uid, tournament.id), data),
-    set(publicRef(tournament.id), data),
+    set(publicRef(tournament.id), publicData),
   ]);
 }
 
 /** Zapíše turnaj POUZE do public mirror (pro non-owner kolaboranty) */
 export async function savePublicTournament(tournament: Tournament): Promise<void> {
-  const data = toFirebase(tournament);
-  await set(publicRef(tournament.id), data);
+  const publicData = toPublicFirebase(tournament);
+  await set(publicRef(tournament.id), publicData);
 }
 
 /** Smaže turnaj z DB */

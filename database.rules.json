@@ -12,11 +12,64 @@
 
     // ─── Veřejný mirror (diváci přes QR/PIN) ────────────────────────────────
     // Čtení: kdokoli (nepřihlášený divák, rodič, ...)
-    // Zápis: pouze přihlášený uživatel (vlastník nebo sdílený rozhodčí)
+    // Zápis: pouze vlastník turnaje NEBO uživatel který turnaj už vytvořil
+    //   - nový turnaj: ownerUid v datech musí být auth.uid
+    //   - update:      ownerUid v existujících datech musí být auth.uid
+    //                  NEBO uživatel je v joinedUsers (sdílený rozhodčí)
     "public": {
       "$tournamentId": {
         ".read":  true,
-        ".write": "auth != null"
+        ".write": "auth != null && (
+          !data.exists() && newData.child('ownerUid').val() === auth.uid
+          || data.exists() && data.child('ownerUid').val() === auth.uid
+          || data.exists() && data.child('joinedUsers').child(auth.uid).exists()
+        )",
+
+        // Validace meta polí
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+        },
+        "ownerUid": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128"
+        },
+        "pinHash": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 256"
+        },
+        "status": {
+          ".validate": "newData.isString() && (newData.val() === 'draft' || newData.val() === 'active' || newData.val() === 'finished')"
+        },
+
+        // Validace settings
+        "settings": {
+          "matchDurationMinutes": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 120"
+          },
+          "breakBetweenMatchesMinutes": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 60"
+          },
+          "numberOfPitches": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 8"
+          }
+        },
+
+        // Turnaj nesmí překročit rozumné limity
+        "teams": {
+          "$teamId": {
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+            },
+            "players": {
+              "$playerId": {
+                "name": {
+                  ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+                },
+                "jerseyNumber": {
+                  ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999"
+                }
+              }
+            }
+          }
+        }
       }
     },
 

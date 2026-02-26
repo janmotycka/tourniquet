@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import {
   onAuthStateChanged, signInWithPopup, signOut,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
-  updateProfile, sendPasswordResetEmail,
+  updateProfile, sendPasswordResetEmail, sendEmailVerification,
   type User,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
@@ -90,6 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(credential.user, { displayName: displayName.trim() || 'Trenér' });
+      // Pošli ověřovací email (fire-and-forget — i kdyby selhal, uživatel se může přihlásit)
+      sendEmailVerification(credential.user).catch((err) => {
+        logger.error('[Auth] sendEmailVerification failed:', err);
+      });
       return null;
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? '';

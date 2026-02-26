@@ -91,6 +91,7 @@ export interface Tournament {
   teams: Team[];
   matches: Match[];
   pinHash: string;         // SHA-256 hash PINu
+  pinSalt?: string;        // salt pro rainbow-table ochranu (chybí u starých turnajů)
   firebaseSynced: boolean;
   lastSyncedAt: string | null;
 }
@@ -107,7 +108,8 @@ export interface CreateTournamentInput {
     clubId?: string | null;
     logoBase64?: string | null;
   }>;
-  pinHash: string; // předpočítaný hash — volající zavolá hashPin() před dispatchem
+  pinHash: string;  // předpočítaný hash — volající zavolá hashPin(pin, salt) před dispatchem
+  pinSalt: string;  // random salt vygenerovaný přes generatePinSalt()
   /** Volitelné vlastní pořadí zápasů (indexy do pole teams). Pokud chybí, použije se výchozí round-robin. */
   matchOrder?: Array<{ homeTeamIndex: number; awayTeamIndex: number; roundIndex: number }>;
 }

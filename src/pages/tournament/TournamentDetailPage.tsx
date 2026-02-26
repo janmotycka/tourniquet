@@ -1867,7 +1867,7 @@ function PinGate({ tournament, onVerified }: { tournament: Tournament; onVerifie
   const handleVerify = async () => {
     if (input.length < 4) { setError('PIN musí mít alespoň 4 číslice'); return; }
     setLoading(true);
-    const ok = await verifyPin(input, tournament.pinHash);
+    const ok = await verifyPin(input, tournament.pinHash, tournament.pinSalt);
     setLoading(false);
     if (ok) {
       markPinVerified(tournament.id);
