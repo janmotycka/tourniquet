@@ -47,6 +47,11 @@ jobs:
         run: npm ci
         working-directory: functions
 
+      # 5b) Build Cloud Functions (TypeScript → lib/)
+      - name: Build functions
+        run: npm run build
+        working-directory: functions
+
       # 6) Autentizace k Firebase přes Service Account
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
