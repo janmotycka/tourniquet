@@ -20,6 +20,7 @@ function getStatusLabels(t: (key: string, params?: Record<string, string | numbe
 const PODIUM_EMOJI = ['🥇', '🥈', '🥉'];
 
 function TournamentCard({ t, onClick, isJoined, statusLabels }: { t: Tournament; onClick: () => void; isJoined?: boolean; statusLabels: Record<string, { label: string; color: string; bg: string }> }) {
+  const { t: tr } = useI18n();
   const st = statusLabels[t.status];
   const date = new Date(t.settings.startDate).toLocaleDateString('cs-CZ', {
     day: 'numeric', month: 'long', year: 'numeric',
@@ -51,7 +52,7 @@ function TournamentCard({ t, onClick, isJoined, statusLabels }: { t: Tournament;
             <span style={{
               background: '#E3F2FD', color: '#1565C0', fontSize: 10, fontWeight: 700,
               padding: '2px 8px', borderRadius: 6,
-            }}>Sdílený</span>
+            }}>{tr('tournament.list.shared')}</span>
           )}
         </div>
       </div>
@@ -260,7 +261,7 @@ export function TournamentListPage({ navigate }: Props) {
         {sorted.length === 0 ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '60px 20px' }}>
             <div style={{ fontSize: 64 }}>🏆</div>
-            <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center' }}>Žádné turnaje</h2>
+            <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center' }}>{t('tournament.list.noTournaments')}</h2>
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 15, lineHeight: 1.5 }}>
               Vytvořte svůj první turnaj a začněte organizovat zápasy.
             </p>
@@ -325,7 +326,7 @@ export function TournamentListPage({ navigate }: Props) {
                 type="text"
                 value={joinId}
                 onChange={e => { setJoinId(e.target.value); setJoinError(''); }}
-                placeholder="Vložte ID nebo URL turnaje"
+                placeholder={t('tournament.list.joinPlaceholder')}
                 style={{
                   padding: '10px 14px', borderRadius: 10, fontSize: 15,
                   border: '1px solid var(--border)', background: 'var(--surface-var)',

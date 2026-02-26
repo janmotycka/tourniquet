@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import type { Page } from '../../App';
 import { useTournamentStore } from '../../store/tournament.store';
 import { useClubsStore } from '../../store/clubs.store';
+import { useI18n } from '../../i18n';
 import { hashPin } from '../../utils/pin-hash';
 import { countRealMatches, estimateTournamentDuration, formatMatchTime, parseStartDateTime } from '../../utils/tournament-schedule';
 import type { TournamentSettings } from '../../types/tournament.types';
@@ -91,10 +92,10 @@ interface TeamDraft {
   logoBase64: string | null;
 }
 
-function defaultTeams(): TeamDraft[] {
+function defaultTeams(t: (key: string, params?: Record<string, string | number>) => string): TeamDraft[] {
   return [
-    { name: 'Tým A', color: TEAM_COLORS[0], players: [], expanded: false, clubId: null, logoBase64: null },
-    { name: 'Tým B', color: TEAM_COLORS[1], players: [], expanded: false, clubId: null, logoBase64: null },
+    { name: t('tournament.teamA'), color: TEAM_COLORS[0], players: [], expanded: false, clubId: null, logoBase64: null },
+    { name: t('tournament.teamB'), color: TEAM_COLORS[1], players: [], expanded: false, clubId: null, logoBase64: null },
   ];
 }
 
@@ -107,6 +108,7 @@ interface ClubPickerModalProps {
 }
 
 function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: ClubPickerModalProps) {
+  const { t } = useI18n();
   const [showNewClub, setShowNewClub] = useState(false);
   const [newClubName, setNewClubName] = useState('');
   const [newClubColor, setNewClubColor] = useState(TEAM_COLORS[0]);
@@ -143,7 +145,7 @@ function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: ClubPickerM
         display: 'flex', flexDirection: 'column', gap: 12,
       }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ fontWeight: 800, fontSize: 17 }}>🏟 Vybrat klub</h3>
+          <h3 style={{ fontWeight: 800, fontSize: 17 }}>{t('tournament.create.selectClub')}</h3>
           <button onClick={onClose} style={{ fontSize: 22, color: 'var(--text-muted)' }}>✕</button>
         </div>
 
@@ -162,7 +164,7 @@ function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: ClubPickerM
                 )}
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>{c.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{c.defaultPlayers.length} hráčů v základní soupisce</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('tournament.create.playersInRoster', { count: c.defaultPlayers.length })}</div>
                 </div>
               </button>
             ))}
@@ -174,13 +176,13 @@ function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: ClubPickerM
             background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700, fontSize: 14,
             padding: '12px', borderRadius: 12, border: '2px dashed var(--primary)',
           }}>
-            ➕ Přidat nový klub
+            {t('tournament.create.addNewClub')}
           </button>
         ) : (
           <div style={{ background: 'var(--surface-var)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <h4 style={{ fontWeight: 700, fontSize: 14 }}>Nový klub</h4>
+            <h4 style={{ fontWeight: 700, fontSize: 14 }}>{t('tournament.create.newClub')}</h4>
             <input
-              placeholder="Název klubu"
+              placeholder={t('tournament.create.clubName')}
               value={newClubName}
               onChange={e => setNewClubName(e.target.value)}
               style={{
@@ -189,7 +191,7 @@ function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: ClubPickerM
               }}
             />
             <div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Barva:</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('tournament.create.colorLabel')}</div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {TEAM_COLORS.map(c => (
                   <button key={c} onClick={() => setNewClubColor(c)} style={{
@@ -200,7 +202,7 @@ function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: ClubPickerM
               </div>
             </div>
             <div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Logo klubu:</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('tournament.create.clubLogo')}</div>
               <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoUpload} />
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {newClubLogo ? (
@@ -212,7 +214,7 @@ function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: ClubPickerM
                   background: 'var(--surface)', border: '1.5px solid var(--border)',
                   padding: '8px 12px', borderRadius: 8, fontSize: 13, color: 'var(--text)',
                 }}>
-                  {uploading ? '⏳ Načítám…' : '📁 Nahrát logo'}
+                  {uploading ? t('tournament.create.uploading') : t('tournament.create.uploadLogo')}
                 </button>
                 {newClubLogo && (
                   <button onClick={() => setNewClubLogo(null)} style={{ fontSize: 13, color: 'var(--text-muted)' }}>✕</button>
@@ -223,13 +225,13 @@ function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: ClubPickerM
               <button onClick={() => setShowNewClub(false)} style={{
                 flex: 1, padding: '10px', borderRadius: 10, background: 'var(--surface)',
                 border: '1.5px solid var(--border)', fontWeight: 600, fontSize: 14, color: 'var(--text)',
-              }}>Zrušit</button>
+              }}>{t('common.cancel')}</button>
               <button onClick={handleCreate} disabled={!newClubName.trim()} style={{
                 flex: 2, padding: '10px', borderRadius: 10,
                 background: newClubName.trim() ? 'var(--primary)' : 'var(--border)',
                 color: newClubName.trim() ? '#fff' : 'var(--text-muted)',
                 fontWeight: 700, fontSize: 14,
-              }}>Uložit a použít</button>
+              }}>{t('tournament.create.saveAndUse')}</button>
             </div>
           </div>
         )}
@@ -240,6 +242,7 @@ function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: ClubPickerM
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function CreateTournamentPage({ navigate }: Props) {
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
 
   // Krok 0 — Základní info
@@ -248,10 +251,11 @@ export function CreateTournamentPage({ navigate }: Props) {
   const [startTime, setStartTime] = useState('09:00');
   const [matchDuration, setMatchDuration] = useState(15);
   const [breakDuration, setBreakDuration] = useState(5);
+  const [numberOfPitches, setNumberOfPitches] = useState(1);
   const [rules, setRules] = useState('');
 
   // Krok 1 — Týmy
-  const [teams, setTeams] = useState<TeamDraft[]>(defaultTeams);
+  const [teams, setTeams] = useState<TeamDraft[]>(() => defaultTeams(t));
   const [newPlayerName, setNewPlayerName] = useState<Record<number, string>>({});
   const [newPlayerNumber, setNewPlayerNumber] = useState<Record<number, string>>({});
   const [clubPickerForTeam, setClubPickerForTeam] = useState<number | null>(null);
@@ -260,11 +264,12 @@ export function CreateTournamentPage({ navigate }: Props) {
   const logoFileRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const [logoUploading, setLogoUploading] = useState<Record<number, boolean>>({});
 
-  // Krok 2 — PIN
+  // Krok 2 — PIN + pořadí zápasů
   const [pin, setPin] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
   const [pinError, setPinError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [matchOrder, setMatchOrder] = useState<Array<{ homeTeamIndex: number; awayTeamIndex: number; roundIndex: number }>>([]);
 
   const createTournament = useTournamentStore(s => s.createTournament);
   const { clubs, createClub } = useClubsStore();
@@ -275,6 +280,7 @@ export function CreateTournamentPage({ navigate }: Props) {
     startTime,
     startDate,
     rules: rules.trim() || undefined,
+    numberOfPitches: numberOfPitches > 1 ? numberOfPitches : undefined,
   };
 
   const totalMatches = countRealMatches(teams.length);
@@ -310,7 +316,7 @@ export function CreateTournamentPage({ navigate }: Props) {
   };
 
   const updateTeam = (idx: number, updates: Partial<TeamDraft>) => {
-    setTeams(prev => prev.map((t, i) => i === idx ? { ...t, ...updates } : t));
+    setTeams(prev => prev.map((tm, i) => i === idx ? { ...tm, ...updates } : tm));
   };
 
   const addPlayer = (teamIdx: number) => {
@@ -353,8 +359,8 @@ export function CreateTournamentPage({ navigate }: Props) {
 
   // ── Vytvoření turnaje ─────────────────────────────────────────────────────
   const handleCreate = async () => {
-    if (pin.length < 4) { setPinError('PIN musí mít alespoň 4 číslice'); return; }
-    if (pin !== pinConfirm) { setPinError('PINy se neshodují'); return; }
+    if (pin.length !== 6) { setPinError(t('tournament.create.pinError6')); return; }
+    if (pin !== pinConfirm) { setPinError(t('tournament.create.pinErrorMatch')); return; }
     setPinError('');
     setCreating(true);
     try {
@@ -362,50 +368,20 @@ export function CreateTournamentPage({ navigate }: Props) {
       const tournament = await createTournament({
         name: name.trim(),
         settings,
-        teams: teams.map(t => ({
-          name: t.name,
-          color: t.color,
-          players: t.players,
-          clubId: t.clubId,
-          logoBase64: t.logoBase64,
+        teams: teams.map(tm => ({
+          name: tm.name,
+          color: tm.color,
+          players: tm.players,
+          clubId: tm.clubId,
+          logoBase64: tm.logoBase64,
         })),
         pinHash,
+        matchOrder,
       });
       navigate({ name: 'tournament-detail', tournamentId: tournament.id });
     } finally {
       setCreating(false);
     }
-  };
-
-  // ── Preview harmonogramu (první 5 zápasů) ─────────────────────────────────
-  const previewMatches = () => {
-    const startDt = parseStartDateTime(settings);
-    const fakeTeams = teams.map((t, i) => ({ id: String(i), name: t.name, color: t.color, players: [] }));
-    const results: string[] = [];
-    const ids = fakeTeams.map(t => t.id);
-    const hasBye = ids.length % 2 !== 0;
-    if (hasBye) ids.push('BYE');
-    const n = ids.length;
-    const rounds = n - 1;
-    const matchesPerRound = n / 2;
-    let globalIdx = 0;
-    outer: for (let round = 0; round < rounds; round++) {
-      const shift = round % (n - 1);
-      const rotated = [ids[0], ...rotateRight(ids.slice(1), shift)];
-      for (let i = 0; i < matchesPerRound; i++) {
-        const home = rotated[i];
-        const away = rotated[n - 1 - i];
-        if (home === 'BYE' || away === 'BYE') continue;
-        const offsetMs = globalIdx * (matchDuration + breakDuration) * 60 * 1000;
-        const dt = new Date(startDt.getTime() + offsetMs);
-        const homeT = fakeTeams.find(t => t.id === home);
-        const awayT = fakeTeams.find(t => t.id === away);
-        results.push(`${formatMatchTime(dt.toISOString())} — ${homeT?.name} vs ${awayT?.name}`);
-        globalIdx++;
-        if (results.length >= 5) break outer;
-      }
-    }
-    return results;
   };
 
   function rotateRight<T>(arr: T[], n: number): T[] {
@@ -414,6 +390,62 @@ export function CreateTournamentPage({ navigate }: Props) {
     const shift = n % len;
     return [...arr.slice(len - shift), ...arr.slice(0, len - shift)];
   }
+
+  // ── Generování výchozího pořadí zápasů (circle-method s indexy) ──────────
+  function generateDefaultMatchOrder(teamCount: number) {
+    const indices = Array.from({ length: teamCount }, (_, i) => i);
+    const hasBye = indices.length % 2 !== 0;
+    if (hasBye) indices.push(-1); // -1 = BYE
+    const n = indices.length;
+    const rounds = n - 1;
+    const matchesPerRound = n / 2;
+    const order: Array<{ homeTeamIndex: number; awayTeamIndex: number; roundIndex: number }> = [];
+    for (let round = 0; round < rounds; round++) {
+      const rotated = [indices[0], ...rotateRight(indices.slice(1), round)];
+      for (let i = 0; i < matchesPerRound; i++) {
+        const home = rotated[i];
+        const away = rotated[n - 1 - i];
+        if (home === -1 || away === -1) continue;
+        order.push({ homeTeamIndex: home, awayTeamIndex: away, roundIndex: round });
+      }
+    }
+    return order;
+  }
+
+  const goToStep2 = () => {
+    setMatchOrder(generateDefaultMatchOrder(teams.length));
+    setStep(2);
+  };
+
+  const resetMatchOrder = () => {
+    setMatchOrder(generateDefaultMatchOrder(teams.length));
+  };
+
+  const moveMatchUp = (idx: number) => {
+    if (idx <= 0) return;
+    setMatchOrder(prev => {
+      const next = [...prev];
+      [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+      return next;
+    });
+  };
+
+  const moveMatchDown = (idx: number) => {
+    setMatchOrder(prev => {
+      if (idx >= prev.length - 1) return prev;
+      const next = [...prev];
+      [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+      return next;
+    });
+  };
+
+  const computeDisplayTime = (index: number): string => {
+    const startDt = parseStartDateTime(settings);
+    const slotIndex = Math.floor(index / numberOfPitches);
+    const offsetMs = slotIndex * (matchDuration + breakDuration) * 60 * 1000;
+    const dt = new Date(startDt.getTime() + offsetMs);
+    return formatMatchTime(dt.toISOString());
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -438,7 +470,7 @@ export function CreateTournamentPage({ navigate }: Props) {
           fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>←</button>
         <h1 style={{ fontWeight: 800, fontSize: 18, flex: 1 }}>
-          {step === 0 ? '🏆 Nový turnaj' : step === 1 ? '👥 Týmy a soupisky' : '🔐 PIN a náhled'}
+          {step === 0 ? t('tournament.create.title') : step === 1 ? t('tournament.create.teamsStep') : t('tournament.create.pinStep')}
         </h1>
         {/* Step dots */}
         <div style={{ display: 'flex', gap: 6 }}>
@@ -460,11 +492,11 @@ export function CreateTournamentPage({ navigate }: Props) {
           <>
             <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
               <div>
-                <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>Název turnaje *</label>
+                <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>{t('tournament.create.name')}</label>
                 <input
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="např. U10 Jarní liga 2025"
+                  placeholder={t('tournament.create.namePlaceholder')}
                   style={{
                     width: '100%', padding: '12px', borderRadius: 10, border: '1.5px solid var(--border)',
                     fontSize: 15, background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box',
@@ -474,7 +506,7 @@ export function CreateTournamentPage({ navigate }: Props) {
 
               <div style={{ display: 'flex', gap: 10 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>Datum</label>
+                  <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>{t('tournament.create.date')}</label>
                   <input
                     type="date"
                     value={startDate}
@@ -486,7 +518,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>Začátek</label>
+                  <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>{t('tournament.create.startTime')}</label>
                   <input
                     type="time"
                     value={startTime}
@@ -501,22 +533,24 @@ export function CreateTournamentPage({ navigate }: Props) {
             </div>
 
             <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-              <h3 style={{ fontWeight: 700, fontSize: 15 }}>⏱ Délky zápasů</h3>
-              <Stepper label="Délka zápasu" value={matchDuration} min={1} max={120} step={1} onChange={setMatchDuration} unit="min" />
+              <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.matchDurations')}</h3>
+              <Stepper label={t('tournament.create.matchDuration')} value={matchDuration} min={1} max={120} step={1} onChange={setMatchDuration} unit={t('common.min')} />
               <div style={{ height: 1, background: 'var(--border)' }} />
-              <Stepper label="Přestávka mezi zápasy" value={breakDuration} min={0} max={15} step={1} onChange={setBreakDuration} unit="min" />
+              <Stepper label={t('tournament.create.break')} value={breakDuration} min={0} max={15} step={1} onChange={setBreakDuration} unit={t('common.min')} />
+              <div style={{ height: 1, background: 'var(--border)' }} />
+              <Stepper label={t('tournament.create.pitchCount')} value={numberOfPitches} min={1} max={8} step={1} onChange={setNumberOfPitches} unit="" />
             </div>
 
             <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
               <div>
                 <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, display: 'block' }}>
-                  📋 Pravidla / propozice
-                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6, fontSize: 12 }}>volitelné</span>
+                  {t('tournament.create.rules')}
+                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6, fontSize: 12 }}>{t('tournament.create.rulesOptional')}</span>
                 </label>
                 <textarea
                   value={rules}
                   onChange={e => setRules(e.target.value)}
-                  placeholder="Popis pravidel, délka poločasů, penalty, formát skupin..."
+                  placeholder={t('tournament.create.rulesPlaceholder')}
                   rows={4}
                   style={{
                     width: '100%', padding: '12px', borderRadius: 10, border: '1.5px solid var(--border)',
@@ -536,9 +570,9 @@ export function CreateTournamentPage({ navigate }: Props) {
             <div style={{ background: 'var(--primary-light)', borderRadius: 14, padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
               <span style={{ fontSize: 20 }}>ℹ️</span>
               <div style={{ fontSize: 13, color: 'var(--primary)', lineHeight: 1.4 }}>
-                <b>{teams.length} týmů</b> → <b>{totalMatches} zápasů</b>, přibližná délka <b>
-                  {totalHours > 0 ? `${totalHours}h ` : ''}{remainMinutes > 0 ? `${remainMinutes} min` : ''}
-                </b>
+                <b>{t('tournament.create.teamsCount', { count: teams.length })}</b> → <b>{t('tournament.create.matchesCount', { count: totalMatches })}</b>, {t('tournament.create.estimatedTime', { time:
+                  `${totalHours > 0 ? `${totalHours}h ` : ''}${remainMinutes > 0 ? `${remainMinutes} ${t('common.min')}` : ''}`
+                })}
               </div>
             </div>
 
@@ -565,7 +599,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                   <button onClick={() => setClubPickerForTeam(tIdx)} style={{
                     padding: '4px 8px', borderRadius: 8, background: 'var(--surface-var)',
                     fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap',
-                  }}>🏟 Klub</button>
+                  }}>{t('tournament.create.selectClub')}</button>
                   <button onClick={() => updateTeam(tIdx, { expanded: !team.expanded })} style={{
                     width: 30, height: 30, borderRadius: 8, background: 'var(--surface-var)',
                     fontSize: 14, color: 'var(--text-muted)',
@@ -583,7 +617,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                 {/* Výběr barvy + logo upload */}
                 {team.expanded && (
                   <div style={{ padding: '0 16px 8px' }}>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Barva týmu:</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('tournament.create.colorLabel')}</div>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                       {TEAM_COLORS.map(c => (
                         <button key={c} onClick={() => updateTeam(tIdx, { color: c })} style={{
@@ -592,7 +626,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                         }} />
                       ))}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Logo týmu (volitelné):</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('tournament.create.clubLogo')}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <input
                         ref={el => { logoFileRefs.current[tIdx] = el; }}
@@ -605,10 +639,10 @@ export function CreateTournamentPage({ navigate }: Props) {
                         background: 'var(--surface-var)', border: '1.5px solid var(--border)',
                         padding: '6px 12px', borderRadius: 8, fontSize: 12, color: 'var(--text)',
                       }}>
-                        {logoUploading[tIdx] ? '⏳ Načítám…' : '📁 Nahrát logo'}
+                        {logoUploading[tIdx] ? t('tournament.create.uploading') : t('tournament.create.uploadLogo')}
                       </button>
                       {team.logoBase64 && (
-                        <button onClick={() => updateTeam(tIdx, { logoBase64: null })} style={{ fontSize: 12, color: 'var(--text-muted)' }}>✕ Odebrat</button>
+                        <button onClick={() => updateTeam(tIdx, { logoBase64: null })} style={{ fontSize: 12, color: 'var(--text-muted)' }}>✕ {t('common.remove')}</button>
                       )}
                     </div>
                   </div>
@@ -618,7 +652,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                 {team.expanded && (
                   <div style={{ padding: '8px 16px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-muted)' }}>
-                      Soupiska ({team.players.length} hráčů)
+                      {t('tournament.create.roster', { count: team.players.length })}
                     </div>
 
                     {team.players.map((p, pIdx) => (
@@ -638,7 +672,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                     {/* Přidat hráče */}
                     <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
                       <input
-                        placeholder="Č."
+                        placeholder={t('tournament.create.jerseyNo')}
                         type="number"
                         min={1} max={99}
                         value={newPlayerNumber[tIdx] ?? ''}
@@ -649,7 +683,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                         }}
                       />
                       <input
-                        placeholder="Jméno hráče"
+                        placeholder={t('tournament.create.playerName')}
                         value={newPlayerName[tIdx] ?? ''}
                         onChange={e => setNewPlayerName(prev => ({ ...prev, [tIdx]: e.target.value }))}
                         onKeyDown={e => e.key === 'Enter' && addPlayer(tIdx)}
@@ -673,7 +707,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                 background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700, fontSize: 15,
                 padding: '14px', borderRadius: 14, border: '2px dashed var(--primary)',
               }}>
-                ➕ Přidat tým
+                {t('tournament.create.addTeam')}
               </button>
             )}
           </>
@@ -684,19 +718,19 @@ export function CreateTournamentPage({ navigate }: Props) {
           <>
             {/* PIN */}
             <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-              <h3 style={{ fontWeight: 700, fontSize: 15 }}>🔐 PIN organizátora</h3>
+              <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.pinOrg')}</h3>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                PIN chrání zadávání výsledků. Hosté mohou tabulku sledovat bez PINu.
+                {t('tournament.create.pinDesc')}
               </p>
               <div>
-                <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>PIN (4–6 číslic)</label>
+                <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>{t('tournament.create.pinLabel')}</label>
                 <input
                   type="password"
                   inputMode="numeric"
                   maxLength={6}
                   value={pin}
                   onChange={e => { setPin(e.target.value.replace(/\D/g, '')); setPinError(''); }}
-                  placeholder="••••"
+                  placeholder="••••••"
                   style={{
                     width: '100%', padding: '12px', borderRadius: 10, fontSize: 20,
                     border: `1.5px solid ${pinError ? '#C62828' : 'var(--border)'}`,
@@ -705,14 +739,14 @@ export function CreateTournamentPage({ navigate }: Props) {
                 />
               </div>
               <div>
-                <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>Potvrzení PINu</label>
+                <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>{t('tournament.create.pinConfirm')}</label>
                 <input
                   type="password"
                   inputMode="numeric"
                   maxLength={6}
                   value={pinConfirm}
                   onChange={e => { setPinConfirm(e.target.value.replace(/\D/g, '')); setPinError(''); }}
-                  placeholder="••••"
+                  placeholder="••••••"
                   style={{
                     width: '100%', padding: '12px', borderRadius: 10, fontSize: 20,
                     border: `1.5px solid ${pinError ? '#C62828' : 'var(--border)'}`,
@@ -723,31 +757,88 @@ export function CreateTournamentPage({ navigate }: Props) {
               {pinError && <div style={{ color: '#C62828', fontSize: 13 }}>⚠️ {pinError}</div>}
             </div>
 
-            {/* Náhled harmonogramu */}
+            {/* Pořadí zápasů — interaktivní seznam */}
             <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-              <h3 style={{ fontWeight: 700, fontSize: 15 }}>📋 Náhled harmonogramu</h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.scheduleOrder')}</h3>
+                <button onClick={resetMatchOrder} style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}>
+                  {t('tournament.create.resetOrder')}
+                </button>
+              </div>
               <div style={{
                 background: 'var(--primary-light)', borderRadius: 10, padding: '10px 14px',
                 fontSize: 13, color: 'var(--primary)', lineHeight: 1.5,
               }}>
-                <b>{teams.length} týmů</b> · <b>{totalMatches} zápasů</b> · délka <b>
-                  {totalHours > 0 ? `${totalHours}h ` : ''}{remainMinutes > 0 ? `${remainMinutes} min` : ''}
-                </b>
+                <b>{t('tournament.create.teamsCount', { count: teams.length })}</b> · <b>{t('tournament.create.matchesCount', { count: totalMatches })}</b> · {t('tournament.create.estimatedTime', { time:
+                  `${totalHours > 0 ? `${totalHours}h ` : ''}${remainMinutes > 0 ? `${remainMinutes} ${t('common.min')}` : ''}`
+                })}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {previewMatches().map((m, i) => (
-                  <div key={i} style={{
-                    padding: '8px 12px', background: 'var(--surface-var)', borderRadius: 8,
-                    fontSize: 13, color: 'var(--text)',
-                  }}>
-                    {m}
-                  </div>
-                ))}
-                {totalMatches > 5 && (
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', paddingTop: 4 }}>
-                    … a dalších {totalMatches - 5} zápasů
-                  </div>
-                )}
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                {t('tournament.create.reorderHint')}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {matchOrder.map((match, idx) => {
+                  const homeTeam = teams[match.homeTeamIndex];
+                  const awayTeam = teams[match.awayTeamIndex];
+                  const time = computeDisplayTime(idx);
+                  const pitch = (idx % numberOfPitches) + 1;
+                  const isFirst = idx === 0;
+                  const isLast = idx === matchOrder.length - 1;
+
+                  return (
+                    <div key={`${match.homeTeamIndex}-${match.awayTeamIndex}-${match.roundIndex}`} style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '7px 8px', background: 'var(--surface-var)', borderRadius: 10,
+                    }}>
+                      {/* Pořadové číslo */}
+                      <span style={{ width: 22, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', fontWeight: 700, flexShrink: 0 }}>
+                        {idx + 1}.
+                      </span>
+                      {/* Čas + hřiště */}
+                      <span style={{ width: 42, fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, flexShrink: 0 }}>
+                        {time}
+                      </span>
+                      {numberOfPitches > 1 && (
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0, width: 18 }}>
+                          H{pitch}
+                        </span>
+                      )}
+                      {/* Domácí barva */}
+                      <div style={{ width: 10, height: 10, borderRadius: 3, background: homeTeam?.color ?? '#ccc', flexShrink: 0 }} />
+                      {/* Názvy týmů */}
+                      <span style={{ flex: 1, fontSize: 12, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {homeTeam?.name ?? '?'} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>vs</span> {awayTeam?.name ?? '?'}
+                      </span>
+                      {/* Hosté barva */}
+                      <div style={{ width: 10, height: 10, borderRadius: 3, background: awayTeam?.color ?? '#ccc', flexShrink: 0 }} />
+                      {/* Tlačítka ▲ ▼ */}
+                      <button
+                        onClick={() => moveMatchUp(idx)}
+                        disabled={isFirst}
+                        style={{
+                          width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: isFirst ? 'transparent' : 'var(--surface)',
+                          border: isFirst ? 'none' : '1px solid var(--border)',
+                          fontSize: 12, color: isFirst ? 'var(--border)' : 'var(--text)',
+                          cursor: isFirst ? 'default' : 'pointer',
+                        }}
+                      >▲</button>
+                      <button
+                        onClick={() => moveMatchDown(idx)}
+                        disabled={isLast}
+                        style={{
+                          width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: isLast ? 'transparent' : 'var(--surface)',
+                          border: isLast ? 'none' : '1px solid var(--border)',
+                          fontSize: 12, color: isLast ? 'var(--border)' : 'var(--text)',
+                          cursor: isLast ? 'default' : 'pointer',
+                        }}
+                      >▼</button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </>
@@ -769,12 +860,12 @@ export function CreateTournamentPage({ navigate }: Props) {
               padding: '14px', borderRadius: 14,
             }}
           >
-            Pokračovat →
+            {t('tournament.create.continue')}
           </button>
         )}
         {step === 1 && (
           <button
-            onClick={() => setStep(2)}
+            onClick={goToStep2}
             disabled={!canGoNext1}
             style={{
               flex: 1, background: canGoNext1 ? 'var(--primary)' : 'var(--border)',
@@ -782,21 +873,21 @@ export function CreateTournamentPage({ navigate }: Props) {
               padding: '14px', borderRadius: 14,
             }}
           >
-            Pokračovat → ({teams.length} týmy, {totalMatches} zápasů)
+            {t('tournament.create.continueInfo', { teams: teams.length, matches: totalMatches })}
           </button>
         )}
         {step === 2 && (
           <button
             onClick={handleCreate}
-            disabled={creating || pin.length < 4}
+            disabled={creating || pin.length !== 6}
             style={{
               flex: 1,
-              background: creating || pin.length < 4 ? 'var(--border)' : 'var(--primary)',
-              color: creating || pin.length < 4 ? 'var(--text-muted)' : '#fff',
+              background: creating || pin.length !== 6 ? 'var(--border)' : 'var(--primary)',
+              color: creating || pin.length !== 6 ? 'var(--text-muted)' : '#fff',
               fontWeight: 700, fontSize: 16, padding: '14px', borderRadius: 14,
             }}
           >
-            {creating ? 'Vytváření…' : '🏆 Vytvořit turnaj'}
+            {creating ? t('tournament.create.creating') : t('tournament.create.submit')}
           </button>
         )}
       </div>

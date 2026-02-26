@@ -1,12 +1,14 @@
 import { create } from 'zustand';
-import type { AgeCategory, PhaseStructure, TrainingDuration, ULabel } from '../types/category.types';
+import type { AgeCategory, PhaseStructure, SubCategory, ULabel } from '../types/category.types';
 import type { PhaseType, SkillFocus } from '../types/exercise.types';
 import type { TrainingUnit } from '../types/training.types';
+import { SUB_CATEGORY_CONFIGS, getSubCategoryForULabel } from '../data/categories.data';
 
 interface GeneratorState {
   category: AgeCategory | null;
+  subCategory: SubCategory | null;
   selectedULabel: ULabel | null;
-  totalDuration: TrainingDuration;
+  totalDuration: number;
   skillFocus: SkillFocus[];
   numberOfCoaches: number;
   numberOfPlayers: number;
@@ -15,9 +17,10 @@ interface GeneratorState {
   stationCoachAssignments: Record<number, string | null>;
   generatedUnit: TrainingUnit | null;
 
-  setULabel: (label: ULabel, category: AgeCategory) => void;
+  setSubCategory: (sub: SubCategory) => void;
+  setULabel: (label: ULabel) => void;
   setCategory: (category: AgeCategory) => void;
-  setTotalDuration: (duration: TrainingDuration) => void;
+  setTotalDuration: (duration: number) => void;
   toggleSkillFocus: (skill: SkillFocus) => void;
   setNumberOfCoaches: (n: number) => void;
   setNumberOfPlayers: (n: number) => void;
@@ -30,8 +33,9 @@ interface GeneratorState {
 
 const initialState = {
   category: null as AgeCategory | null,
+  subCategory: null as SubCategory | null,
   selectedULabel: null as ULabel | null,
-  totalDuration: 90 as TrainingDuration,
+  totalDuration: 90 as number,
   skillFocus: [] as SkillFocus[],
   numberOfCoaches: 1,
   numberOfPlayers: 12,
@@ -44,19 +48,39 @@ const initialState = {
 export const useGeneratorStore = create<GeneratorState>((set) => ({
   ...initialState,
 
-  setULabel: (label, category) =>
+  setSubCategory: (sub) => {
+    const cfg = SUB_CATEGORY_CONFIGS[sub];
     set({
-      selectedULabel: label,
-      category,
-      phaseStructure: category === 'pripravka' ? '2-phase' : '3-phase',
+      subCategory: sub,
+      category: cfg.exerciseCategory,
+      selectedULabel: null,
+      totalDuration: cfg.recommendedDuration,
+      phaseStructure: cfg.defaultPhaseStructure,
       skillFocus: [],
       customPhaseDurations: {},
       stationCoachAssignments: {},
-    }),
+    });
+  },
+
+  setULabel: (label) => {
+    const sub = getSubCategoryForULabel(label);
+    const cfg = SUB_CATEGORY_CONFIGS[sub];
+    set({
+      selectedULabel: label,
+      subCategory: sub,
+      category: cfg.exerciseCategory,
+      totalDuration: cfg.recommendedDuration,
+      phaseStructure: cfg.defaultPhaseStructure,
+      skillFocus: [],
+      customPhaseDurations: {},
+      stationCoachAssignments: {},
+    });
+  },
 
   setCategory: (category) =>
     set({
       category,
+      subCategory: null,
       selectedULabel: null,
       phaseStructure: category === 'pripravka' ? '2-phase' : '3-phase',
       skillFocus: [],

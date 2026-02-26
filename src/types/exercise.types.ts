@@ -12,7 +12,7 @@ export type SkillFocus =
   | 'koordinace'
   | 'hra';
 
-export type PhaseType = 'warmup' | 'main' | 'cooldown';
+export type PhaseType = 'warmup' | 'main' | 'cooldown' | 'stretching';
 
 export type DifficultyLevel = 'beginner' | 'intermediate' | 'advanced';
 

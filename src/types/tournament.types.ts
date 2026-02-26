@@ -50,6 +50,7 @@ export interface Match {
   pausedElapsed: number;       // sekundy uplynulé před pauzou (pro správný výpočet)
   roundIndex: number;          // 0-based číslo rundy
   matchIndex: number;          // globální pořadové číslo zápasu (pro výpočet času)
+  pitchNumber?: number;        // číslo hřiště (1-based); default 1; optional pro zpětnou kompatibilitu
 }
 
 // ─── Standing (computed, never stored) ───────────────────────────────────────
@@ -74,6 +75,7 @@ export interface TournamentSettings {
   startTime: string;                   // "HH:MM", e.g. "09:00"
   startDate: string;                   // "YYYY-MM-DD"
   rules?: string;                      // propozice / pravidla turnaje
+  numberOfPitches?: number;            // 1–8, default 1; zápasy v kole probíhají paralelně
 }
 
 // ─── Tournament ───────────────────────────────────────────────────────────────
@@ -81,6 +83,7 @@ export interface TournamentSettings {
 export interface Tournament {
   id: string;
   name: string;
+  ownerUid: string;        // UID tvůrce turnaje (pro sdílený přístup)
   status: TournamentStatus;
   createdAt: string;       // ISO timestamp
   updatedAt: string;
@@ -105,6 +108,8 @@ export interface CreateTournamentInput {
     logoBase64?: string | null;
   }>;
   pinHash: string; // předpočítaný hash — volající zavolá hashPin() před dispatchem
+  /** Volitelné vlastní pořadí zápasů (indexy do pole teams). Pokud chybí, použije se výchozí round-robin. */
+  matchOrder?: Array<{ homeTeamIndex: number; awayTeamIndex: number; roundIndex: number }>;
 }
 
 // ─── Firebase serializable data ───────────────────────────────────────────────
@@ -130,11 +135,13 @@ export interface FirebaseMatch {
   finishedAt: string | null;
   roundIndex: number;
   matchIndex: number;
+  pitchNumber?: number;
 }
 
 export interface FirebaseTournamentData {
   meta: {
     name: string;
+    ownerUid: string;
     status: TournamentStatus;
     createdAt: string;
     updatedAt: string;

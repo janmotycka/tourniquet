@@ -730,6 +730,37 @@ export const cs = {
   // ─── Generator extras ───────────────────────────────────────────────────
   'generator.defaultFocus': 'obecný trénink',
   'manual.customBuild': 'vlastní sestavení',
+
+  // ─── Tournament detail (hardcoded zbytky) ─────────────────────────────
+  'tournament.detail.noMatches': 'Žádné zápasy.',
+  'tournament.detail.noGoals': 'Zatím žádné góly',
+  'tournament.detail.noGoalsDesc': 'Střelci se zobrazí po zadání gólů v zápasech',
+  'tournament.detail.scorersTable': 'Tabulka střelců',
+  'tournament.detail.liveLabel': 'ŽIVĚ',
+  'tournament.detail.loadingQr': 'Načítání…',
+  'tournament.detail.goalMinute': 'Minuta gólu',
+  'tournament.detail.goalMinuteHint': 'Předvyplněno z odpočítávače',
+  'tournament.detail.pitchCountLabel': 'Počet hřišť',
+  'tournament.detail.pitchUnit': 'hřiště',
+
+  // ─── Tournament list (hardcoded zbytky) ───────────────────────────────
+  'tournament.list.shared': 'Sdílený',
+  'tournament.list.noTournaments': 'Žádné turnaje',
+  'tournament.list.joinPlaceholder': 'Vložte ID nebo URL turnaje',
+
+  // ─── Match detail (hardcoded zbytky) ──────────────────────────────────
+  'match.detail.notStarted': 'Zápas ještě nezačal',
+  'match.detail.finished': 'Zápas ukončen',
+  'match.detail.notFound': 'Zápas nenalezen',
+  'match.detail.notesPlaceholder': 'Celkový dojem ze zápasu, co se povedlo, co zlepšit…',
+
+  // ─── Settings (hardcoded zbytky) ──────────────────────────────────────
+  'settings.firebaseDiag': 'Firebase diagnostika',
+  'settings.lastError': 'Poslední chyba:',
+
+  // ─── Public view errors ────────────────────────────────────────────────
+  'tournament.public.renderError': 'Chyba zobrazení',
+  'tournament.public.connectionError': 'Chyba připojení',
 } as const;
 
 export type TranslationKey = keyof typeof cs;

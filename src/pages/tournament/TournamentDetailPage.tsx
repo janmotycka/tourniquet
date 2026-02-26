@@ -534,9 +534,9 @@ function GoalModal({ match, teams, onAdd, onClose }: {
           {/* Minuta */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14 }}>Minuta gólu</div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{t('tournament.detail.goalMinute')}</div>
               {match.status === 'live' && (
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Předvyplněno z odpočítávače</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('tournament.detail.goalMinuteHint')}</div>
               )}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1051,8 +1051,9 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
   onResumeMatch: (matchId: string) => void;
   onEditMatch: (match: Match) => void;
 }) {
+  const { t } = useI18n();
   const [openGoalPanel, setOpenGoalPanel] = useState<{ matchId: string; side: 'home' | 'away' } | null>(null);
-  const getTeam = (id: string) => tournament.teams.find(t => t.id === id);
+  const getTeam = (id: string) => tournament.teams.find(tm => tm.id === id);
 
   const toggleGoal = (matchId: string, side: 'home' | 'away') => {
     setOpenGoalPanel(prev =>
@@ -1061,7 +1062,7 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
   };
 
   if (tournament.matches.length === 0) {
-    return <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>Žádné zápasy.</div>;
+    return <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('tournament.detail.noMatches')}</div>;
   }
 
   // Řazení: live → scheduled (podle času) → finished (od nejnovějšího)
@@ -1348,6 +1349,7 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
 
 // ─── Scorers tab ──────────────────────────────────────────────────────────────
 function ScorersTab({ tournament }: { tournament: Tournament }) {
+  const { t } = useI18n();
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   // Sestavíme tabulku střelců ze všech gólů
@@ -1394,8 +1396,8 @@ function ScorersTab({ tournament }: { tournament: Tournament }) {
       <div style={{ padding: '16px' }}>
         <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--surface)', borderRadius: 14 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>🥇</div>
-          <p style={{ fontSize: 14, fontWeight: 600 }}>Zatím žádné góly</p>
-          <p style={{ fontSize: 13, marginTop: 4 }}>Střelci se zobrazí po zadání gólů v zápasech</p>
+          <p style={{ fontSize: 14, fontWeight: 600 }}>{t('tournament.detail.noGoals')}</p>
+          <p style={{ fontSize: 13, marginTop: 4 }}>{t('tournament.detail.noGoalsDesc')}</p>
         </div>
       </div>
     );
@@ -1407,7 +1409,7 @@ function ScorersTab({ tournament }: { tournament: Tournament }) {
         {/* Hlavička */}
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 18 }}>🥇</span>
-          <span style={{ fontWeight: 800, fontSize: 15 }}>Tabulka střelců</span>
+          <span style={{ fontWeight: 800, fontSize: 15 }}>{t('tournament.detail.scorersTable')}</span>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>{totalGoals} gólů celkem</span>
         </div>
 
@@ -1506,7 +1508,7 @@ function ScorersTab({ tournament }: { tournament: Tournament }) {
                           </span>
                         )}
                         {match.status === 'live' && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#C62828', flexShrink: 0 }}>ŽIVĚ</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#C62828', flexShrink: 0 }}>{t('tournament.detail.liveLabel')}</span>
                         )}
                       </div>
                     );
@@ -1532,6 +1534,7 @@ function ScorersTab({ tournament }: { tournament: Tournament }) {
 
 // ─── Settings tab ─────────────────────────────────────────────────────────────
 function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tournament: Tournament; navigate: (p: Page) => void; isOwner: boolean; leaveTournament: (tournamentId: string) => Promise<void> }) {
+  const { t } = useI18n();
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [adminCopied, setAdminCopied] = useState(false);
@@ -1647,7 +1650,7 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
         <h3 style={{ fontWeight: 700, fontSize: 15, alignSelf: 'flex-start' }}>📱 QR kód pro hosty</h3>
         {qrUrl
           ? <img src={qrUrl} alt="QR kód turnaje" style={{ width: 200, height: 200, borderRadius: 12 }} />
-          : <div style={{ width: 200, height: 200, borderRadius: 12, background: 'var(--surface-var)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--text-muted)' }}>Načítání…</div>
+          : <div style={{ width: 200, height: 200, borderRadius: 12, background: 'var(--surface-var)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--text-muted)' }}>{t('tournament.detail.loadingQr')}</div>
         }
         <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.4 }}>
           Naskenováním QR kódu si hosté zobrazí živou tabulku a výsledky.
@@ -1762,7 +1765,7 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
           <div style={{ height: 1, background: 'var(--border)' }} />
           <SettingsStepper label="Přestávka" value={regenBreak} min={0} max={15} onChange={setRegenBreak} unit="min" />
           <div style={{ height: 1, background: 'var(--border)' }} />
-          <SettingsStepper label="Počet hřišť" value={regenPitches} min={1} max={8} onChange={setRegenPitches} unit={regenPitches === 1 ? 'hřiště' : 'hřiště'} />
+          <SettingsStepper label={t('tournament.detail.pitchCountLabel')} value={regenPitches} min={1} max={8} onChange={setRegenPitches} unit={t('tournament.detail.pitchUnit')} />
         </div>
         <button
           onClick={handleRegenerate}

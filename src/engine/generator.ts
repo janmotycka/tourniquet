@@ -1,4 +1,4 @@
-import { CATEGORY_CONFIGS } from '../data/categories.data';
+import { CATEGORY_CONFIGS, SUB_CATEGORY_CONFIGS } from '../data/categories.data';
 import { SKILL_FOCUS_CONFIGS } from '../data/skill-focus.data';
 import { ALL_EXERCISES } from '../data/exercises/index';
 import type { PhaseConfig } from '../types/phase.types';
@@ -7,6 +7,8 @@ import { calculatePhaseDurations, getPhaseLabel } from './phase-splitter';
 import { selectExercisesForPhase, selectStationExercises } from './exercise-selector';
 import { buildStations } from './station-builder';
 
+type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
+
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
@@ -14,10 +16,12 @@ function generateId(): string {
 export function generateTrainingUnit(
   input: GeneratorInput,
   coachNames?: Record<string, string>,
-  favoriteIds: string[] = []
+  favoriteIds: string[] = [],
+  t?: TranslateFn
 ): TrainingUnit {
   const {
     category,
+    subCategory,
     totalDuration,
     skillFocus,
     numberOfCoaches,
@@ -27,11 +31,18 @@ export function generateTrainingUnit(
     selectedULabel,
   } = input;
 
-  const categoryConfig = CATEGORY_CONFIGS[category];
+  // Resolve the exercise category — use subCategory bridge if available, else fallback to category
+  const exerciseCategory = subCategory
+    ? SUB_CATEGORY_CONFIGS[subCategory].exerciseCategory
+    : category;
+
+  const categoryConfig = CATEGORY_CONFIGS[exerciseCategory];
+  const subCategoryConfig = subCategory ? SUB_CATEGORY_CONFIGS[subCategory] : null;
+  const resolve = t ?? ((key: string) => key);
 
   // Step 1: Calculate phase durations
   const phaseDurations = calculatePhaseDurations(
-    category,
+    exerciseCategory,
     totalDuration,
     phaseStructure,
     input.customPhaseDurations
@@ -40,7 +51,7 @@ export function generateTrainingUnit(
   // Step 2: Build warmup phase
   const warmupExercises = selectExercisesForPhase(
     'warmup',
-    category,
+    exerciseCategory,
     skillFocus,
     phaseDurations.warmup,
     [],
@@ -71,12 +82,14 @@ export function generateTrainingUnit(
   const usedIds = warmupExercises.map((e) => e.id);
   let mainPhase: PhaseConfig;
 
+  const maxStations = subCategoryConfig?.maxStations ?? categoryConfig.maxStations;
+
   if (numberOfCoaches > 1) {
     // Multi-coach: use stations
     const stationExercises = selectStationExercises(
-      category,
+      exerciseCategory,
       skillFocus,
-      Math.min(numberOfCoaches, categoryConfig.maxStations),
+      Math.min(numberOfCoaches, maxStations),
       usedIds,
       customExercises,
       favoriteIds
@@ -102,7 +115,7 @@ export function generateTrainingUnit(
     // Single coach: sequential exercises
     const mainExercises = selectExercisesForPhase(
       'main',
-      category,
+      exerciseCategory,
       skillFocus,
       phaseDurations.main,
       usedIds,
@@ -122,20 +135,21 @@ export function generateTrainingUnit(
   // Step 4: Build phases array
   const phases: PhaseConfig[] = [warmupPhase, mainPhase];
 
-  // Step 5: Build cooldown phase if 3-phase structure
-  if (phaseStructure === '3-phase' && phaseDurations.cooldown > 0) {
-    const allUsedIds = [
-      ...warmupExercises.map((e) => e.id),
-      ...mainPhase.exercises.map((e) => e.id),
-      ...(mainPhase.stations?.map((s) => s.exercise.id) ?? []),
-    ];
+  // Collect all used exercise IDs
+  const allUsedIds = [
+    ...warmupExercises.map((e) => e.id),
+    ...mainPhase.exercises.map((e) => e.id),
+    ...(mainPhase.stations?.map((s) => s.exercise.id) ?? []),
+  ];
 
+  // Step 5: Build cooldown phase if 3-phase or 4-phase structure
+  if ((phaseStructure === '3-phase' || phaseStructure === '4-phase') && phaseDurations.cooldown > 0) {
     // Find a 'hra' (game) exercise to use as the LAST cooldown exercise
     const allPool = [...ALL_EXERCISES, ...customExercises];
     const gameExercises = allPool.filter(
       (e) =>
         e.phaseType === 'cooldown' &&
-        e.suitableFor.includes(category) &&
+        e.suitableFor.includes(exerciseCategory) &&
         e.skillFocus.includes('hra') &&
         !allUsedIds.includes(e.id)
     );
@@ -153,7 +167,7 @@ export function generateTrainingUnit(
     const cooldownExercises = remainingCooldownDuration >= 4
       ? selectExercisesForPhase(
           'cooldown',
-          category,
+          exerciseCategory,
           skillFocus,
           remainingCooldownDuration,
           [...allUsedIds, ...gameExId],
@@ -174,13 +188,38 @@ export function generateTrainingUnit(
       percentageOfTotal: phaseDurations.cooldown / totalDuration,
       exercises: finalCooldownExercises,
     });
+
+    // Track used cooldown exercise IDs
+    finalCooldownExercises.forEach(e => allUsedIds.push(e.id));
   }
 
-  // Step 6: Generate title
+  // Step 6: Build stretching phase if 4-phase structure
+  if (phaseStructure === '4-phase' && phaseDurations.stretching > 0) {
+    const stretchingExercises = selectExercisesForPhase(
+      'stretching',
+      exerciseCategory,
+      skillFocus,
+      phaseDurations.stretching,
+      allUsedIds,
+      customExercises,
+      favoriteIds
+    );
+
+    phases.push({
+      type: 'stretching',
+      label: getPhaseLabel('stretching'),
+      durationMinutes: phaseDurations.stretching,
+      percentageOfTotal: phaseDurations.stretching / totalDuration,
+      exercises: stretchingExercises,
+    });
+  }
+
+  // Step 7: Generate title (localized if t() provided)
   const uLabelPrefix = selectedULabel ? `${selectedULabel} ` : '';
+  const labelKey = subCategoryConfig?.label ?? categoryConfig.label;
   const focusLabel = skillFocus.length > 0
-    ? skillFocus.slice(0, 2).map(sf => SKILL_FOCUS_CONFIGS[sf]?.label ?? sf).join(', ')
-    : 'obecný trénink';
+    ? skillFocus.slice(0, 2).map(sf => resolve(SKILL_FOCUS_CONFIGS[sf]?.label ?? sf)).join(', ')
+    : resolve('generator.defaultFocus');
 
   const now = new Date().toISOString();
 
@@ -188,7 +227,7 @@ export function generateTrainingUnit(
     id: generateId(),
     createdAt: now,
     updatedAt: now,
-    title: `${uLabelPrefix}${categoryConfig.label} – ${focusLabel}`,
+    title: `${uLabelPrefix}${resolve(labelKey)} – ${focusLabel}`,
     input,
     phases,
     totalDuration: phases.reduce((sum, p) => sum + p.durationMinutes, 0),

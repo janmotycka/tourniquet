@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import type { Page } from '../../App';
 import { useClubsStore } from '../../store/clubs.store';
 import type { Club } from '../../types/club.types';
+import { useI18n } from '../../i18n';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -44,11 +45,13 @@ function ClubForm({
   onSave,
   onCancel,
   title,
+  t,
 }: {
   initial: { name: string; color: string; logoBase64: string | null };
   onSave: (data: { name: string; color: string; logoBase64: string | null }) => void;
   onCancel: () => void;
   title: string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }) {
   const [name, setName] = useState(initial.name);
   const [color, setColor] = useState(initial.color);
@@ -64,7 +67,7 @@ function ClubForm({
       const b64 = await resizeLogoToBase64(file);
       setLogoBase64(b64);
     } catch {
-      alert('Nepodařilo se načíst obrázek.');
+      alert(t('clubs.imageError'));
     } finally {
       setLogoLoading(false);
       if (logoRef.current) logoRef.current.value = '';
@@ -94,7 +97,7 @@ function ClubForm({
 
           {/* Logo */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>Logo klubu</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>{t('clubs.logoLabel')}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {/* Náhled */}
               <div style={{
@@ -124,7 +127,7 @@ function ClubForm({
                     padding: '8px 14px', borderRadius: 8,
                   }}
                 >
-                  {logoLoading ? '⏳ Načítám…' : '📷 Nahrát logo'}
+                  {logoLoading ? t('clubs.uploading') : t('clubs.uploadLogo')}
                 </button>
                 {logoBase64 && (
                   <button
@@ -134,7 +137,7 @@ function ClubForm({
                       padding: '8px 14px', borderRadius: 8,
                     }}
                   >
-                    🗑 Odstranit logo
+                    {t('clubs.removeLogo')}
                   </button>
                 )}
               </div>
@@ -143,11 +146,11 @@ function ClubForm({
 
           {/* Název */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Název klubu *</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>{t('clubs.nameRequired')}</div>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="FC Příklad"
+              placeholder={t('clubs.namePlaceholder')}
               maxLength={40}
               style={{
                 width: '100%', padding: '12px', borderRadius: 10, fontSize: 15,
@@ -159,7 +162,7 @@ function ClubForm({
 
           {/* Barva */}
           <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>Barva klubu</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>{t('clubs.colorLabel')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {TEAM_COLORS.map(c => (
                 <button
@@ -191,7 +194,7 @@ function ClubForm({
               fontWeight: 700, fontSize: 16, padding: '14px', borderRadius: 14, marginTop: 4,
             }}
           >
-            💾 Uložit
+            {t('clubs.save')}
           </button>
         </div>
       </div>
@@ -256,6 +259,7 @@ function ClubCard({ club, onEdit, onDelete }: { club: Club; onEdit: () => void; 
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
 export function ClubsPage({ navigate }: Props) {
+  const { t } = useI18n();
   const clubs = useClubsStore(s => s.clubs);
   const createClub = useClubsStore(s => s.createClub);
   const updateClub = useClubsStore(s => s.updateClub);
@@ -276,7 +280,7 @@ export function ClubsPage({ navigate }: Props) {
   };
 
   const handleDelete = (club: Club) => {
-    if (confirm(`Smazat klub "${club.name}"? Tato akce je nevratná.`)) {
+    if (confirm(t('clubs.deleteConfirm', { name: club.name }))) {
       deleteClub(club.id);
     }
   };
@@ -293,15 +297,15 @@ export function ClubsPage({ navigate }: Props) {
           fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>←</button>
         <div style={{ flex: 1 }}>
-          <h1 style={{ fontWeight: 800, fontSize: 20 }}>🏟 Kluby</h1>
+          <h1 style={{ fontWeight: 800, fontSize: 20 }}>{t('clubs.title')}</h1>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
-            Uložené kluby pro opakované použití
+            {t('clubs.subtitle')}
           </div>
         </div>
         <button onClick={() => setShowCreate(true)} style={{
           background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 14,
           padding: '8px 16px', borderRadius: 10,
-        }}>+ Nový</button>
+        }}>{t('clubs.new')}</button>
       </div>
 
       {/* Content */}
@@ -309,15 +313,15 @@ export function ClubsPage({ navigate }: Props) {
         {clubs.length === 0 ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '60px 20px' }}>
             <div style={{ fontSize: 56 }}>🏟</div>
-            <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center' }}>Žádné kluby</h2>
+            <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center' }}>{t('clubs.empty')}</h2>
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 15, lineHeight: 1.5 }}>
-              Přidejte klub s logem a barvami. Při vytváření turnaje pak stačí klub vybrat.
+              {t('clubs.emptyDesc')}
             </p>
             <button onClick={() => setShowCreate(true)} style={{
               background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 16,
               padding: '14px 32px', borderRadius: 14,
             }}>
-              ➕ Přidat klub
+              {t('clubs.addFirst')}
             </button>
           </div>
         ) : (
@@ -335,7 +339,7 @@ export function ClubsPage({ navigate }: Props) {
               padding: '14px', borderRadius: 14, border: '2px dashed var(--primary)', opacity: 0.8,
               marginTop: 4,
             }}>
-              ➕ Přidat klub
+              {t('clubs.addFirst')}
             </button>
           </>
         )}
@@ -347,7 +351,8 @@ export function ClubsPage({ navigate }: Props) {
           initial={{ name: '', color: '#E53935', logoBase64: null }}
           onSave={handleCreate}
           onCancel={() => setShowCreate(false)}
-          title="➕ Nový klub"
+          title={t('clubs.newClub')}
+          t={t}
         />
       )}
 
@@ -357,7 +362,8 @@ export function ClubsPage({ navigate }: Props) {
           initial={{ name: editingClub.name, color: editingClub.color, logoBase64: editingClub.logoBase64 }}
           onSave={handleEdit}
           onCancel={() => setEditingClub(null)}
-          title="✏️ Upravit klub"
+          title={t('clubs.editClub')}
+          t={t}
         />
       )}
     </div>

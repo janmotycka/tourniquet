@@ -1,10 +1,14 @@
 import type { Page } from '../App';
 import { useAuth } from '../context/AuthContext';
+import { useSubscriptionStore } from '../store/subscription.store';
+import { useI18n } from '../i18n';
 
 interface Props { navigate: (p: Page) => void; }
 
 export function HomePage({ navigate }: Props) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const isPremium = useSubscriptionStore(s => s.isPremium);
+  const { t } = useI18n();
 
   return (
     <div style={{
@@ -21,28 +25,53 @@ export function HomePage({ navigate }: Props) {
           ⚽
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>Ahoj, trenére!</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{t('home.greeting')}</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user?.displayName ?? user?.email ?? 'Přihlášený uživatel'}
+            {user?.displayName ?? user?.email ?? t('home.loggedIn')}
           </p>
         </div>
         <button
-          onClick={logout}
-          title="Odhlásit se"
+          onClick={() => navigate({ name: 'settings' })}
+          title={t('home.settings')}
           style={{
-            flexShrink: 0, padding: '8px 14px', borderRadius: 12,
+            flexShrink: 0, width: 40, height: 40, borderRadius: 12,
             background: 'var(--surface)', border: '1.5px solid var(--border)',
-            color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            color: 'var(--text-muted)', fontSize: 18, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          Odhlásit
+          ⚙️
         </button>
       </div>
+
+      {/* Upgrade CTA banner for free users */}
+      {!isPremium() && (
+        <button
+          onClick={() => navigate({ name: 'settings' })}
+          style={{
+            background: 'linear-gradient(135deg, #FFF8E1 0%, #FFE082 100%)',
+            borderRadius: 14, padding: '14px 18px',
+            display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+            border: '1.5px solid #FFD54F', width: '100%',
+          }}
+        >
+          <span style={{ fontSize: 28, flexShrink: 0 }}>⭐</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: '#E65100' }}>
+              {t('home.premiumBanner')}
+            </div>
+            <div style={{ fontSize: 12, color: '#BF360C', marginTop: 2, lineHeight: 1.4 }}>
+              {t('home.premiumBannerSub')} {t('subscription.price')}
+            </div>
+          </div>
+          <span style={{ fontSize: 16, color: '#E65100' }}>→</span>
+        </button>
+      )}
 
       {/* Module cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* ⚽ Trénink */}
+        {/* ⚽ Training */}
         <button
           onClick={() => navigate({ name: 'training-home' })}
           style={{
@@ -54,20 +83,20 @@ export function HomePage({ navigate }: Props) {
         >
           <div style={{ fontSize: 44 }}>⚽</div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>Trénink</div>
+            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.training')}</div>
             <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-              Generátor tréninků, knihovna cvičení, plánování a kalendář
+              {t('home.trainingDesc')}
             </div>
           </div>
           <div style={{
             background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '10px 16px',
             fontWeight: 700, fontSize: 15, textAlign: 'center',
           }}>
-            Otevřít →
+            {t('common.open')}
           </div>
         </button>
 
-        {/* 🏆 Turnaj */}
+        {/* 🏆 Tournament */}
         <button
           onClick={() => navigate({ name: 'tournament-list' })}
           style={{
@@ -80,16 +109,42 @@ export function HomePage({ navigate }: Props) {
         >
           <div style={{ fontSize: 44 }}>🏆</div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>Turnaj</div>
+            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.tournament')}</div>
             <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-              Organizace turnaje, živá tabulka, výsledky a QR pro hosty
+              {t('home.tournamentDesc')}
             </div>
           </div>
           <div style={{
             background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '10px 16px',
             fontWeight: 700, fontSize: 15, textAlign: 'center',
           }}>
-            Otevřít →
+            {t('common.open')}
+          </div>
+        </button>
+
+        {/* 📋 Match */}
+        <button
+          onClick={() => navigate({ name: 'match-list' })}
+          style={{
+            background: 'linear-gradient(135deg, #1565C0 0%, #1976D2 100%)',
+            borderRadius: 22, padding: '24px',
+            display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
+            boxShadow: '0 4px 16px rgba(21,101,192,.25)', width: '100%',
+            color: '#fff',
+          }}
+        >
+          <div style={{ fontSize: 44 }}>📋</div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.match')}</div>
+            <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
+              {t('home.matchDesc')}
+            </div>
+          </div>
+          <div style={{
+            background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '10px 16px',
+            fontWeight: 700, fontSize: 15, textAlign: 'center',
+          }}>
+            {t('common.open')}
           </div>
         </button>
 
@@ -105,8 +160,8 @@ export function HomePage({ navigate }: Props) {
         }}>
           <span style={{ fontSize: 18 }}>🏟</span>
           <div>
-            <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>Klub</span>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 6 }}>— brzy k dispozici</span>
+            <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{t('home.club')}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 6 }}>{t('common.soon')}</span>
           </div>
         </div>
       </div>

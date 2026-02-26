@@ -3,10 +3,12 @@ import { useTrainingsStore } from '../store/trainings.store';
 import { useGeneratorStore } from '../store/generator.store';
 import { CATEGORY_CONFIGS } from '../data/categories.data';
 import { formatMinutes } from '../utils/time';
+import { useI18n } from '../i18n';
 
 interface Props { navigate: (p: Page) => void; }
 
 export function TrainingHomePage({ navigate }: Props) {
+  const { t } = useI18n();
   const savedTrainings = useTrainingsStore(s => s.savedTrainings);
   const reset = useGeneratorStore(s => s.reset);
 
@@ -29,8 +31,8 @@ export function TrainingHomePage({ navigate }: Props) {
             ⚽
           </div>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>Trénink</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2 }}>Generátor a plánování tréninků</p>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{t('trainingHome.title')}</h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2 }}>{t('trainingHome.subtitle')}</p>
           </div>
         </div>
       </div>
@@ -41,16 +43,16 @@ export function TrainingHomePage({ navigate }: Props) {
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12
       }}>
         <div style={{ fontSize: 40 }}>📋</div>
-        <h2 style={{ color: '#fff', fontWeight: 800, fontSize: 22, textAlign: 'center' }}>Nový trénink</h2>
+        <h2 style={{ color: '#fff', fontWeight: 800, fontSize: 22, textAlign: 'center' }}>{t('trainingHome.newTraining')}</h2>
         <p style={{ color: 'rgba(255,255,255,0.8)', textAlign: 'center', fontSize: 14, lineHeight: 1.5 }}>
-          Vygenerujte tréninkovou jednotku přizpůsobenou vaší kategorii za méně než minutu.
+          {t('trainingHome.newTrainingDesc')}
         </p>
         <button onClick={handleNew} style={{
           background: '#fff', color: 'var(--primary)', fontWeight: 700, fontSize: 16,
           padding: '14px 0', borderRadius: 14, width: '100%', marginTop: 4,
           transition: 'opacity .15s'
         }}>
-          Začít sestavovat →
+          {t('trainingHome.startBuilding')}
         </button>
       </div>
 
@@ -58,9 +60,9 @@ export function TrainingHomePage({ navigate }: Props) {
       {savedTrainings.length > 0 && (
         <div style={{ display: 'flex', gap: 10 }}>
           {[
-            { n: savedTrainings.length, label: 'uložených\ntréninků' },
-            { n: cats, label: 'různých\nkategorií' },
-            { n: `${Math.round(totalMins / 60)}h`, label: 'celkem\nnaplánováno' },
+            { n: savedTrainings.length, label: t('trainingHome.savedTrainings') },
+            { n: cats, label: t('trainingHome.differentCategories') },
+            { n: `${Math.round(totalMins / 60)}h`, label: t('trainingHome.totalPlanned') },
           ].map((s, i) => (
             <div key={i} style={{
               flex: 1, background: 'var(--surface)', borderRadius: 16, padding: '14px 10px',
@@ -83,9 +85,9 @@ export function TrainingHomePage({ navigate }: Props) {
         }}>
           <span style={{ fontSize: 22 }}>🔖</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Uložené</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{t('trainingHome.saved')}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
-              {savedTrainings.length === 0 ? 'Zatím žádné' : `${savedTrainings.length} tréninků`}
+              {savedTrainings.length === 0 ? t('trainingHome.noSaved') : t('trainingHome.countTrainings', { count: String(savedTrainings.length) })}
             </div>
           </div>
           <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>›</span>
@@ -98,8 +100,8 @@ export function TrainingHomePage({ navigate }: Props) {
         }}>
           <span style={{ fontSize: 22 }}>📚</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Cvičení</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>Knihovna</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{t('trainingHome.exercises')}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{t('trainingHome.library')}</div>
           </div>
           <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>›</span>
         </button>
@@ -114,8 +116,8 @@ export function TrainingHomePage({ navigate }: Props) {
         }}>
           <span style={{ fontSize: 22 }}>🖊</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Sestavit ručně</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>Vlastní výběr</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{t('trainingHome.manualBuild')}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{t('trainingHome.manualBuildSub')}</div>
           </div>
           <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>›</span>
         </button>
@@ -127,8 +129,8 @@ export function TrainingHomePage({ navigate }: Props) {
         }}>
           <span style={{ fontSize: 22 }}>📅</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Kalendář</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>Plánování</div>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{t('trainingHome.calendar')}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{t('trainingHome.planning')}</div>
           </div>
           <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>›</span>
         </button>
@@ -136,11 +138,11 @@ export function TrainingHomePage({ navigate }: Props) {
 
       {/* How it works */}
       <div style={{ background: 'var(--surface)', borderRadius: 20, padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-        <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>Jak to funguje?</h3>
+        <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>{t('trainingHome.howItWorks')}</h3>
         {[
-          { icon: '👥', text: 'Vyberte věkovou kategorii hráčů' },
-          { icon: '⏱️', text: 'Nastavte délku tréninku a zaměření' },
-          { icon: '⚡', text: 'Aplikace sestaví trénink za vás' },
+          { icon: '👥', text: t('trainingHome.step1') },
+          { icon: '⏱️', text: t('trainingHome.step2') },
+          { icon: '⚡', text: t('trainingHome.step3') },
         ].map((s, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: i < 2 ? 12 : 0 }}>
             <div style={{
@@ -156,7 +158,7 @@ export function TrainingHomePage({ navigate }: Props) {
       {/* Recent trainings */}
       {savedTrainings.length > 0 && (
         <div>
-          <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 12 }}>Poslední tréninky</h3>
+          <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 12 }}>{t('trainingHome.recentTrainings')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {savedTrainings.slice(0, 3).map(t => {
               const cfg = CATEGORY_CONFIGS[t.input.category];

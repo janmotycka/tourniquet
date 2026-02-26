@@ -732,4 +732,35 @@ export const en: Record<TranslationKey, string> = {
   // ─── Generator extras ───────────────────────────────────────────────────
   'generator.defaultFocus': 'general training',
   'manual.customBuild': 'custom build',
+
+  // ─── Tournament detail (leftover hardcoded) ───────────────────────────
+  'tournament.detail.noMatches': 'No matches.',
+  'tournament.detail.noGoals': 'No goals yet',
+  'tournament.detail.noGoalsDesc': 'Scorers will appear after goals are recorded',
+  'tournament.detail.scorersTable': 'Top scorers',
+  'tournament.detail.liveLabel': 'LIVE',
+  'tournament.detail.loadingQr': 'Loading…',
+  'tournament.detail.goalMinute': 'Goal minute',
+  'tournament.detail.goalMinuteHint': 'Pre-filled from countdown',
+  'tournament.detail.pitchCountLabel': 'Number of pitches',
+  'tournament.detail.pitchUnit': 'pitch',
+
+  // ─── Tournament list (leftover hardcoded) ─────────────────────────────
+  'tournament.list.shared': 'Shared',
+  'tournament.list.noTournaments': 'No tournaments',
+  'tournament.list.joinPlaceholder': 'Enter tournament ID or URL',
+
+  // ─── Match detail (leftover hardcoded) ────────────────────────────────
+  'match.detail.notStarted': 'Match has not started yet',
+  'match.detail.finished': 'Match finished',
+  'match.detail.notFound': 'Match not found',
+  'match.detail.notesPlaceholder': 'Overall impression, what went well, what to improve…',
+
+  // ─── Settings (leftover hardcoded) ────────────────────────────────────
+  'settings.firebaseDiag': 'Firebase diagnostics',
+  'settings.lastError': 'Last error:',
+
+  // ─── Public view errors ────────────────────────────────────────────────
+  'tournament.public.renderError': 'Display error',
+  'tournament.public.connectionError': 'Connection error',
 };

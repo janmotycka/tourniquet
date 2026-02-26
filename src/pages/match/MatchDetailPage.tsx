@@ -589,10 +589,10 @@ function LiveTab({ match }: { match: SeasonMatch }) {
             </>
           )}
           {match.status === 'planned' && (
-            <div style={{ fontSize: 15, color: 'var(--text-muted)', fontWeight: 600 }}>Zápas ještě nezačal</div>
+            <div style={{ fontSize: 15, color: 'var(--text-muted)', fontWeight: 600 }}>{t('match.detail.notStarted')}</div>
           )}
           {match.status === 'finished' && (
-            <div style={{ fontSize: 15, color: 'var(--text-muted)', fontWeight: 600 }}>Zápas ukončen</div>
+            <div style={{ fontSize: 15, color: 'var(--text-muted)', fontWeight: 600 }}>{t('match.detail.finished')}</div>
           )}
         </div>
 
@@ -1011,7 +1011,7 @@ function RatingsTab({ match }: { match: SeasonMatch }) {
         <textarea
           value={note}
           onChange={e => { setNote(e.target.value); setSaved(false); }}
-          placeholder="Celkový dojem ze zápasu, co se povedlo, co zlepšit..."
+          placeholder={t('match.detail.notesPlaceholder')}
           rows={4}
           style={{
             width: '100%', padding: '10px', borderRadius: 10, border: '1.5px solid var(--border)',
@@ -1048,7 +1048,7 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
         <div style={{ fontSize: 48 }}>❓</div>
-        <div style={{ fontWeight: 700, fontSize: 17 }}>Zápas nenalezen</div>
+        <div style={{ fontWeight: 700, fontSize: 17 }}>{t('match.detail.notFound')}</div>
         <button onClick={() => navigate({ name: 'match-list' })}
           style={{ background: '#1565C0', color: '#fff', borderRadius: 12, padding: '10px 20px', fontWeight: 700 }}>
           ← Zpět na seznam

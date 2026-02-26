@@ -22,6 +22,13 @@ export async function generateQRCodeDataUrl(tournamentId: string): Promise<strin
   });
 }
 
+/** Vrátí admin invite URL (s ?join=1) pro sdílení s rozhodčími */
+export function getAdminInviteUrl(tournamentId: string): string {
+  const base = window.location.origin + window.location.pathname;
+  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  return `${cleanBase}?join=1#tournament=${tournamentId}`;
+}
+
 /** Parsuje tournament ID z URL hashe (pokud existuje) */
 export function parseTournamentHashFromUrl(): string | null {
   const hash = window.location.hash;

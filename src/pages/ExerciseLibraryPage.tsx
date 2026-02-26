@@ -6,24 +6,28 @@ import { CATEGORY_CONFIGS } from '../data/categories.data';
 import { SKILL_FOCUS_CONFIGS } from '../data/skill-focus.data';
 import type { Exercise, PhaseType, SkillFocus, DifficultyLevel } from '../types/exercise.types';
 import type { AgeCategory } from '../types/category.types';
+import { useI18n } from '../i18n';
 
 interface Props { navigate: (p: Page) => void; }
 
-const PHASE_LABELS: Record<PhaseType, string> = {
-  warmup: 'Rozcvičení',
-  main: 'Hlavní část',
-  cooldown: 'Závěr',
-};
 const PHASE_COLORS: Record<PhaseType, { bg: string; text: string }> = {
   warmup: { bg: 'var(--warmup-light)', text: 'var(--warmup-text)' },
   main: { bg: 'var(--main-ph-light)', text: 'var(--main-ph-text)' },
   cooldown: { bg: 'var(--cooldown-light)', text: 'var(--cooldown-text)' },
+  stretching: { bg: '#FCE4EC', text: '#C2185B' },
 };
 
-const DIFFICULTIES: Record<DifficultyLevel, string> = {
-  beginner: 'Začátečník',
-  intermediate: 'Pokročilý',
-  advanced: 'Expert',
+const PHASE_KEYS: Record<PhaseType, string> = {
+  warmup: 'phase.warmup',
+  main: 'phase.main',
+  cooldown: 'phase.cooldown',
+  stretching: 'phase.stretching',
+};
+
+const DIFFICULTY_KEYS: Record<DifficultyLevel, string> = {
+  beginner: 'difficulty.beginner',
+  intermediate: 'difficulty.advanced',
+  advanced: 'difficulty.expert',
 };
 
 const ALL_SKILLS: SkillFocus[] = [
@@ -47,6 +51,7 @@ const EMPTY_EXERCISE: Omit<Exercise, 'id'> = {
 };
 
 function ExerciseModal({ exercise, onClose }: { exercise: Exercise; onClose: () => void }) {
+  const { t } = useI18n();
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 100,
@@ -65,12 +70,12 @@ function ExerciseModal({ exercise, onClose }: { exercise: Exercise; onClose: () 
                 fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6,
                 background: PHASE_COLORS[exercise.phaseType].bg,
                 color: PHASE_COLORS[exercise.phaseType].text,
-              }}>{PHASE_LABELS[exercise.phaseType]}</span>
+              }}>{t(PHASE_KEYS[exercise.phaseType])}</span>
               <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '3px 6px' }}>
-                {exercise.duration.recommended} min · {DIFFICULTIES[exercise.difficulty]}
+                {exercise.duration.recommended} min · {t(DIFFICULTY_KEYS[exercise.difficulty])}
               </span>
               {exercise.isCustom && (
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#FFF3CD', color: '#856404' }}>Vlastní</span>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#FFF3CD', color: '#856404' }}>{t('common.custom')}</span>
               )}
             </div>
           </div>
@@ -81,13 +86,13 @@ function ExerciseModal({ exercise, onClose }: { exercise: Exercise; onClose: () 
 
         {exercise.coachTip && (
           <div style={{ background: 'var(--primary-light)', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
-            <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 13, marginBottom: 4 }}>💡 Tip trenéra</div>
+            <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 13, marginBottom: 4 }}>{t('exercises.tip')}</div>
             <div style={{ color: 'var(--primary)', fontSize: 13, lineHeight: 1.5 }}>{exercise.coachTip}</div>
           </div>
         )}
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: .5 }}>Postup</div>
+          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: .5 }}>{t('exercises.procedure')}</div>
           {exercise.instructions.map((inst, i) => (
             <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
               <span style={{ width: 22, height: 22, borderRadius: 11, background: 'var(--primary)', color: '#fff', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</span>
@@ -127,6 +132,7 @@ function EditExerciseModal({
   onSave: (ex: Exercise) => void;
   onCancel: () => void;
 }) {
+  const { t } = useI18n();
   const isNew = !exercise;
   const [form, setForm] = useState<EditForm>(() => ({
     ...(exercise ?? EMPTY_EXERCISE),
@@ -184,27 +190,27 @@ function EditExerciseModal({
         display: 'flex', flexDirection: 'column', gap: 18,
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontWeight: 800, fontSize: 20 }}>{isNew ? '+ Nové cvičení' : 'Upravit cvičení'}</h2>
+          <h2 style={{ fontWeight: 800, fontSize: 20 }}>{isNew ? t('exercises.newExercise') : t('exercises.editExercise')}</h2>
           <button onClick={onCancel} style={{ fontSize: 22, padding: '4px 8px', color: 'var(--text-muted)', background: 'none' }}>✕</button>
         </div>
 
         {/* Name */}
-        <div><div style={labelStyle}>Název *</div>
-          <input style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Název cvičení..." />
+        <div><div style={labelStyle}>{t('exercises.nameLabel')}</div>
+          <input style={inputStyle} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder={t('exercises.namePlaceholder')} />
         </div>
 
         {/* Description */}
-        <div><div style={labelStyle}>Popis</div>
-          <textarea style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Stručný popis cvičení..." />
+        <div><div style={labelStyle}>{t('exercises.descLabel')}</div>
+          <textarea style={{ ...inputStyle, minHeight: 72, resize: 'vertical' }} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder={t('exercises.descPlaceholder')} />
         </div>
 
         {/* Instructions */}
-        <div><div style={labelStyle}>Postup (každý krok na nový řádek)</div>
+        <div><div style={labelStyle}>{t('exercises.procedureLabel')}</div>
           <textarea style={{ ...inputStyle, minHeight: 100, resize: 'vertical' }} value={instrText} onChange={e => setInstrText(e.target.value)} placeholder="1. krok&#10;2. krok&#10;3. krok..." />
         </div>
 
         {/* Phase */}
-        <div><div style={labelStyle}>Fáze tréninku</div>
+        <div><div style={labelStyle}>{t('exercises.phaseLabel')}</div>
           <div style={{ display: 'flex', gap: 8 }}>
             {(['warmup', 'main', 'cooldown'] as PhaseType[]).map(p => (
               <button key={p} onClick={() => setForm(f => ({ ...f, phaseType: p }))}
@@ -213,25 +219,25 @@ function EditExerciseModal({
                   border: `2px solid ${form.phaseType === p ? PHASE_COLORS[p].text : 'var(--border)'}`,
                   background: form.phaseType === p ? PHASE_COLORS[p].bg : 'var(--surface)',
                   color: form.phaseType === p ? PHASE_COLORS[p].text : 'var(--text-muted)',
-                }}>{PHASE_LABELS[p]}</button>
+                }}>{t(PHASE_KEYS[p])}</button>
             ))}
           </div>
         </div>
 
         {/* Duration */}
         <div style={{ display: 'flex', gap: 12 }}>
-          <div style={{ flex: 1 }}><div style={labelStyle}>Doporučená délka (min)</div>
+          <div style={{ flex: 1 }}><div style={labelStyle}>{t('exercises.durationLabel')}</div>
             <input type="number" style={inputStyle} value={form.duration.recommended} min={1} max={60}
               onChange={e => setForm(f => ({ ...f, duration: { ...f.duration, recommended: Number(e.target.value) } }))} />
           </div>
-          <div style={{ flex: 1 }}><div style={labelStyle}>Min hráčů</div>
+          <div style={{ flex: 1 }}><div style={labelStyle}>{t('exercises.minPlayersLabel')}</div>
             <input type="number" style={inputStyle} value={form.players.min} min={1}
               onChange={e => setForm(f => ({ ...f, players: { ...f.players, min: Number(e.target.value) } }))} />
           </div>
         </div>
 
         {/* Skill focus */}
-        <div><div style={labelStyle}>Zaměření</div>
+        <div><div style={labelStyle}>{t('exercises.focusLabel')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {ALL_SKILLS.map(s => (
               <button key={s} onClick={() => toggleSkill(s)}
@@ -246,7 +252,7 @@ function EditExerciseModal({
         </div>
 
         {/* Suitable for */}
-        <div><div style={labelStyle}>Kategorie hráčů</div>
+        <div><div style={labelStyle}>{t('exercises.categoryLabel')}</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {(Object.keys(CATEGORY_CONFIGS) as AgeCategory[]).map(c => (
               <button key={c} onClick={() => toggleCategory(c)}
@@ -261,17 +267,17 @@ function EditExerciseModal({
         </div>
 
         {/* Equipment */}
-        <div><div style={labelStyle}>Pomůcky (oddělte čárkou)</div>
+        <div><div style={labelStyle}>{t('exercises.equipmentLabel')}</div>
           <input style={inputStyle} value={form.equipmentStr}
             onChange={e => setForm(f => ({ ...f, equipmentStr: e.target.value }))}
-            placeholder="míče, kuželky, branky..." />
+            placeholder={t('exercises.equipmentPlaceholder')} />
         </div>
 
         {/* Coach tip */}
-        <div><div style={labelStyle}>Tip pro trenéra (volitelné)</div>
+        <div><div style={labelStyle}>{t('exercises.tipLabel')}</div>
           <input style={inputStyle} value={form.coachTip ?? ''}
             onChange={e => setForm(f => ({ ...f, coachTip: e.target.value }))}
-            placeholder="Poznámka, na co si dát pozor..." />
+            placeholder={t('exercises.tipPlaceholder')} />
         </div>
 
         {/* Is station */}
@@ -279,7 +285,7 @@ function EditExerciseModal({
           <input type="checkbox" id="isStation" checked={form.isStation}
             onChange={e => setForm(f => ({ ...f, isStation: e.target.checked }))}
             style={{ width: 18, height: 18 }} />
-          <label htmlFor="isStation" style={{ fontSize: 14 }}>Vhodné jako stanoviště</label>
+          <label htmlFor="isStation" style={{ fontSize: 14 }}>{t('exercises.stationCheckbox')}</label>
         </div>
 
         {/* Save */}
@@ -289,7 +295,7 @@ function EditExerciseModal({
             background: form.name.trim() ? 'var(--primary)' : 'var(--border)',
             color: form.name.trim() ? '#fff' : 'var(--text-disabled)',
           }}>
-          {isNew ? '+ Přidat cvičení' : '✓ Uložit změny'}
+          {isNew ? t('exercises.addButton') : t('exercises.saveButton')}
         </button>
       </div>
     </div>
@@ -297,6 +303,7 @@ function EditExerciseModal({
 }
 
 export function ExerciseLibraryPage({ navigate }: Props) {
+  const { t } = useI18n();
   const { customExercises, favoriteIds, addExercise, updateExercise, deleteExercise, toggleFavorite } = useExercisesStore();
   const [search, setSearch] = useState('');
   const [filterPhase, setFilterPhase] = useState<PhaseType | null>(null);
@@ -344,7 +351,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
       <div style={{ padding: '12px 20px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={() => navigate({ name: 'home' })}
           style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
-        <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>Knihovna cvičení</h1>
+        <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('exercises.title')}</h1>
         <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{filtered.length} cvičení</span>
       </div>
 
@@ -353,7 +360,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="🔍 Hledat cvičení..."
+          placeholder={t('exercises.search')}
           style={{
             width: '100%', padding: '11px 14px', borderRadius: 14,
             border: '1.5px solid var(--border)', background: 'var(--surface)',
@@ -373,7 +380,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
             color: filterFavorites ? '#856404' : 'var(--text)',
             flexShrink: 0,
           }}>
-          ⭐ Oblíbené {favoriteIds.length > 0 && `(${favoriteIds.length})`}
+          {t('exercises.favorites')} {favoriteIds.length > 0 && `(${favoriteIds.length})`}
         </button>
 
         {([null, 'warmup', 'main', 'cooldown'] as (PhaseType | null)[]).map(p => (
@@ -385,7 +392,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
               color: filterPhase === p ? '#fff' : 'var(--text)',
               flexShrink: 0,
             }}>
-            {p === null ? 'Vše' : PHASE_LABELS[p]}
+            {p === null ? t('common.all') : t(PHASE_KEYS[p])}
           </button>
         ))}
       </div>
@@ -401,7 +408,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
               color: filterCategory === c ? (c ? CATEGORY_CONFIGS[c].color : 'var(--primary)') : 'var(--text)',
               flexShrink: 0,
             }}>
-            {c === null ? 'Všechny věk.' : CATEGORY_CONFIGS[c].label}
+            {c === null ? t('exercises.allAges') : CATEGORY_CONFIGS[c].label}
           </button>
         ))}
       </div>
@@ -411,7 +418,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
-            <div style={{ fontSize: 15 }}>Žádná cvičení nenalezena</div>
+            <div style={{ fontSize: 15 }}>{t('exercises.noResults')}</div>
           </div>
         ) : filtered.map(ex => {
           const isFav = favoriteIds.includes(ex.id);
@@ -429,7 +436,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
                   fontSize: 16, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   border: `1.5px solid ${isFav ? '#F4A100' : 'var(--border)'}`,
                 }}
-                title={isFav ? 'Odebrat z oblíbených' : 'Přidat do oblíbených'}
+                title={isFav ? t('exercises.removeFav') : t('exercises.addFav')}
               >
                 {isFav ? '⭐' : '☆'}
               </button>
@@ -441,12 +448,12 @@ export function ExerciseLibraryPage({ navigate }: Props) {
                   <span style={{
                     fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5, flexShrink: 0,
                     background: PHASE_COLORS[ex.phaseType].bg, color: PHASE_COLORS[ex.phaseType].text,
-                  }}>{PHASE_LABELS[ex.phaseType]}</span>
+                  }}>{t(PHASE_KEYS[ex.phaseType])}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>⏱ {ex.duration.recommended} min</span>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>· {ex.skillFocus.slice(0, 2).map(sf => SKILL_FOCUS_CONFIGS[sf]?.label ?? sf).join(', ')}</span>
-                  {ex.isCustom && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 5, background: '#FFF3CD', color: '#856404' }}>Vlastní</span>}
+                  {ex.isCustom && <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 5, background: '#FFF3CD', color: '#856404' }}>{t('common.custom')}</span>}
                 </div>
               </button>
 
@@ -469,7 +476,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
           style={{
             width: '100%', padding: '14px', borderRadius: 16, fontWeight: 700, fontSize: 15,
             background: 'var(--primary)', color: '#fff',
-          }}>+ Přidat vlastní cvičení</button>
+          }}>{t('exercises.addCustom')}</button>
       </div>
 
       {/* Exercise detail modal */}
@@ -493,18 +500,18 @@ export function ExerciseLibraryPage({ navigate }: Props) {
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px',
         }}>
           <div style={{ background: 'var(--bg)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 320 }}>
-            <h3 style={{ fontWeight: 700, fontSize: 17, marginBottom: 8 }}>Smazat cvičení?</h3>
+            <h3 style={{ fontWeight: 700, fontSize: 17, marginBottom: 8 }}>{t('exercises.deleteTitle')}</h3>
             <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 20, lineHeight: 1.5 }}>
-              Tato akce je nevratná. Cvičení bude odstraněno z knihovny.
+              {t('exercises.deleteDesc')}
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setDeleteConfirm(null)}
                 style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--surface)', fontWeight: 600 }}>
-                Zrušit
+                {t('common.cancel')}
               </button>
               <button onClick={() => { deleteExercise(deleteConfirm); setDeleteConfirm(null); }}
                 style={{ flex: 1, padding: '12px', borderRadius: 12, background: '#dc3545', color: '#fff', fontWeight: 700 }}>
-                Smazat
+                {t('common.delete')}
               </button>
             </div>
           </div>

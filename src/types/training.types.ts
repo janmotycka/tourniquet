@@ -1,9 +1,10 @@
-import type { AgeCategory, TrainingDuration, PhaseStructure, ULabel } from './category.types';
+import type { AgeCategory, TrainingDuration, PhaseStructure, ULabel, SubCategory } from './category.types';
 import type { Exercise, SkillFocus, PhaseType } from './exercise.types';
 import type { PhaseConfig } from './phase.types';
 
 export interface GeneratorInput {
   category: AgeCategory;
+  subCategory?: SubCategory;
   selectedULabel?: ULabel;
   totalDuration: TrainingDuration;
   skillFocus: SkillFocus[];

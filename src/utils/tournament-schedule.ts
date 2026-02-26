@@ -16,6 +16,7 @@ export function generateRoundRobinSchedule(
 ): Match[] {
   const startDateTime = parseStartDateTime(settings);
   const { matchDurationMinutes, breakBetweenMatchesMinutes } = settings;
+  const numberOfPitches = settings.numberOfPitches ?? 1;
 
   // Přidáme BYE pokud lichý počet týmů
   const ids = teams.map(t => t.id);
@@ -40,9 +41,14 @@ export function generateRoundRobinSchedule(
       // Přeskočit BYE zápasy
       if (home === 'BYE' || away === 'BYE') continue;
 
+      // S více hřišti: každých `numberOfPitches` zápasů tvoří jeden "slot" se stejným časem
+      // slotIndex = Math.floor(globalMatchIndex / numberOfPitches)
+      const slotIndex = Math.floor(globalMatchIndex / numberOfPitches);
+      const pitchNumber = (globalMatchIndex % numberOfPitches) + 1;
+
       const scheduledTime = computeMatchStartTime(
         startDateTime,
-        globalMatchIndex,
+        slotIndex,
         matchDurationMinutes,
         breakBetweenMatchesMinutes
       );
@@ -63,6 +69,7 @@ export function generateRoundRobinSchedule(
         pausedElapsed: 0,
         roundIndex: round,
         matchIndex: globalMatchIndex,
+        pitchNumber,
       });
 
       globalMatchIndex++;
@@ -100,7 +107,7 @@ export function parseStartDateTime(settings: TournamentSettings): Date {
 /**
  * Vypočítá tabulku z finished zápasů.
  * Čistá funkce — nikdy neukládáme standings přímo.
- * Řazení: body DESC → gólový rozdíl DESC → vstřelené góly DESC → název ASC
+ * Řazení: body DESC → vzájemný zápas → gólový rozdíl DESC → vstřelené góly DESC → název ASC
  */
 export function computeStandings(matches: Match[], teams: Team[]): Standing[] {
   const map = new Map<string, Standing>();
@@ -156,9 +163,32 @@ export function computeStandings(matches: Match[], teams: Team[]): Standing[] {
 
   const standings = Array.from(map.values());
 
-  // Řazení
+  /**
+   * Vrátí body získané týmem A ve vzájemném zápase (nebo zápasech) proti týmu B.
+   * Používá se jako kritérium při shodě celkových bodů.
+   */
+  const headToHeadPoints = (teamAId: string, teamBId: string): number => {
+    let pts = 0;
+    for (const m of matches) {
+      if (m.status !== 'finished') continue;
+      if (m.homeTeamId === teamAId && m.awayTeamId === teamBId) {
+        if (m.homeScore > m.awayScore) pts += 3;
+        else if (m.homeScore === m.awayScore) pts += 1;
+      } else if (m.homeTeamId === teamBId && m.awayTeamId === teamAId) {
+        if (m.awayScore > m.homeScore) pts += 3;
+        else if (m.awayScore === m.homeScore) pts += 1;
+      }
+    }
+    return pts;
+  };
+
+  // Řazení: body → vzájemný zápas → gólový rozdíl → vstřelené góly → abeceda
   standings.sort((a, b) => {
     if (b.points !== a.points) return b.points - a.points;
+    // Vzájemný zápas (jen při shodě bodů mezi dvěma týmy)
+    const h2hA = headToHeadPoints(a.teamId, b.teamId);
+    const h2hB = headToHeadPoints(b.teamId, a.teamId);
+    if (h2hB !== h2hA) return h2hB - h2hA;
     if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
     if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
     // Jméno týmu - abecedně
@@ -239,7 +269,10 @@ export function estimateTournamentDuration(
   // Odečteme BYE zápasy
   const byeMatches = numberOfTeams % 2 !== 0 ? (n - 1) : 0;
   const realMatches = totalMatches - byeMatches;
-  return realMatches * (settings.matchDurationMinutes + settings.breakBetweenMatchesMinutes);
+  const numberOfPitches = settings.numberOfPitches ?? 1;
+  // S více hřišti probíhají zápasy paralelně — celkový čas se dělí počtem hřišť
+  const slots = Math.ceil(realMatches / numberOfPitches);
+  return slots * (settings.matchDurationMinutes + settings.breakBetweenMatchesMinutes);
 }
 
 /** Vrátí počet skutečných zápasů pro N týmů */

@@ -219,7 +219,7 @@ export const useTournamentStore = create<TournamentState>()(
               if (!local) return;
               // Aplikovat jen pokud public data jsou novější (změněna připojeným uživatelem)
               if (new Date(publicData.updatedAt) > new Date(local.updatedAt)) {
-                console.log('[Firebase] Owner received remote update for:', t.id);
+                logger.debug('[Firebase] Owner received remote update for:', t.id);
                 set(state => ({
                   tournaments: state.tournaments.map(lt =>
                     lt.id === t.id ? { ...publicData, ownerUid: local.ownerUid } : lt
@@ -387,7 +387,7 @@ export const useTournamentStore = create<TournamentState>()(
           const local = get().tournaments.find(lt => lt.id === tournament.id);
           if (!local) return;
           if (new Date(publicData.updatedAt) > new Date(local.updatedAt)) {
-            console.log('[Firebase] Owner received remote update for:', tournament.id);
+            logger.debug('[Firebase] Owner received remote update for:', tournament.id);
             set(state => ({
               tournaments: state.tournaments.map(lt =>
                 lt.id === tournament.id ? { ...publicData, ownerUid: local.ownerUid } : lt

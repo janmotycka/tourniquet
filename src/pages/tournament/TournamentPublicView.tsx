@@ -943,13 +943,13 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
   useEffect(() => {
     setFirebaseLoading(true);
     setFirebaseError(null);
-    console.log('[PublicView] Subscribing to tournament:', tournamentId);
+    logger.debug('[PublicView] Subscribing to tournament:', tournamentId);
     const unsubscribe = subscribeToPublicTournament(
       tournamentId,
       (data) => {
-        console.log('[PublicView] Data received:', data ? 'tournament loaded' : 'null (not found)');
+        logger.debug('[PublicView] Data received:', data ? 'tournament loaded' : 'null (not found)');
         if (data) {
-          console.log('[PublicView] Teams:', data.teams?.length, 'Matches:', data.matches?.length);
+          logger.debug('[PublicView] Teams:', data.teams?.length, 'Matches:', data.matches?.length);
         }
         setFirebaseTournament(data);
         setFirebaseLoading(false);
@@ -1061,7 +1061,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '40px 20px' }}>
         <div style={{ fontSize: 48 }}>⚠️</div>
-        <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center', color: '#C62828' }}>Chyba připojení</h2>
+        <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center', color: '#C62828' }}>{t('tournament.public.connectionError')}</h2>
         <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 14, lineHeight: 1.5 }}>
           Nepodařilo se načíst turnaj z databáze.
         </p>

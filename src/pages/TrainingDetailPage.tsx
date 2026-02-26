@@ -11,11 +11,13 @@ import { CATEGORY_CONFIGS } from '../data/categories.data';
 import { SKILL_FOCUS_CONFIGS } from '../data/skill-focus.data';
 import { formatMinutes, formatDate } from '../utils/time';
 import { formatTrainingForShare, shareToWhatsApp, copyToClipboard } from '../utils/training-share';
+import { useI18n } from '../i18n';
 
 const PHASE_COLORS: Record<PhaseType, { bg: string; text: string; bar: string; label: string }> = {
-  warmup: { bg: 'var(--warmup-light)', text: 'var(--warmup-text)', bar: 'var(--warmup)', label: 'Rozcvičení' },
-  main: { bg: 'var(--main-ph-light)', text: 'var(--main-ph-text)', bar: 'var(--main-ph)', label: 'Hlavní část' },
-  cooldown: { bg: 'var(--cooldown-light)', text: 'var(--cooldown-text)', bar: 'var(--cooldown)', label: 'Závěr' },
+  warmup: { bg: 'var(--warmup-light)', text: 'var(--warmup-text)', bar: 'var(--warmup)', label: 'phase.warmup' },
+  main: { bg: 'var(--main-ph-light)', text: 'var(--main-ph-text)', bar: 'var(--main-ph)', label: 'phase.main' },
+  cooldown: { bg: 'var(--cooldown-light)', text: 'var(--cooldown-text)', bar: 'var(--cooldown)', label: 'phase.cooldown' },
+  stretching: { bg: '#FCE4EC', text: '#C2185B', bar: '#E91E63', label: 'phase.stretching' },
 };
 
 interface Props {
@@ -25,6 +27,7 @@ interface Props {
 
 // ─── Exercise detail modal ────────────────────────────────────────────────────
 function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => void }) {
+  const { t } = useI18n();
   const colors = PHASE_COLORS[ex.phaseType];
   return (
     <div style={{
@@ -41,7 +44,7 @@ function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => void }) {
         <div style={{ padding: '8px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <span style={{ background: colors.bg, color: colors.text, fontWeight: 700, fontSize: 11, padding: '4px 10px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: .5 }}>
-              {colors.label}
+              {t(`phase.${ex.phaseType}`)}
             </span>
             <button onClick={onClose} style={{ background: 'var(--surface-var)', width: 32, height: 32, borderRadius: 16, fontSize: 16, color: 'var(--text-muted)' }}>✕</button>
           </div>
@@ -49,8 +52,8 @@ function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => void }) {
           <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>{ex.description}</p>
           <div style={{ display: 'flex', gap: 12 }}>
             {[
-              { icon: '⏱', val: `${ex.duration.recommended}`, unit: 'minut' },
-              { icon: '👥', val: typeof ex.players.max === 'number' ? `${ex.players.min}–${ex.players.max}` : `${ex.players.min}+`, unit: 'hráčů' },
+              { icon: '⏱', val: `${ex.duration.recommended}`, unit: t('common.minutes') },
+              { icon: '👥', val: typeof ex.players.max === 'number' ? `${ex.players.min}–${ex.players.max}` : `${ex.players.min}+`, unit: t('common.players') },
             ].map((m, i) => (
               <div key={i} style={{ flex: 1, background: 'var(--primary-light)', borderRadius: 14, padding: '12px', textAlign: 'center' }}>
                 <div style={{ fontSize: 20 }}>{m.icon}</div>
@@ -61,7 +64,7 @@ function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => void }) {
           </div>
           {ex.equipment.length > 0 && (
             <div>
-              <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>🎒 Pomůcky</h3>
+              <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{t('detail.equipment')}</h3>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {ex.equipment.map(eq => (
                   <span key={eq} style={{ background: 'var(--surface-var)', borderRadius: 8, padding: '4px 10px', fontSize: 13 }}>{eq}</span>
@@ -70,7 +73,7 @@ function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => void }) {
             </div>
           )}
           <div>
-            <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>🎯 Zaměření</h3>
+            <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{t('detail.focus')}</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {ex.skillFocus.map(sf => (
                 <span key={sf} style={{ background: 'var(--primary-light)', color: 'var(--primary)', borderRadius: 8, padding: '4px 10px', fontSize: 13, fontWeight: 600 }}>
@@ -80,7 +83,7 @@ function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => void }) {
             </div>
           </div>
           <div>
-            <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>📋 Postup</h3>
+            <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>{t('detail.procedure')}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {ex.instructions.map((step, i) => (
                 <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -92,7 +95,7 @@ function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => void }) {
           </div>
           {ex.coachTip && (
             <div style={{ background: '#FFF8E1', borderRadius: 14, padding: '14px', borderLeft: '3px solid var(--warmup)' }}>
-              <h3 style={{ fontWeight: 700, fontSize: 13, color: 'var(--warmup-text)', marginBottom: 6 }}>💡 Tip pro trenéra</h3>
+              <h3 style={{ fontWeight: 700, fontSize: 13, color: 'var(--warmup-text)', marginBottom: 6 }}>{t('detail.tip')}</h3>
               <p style={{ fontSize: 14, lineHeight: 1.6, color: '#4E342E' }}>{ex.coachTip}</p>
             </div>
           )}
@@ -117,9 +120,10 @@ function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => void }) {
 
 // ─── Share modal ─────────────────────────────────────────────────────────────
 function ShareModal({ training, onClose }: { training: TrainingUnit; onClose: () => void }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   const [showText, setShowText] = useState(false);
-  const text = formatTrainingForShare(training);
+  const text = formatTrainingForShare(training, t);
 
   const handleCopy = async () => {
     const ok = await copyToClipboard(text);
@@ -164,7 +168,7 @@ function ShareModal({ training, onClose }: { training: TrainingUnit; onClose: ()
             fontFamily: 'monospace', resize: 'none', boxSizing: 'border-box',
           }} />
         )}
-        <button onClick={onClose} style={{ padding: '13px', borderRadius: 14, background: 'var(--surface)', fontWeight: 600, fontSize: 15, marginTop: 4 }}>Zavřít</button>
+        <button onClick={onClose} style={{ padding: '13px', borderRadius: 14, background: 'var(--surface)', fontWeight: 600, fontSize: 15, marginTop: 4 }}>{t('common.close')}</button>
       </div>
     </div>
   );
@@ -174,6 +178,7 @@ function ShareModal({ training, onClose }: { training: TrainingUnit; onClose: ()
 function ExercisePicker({ forPhase, category, onSelect, onClose }: {
   forPhase: PhaseType; category: string; onSelect: (ex: Exercise) => void; onClose: () => void;
 }) {
+  const { t } = useI18n();
   const { customExercises } = useExercisesStore();
   const [search, setSearch] = useState('');
 
@@ -201,23 +206,23 @@ function ExercisePicker({ forPhase, category, onSelect, onClose }: {
           <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
         </div>
         <div style={{ padding: '8px 20px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ background: colors.bg, color: colors.text, fontWeight: 700, fontSize: 11, padding: '4px 10px', borderRadius: 8, textTransform: 'uppercase' }}>{colors.label}</span>
-          <h3 style={{ fontWeight: 800, fontSize: 16, flex: 1 }}>Vybrat cvičení</h3>
+          <span style={{ background: colors.bg, color: colors.text, fontWeight: 700, fontSize: 11, padding: '4px 10px', borderRadius: 8, textTransform: 'uppercase' }}>{t(`phase.${forPhase}`)}</span>
+          <h3 style={{ fontWeight: 800, fontSize: 16, flex: 1 }}>{t('manual.addExercise')}</h3>
           <button onClick={onClose} style={{ background: 'var(--surface-var)', width: 32, height: 32, borderRadius: 16, fontSize: 16, color: 'var(--text-muted)' }}>✕</button>
         </div>
         <div style={{ padding: '0 20px 10px' }}>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Hledat..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={`🔍 ${t('common.search')}`}
             style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 14, boxSizing: 'border-box' }} />
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 28px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {filtered.length === 0
-            ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px 0' }}>Žádná cvičení</p>
+            ? <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px 0' }}>{t('detail.noExercises')}</p>
             : filtered.map(ex => (
               <button key={ex.id} onClick={() => { onSelect(ex); onClose(); }}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'var(--surface)', borderRadius: 12, textAlign: 'left', width: '100%', color: 'var(--text)' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{ex.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{ex.duration.recommended} min{ex.equipment.length > 0 ? ` · ${ex.equipment.slice(0, 2).join(', ')}` : ''}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{ex.duration.recommended} {t('common.min')}{ex.equipment.length > 0 ? ` · ${ex.equipment.slice(0, 2).join(', ')}` : ''}</div>
                 </div>
                 <span style={{ color: 'var(--primary)', fontSize: 20, fontWeight: 700 }}>+</span>
               </button>
@@ -242,6 +247,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
   dragSource: DragSource | null;
   setDragSource: Dispatch<SetStateAction<DragSource | null>>;
 }) {
+  const { t } = useI18n();
   const colors = PHASE_COLORS[phase.type];
   const [showPicker, setShowPicker] = useState(false);
   const [moveExId, setMoveExId] = useState<string | null>(null);
@@ -510,7 +516,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
                 <button key={pt} onClick={() => moveToPhase(moveExId, pt)}
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px', background: PHASE_COLORS[pt].bg, borderRadius: 12, width: '100%', color: PHASE_COLORS[pt].text, fontWeight: 700, fontSize: 14, marginBottom: 8 }}>
                   <div style={{ width: 12, height: 12, borderRadius: 6, background: PHASE_COLORS[pt].bar }} />
-                  {PHASE_COLORS[pt].label}
+                  {t(PHASE_COLORS[pt].label)}
                 </button>
               ))
             }

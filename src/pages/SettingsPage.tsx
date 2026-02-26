@@ -90,7 +90,7 @@ function FirebaseDiagnostics({ user, t: _t }: { user: { uid: string; email?: str
       boxShadow: '0 1px 4px rgba(0,0,0,.06)',
       display: 'flex', flexDirection: 'column', gap: 12,
     }}>
-      <h2 style={{ fontWeight: 700, fontSize: 16 }}>Firebase diagnostika</h2>
+      <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.firebaseDiag')}</h2>
 
       {/* Current state */}
       <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
@@ -104,7 +104,7 @@ function FirebaseDiagnostics({ user, t: _t }: { user: { uid: string; email?: str
           background: '#FFF3E0', border: '1px solid #FFB74D', borderRadius: 10,
           padding: '10px 14px', fontSize: 12, color: '#BF360C', lineHeight: 1.4,
         }}>
-          <strong>Poslední chyba:</strong> {syncError}
+          <strong>{t('settings.lastError')}</strong> {syncError}
         </div>
       )}
 

@@ -3,21 +3,26 @@ import type { Page } from '../../App';
 import { useGeneratorStore } from '../../store/generator.store';
 import { useCoachesStore } from '../../store/coaches.store';
 import { useExercisesStore } from '../../store/exercises.store';
-import { CATEGORY_LIST, CATEGORY_CONFIGS, U_LABELS_BY_CATEGORY, U_LABEL_CONFIGS } from '../../data/categories.data';
-import { SKILL_FOCUS_BY_CATEGORY, SKILL_FOCUS_CONFIGS } from '../../data/skill-focus.data';
+import {
+  CATEGORY_CONFIGS,
+  CATEGORY_GROUP_LIST,
+  SUB_CATEGORY_CONFIGS,
+} from '../../data/categories.data';
+import { SKILL_FOCUS_BY_SUBCATEGORY, SKILL_FOCUS_BY_CATEGORY, SKILL_FOCUS_CONFIGS } from '../../data/skill-focus.data';
 import { calculatePhaseDurations, getPhaseLabel } from '../../engine/phase-splitter';
 import { generateTrainingUnit } from '../../engine/generator';
-import type { AgeCategory, TrainingDuration, PhaseStructure, ULabel } from '../../types/category.types';
+import { useI18n } from '../../i18n';
+import type { PhaseStructure, CategoryGroup } from '../../types/category.types';
 import type { SkillFocus, PhaseType } from '../../types/exercise.types';
 import type { GeneratorInput } from '../../types/training.types';
 
-const DURATIONS: TrainingDuration[] = [60, 75, 90, 105, 120];
 const TOTAL_STEPS = 5;
 
 const PHASE_COLORS: Record<PhaseType, { bg: string; text: string; bar: string }> = {
   warmup: { bg: 'var(--warmup-light)', text: 'var(--warmup-text)', bar: 'var(--warmup)' },
   main: { bg: 'var(--main-ph-light)', text: 'var(--main-ph-text)', bar: 'var(--main-ph)' },
   cooldown: { bg: 'var(--cooldown-light)', text: 'var(--cooldown-text)', bar: 'var(--cooldown)' },
+  stretching: { bg: '#FCE4EC', text: '#C2185B', bar: '#E91E63' },
 };
 
 // ─── DraggablePhaseBar ─────────────────────────────────────────────────────────
@@ -25,40 +30,52 @@ function DraggablePhaseBar({
   totalDuration,
   warmup,
   cooldown,
-  is3Phase,
+  stretching,
+  phaseStructure,
   onWarmupChange,
   onCooldownChange,
+  onStretchingChange,
 }: {
   totalDuration: number;
   warmup: number;
   cooldown: number;
-  is3Phase: boolean;
+  stretching: number;
+  phaseStructure: PhaseStructure;
   onWarmupChange: (v: number) => void;
   onCooldownChange: (v: number) => void;
+  onStretchingChange: (v: number) => void;
 }) {
+  const { t } = useI18n();
   const barRef = React.useRef<HTMLDivElement>(null);
-  const main = totalDuration - warmup - (is3Phase ? cooldown : 0);
+  const hasCooldown = phaseStructure === '3-phase' || phaseStructure === '4-phase';
+  const hasStretching = phaseStructure === '4-phase';
+  const main = totalDuration - warmup - (hasCooldown ? cooldown : 0) - (hasStretching ? stretching : 0);
 
   const getBarWidth = () => barRef.current?.getBoundingClientRect().width ?? 1;
-
   const snapTo5 = (n: number) => Math.max(5, Math.round(n / 5) * 5);
 
-  const startDrag = (handle: 'warmup' | 'cooldown', e: React.PointerEvent) => {
+  const startDrag = (handle: 'warmup' | 'cooldown' | 'stretching', e: React.PointerEvent) => {
     e.preventDefault();
     const startX = e.clientX;
     const barW = getBarWidth();
     const startWarmup = warmup;
     const startCooldown = cooldown;
+    const startStretching = stretching;
 
     const onMove = (ev: PointerEvent) => {
       const dx = ev.clientX - startX;
       const deltaMin = (dx / barW) * totalDuration;
       if (handle === 'warmup') {
-        const newWarmup = snapTo5(startWarmup + deltaMin);
-        onWarmupChange(newWarmup);
+        onWarmupChange(snapTo5(startWarmup + deltaMin));
+      } else if (handle === 'cooldown') {
+        if (hasStretching) {
+          // cooldown handle between cooldown and stretching
+          onCooldownChange(snapTo5(startCooldown + deltaMin));
+        } else {
+          onCooldownChange(snapTo5(startCooldown - deltaMin));
+        }
       } else {
-        const newCooldown = snapTo5(startCooldown - deltaMin);
-        onCooldownChange(newCooldown);
+        onStretchingChange(snapTo5(startStretching - deltaMin));
       }
     };
     const onUp = () => {
@@ -71,9 +88,18 @@ function DraggablePhaseBar({
 
   const warmupPct = (warmup / totalDuration) * 100;
   const mainPct = (main / totalDuration) * 100;
-  const cooldownPct = is3Phase ? (cooldown / totalDuration) * 100 : 0;
+  const cooldownPct = hasCooldown ? (cooldown / totalDuration) * 100 : 0;
+  const stretchingPct = hasStretching ? (stretching / totalDuration) * 100 : 0;
 
   const HANDLE_W = 20;
+
+  // Compute phase list for legend
+  const legendItems = [
+    { label: t('phase.warmup'), min: warmup, color: PHASE_COLORS.warmup },
+    { label: t('phase.main'), min: main, color: PHASE_COLORS.main },
+    ...(hasCooldown ? [{ label: t('phase.cooldown'), min: cooldown, color: PHASE_COLORS.cooldown }] : []),
+    ...(hasStretching ? [{ label: t('phase.stretching'), min: stretching, color: PHASE_COLORS.stretching }] : []),
+  ];
 
   return (
     <div>
@@ -85,7 +111,7 @@ function DraggablePhaseBar({
           borderRadius: '10px 0 0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'width .05s',
         }}>
-          {warmupPct >= 15 && <span style={{ fontSize: 11, color: '#fff', fontWeight: 800, whiteSpace: 'nowrap' }}>{warmup} min</span>}
+          {warmupPct >= 15 && <span style={{ fontSize: 11, color: '#fff', fontWeight: 800, whiteSpace: 'nowrap' }}>{warmup} {t('common.min')}</span>}
         </div>
 
         {/* Handle 1: warmup|main */}
@@ -96,71 +122,88 @@ function DraggablePhaseBar({
             width: HANDLE_W, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'ew-resize', zIndex: 10,
           }}>
-          <div style={{
-            width: 6, height: 28, borderRadius: 3, background: '#fff',
-            boxShadow: '0 0 0 2px rgba(0,0,0,.25)',
-          }} />
+          <div style={{ width: 6, height: 28, borderRadius: 3, background: '#fff', boxShadow: '0 0 0 2px rgba(0,0,0,.25)' }} />
         </div>
 
         {/* Main segment */}
         <div style={{
           width: `${mainPct}%`, background: PHASE_COLORS.main.bar,
-          borderRadius: is3Phase ? '0' : '0 10px 10px 0',
+          borderRadius: (!hasCooldown && !hasStretching) ? '0 10px 10px 0' : '0',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'width .05s',
         }}>
-          {mainPct >= 20 && <span style={{ fontSize: 11, color: '#fff', fontWeight: 800, whiteSpace: 'nowrap' }}>{main} min</span>}
+          {mainPct >= 20 && <span style={{ fontSize: 11, color: '#fff', fontWeight: 800, whiteSpace: 'nowrap' }}>{main} {t('common.min')}</span>}
         </div>
 
-        {is3Phase && <>
+        {hasCooldown && <>
           {/* Handle 2: main|cooldown */}
           <div
             onPointerDown={(e) => startDrag('cooldown', e)}
             style={{
-              position: 'absolute', right: `calc(${cooldownPct}% - ${HANDLE_W / 2}px)`,
+              position: 'absolute',
+              left: `calc(${warmupPct + mainPct}% - ${HANDLE_W / 2}px)`,
               width: HANDLE_W, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'ew-resize', zIndex: 10,
             }}>
-            <div style={{
-              width: 6, height: 28, borderRadius: 3, background: '#fff',
-              boxShadow: '0 0 0 2px rgba(0,0,0,.25)',
-            }} />
+            <div style={{ width: 6, height: 28, borderRadius: 3, background: '#fff', boxShadow: '0 0 0 2px rgba(0,0,0,.25)' }} />
           </div>
 
           {/* Cooldown segment */}
           <div style={{
             width: `${cooldownPct}%`, background: PHASE_COLORS.cooldown.bar,
-            borderRadius: '0 10px 10px 0', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: hasStretching ? '0' : '0 10px 10px 0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             transition: 'width .05s',
           }}>
-            {cooldownPct >= 15 && <span style={{ fontSize: 11, color: '#fff', fontWeight: 800, whiteSpace: 'nowrap' }}>{cooldown} min</span>}
+            {cooldownPct >= 12 && <span style={{ fontSize: 11, color: '#fff', fontWeight: 800, whiteSpace: 'nowrap' }}>{cooldown} {t('common.min')}</span>}
+          </div>
+        </>}
+
+        {hasStretching && <>
+          {/* Handle 3: cooldown|stretching */}
+          <div
+            onPointerDown={(e) => startDrag('stretching', e)}
+            style={{
+              position: 'absolute',
+              right: `calc(${stretchingPct}% - ${HANDLE_W / 2}px)`,
+              width: HANDLE_W, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'ew-resize', zIndex: 10,
+            }}>
+            <div style={{ width: 6, height: 28, borderRadius: 3, background: '#fff', boxShadow: '0 0 0 2px rgba(0,0,0,.25)' }} />
+          </div>
+
+          {/* Stretching segment */}
+          <div style={{
+            width: `${stretchingPct}%`, background: PHASE_COLORS.stretching.bar,
+            borderRadius: '0 10px 10px 0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'width .05s',
+          }}>
+            {stretchingPct >= 10 && <span style={{ fontSize: 11, color: '#fff', fontWeight: 800, whiteSpace: 'nowrap' }}>{stretching} {t('common.min')}</span>}
           </div>
         </>}
       </div>
 
       {/* Legend chips below bar */}
       <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-        {[
-          { label: 'Rozcvičení', min: warmup, color: PHASE_COLORS.warmup },
-          { label: 'Hlavní část', min: main, color: PHASE_COLORS.main },
-          ...(is3Phase ? [{ label: 'Závěr', min: cooldown, color: PHASE_COLORS.cooldown }] : []),
-        ].map(item => (
+        {legendItems.map(item => (
           <div key={item.label} style={{
             display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px',
             background: item.color.bg, borderRadius: 8,
           }}>
             <div style={{ width: 8, height: 8, borderRadius: 4, background: item.color.bar }} />
             <span style={{ fontSize: 12, color: item.color.text, fontWeight: 700 }}>{item.label}</span>
-            <span style={{ fontSize: 12, color: item.color.text, fontWeight: 700 }}>{item.min} min</span>
+            <span style={{ fontSize: 12, color: item.color.text, fontWeight: 700 }}>{item.min} {t('common.min')}</span>
           </div>
         ))}
       </div>
-      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Přetáhni hranici pro změnu délky fáze</p>
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{t('generator.dragHint')}</p>
     </div>
   );
 }
 
 function StepIndicator({ step }: { step: number }) {
+  const { t } = useI18n();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
       <div style={{ display: 'flex', gap: 5 }}>
@@ -173,7 +216,7 @@ function StepIndicator({ step }: { step: number }) {
           }} />
         ))}
       </div>
-      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Krok {step + 1} z {TOTAL_STEPS}</span>
+      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('generator.step', { n: step + 1 })} / {TOTAL_STEPS}</span>
     </div>
   );
 }
@@ -208,8 +251,9 @@ function FooterBtn({ label, disabled, onClick }: { label: string; disabled?: boo
 interface Props { navigate: (p: Page) => void; }
 
 export function GeneratorPage({ navigate }: Props) {
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
-  const [expandedCategory, setExpandedCategory] = useState<AgeCategory | null>(null);
+  const [expandedGroup, setExpandedGroup] = useState<CategoryGroup | null>(null);
   const [newCoachName, setNewCoachName] = useState('');
   const [preferFavorites, setPreferFavorites] = useState(false);
 
@@ -217,13 +261,20 @@ export function GeneratorPage({ navigate }: Props) {
   const { savedCoaches, addCoach } = useCoachesStore();
   const { customExercises, favoriteIds } = useExercisesStore();
 
+  // Effective category for exercise selection
+  const exerciseCategory = store.subCategory
+    ? SUB_CATEGORY_CONFIGS[store.subCategory].exerciseCategory
+    : store.category;
+
   const effectivePhaseStructure = store.phaseStructure ??
-    (store.category ? CATEGORY_CONFIGS[store.category].defaultPhaseStructure : '3-phase');
+    (store.subCategory
+      ? SUB_CATEGORY_CONFIGS[store.subCategory].defaultPhaseStructure
+      : store.category ? CATEGORY_CONFIGS[store.category].defaultPhaseStructure : '3-phase');
 
   const phaseDurations = useMemo(() => {
-    if (!store.category) return null;
-    return calculatePhaseDurations(store.category, store.totalDuration, effectivePhaseStructure, store.customPhaseDurations);
-  }, [store.category, store.totalDuration, effectivePhaseStructure, store.customPhaseDurations]);
+    if (!exerciseCategory) return null;
+    return calculatePhaseDurations(exerciseCategory, store.totalDuration, effectivePhaseStructure, store.customPhaseDurations);
+  }, [exerciseCategory, store.totalDuration, effectivePhaseStructure, store.customPhaseDurations]);
 
   const goBack = () => {
     if (step === 0) navigate({ name: 'home' });
@@ -231,13 +282,14 @@ export function GeneratorPage({ navigate }: Props) {
   };
 
   const handleGenerate = () => {
-    if (!store.category || store.skillFocus.length === 0) return;
+    if (!exerciseCategory || store.skillFocus.length === 0) return;
 
     const coachNamesMap: Record<string, string> = {};
     for (const c of savedCoaches) coachNamesMap[c.id] = c.name;
 
     const input: GeneratorInput = {
-      category: store.category,
+      category: exerciseCategory,
+      subCategory: store.subCategory ?? undefined,
       selectedULabel: store.selectedULabel ?? undefined,
       totalDuration: store.totalDuration,
       skillFocus: store.skillFocus,
@@ -248,37 +300,64 @@ export function GeneratorPage({ navigate }: Props) {
       stationCoachAssignments: store.stationCoachAssignments,
       customExercises,
     };
-    const unit = generateTrainingUnit(input, coachNamesMap, preferFavorites ? favoriteIds : []);
+    const unit = generateTrainingUnit(input, coachNamesMap, preferFavorites ? favoriteIds : [], t);
     store.setGeneratedUnit(unit);
     navigate({ name: 'training', training: unit });
   };
 
-  const phaseTypes: PhaseType[] = effectivePhaseStructure === '2-phase'
-    ? ['warmup', 'main'] : ['warmup', 'main', 'cooldown'];
+  // Phase types for current structure
+  let phaseTypes: PhaseType[];
+  if (effectivePhaseStructure === '2-phase') {
+    phaseTypes = ['warmup', 'main'];
+  } else if (effectivePhaseStructure === '4-phase') {
+    phaseTypes = ['warmup', 'main', 'cooldown', 'stretching'];
+  } else {
+    phaseTypes = ['warmup', 'main', 'cooldown'];
+  }
 
   // Phase slider logic
   const handleWarmupSlider = (val: number) => {
     const warmup = val;
-    const cooldown = effectivePhaseStructure === '3-phase'
+    const hasCooldown = effectivePhaseStructure === '3-phase' || effectivePhaseStructure === '4-phase';
+    const hasStretching = effectivePhaseStructure === '4-phase';
+    const cooldown = hasCooldown
       ? (store.customPhaseDurations.cooldown ?? (phaseDurations?.cooldown ?? 15))
       : 0;
-    const main = store.totalDuration - warmup - cooldown;
+    const stretching = hasStretching
+      ? (store.customPhaseDurations.stretching ?? (phaseDurations?.stretching ?? 10))
+      : 0;
+    const main = store.totalDuration - warmup - cooldown - stretching;
     if (main >= 5) {
-      store.setCustomPhaseDurations({ warmup, cooldown: effectivePhaseStructure === '3-phase' ? cooldown : 0 });
+      store.setCustomPhaseDurations({ warmup, ...(hasCooldown ? { cooldown } : {}), ...(hasStretching ? { stretching } : {}) });
     }
   };
 
   const handleCooldownSlider = (val: number) => {
     const warmup = store.customPhaseDurations.warmup ?? (phaseDurations?.warmup ?? 15);
+    const hasStretching = effectivePhaseStructure === '4-phase';
+    const stretching = hasStretching
+      ? (store.customPhaseDurations.stretching ?? (phaseDurations?.stretching ?? 10))
+      : 0;
     const cooldown = val;
-    const main = store.totalDuration - warmup - cooldown;
+    const main = store.totalDuration - warmup - cooldown - stretching;
     if (main >= 5) {
-      store.setCustomPhaseDurations({ warmup, cooldown });
+      store.setCustomPhaseDurations({ warmup, cooldown, ...(hasStretching ? { stretching } : {}) });
+    }
+  };
+
+  const handleStretchingSlider = (val: number) => {
+    const warmup = store.customPhaseDurations.warmup ?? (phaseDurations?.warmup ?? 15);
+    const cooldown = store.customPhaseDurations.cooldown ?? (phaseDurations?.cooldown ?? 15);
+    const stretching = val;
+    const main = store.totalDuration - warmup - cooldown - stretching;
+    if (main >= 5) {
+      store.setCustomPhaseDurations({ warmup, cooldown, stretching });
     }
   };
 
   const currentWarmup = phaseDurations?.warmup ?? 15;
   const currentCooldown = phaseDurations?.cooldown ?? 0;
+  const currentStretching = phaseDurations?.stretching ?? 0;
 
   const handleAddCoach = () => {
     if (newCoachName.trim()) {
@@ -287,75 +366,103 @@ export function GeneratorPage({ navigate }: Props) {
     }
   };
 
+  // Available skill focuses for the selected subcategory or category
+  const availableSkillFocus = store.subCategory
+    ? SKILL_FOCUS_BY_SUBCATEGORY[store.subCategory]
+    : store.category
+    ? SKILL_FOCUS_BY_CATEGORY[store.category]
+    : [];
+
+  // Subcategory config for display
+  const subCatCfg = store.subCategory ? SUB_CATEGORY_CONFIGS[store.subCategory] : null;
+
+  // Recommended duration for the selected subcategory
+  const recommendedDuration = subCatCfg?.recommendedDuration ?? 90;
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <NavBar onBack={goBack} step={step} />
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
 
-        {/* ───── STEP 0: CATEGORY + U-LABEL ───── */}
+        {/* ───── STEP 0: CATEGORY GROUPS + SUBCATEGORY ───── */}
         {step === 0 && (
           <div style={{ padding: '8px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div>
-              <h2 style={{ fontWeight: 800, fontSize: 22 }}>Věková kategorie</h2>
-              <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 14 }}>Vyberte kategorii a ročník vašeho týmu.</p>
+              <h2 style={{ fontWeight: 800, fontSize: 22 }}>{t('generator.selectCategory')}</h2>
+              <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 14 }}>{t('generator.selectCategoryDesc')}</p>
             </div>
-            {CATEGORY_LIST.map(cfg => {
-              const isExpanded = expandedCategory === cfg.id;
-              const uLabels = U_LABELS_BY_CATEGORY[cfg.id];
+
+            {CATEGORY_GROUP_LIST.map(group => {
+              const isExpanded = expandedGroup === group.id;
+              const subCats = group.subcategories.map(id => SUB_CATEGORY_CONFIGS[id]);
+              const isSelected = store.subCategory != null && subCats.some(sc => sc.id === store.subCategory);
+
               return (
-                <div key={cfg.id} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {/* Category header card */}
+                <div key={group.id} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {/* Group header */}
                   <button
-                    onClick={() => setExpandedCategory(isExpanded ? null : cfg.id)}
+                    onClick={() => setExpandedGroup(isExpanded ? null : group.id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 14, padding: 16,
                       borderRadius: isExpanded ? '16px 16px 0 0' : 16,
-                      border: `2px solid ${store.category === cfg.id ? cfg.color : 'var(--border)'}`,
-                      borderBottom: isExpanded ? `2px solid ${cfg.color}` : undefined,
-                      background: store.category === cfg.id ? cfg.lightColor : 'var(--surface)',
+                      border: `2px solid ${isSelected ? group.color : 'var(--border)'}`,
+                      borderBottom: isExpanded ? `2px solid ${group.color}` : undefined,
+                      background: isSelected ? group.color + '15' : 'var(--surface)',
                       textAlign: 'left', width: '100%', transition: 'all .15s', color: 'var(--text)',
                     }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 12, background: cfg.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
-                      {cfg.id === 'pripravka' ? '😊' : cfg.id === 'mladsi-zaci' ? '⚽' : cfg.id === 'starsi-zaci' ? '🏆' : '🥇'}
+                    <div style={{
+                      width: 48, height: 48, borderRadius: 12, background: group.color,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 24, flexShrink: 0, color: '#fff',
+                    }}>
+                      {group.icon}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 16 }}>{cfg.label}</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: cfg.color, marginTop: 2, textTransform: 'uppercase', letterSpacing: .5 }}>{cfg.ageRange}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                        {uLabels.join(' · ')}
+                      <div style={{ fontWeight: 700, fontSize: 16 }}>{t(group.label)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {subCats.map(sc => t(sc.label)).join(' · ')}
                       </div>
                     </div>
-                    <span style={{ fontSize: 16, color: store.category === cfg.id ? cfg.color : 'var(--text-muted)', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform .2s' }}>›</span>
+                    <span style={{
+                      fontSize: 16, color: isSelected ? group.color : 'var(--text-muted)',
+                      transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform .2s',
+                    }}>›</span>
                   </button>
 
-                  {/* U-label chips */}
+                  {/* Subcategory cards */}
                   {isExpanded && (
                     <div style={{
-                      background: cfg.lightColor,
-                      border: `2px solid ${cfg.color}`,
+                      background: group.color + '10',
+                      border: `2px solid ${group.color}`,
                       borderTop: 'none',
                       borderRadius: '0 0 16px 16px',
-                      padding: '12px 16px 16px',
-                      display: 'flex', flexWrap: 'wrap', gap: 8,
+                      padding: '12px 12px 16px',
+                      display: 'flex', flexDirection: 'column', gap: 8,
                     }}>
-                      {uLabels.map(ul => {
-                        const ulConfig = U_LABEL_CONFIGS.find(c => c.label === ul)!;
-                        const sel = store.selectedULabel === ul;
+                      {subCats.map(sc => {
+                        const sel = store.subCategory === sc.id;
                         return (
                           <button
-                            key={ul}
-                            onClick={() => store.setULabel(ul as ULabel, cfg.id as AgeCategory)}
+                            key={sc.id}
+                            onClick={() => store.setSubCategory(sc.id)}
                             style={{
-                              padding: '10px 16px', borderRadius: 20,
-                              border: `2px solid ${sel ? cfg.color : cfg.color + '60'}`,
-                              background: sel ? cfg.color : '#fff',
-                              color: sel ? '#fff' : cfg.color,
-                              fontWeight: 700, fontSize: 15, transition: 'all .15s',
-                              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                              display: 'flex', alignItems: 'center', gap: 12,
+                              padding: '12px 14px', borderRadius: 14,
+                              border: `2px solid ${sel ? sc.color : sc.color + '40'}`,
+                              background: sel ? sc.color + '20' : '#fff',
+                              textAlign: 'left', width: '100%', transition: 'all .15s',
                             }}>
-                            <span>{ul}</span>
-                            <span style={{ fontSize: 10, fontWeight: 500, opacity: .85 }}>{ulConfig.displayAge}</span>
+                            <span style={{ fontSize: 22, flexShrink: 0 }}>{sc.icon}</span>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 700, fontSize: 15, color: sel ? sc.color : 'var(--text)' }}>
+                                {t(sc.label)}
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                                {t(sc.ageRange)} · {sc.uLabels.join(', ')}
+                              </div>
+                            </div>
+                            {sel && <span style={{ color: sc.color, fontSize: 18, fontWeight: 800 }}>✓</span>}
                           </button>
                         );
                       })}
@@ -365,20 +472,21 @@ export function GeneratorPage({ navigate }: Props) {
               );
             })}
 
-            {store.selectedULabel && store.category && (
+            {/* Selection summary */}
+            {store.subCategory && subCatCfg && (
               <div style={{
-                background: CATEGORY_CONFIGS[store.category].lightColor,
-                border: `2px solid ${CATEGORY_CONFIGS[store.category].color}`,
+                background: subCatCfg.lightColor,
+                border: `2px solid ${subCatCfg.color}`,
                 borderRadius: 14, padding: '12px 16px',
                 display: 'flex', alignItems: 'center', gap: 10,
               }}>
                 <span style={{ fontSize: 20 }}>✓</span>
                 <div>
-                  <div style={{ fontWeight: 700, color: CATEGORY_CONFIGS[store.category].color, fontSize: 15 }}>
-                    {store.selectedULabel} – {CATEGORY_CONFIGS[store.category].label}
+                  <div style={{ fontWeight: 700, color: subCatCfg.color, fontSize: 15 }}>
+                    {t(subCatCfg.label)}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                    {U_LABEL_CONFIGS.find(c => c.label === store.selectedULabel)?.displayAge}
+                    {t(subCatCfg.ageRange)} · {t(subCatCfg.description)}
                   </div>
                 </div>
               </div>
@@ -386,61 +494,73 @@ export function GeneratorPage({ navigate }: Props) {
           </div>
         )}
 
-        {/* ───── STEP 1: DURATION + SLIDERS ───── */}
+        {/* ───── STEP 1: DURATION SLIDER + PHASE STRUCTURE ───── */}
         {step === 1 && (
           <div style={{ padding: '8px 20px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
-              <h2 style={{ fontWeight: 800, fontSize: 22 }}>Délka tréninku</h2>
-              <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 14 }}>Vyberte celkovou délku a upravte rozložení fází.</p>
+              <h2 style={{ fontWeight: 800, fontSize: 22 }}>{t('generator.trainingDuration')}</h2>
+              <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 14 }}>{t('generator.durationDesc')}</p>
             </div>
 
-            {/* Duration grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-              {DURATIONS.map(d => {
-                const rec = d === 90;
-                const sel = store.totalDuration === d;
-                return (
-                  <button key={d} onClick={() => store.setTotalDuration(d)}
+            {/* Duration slider */}
+            <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
+                <span style={{ fontSize: 44, fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>{store.totalDuration}</span>
+                <span style={{ fontSize: 16, color: 'var(--text-muted)', fontWeight: 600 }}>{t('common.minutes')}</span>
+              </div>
+
+              <input
+                type="range"
+                min={30}
+                max={120}
+                step={5}
+                value={store.totalDuration}
+                onChange={(e) => store.setTotalDuration(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  accentColor: 'var(--primary)',
+                  height: 6,
+                }}
+              />
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+                <span>30 {t('common.min')}</span>
+                {store.totalDuration !== recommendedDuration && (
+                  <button
+                    onClick={() => store.setTotalDuration(recommendedDuration)}
                     style={{
-                      padding: '18px 10px', borderRadius: 14, position: 'relative',
-                      border: `2px solid ${sel ? 'var(--primary)' : rec ? 'var(--primary)' : 'var(--border)'}`,
-                      background: sel ? 'var(--primary)' : 'var(--surface)',
-                      color: sel ? '#fff' : 'var(--text)', transition: 'all .15s',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                    }}>
-                    <span style={{ fontWeight: 800, fontSize: 22 }}>{d}</span>
-                    <span style={{ fontSize: 11, opacity: sel ? .7 : .5 }}>min</span>
-                    {rec && !sel && (
-                      <span style={{
-                        position: 'absolute', top: -8, right: -8,
-                        background: 'var(--secondary)', color: '#fff', fontSize: 9, fontWeight: 700,
-                        padding: '2px 6px', borderRadius: 8,
-                      }}>Doporučeno</span>
-                    )}
+                      background: 'var(--secondary)', color: '#fff', fontSize: 11, fontWeight: 700,
+                      padding: '2px 8px', borderRadius: 8,
+                    }}
+                  >
+                    {t('generator.recommended')}: {recommendedDuration} {t('common.min')}
                   </button>
-                );
-              })}
+                )}
+                <span>120 {t('common.min')}</span>
+              </div>
             </div>
 
             {/* Phase structure */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <h3 style={{ fontWeight: 700, fontSize: 15 }}>Struktura fází</h3>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {(['2-phase', '3-phase'] as PhaseStructure[]).map(ps => {
+              <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('generator.phaseStructure')}</h3>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(['2-phase', '3-phase', '4-phase'] as PhaseStructure[]).map(ps => {
                   const sel = effectivePhaseStructure === ps;
+                  const labelKey = `generator.${ps.replace('-', '')}` as 'generator.2phase' | 'generator.3phase' | 'generator.4phase';
+                  const descKey = `generator.${ps.replace('-', '')}Desc` as 'generator.2phaseDesc' | 'generator.3phaseDesc' | 'generator.4phaseDesc';
                   return (
                     <button key={ps} onClick={() => store.setPhaseStructure(ps)}
                       style={{
-                        flex: 1, padding: '14px', borderRadius: 14, textAlign: 'left',
+                        flex: 1, padding: '12px 8px', borderRadius: 14, textAlign: 'center',
                         border: `2px solid ${sel ? 'var(--primary)' : 'var(--border)'}`,
                         background: sel ? 'var(--primary-light)' : 'var(--surface)',
                         transition: 'all .15s', color: 'var(--text)',
                       }}>
-                      <div style={{ fontWeight: 700, color: sel ? 'var(--primary)' : 'inherit' }}>
-                        {ps === '2-phase' ? '2 fáze' : '3 fáze'}
+                      <div style={{ fontWeight: 700, fontSize: 14, color: sel ? 'var(--primary)' : 'inherit' }}>
+                        {t(labelKey)}
                       </div>
-                      <div style={{ fontSize: 12, color: sel ? 'var(--primary)' : 'var(--text-muted)', marginTop: 3 }}>
-                        {ps === '2-phase' ? 'Rozcvičení + Hlavní' : 'Rozcvičení + Hlavní + Závěr'}
+                      <div style={{ fontSize: 10, color: sel ? 'var(--primary)' : 'var(--text-muted)', marginTop: 3, lineHeight: 1.3 }}>
+                        {t(descKey)}
                       </div>
                     </button>
                   );
@@ -451,14 +571,16 @@ export function GeneratorPage({ navigate }: Props) {
             {/* Phase draggable bar */}
             {phaseDurations && (
               <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <h3 style={{ fontWeight: 700, fontSize: 15 }}>Rozložení fází</h3>
+                <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('generator.phaseLayout')}</h3>
                 <DraggablePhaseBar
                   totalDuration={store.totalDuration}
                   warmup={currentWarmup}
                   cooldown={currentCooldown}
-                  is3Phase={effectivePhaseStructure === '3-phase'}
+                  stretching={currentStretching}
+                  phaseStructure={effectivePhaseStructure}
                   onWarmupChange={handleWarmupSlider}
                   onCooldownChange={handleCooldownSlider}
+                  onStretchingChange={handleStretchingSlider}
                 />
               </div>
             )}
@@ -469,17 +591,17 @@ export function GeneratorPage({ navigate }: Props) {
         {step === 2 && (
           <div style={{ padding: '8px 20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <h2 style={{ fontWeight: 800, fontSize: 22 }}>Zaměření tréninku</h2>
-              <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 14 }}>Vyberte 1–3 dovednosti, na které chcete zaměřit trénink.</p>
+              <h2 style={{ fontWeight: 800, fontSize: 22 }}>{t('generator.skillFocus')}</h2>
+              <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 14 }}>{t('generator.focusDesc')}</p>
             </div>
             {store.skillFocus.length >= 3 && (
               <div style={{ background: 'var(--primary-light)', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span>ℹ️</span>
-                <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>Vybrali jste maximum 3 zaměření</span>
+                <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>{t('generator.maxFocus')}</span>
               </div>
             )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {(store.category ? SKILL_FOCUS_BY_CATEGORY[store.category] : []).map(skill => {
+              {availableSkillFocus.map(skill => {
                 const cfg = SKILL_FOCUS_CONFIGS[skill as SkillFocus];
                 const sel = store.skillFocus.includes(skill as SkillFocus);
                 const dis = store.skillFocus.length >= 3 && !sel;
@@ -494,16 +616,16 @@ export function GeneratorPage({ navigate }: Props) {
                       transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 6,
                     }}>
                     {sel && <span>✓</span>}
-                    {cfg.label}
+                    {t(cfg.label)}
                   </button>
                 );
               })}
             </div>
             {store.skillFocus.length > 0 && (
               <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>Vybrané zaměření</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>{t('generator.selectedFocus')}</span>
                 {store.skillFocus.map(s => (
-                  <span key={s} style={{ fontSize: 14, fontWeight: 600 }}>• {SKILL_FOCUS_CONFIGS[s as SkillFocus].label}</span>
+                  <span key={s} style={{ fontSize: 14, fontWeight: 600 }}>• {t(SKILL_FOCUS_CONFIGS[s as SkillFocus].label)}</span>
                 ))}
               </div>
             )}
@@ -520,12 +642,12 @@ export function GeneratorPage({ navigate }: Props) {
               <span style={{ fontSize: 24 }}>{preferFavorites ? '⭐' : '☆'}</span>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: preferFavorites ? '#856404' : 'var(--text)' }}>
-                  Preferovat oblíbená cvičení
+                  {t('generator.preferFavorites')}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                   {favoriteIds.length > 0
-                    ? `Máte ${favoriteIds.length} oblíbených — generátor je upřednostní`
-                    : 'Žádná oblíbená cvičení (označte v knihovně)'}
+                    ? t('generator.favoritesCount', { count: favoriteIds.length })
+                    : t('generator.noFavorites')}
                 </div>
               </div>
               <div style={{
@@ -543,15 +665,15 @@ export function GeneratorPage({ navigate }: Props) {
         {step === 3 && (
           <div style={{ padding: '8px 20px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div>
-              <h2 style={{ fontWeight: 800, fontSize: 22 }}>Trenéři a hráči</h2>
-              <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 14 }}>Nastavte počet hráčů, stanovišť a přiřaďte trenéry.</p>
+              <h2 style={{ fontWeight: 800, fontSize: 22 }}>{t('generator.coachesTitle')}</h2>
+              <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 14 }}>{t('generator.coachesDesc')}</p>
             </div>
 
             {/* Number of players stepper */}
             <div style={{ background: 'var(--surface)', borderRadius: 20, padding: '20px' }}>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>👥</span> Počet hráčů
-                <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>slouží pro varování u cvičení</span>
+                <span>👥</span> {t('generator.playerCount')}
+                <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)' }}>{t('generator.playerWarning')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24 }}>
                 <button onClick={() => store.setNumberOfPlayers(Math.max(4, store.numberOfPlayers - 1))}
@@ -563,7 +685,7 @@ export function GeneratorPage({ navigate }: Props) {
                   }}>−</button>
                 <div style={{ textAlign: 'center', minWidth: 60 }}>
                   <div style={{ fontSize: 40, fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>{store.numberOfPlayers}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>hráčů</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{t('common.players')}</div>
                 </div>
                 <button onClick={() => store.setNumberOfPlayers(Math.min(30, store.numberOfPlayers + 1))}
                   disabled={store.numberOfPlayers >= 30}
@@ -587,7 +709,7 @@ export function GeneratorPage({ navigate }: Props) {
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 44, fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>{store.numberOfCoaches}</div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-                  {store.numberOfCoaches === 1 ? 'stanoviště' : 'stanoviště'}
+                  {t('generator.stations')}
                 </div>
               </div>
               <button onClick={() => store.setNumberOfCoaches(Math.min(5, store.numberOfCoaches + 1))}
@@ -604,12 +726,10 @@ export function GeneratorPage({ navigate }: Props) {
               <span style={{ fontSize: 20 }}>{store.numberOfCoaches === 1 ? '📋' : '🔲'}</span>
               <div>
                 <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 14 }}>
-                  {store.numberOfCoaches === 1 ? 'Sekvenční trénink' : 'Stanovišťový trénink'}
+                  {store.numberOfCoaches === 1 ? t('generator.sequentialTraining') : t('generator.stationTraining')}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--primary)', opacity: .8, marginTop: 3, lineHeight: 1.5 }}>
-                  {store.numberOfCoaches === 1
-                    ? 'Cvičení budou za sebou — jedno po druhém.'
-                    : 'Každé stanoviště může mít trenéra nebo jít bez dozoru (volná hra).'}
+                  {store.numberOfCoaches === 1 ? t('generator.sequentialDesc') : t('generator.stationDesc')}
                 </div>
               </div>
             </div>
@@ -618,8 +738,8 @@ export function GeneratorPage({ navigate }: Props) {
             {store.numberOfCoaches > 1 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ fontWeight: 700, fontSize: 15 }}>Přiřazení trenérů</h3>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>volitelné</span>
+                  <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('generator.coachAssignment')}</h3>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('generator.optional')}</span>
                 </div>
 
                 {/* Add coach inline */}
@@ -628,7 +748,7 @@ export function GeneratorPage({ navigate }: Props) {
                     value={newCoachName}
                     onChange={e => setNewCoachName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleAddCoach()}
-                    placeholder="Jméno trenéra..."
+                    placeholder={t('generator.coachPlaceholder')}
                     style={{
                       flex: 1, padding: '10px 14px', borderRadius: 12,
                       border: '1.5px solid var(--border)', background: 'var(--surface)',
@@ -640,7 +760,7 @@ export function GeneratorPage({ navigate }: Props) {
                       padding: '10px 16px', borderRadius: 12, fontWeight: 700, fontSize: 14,
                       background: newCoachName.trim() ? 'var(--primary)' : 'var(--border)',
                       color: newCoachName.trim() ? '#fff' : 'var(--text-disabled)',
-                    }}>+ Přidat</button>
+                    }}>+ {t('common.add')}</button>
                 </div>
 
                 {/* Station rows */}
@@ -658,7 +778,7 @@ export function GeneratorPage({ navigate }: Props) {
                         fontWeight: 800, color: 'var(--primary)', fontSize: 14, flexShrink: 0,
                       }}>S{stationNum}</div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Stanoviště {stationNum}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{t('generator.stationLabel', { n: stationNum })}</div>
                         <select
                           value={assignedId ?? ''}
                           onChange={e => store.setStationCoachAssignment(stationNum, e.target.value === '__none__' ? null : e.target.value || null)}
@@ -667,8 +787,8 @@ export function GeneratorPage({ navigate }: Props) {
                             border: '1.5px solid var(--border)', background: 'var(--bg)',
                             fontSize: 14, color: 'var(--text)',
                           }}>
-                          <option value="">— nepřiřazeno —</option>
-                          <option value="__none__">🔓 Volné stanoviště (bez trenéra)</option>
+                          <option value="">{t('generator.unassigned')}</option>
+                          <option value="__none__">{t('generator.freeStation')}</option>
                           {savedCoaches.map(c => (
                             <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
                           ))}
@@ -680,7 +800,7 @@ export function GeneratorPage({ navigate }: Props) {
 
                 {savedCoaches.length === 0 && (
                   <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: '8px 0' }}>
-                    Přidejte jméno trenéra výše pro přiřazení ke stanovišti.
+                    {t('generator.addCoachHint')}
                   </div>
                 )}
               </div>
@@ -689,11 +809,11 @@ export function GeneratorPage({ navigate }: Props) {
         )}
 
         {/* ───── STEP 4: REVIEW ───── */}
-        {step === 4 && store.category && phaseDurations && (
+        {step === 4 && exerciseCategory && phaseDurations && (
           <div style={{ padding: '8px 20px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <h2 style={{ fontWeight: 800, fontSize: 22 }}>Přehled tréninku</h2>
-              <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 14 }}>Zkontrolujte nastavení a vygenerujte trénink.</p>
+              <h2 style={{ fontWeight: 800, fontSize: 22 }}>{t('generator.reviewTitle')}</h2>
+              <p style={{ color: 'var(--text-muted)', marginTop: 4, fontSize: 14 }}>{t('generator.reviewDesc')}</p>
             </div>
 
             {/* Summary */}
@@ -701,14 +821,16 @@ export function GeneratorPage({ navigate }: Props) {
               {[
                 {
                   icon: '👥',
-                  label: 'Kategorie',
-                  value: store.selectedULabel
-                    ? `${store.selectedULabel} – ${CATEGORY_CONFIGS[store.category].label} (${CATEGORY_CONFIGS[store.category].ageRange})`
-                    : `${CATEGORY_CONFIGS[store.category].label} (${CATEGORY_CONFIGS[store.category].ageRange})`
+                  label: t('manual.category'),
+                  value: store.subCategory
+                    ? `${store.selectedULabel ? store.selectedULabel + ' – ' : ''}${t(SUB_CATEGORY_CONFIGS[store.subCategory].label)} (${t(SUB_CATEGORY_CONFIGS[store.subCategory].ageRange)})`
+                    : exerciseCategory
+                    ? `${store.selectedULabel ? store.selectedULabel + ' – ' : ''}${t(CATEGORY_CONFIGS[exerciseCategory].label)}`
+                    : '',
                 },
-                { icon: '⏱️', label: 'Délka', value: `${store.totalDuration} minut` },
-                { icon: '🎯', label: 'Zaměření', value: store.skillFocus.map(s => SKILL_FOCUS_CONFIGS[s as SkillFocus].label).join(', ') },
-                { icon: '🔲', label: 'Stanoviště', value: store.numberOfCoaches === 1 ? '1 (sekvenční)' : `${store.numberOfCoaches} stanoviště` },
+                { icon: '⏱️', label: t('generator.trainingDuration'), value: `${store.totalDuration} ${t('common.minutes')}` },
+                { icon: '🎯', label: t('manual.focus'), value: store.skillFocus.map(s => t(SKILL_FOCUS_CONFIGS[s as SkillFocus].label)).join(', ') },
+                { icon: '🔲', label: t('generator.stations'), value: store.numberOfCoaches === 1 ? t('generator.sequential') : t('generator.stationsCount', { n: store.numberOfCoaches }) },
               ].map((row, i) => (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px',
@@ -724,8 +846,8 @@ export function GeneratorPage({ navigate }: Props) {
             {/* Phase durations */}
             <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontWeight: 700, fontSize: 15 }}>Délky fází</h3>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Celkem: {store.totalDuration} min</span>
+                <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('generator.phaseDurations')}</h3>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('generator.total')}: {store.totalDuration} {t('common.min')}</span>
               </div>
               <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', gap: 2 }}>
                 {phaseTypes.map(pt => (
@@ -735,11 +857,11 @@ export function GeneratorPage({ navigate }: Props) {
               {phaseTypes.map(pt => (
                 <div key={pt} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{ width: 10, height: 10, borderRadius: 5, background: PHASE_COLORS[pt].bar, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 14 }}>{getPhaseLabel(pt)}</span>
+                  <span style={{ flex: 1, fontSize: 14 }}>{t(getPhaseLabel(pt))}</span>
                   <span style={{
                     background: PHASE_COLORS[pt].bg, color: PHASE_COLORS[pt].text,
                     fontWeight: 700, fontSize: 14, padding: '4px 10px', borderRadius: 8,
-                  }}>{phaseDurations[pt]} min</span>
+                  }}>{phaseDurations[pt]} {t('common.min')}</span>
                 </div>
               ))}
             </div>
@@ -748,7 +870,7 @@ export function GeneratorPage({ navigate }: Props) {
             <div style={{ background: 'var(--primary-light)', borderRadius: 12, padding: '12px 14px', display: 'flex', gap: 10 }}>
               <span>ℹ️</span>
               <span style={{ fontSize: 13, color: 'var(--primary)', lineHeight: 1.5 }}>
-                Aplikace vybere vhodná cvičení z knihovny. Každé vygenerování může být trochu jiné.
+                {t('generator.reviewNotice')}
               </span>
             </div>
           </div>
@@ -758,15 +880,15 @@ export function GeneratorPage({ navigate }: Props) {
       {/* Footer */}
       {step < 4 ? (
         <FooterBtn
-          label="Pokračovat"
+          label={t('generator.continue')}
           disabled={
-            (step === 0 && !store.selectedULabel) ||
+            (step === 0 && !store.subCategory) ||
             (step === 2 && store.skillFocus.length === 0)
           }
           onClick={() => setStep(s => s + 1)}
         />
       ) : (
-        <FooterBtn label="⚡ Vygenerovat trénink" onClick={handleGenerate} />
+        <FooterBtn label={`⚡ ${t('generator.generate')}`} onClick={handleGenerate} />
       )}
     </div>
   );

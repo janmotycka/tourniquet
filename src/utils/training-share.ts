@@ -2,20 +2,23 @@ import type { TrainingUnit } from '../types/training.types';
 import { CATEGORY_CONFIGS } from '../data/categories.data';
 import { SKILL_FOCUS_CONFIGS } from '../data/skill-focus.data';
 
+type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
+
 const PHASE_EMOJI: Record<string, string> = {
   warmup: '🔥',
   main: '⚡',
   cooldown: '🧘',
 };
 
-export function formatTrainingForShare(training: TrainingUnit): string {
+export function formatTrainingForShare(training: TrainingUnit, t?: TranslateFn): string {
+  const resolve = t ?? ((key: string) => key);
   const cfg = CATEGORY_CONFIGS[training.input.category];
   const uLabel = training.input.selectedULabel ? `${training.input.selectedULabel} – ` : '';
   const focusLabels = training.input.skillFocus
-    .map(sf => SKILL_FOCUS_CONFIGS[sf]?.label ?? sf)
+    .map(sf => resolve(SKILL_FOCUS_CONFIGS[sf]?.label ?? sf))
     .join(', ');
 
-  const date = new Date(training.createdAt).toLocaleDateString('cs-CZ', {
+  const date = new Date(training.createdAt).toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -24,24 +27,24 @@ export function formatTrainingForShare(training: TrainingUnit): string {
   const lines: string[] = [
     `⚽ *${training.title}*`,
     `📅 ${date}`,
-    `👥 ${uLabel}${cfg.label} (${cfg.ageRange})`,
-    `⏱ Celkem: ${training.totalDuration} min`,
-    `🎯 Zaměření: ${focusLabels}`,
+    `👥 ${uLabel}${resolve(cfg.label)} (${resolve(cfg.ageRange)})`,
+    `⏱ ${resolve('share.total')}: ${training.totalDuration} min`,
+    `🎯 ${resolve('share.focus')}: ${focusLabels}`,
     '',
   ];
 
   for (const phase of training.phases) {
     const emoji = PHASE_EMOJI[phase.type] ?? '📌';
-    lines.push(`${emoji} *${phase.label.toUpperCase()}* (${phase.durationMinutes} min)`);
+    lines.push(`${emoji} *${resolve(phase.label).toUpperCase()}* (${phase.durationMinutes} min)`);
 
     if ((phase.stations?.length ?? 0) > 0) {
       for (const station of phase.stations!) {
         const coachPart = station.coachAssigned === null
-          ? '(volné stanoviště)'
+          ? `(${resolve('share.freeStation')})`
           : station.coachName
             ? `– ${station.coachName}`
             : '';
-        lines.push(`  📍 Stan. ${station.stationNumber}: ${station.exercise.name} ${coachPart} (${station.durationMinutes} min)`);
+        lines.push(`  📍 ${resolve('share.station')} ${station.stationNumber}: ${station.exercise.name} ${coachPart} (${station.durationMinutes} min)`);
       }
     } else {
       for (const ex of phase.exercises) {
@@ -51,7 +54,7 @@ export function formatTrainingForShare(training: TrainingUnit): string {
     lines.push('');
   }
 
-  lines.push('_Vygenerováno aplikací Trenink ⚽_');
+  lines.push(`_${resolve('share.generatedBy')}_`);
   return lines.join('\n');
 }
 
