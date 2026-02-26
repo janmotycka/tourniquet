@@ -9,7 +9,7 @@ import type { Locale } from '../i18n';
 interface Props { navigate: (p: Page) => void; }
 
 /** Diagnostický panel — testuje Firebase write/read a zobrazuje stav */
-function FirebaseDiagnostics({ user, t: _t }: { user: { uid: string; email?: string | null } | null; t: (k: string, p?: Record<string, string | number>) => string }) {
+function FirebaseDiagnostics({ user, t }: { user: { uid: string; email?: string | null } | null; t: (k: string, p?: Record<string, string | number>) => string }) {
   const syncError = useTournamentStore(s => s.syncError);
   const tournaments = useTournamentStore(s => s.tournaments);
   const loadFromFirebase = useTournamentStore(s => s.loadFromFirebase);

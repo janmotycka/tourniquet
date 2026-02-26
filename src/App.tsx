@@ -21,7 +21,6 @@ import { MatchDetailPage } from './pages/match/MatchDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ToastContainer } from './components/ToastContainer';
-import { parseTournamentHashFromUrl } from './utils/qr-code';
 import { useTournamentStore } from './store/tournament.store';
 import { useSubscriptionStore } from './store/subscription.store';
 import { useToastStore } from './store/toast.store';
@@ -46,15 +45,6 @@ export type Page =
   | { name: 'match-create' }
   | { name: 'match-detail'; matchId: string }
   | { name: 'settings' };
-
-// Hash-based deep linking — pokud URL obsahuje #tournament=xxx, otevře public view
-function getInitialPage(): Page {
-  const tournamentId = parseTournamentHashFromUrl();
-  if (tournamentId) {
-    return { name: 'tournament-public', tournamentId };
-  }
-  return { name: 'home' };
-}
 
 // ─── Vnitřní router (vyžaduje auth, kromě public view) ───────────────────────
 

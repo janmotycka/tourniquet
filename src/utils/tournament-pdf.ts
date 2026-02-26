@@ -139,7 +139,6 @@ export async function exportTournamentPdf(
   const qrX = M;
   const qrY = y;
   const infoX = M + qrSize + 8;
-  const infoW = W - qrSize - 8;
 
   // QR Code
   try {

@@ -3,6 +3,8 @@
  * Používá se na klientu (formuláře) i před zápisem do Firebase.
  */
 
+import type { CreateTournamentInput } from '../types/tournament.types';
+
 // ─── Limity ──────────────────────────────────────────────────────────────────
 
 export const LIMITS = {
@@ -74,22 +76,7 @@ export function safeDivide(numerator: number, denominator: number, fallback = 0)
  * Sanitizuje vstupní data turnaje před zápisem do Firebase.
  * Ořízne stringy a čísla na povolené rozsahy.
  */
-export function sanitizeTournamentInput<T extends {
-  name: string;
-  settings: {
-    matchDurationMinutes: number;
-    breakBetweenMatchesMinutes: number;
-    numberOfPitches?: number;
-    rules?: string;
-    [key: string]: unknown;
-  };
-  teams: Array<{
-    name: string;
-    players: Array<{ name: string; jerseyNumber: number; [key: string]: unknown }>;
-    [key: string]: unknown;
-  }>;
-  [key: string]: unknown;
-}>(input: T): T {
+export function sanitizeTournamentInput(input: CreateTournamentInput): CreateTournamentInput {
   return {
     ...input,
     name: clampString(input.name.trim(), LIMITS.tournamentName.max),

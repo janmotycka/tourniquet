@@ -940,6 +940,7 @@ function LineupTab({ match }: { match: SeasonMatch }) {
 // ─── Ratings Tab ──────────────────────────────────────────────────────────────
 
 function RatingsTab({ match }: { match: SeasonMatch }) {
+  const { t } = useI18n();
   const saveRatings = useMatchesStore(s => s.saveRatings);
   const [ratings, setRatings] = useState<PlayerRating[]>(match.ratings.length > 0 ? match.ratings : []);
   const [note, setNote] = useState(match.note ?? '');
@@ -1037,6 +1038,7 @@ function RatingsTab({ match }: { match: SeasonMatch }) {
 // ─── MatchDetailPage ──────────────────────────────────────────────────────────
 
 export function MatchDetailPage({ matchId, navigate }: Props) {
+  const { t } = useI18n();
   const match = useMatchesStore(s => s.getMatchById(matchId));
   const matches = useMatchesStore(s => s.matches); // Subscribe for reactivity
   const [tab, setTab] = useState<Tab>('live');
