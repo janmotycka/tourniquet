@@ -47,29 +47,25 @@ jobs:
         run: npm ci
         working-directory: functions
 
-      # 5b) Build Cloud Functions (TypeScript → lib/)
+      # 6) Build Cloud Functions (TypeScript → lib/)
       - name: Build functions
         run: npm run build
         working-directory: functions
 
-      # 6) Autentizace k Firebase přes Service Account
+      # 7) Autentizace k Firebase přes Service Account
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      # 7) Install Firebase CLI (pinned version)
-      - name: Install Firebase CLI
-        run: npm install -g firebase-tools@13.29.1
-
-      # 8) Deploy Hosting (statické soubory z dist/)
+      # 8) Deploy Hosting
       - name: Deploy Firebase Hosting
-        run: firebase deploy --only hosting --project tourniquet-7a123
+        run: npx firebase-tools deploy --only hosting --project tourniquet-7a123
 
       # 9) Deploy Database Rules
       - name: Deploy Database Rules
-        run: firebase deploy --only database --project tourniquet-7a123
+        run: npx firebase-tools deploy --only database --project tourniquet-7a123
 
       # 10) Deploy Cloud Functions
       - name: Deploy Cloud Functions
-        run: firebase deploy --only functions --project tourniquet-7a123
+        run: npx firebase-tools deploy --only functions --project tourniquet-7a123
