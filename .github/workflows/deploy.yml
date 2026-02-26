@@ -1,0 +1,62 @@
+name: Deploy to Firebase
+
+# Spustí se při každém push do main větve
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Stáhni kód
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2) Nastav Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 3) Instalace závislostí frontendu
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # 4) Build frontendu (s env proměnnými z GitHub Secrets)
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY:              ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN:          ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_DATABASE_URL:         ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
+          VITE_FIREBASE_PROJECT_ID:           ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET:       ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID:  ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID:               ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_MEASUREMENT_ID:       ${{ secrets.VITE_FIREBASE_MEASUREMENT_ID }}
+          # DEV BYPASS musí být false v produkci — nikdy nenastavovat v Secrets!
+          VITE_DEV_AUTH_BYPASS: 'false'
+
+      # 5) Instalace závislostí Cloud Functions
+      - name: Install functions dependencies
+        run: npm ci
+        working-directory: functions
+
+      # 6) Autentizace k Firebase přes Service Account
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      # 7) Deploy Hosting (statické soubory z dist/)
+      - name: Deploy Firebase Hosting
+        run: npx firebase-tools deploy --only hosting --project tourniquet-7a123
+
+      # 8) Deploy Cloud Functions + Database Rules
+      - name: Deploy Functions & DB Rules
+        run: npx firebase-tools deploy --only functions,database --project tourniquet-7a123
