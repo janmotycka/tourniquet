@@ -2,175 +2,272 @@ import jsPDF from 'jspdf';
 import type { Tournament } from '../types/tournament.types';
 import { formatMatchTime } from './tournament-schedule';
 import { generateQRCodeDataUrl, getTournamentPublicUrl } from './qr-code';
+import type { Locale } from '../i18n';
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+type TFn = (key: string, params?: Record<string, string | number>) => string;
+
+// ─── Font loader (Roboto s českou diakritikou) ──────────────────────────────
+
+let fontCache: { regular?: string; bold?: string } = {};
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode.apply(null, Array.from(chunk));
+  }
+  return btoa(binary);
+}
+
+async function loadFonts(doc: jsPDF): Promise<boolean> {
+  try {
+    if (!fontCache.regular || !fontCache.bold) {
+      // Fonty jsou v public/fonts/ — servírované Vite dev serverem nebo hostingem
+      const base = import.meta.env.BASE_URL ?? '/';
+      const [regular, bold] = await Promise.all([
+        fetch(`${base}fonts/Roboto-Regular.ttf`).then(r => {
+          if (!r.ok) throw new Error(`Font fetch failed: ${r.status}`);
+          return r.arrayBuffer();
+        }),
+        fetch(`${base}fonts/Roboto-Bold.ttf`).then(r => {
+          if (!r.ok) throw new Error(`Font fetch failed: ${r.status}`);
+          return r.arrayBuffer();
+        }),
+      ]);
+      fontCache.regular = arrayBufferToBase64(regular);
+      fontCache.bold = arrayBufferToBase64(bold);
+    }
+
+    doc.addFileToVFS('Roboto-Regular.ttf', fontCache.regular);
+    doc.addFileToVFS('Roboto-Bold.ttf', fontCache.bold);
+    doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+    doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+    return true;
+  } catch {
+    return false; // fallback to Helvetica (bez diakritiky)
+  }
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '');
+  return [
+    parseInt(clean.substring(0, 2), 16) || 100,
+    parseInt(clean.substring(2, 4), 16) || 100,
+    parseInt(clean.substring(4, 6), 16) || 100,
+  ];
+}
+
+// ─── Main export ────────────────────────────────────────────────────────────
 
 /**
- * Vygeneruje PDF s propozicemi turnaje a stáhne ho.
- * Obsahuje: hlavičku, info o turnaji, týmy + hráče, rozpis zápasů, pravidla, QR kód.
+ * Vygeneruje 1-stránkové PDF (plakát) s propozicemi turnaje.
+ * QR kód nahoře, kompaktní layout pro tisk na nástěnku.
  */
-export async function exportTournamentPdf(tournament: Tournament): Promise<void> {
+export async function exportTournamentPdf(
+  tournament: Tournament,
+  t: TFn,
+  locale: Locale,
+): Promise<void> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
-  const marginL = 15;
-  const marginR = 15;
-  const contentW = pageW - marginL - marginR;
-  let y = 15;
+  const pageW = doc.internal.pageSize.getWidth(); // 210
+  const pageH = doc.internal.pageSize.getHeight(); // 297
+  const M = 10; // margin
+  const W = pageW - 2 * M; // usable width = 190
+  let y = 0;
 
   const { settings } = tournament;
+  const hasFonts = await loadFonts(doc);
+  const fontFamily = hasFonts ? 'Roboto' : 'helvetica';
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
+  const setFont = (style: 'normal' | 'bold', size: number) => {
+    doc.setFont(fontFamily, style);
+    doc.setFontSize(size);
+  };
 
-  function checkPageBreak(needed: number) {
-    if (y + needed > pageH - 20) {
-      doc.addPage();
-      y = 15;
-    }
-  }
+  // ── Date formatting ──────────────────────────────────────────────────────
 
-  function drawSectionTitle(title: string) {
-    checkPageBreak(14);
-    y += 4;
-    doc.setFillColor(26, 35, 126); // var(--primary) #1A237E
-    doc.roundedRect(marginL, y, contentW, 8, 2, 2, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text(title, marginL + 4, y + 5.5);
-    doc.setTextColor(0, 0, 0);
-    y += 12;
-  }
-
-  function drawKeyValue(label: string, value: string) {
-    checkPageBreak(6);
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(100, 100, 100);
-    doc.text(label, marginL + 2, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(0, 0, 0);
-    doc.text(value, marginL + 50, y);
-    y += 5;
-  }
-
-  // ── 1. Hlavička ──────────────────────────────────────────────────────────────
-
-  // Pozadí hlavičky
-  doc.setFillColor(26, 35, 126);
-  doc.rect(0, 0, pageW, 30, 'F');
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
-  doc.text(tournament.name, pageW / 2, 14, { align: 'center' });
-
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  const dateStr = new Date(settings.startDate).toLocaleDateString('cs-CZ', {
+  const dateLocale = locale === 'cs' ? 'cs-CZ' : 'en-US';
+  const dateStr = new Date(settings.startDate).toLocaleDateString(dateLocale, {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   });
-  doc.text(`${dateStr}  |  ${tournament.teams.length} tymu  |  ${tournament.matches.length} zapasu`, pageW / 2, 22, { align: 'center' });
 
-  doc.setTextColor(0, 0, 0);
-  y = 38;
-
-  // ── 2. Informace o turnaji ────────────────────────────────────────────────────
-
-  drawSectionTitle('Informace o turnaji');
-
-  drawKeyValue('Datum:', dateStr);
-  drawKeyValue('Zacatek:', settings.startTime);
-
-  // Konec turnaje — čas posledního zápasu + délka
+  // End time calculation
   const sortedMatches = [...tournament.matches].sort((a, b) =>
     new Date(a.scheduledTime).getTime() - new Date(b.scheduledTime).getTime()
   );
+  let endTimeStr = '';
   if (sortedMatches.length > 0) {
     const last = sortedMatches[sortedMatches.length - 1];
-    const endTime = new Date(new Date(last.scheduledTime).getTime() + last.durationMinutes * 60000);
-    drawKeyValue('Predpokladany konec:', endTime.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' }));
+    const end = new Date(new Date(last.scheduledTime).getTime() + last.durationMinutes * 60000);
+    endTimeStr = end.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' });
   }
 
-  drawKeyValue('Pocet tymu:', String(tournament.teams.length));
-  drawKeyValue('Pocet zapasu:', String(tournament.matches.length));
-  drawKeyValue('Delka zapasu:', `${settings.matchDurationMinutes} min`);
-  drawKeyValue('Prestavka:', settings.breakBetweenMatchesMinutes === 0 ? 'Bez prestavky' : `${settings.breakBetweenMatchesMinutes} min`);
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 1. HEADER — tmavě modrý banner s názvem turnaje
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const headerH = 22;
+  doc.setFillColor(26, 35, 126); // #1A237E
+  doc.rect(0, 0, pageW, headerH, 'F');
+
+  // Tournament name
+  doc.setTextColor(255, 255, 255);
+  setFont('bold', 18);
+  const nameLines = doc.splitTextToSize(tournament.name, W - 10);
+  const nameText = nameLines.length > 1 ? nameLines[0] + '…' : nameLines[0];
+  doc.text(nameText, pageW / 2, 10, { align: 'center' });
+
+  // Subtitle: date, start time
+  setFont('normal', 9);
+  const subtitle = `${dateStr}  ·  ${t('pdf.start')}: ${settings.startTime}${endTimeStr ? `  ·  ${t('pdf.estimatedEnd')}: ${endTimeStr}` : ''}`;
+  doc.text(subtitle, pageW / 2, 17, { align: 'center' });
+
+  doc.setTextColor(0, 0, 0);
+  y = headerH + 4;
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 2. QR KÓD (vlevo) + INFO (vpravo) — side by side
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const qrSize = 36;
+  const qrX = M;
+  const qrY = y;
+  const infoX = M + qrSize + 8;
+  const infoW = W - qrSize - 8;
+
+  // QR Code
+  try {
+    const qrDataUrl = await generateQRCodeDataUrl(tournament.id);
+    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+  } catch {
+    setFont('normal', 8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('QR N/A', qrX + qrSize / 2, qrY + qrSize / 2, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+  }
+
+  // "Scan for live results" pod QR
+  setFont('bold', 7);
+  doc.setTextColor(26, 35, 126);
+  doc.text(t('pdf.scanQr'), qrX + qrSize / 2, qrY + qrSize + 4, { align: 'center' });
+  // URL pod QR
+  setFont('normal', 5.5);
+  doc.setTextColor(120, 120, 120);
+  const publicUrl = getTournamentPublicUrl(tournament.id);
+  const shortUrl = publicUrl.length > 50 ? publicUrl.slice(0, 47) + '…' : publicUrl;
+  doc.text(shortUrl, qrX + qrSize / 2, qrY + qrSize + 8, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+
+  // Info section (right of QR)
+  let infoY = qrY + 1;
+  const drawInfo = (label: string, value: string) => {
+    setFont('bold', 8);
+    doc.setTextColor(100, 100, 100);
+    doc.text(label, infoX, infoY);
+    setFont('normal', 8);
+    doc.setTextColor(0, 0, 0);
+    doc.text(value, infoX + 38, infoY);
+    infoY += 4.5;
+  };
+
+  drawInfo(t('pdf.date'), dateStr);
+  drawInfo(t('pdf.startTime'), settings.startTime + (endTimeStr ? ` – ${endTimeStr}` : ''));
+  drawInfo(t('pdf.teamCount'), String(tournament.teams.length));
+  drawInfo(t('pdf.matchCount'), String(tournament.matches.length));
+  drawInfo(t('pdf.matchDuration'), `${settings.matchDurationMinutes} ${t('common.min')}`);
+  if (settings.breakBetweenMatchesMinutes > 0) {
+    drawInfo(t('pdf.breakDuration'), `${settings.breakBetweenMatchesMinutes} ${t('common.min')}`);
+  }
   if ((settings.numberOfPitches ?? 1) > 1) {
-    drawKeyValue('Pocet hrist:', String(settings.numberOfPitches));
+    drawInfo(t('pdf.pitchCount'), String(settings.numberOfPitches));
   }
-  drawKeyValue('Body:', 'Vyhra 3b | Remiza 1b | Prohra 0b');
+  drawInfo(t('pdf.scoring'), t('pdf.scoringValue'));
 
-  y += 2;
+  y = Math.max(qrY + qrSize + 11, infoY) + 2;
 
-  // ── 3. Zúčastněné týmy ─────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 3. TÝMY — kompaktní seznam na jednom řádku
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  drawSectionTitle('Zucastnene tymy');
+  // Section divider
+  doc.setDrawColor(200, 200, 200);
+  doc.line(M, y, M + W, y);
+  y += 4;
+
+  setFont('bold', 8);
+  doc.setTextColor(26, 35, 126);
+  doc.text(t('pdf.teams'), M, y);
+  y += 1;
+
+  // Team badges inline
+  let tx = M;
+  const badgeH = 5;
+  const badgePad = 3;
+  setFont('normal', 7);
 
   for (const team of tournament.teams) {
-    checkPageBreak(12 + team.players.length * 4);
+    const textW = doc.getTextWidth(team.name) + 8; // badge width
 
-    // Tým header s barvou
-    doc.setFillColor(...hexToRgb(team.color));
-    doc.roundedRect(marginL, y, 4, 4, 1, 1, 'F');
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text(team.name, marginL + 7, y + 3.2);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 120);
-    doc.text(`(${team.players.length} hracu)`, marginL + 7 + doc.getTextWidth(team.name) + 3, y + 3.2);
-    doc.setTextColor(0, 0, 0);
-    y += 7;
-
-    if (team.players.length > 0) {
-      // Hráči ve sloupcích (2 sloupce)
-      const colW = contentW / 2;
-      const players = [...team.players].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
-      for (let i = 0; i < players.length; i += 2) {
-        checkPageBreak(5);
-        for (let col = 0; col < 2 && i + col < players.length; col++) {
-          const p = players[i + col];
-          const x = marginL + 4 + col * colW;
-          doc.setFontSize(8);
-          doc.setFont('helvetica', 'bold');
-          doc.text(`#${p.jerseyNumber}`, x, y);
-          doc.setFont('helvetica', 'normal');
-          doc.text(p.name, x + 10, y);
-        }
-        y += 4;
-      }
+    // Wrap to next line if needed
+    if (tx + textW > M + W) {
+      tx = M;
+      y += badgeH + 2;
     }
-    y += 3;
+
+    // Color dot
+    doc.setFillColor(...hexToRgb(team.color));
+    doc.circle(tx + 2.5, y + badgeH / 2 + 1, 1.5, 'F');
+
+    // Team name
+    doc.setTextColor(30, 30, 30);
+    doc.text(team.name, tx + 5.5, y + badgeH / 2 + 2);
+
+    tx += textW + badgePad;
   }
+  y += badgeH + 5;
 
-  // ── 4. Rozpis zápasů ─────────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 4. ROZPIS ZÁPASŮ — kompaktní tabulka
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  drawSectionTitle('Rozpis zapasu');
+  doc.setDrawColor(200, 200, 200);
+  doc.line(M, y - 2, M + W, y - 2);
 
+  setFont('bold', 8);
+  doc.setTextColor(26, 35, 126);
+  doc.text(t('pdf.matchSchedule'), M, y + 2);
+  y += 6;
+
+  const hasPitches = (settings.numberOfPitches ?? 1) > 1;
   const getTeamName = (id: string) => tournament.teams.find(t => t.id === id)?.name ?? '?';
 
-  // Tabulka: header
-  const colCas = marginL;
-  const colHriste = marginL + 20;
-  const colDomaci = marginL + 35;
-  const colSkore = marginL + (contentW / 2) + 5;
-  const colHoste = colSkore + 18;
-  const hasPitches = (settings.numberOfPitches ?? 1) > 1;
-
-  checkPageBreak(8);
+  // Table header
   doc.setFillColor(240, 240, 240);
-  doc.rect(marginL, y - 1, contentW, 6, 'F');
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
+  doc.rect(M, y - 1, W, 5, 'F');
+  setFont('bold', 6.5);
   doc.setTextColor(80, 80, 80);
-  doc.text('Cas', colCas + 2, y + 3);
-  if (hasPitches) doc.text('Hriste', colHriste, y + 3);
-  doc.text('Domaci', colDomaci, y + 3);
-  doc.text('Skore', colSkore, y + 3);
-  doc.text('Hoste', colHoste, y + 3);
-  doc.setTextColor(0, 0, 0);
-  y += 7;
 
-  // Skupina zápasů po kolech
+  const colTime = M + 2;
+  const colPitch = M + 17;
+  const colHome = hasPitches ? M + 28 : M + 20;
+  const colScore = M + W / 2 + 5;
+  const colAway = colScore + 15;
+
+  doc.text(t('pdf.colTime'), colTime, y + 3);
+  if (hasPitches) doc.text(t('pdf.colPitch'), colPitch, y + 3);
+  doc.text(t('pdf.colHome'), colHome, y + 3);
+  doc.text(t('pdf.colScore'), colScore, y + 3);
+  doc.text(t('pdf.colAway'), colAway, y + 3);
+  doc.setTextColor(0, 0, 0);
+  y += 6;
+
+  // Matches grouped by round
   const rounds = new Map<number, typeof tournament.matches>();
   for (const m of sortedMatches) {
     const arr = rounds.get(m.roundIndex) ?? [];
@@ -178,174 +275,109 @@ export async function exportTournamentPdf(tournament: Tournament): Promise<void>
     rounds.set(m.roundIndex, arr);
   }
 
-  for (const [roundIdx, matches] of rounds) {
-    checkPageBreak(6 + matches.length * 5);
+  // Calculate available space for matches
+  const spaceForMatches = pageH - y - 50; // reserve 50mm for rules + footer
+  const totalMatchLines = tournament.matches.length + rounds.size; // matches + round headers
+  const lineH = Math.min(4, Math.max(3, spaceForMatches / totalMatchLines));
 
-    // Kolo header
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
+  for (const [roundIdx, matches] of rounds) {
+    // Round header
+    setFont('bold', 6.5);
     doc.setTextColor(26, 35, 126);
-    doc.text(`${roundIdx + 1}. kolo`, marginL + 2, y);
+    doc.text(`${roundIdx + 1}. ${t('pdf.round')}`, M + 2, y);
     doc.setTextColor(0, 0, 0);
-    y += 4;
+    y += lineH;
 
     for (const m of matches) {
-      checkPageBreak(5);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-
+      setFont('normal', 6.5);
       const time = formatMatchTime(m.scheduledTime);
-      doc.text(time, colCas + 2, y);
-      if (hasPitches) doc.text(String(m.pitchNumber ?? 1), colHriste + 4, y);
+      doc.text(time, colTime, y);
+      if (hasPitches) {
+        doc.text(String(m.pitchNumber ?? 1), colPitch + 4, y);
+      }
 
-      const homeName = getTeamName(m.homeTeamId);
-      const awayName = getTeamName(m.awayTeamId);
+      setFont('bold', 6.5);
+      doc.text(getTeamName(m.homeTeamId), colHome, y);
 
-      doc.setFont('helvetica', 'bold');
-      doc.text(homeName, colDomaci, y);
-
-      doc.setFont('helvetica', 'normal');
+      setFont('normal', 6.5);
       doc.setTextColor(120, 120, 120);
       const scoreStr = m.status === 'finished'
         ? `${m.homeScore} : ${m.awayScore}`
         : '— : —';
-      doc.text(scoreStr, colSkore, y);
+      doc.text(scoreStr, colScore, y);
       doc.setTextColor(0, 0, 0);
 
-      doc.setFont('helvetica', 'bold');
-      doc.text(awayName, colHoste, y);
+      setFont('bold', 6.5);
+      doc.text(getTeamName(m.awayTeamId), colAway, y);
 
-      y += 5;
+      y += lineH;
     }
-    y += 2;
+    y += 1; // gap between rounds
   }
 
-  // ── 5. Pravidla / propozice ───────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 5. PRAVIDLA / PROPOZICE (pokud jsou nastavena)
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  if (settings.rules && settings.rules.trim() !== '') {
-    drawSectionTitle('Pravidla a propozice');
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-
-    const lines = doc.splitTextToSize(settings.rules, contentW - 4);
-    for (const line of lines) {
-      checkPageBreak(5);
-      doc.text(line, marginL + 2, y);
-      y += 4;
-    }
-    y += 2;
-  }
-
-  // ── 6. Kritéria řazení ──────────────────────────────────────────────────────
-
-  drawSectionTitle('Kriteria pro urceni poradi');
-  const criteria = [
-    '1. Pocet bodu (vyhra 3b, remiza 1b, prohra 0b)',
-    '2. Vzajemny zapas',
-    '3. Rozdil skore',
-    '4. Pocet vstelenych golu',
-    '5. Abecedni poradi nazvu tymu',
-  ];
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  for (const c of criteria) {
-    checkPageBreak(5);
-    doc.text(c, marginL + 4, y);
+  if (settings.rules && settings.rules.trim()) {
+    y += 1;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(M, y, M + W, y);
     y += 4;
-  }
-  y += 2;
 
-  // ── 7. Tabulka výsledků (prázdná pro vyplnění rukou) ─────────────────────────
+    setFont('bold', 8);
+    doc.setTextColor(26, 35, 126);
+    doc.text(t('pdf.rules'), M, y);
+    y += 4;
 
-  drawSectionTitle('Tabulka vysledku');
+    setFont('normal', 7);
+    doc.setTextColor(40, 40, 40);
 
-  const tblColW = contentW / 7;
-  const tblHeaders = ['#', 'Tym', 'Z', 'V', 'P', 'Skore', 'Body'];
-  checkPageBreak(10 + tournament.teams.length * 6);
+    // Truncate rules to fit remaining space
+    const remainingSpace = pageH - y - 14; // 14mm for footer
+    const maxRulesLines = Math.floor(remainingSpace / 3.2);
+    const allLines: string[] = doc.splitTextToSize(settings.rules, W - 4);
+    const lines = allLines.slice(0, maxRulesLines);
 
-  // Header row
-  doc.setFillColor(240, 240, 240);
-  doc.rect(marginL, y - 1, contentW, 6, 'F');
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(80, 80, 80);
-  tblHeaders.forEach((h, i) => {
-    const x = marginL + i * tblColW + (i === 0 ? 2 : i === 1 ? 2 : tblColW / 2 - 2);
-    doc.text(h, x, y + 3);
-  });
-  doc.setTextColor(0, 0, 0);
-  y += 7;
-
-  // Empty rows for each team
-  doc.setFontSize(8);
-  for (let i = 0; i < tournament.teams.length; i++) {
-    checkPageBreak(6);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${i + 1}.`, marginL + 2, y);
-    doc.setFont('helvetica', 'bold');
-    doc.text(tournament.teams[i].name, marginL + tblColW + 2, y);
-    // Prázdné buňky — čáry
-    for (let c = 2; c < 7; c++) {
-      const cx = marginL + c * tblColW;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(cx + 4, y + 1, cx + tblColW - 4, y + 1);
+    for (const line of lines) {
+      doc.text(line, M + 2, y);
+      y += 3.2;
     }
-    y += 6;
-  }
-  y += 2;
 
-  // ── 8. QR kód ────────────────────────────────────────────────────────────────
-
-  drawSectionTitle('QR kod pro sledovani vysledku');
-
-  const qrSize = 40;
-  checkPageBreak(qrSize + 15);
-
-  try {
-    const qrDataUrl = await generateQRCodeDataUrl(tournament.id);
-    const qrX = (pageW - qrSize) / 2;
-    doc.addImage(qrDataUrl, 'PNG', qrX, y, qrSize, qrSize);
-    y += qrSize + 4;
-  } catch {
-    doc.setFontSize(9);
-    doc.text('QR kod se nepodarilo vygenerovat.', pageW / 2, y + 10, { align: 'center' });
-    y += 15;
+    if (allLines.length > maxRulesLines) {
+      doc.setTextColor(120, 120, 120);
+      setFont('normal', 6);
+      doc.text(`… (${t('pdf.rulesMoreOnline')})`, M + 2, y);
+      y += 3;
+    }
   }
 
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(100, 100, 100);
-  doc.text('Naskenujte QR kod pro sledovani vysledku v realnem case.', pageW / 2, y, { align: 'center' });
-  y += 4;
-  doc.setFontSize(7);
-  const publicUrl = getTournamentPublicUrl(tournament.id);
-  doc.text(publicUrl, pageW / 2, y, { align: 'center' });
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 6. PATIČKA
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // ── 9. Patička ────────────────────────────────────────────────────────────────
+  doc.setTextColor(160, 160, 160);
+  setFont('normal', 6);
+  doc.text(
+    `${t('pdf.generated')}: ${new Date().toLocaleDateString(dateLocale)}`,
+    M,
+    pageH - 6,
+  );
+  doc.text(
+    `${t('pdf.scoring')}: ${t('pdf.scoringValue')}`,
+    pageW / 2,
+    pageH - 6,
+    { align: 'center' },
+  );
+  doc.text('TORQ', pageW - M, pageH - 6, { align: 'right' });
 
-  const totalPages = doc.getNumberOfPages();
-  for (let p = 1; p <= totalPages; p++) {
-    doc.setPage(p);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(160, 160, 160);
-    doc.text(`Strana ${p} / ${totalPages}`, pageW / 2, pageH - 8, { align: 'center' });
-    doc.text(`Vygenerovano: ${new Date().toLocaleDateString('cs-CZ')}`, pageW - marginR, pageH - 8, { align: 'right' });
-  }
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DOWNLOAD
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // ── Stáhnout ─────────────────────────────────────────────────────────────────
-
-  const safeName = tournament.name.replace(/[^a-zA-Z0-9\u00C0-\u017F ]/g, '').replace(/\s+/g, '-').toLowerCase();
-  doc.save(`propozice-${safeName}.pdf`);
-}
-
-// ── Hex to RGB helper ──────────────────────────────────────────────────────────
-
-function hexToRgb(hex: string): [number, number, number] {
-  const clean = hex.replace('#', '');
-  const r = parseInt(clean.substring(0, 2), 16) || 100;
-  const g = parseInt(clean.substring(2, 4), 16) || 100;
-  const b = parseInt(clean.substring(4, 6), 16) || 100;
-  return [r, g, b];
+  const safeName = tournament.name
+    .replace(/[^a-zA-Z0-9\u00C0-\u017F ]/g, '')
+    .replace(/\s+/g, '-')
+    .toLowerCase();
+  doc.save(`propozice-${safeName || 'turnaj'}.pdf`);
 }

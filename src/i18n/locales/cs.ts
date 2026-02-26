@@ -761,6 +761,35 @@ export const cs = {
   // ─── Public view errors ────────────────────────────────────────────────
   'tournament.public.renderError': 'Chyba zobrazení',
   'tournament.public.connectionError': 'Chyba připojení',
+
+  // ─── PDF export ──────────────────────────────────────────────────────────
+  'pdf.start': 'Začátek',
+  'pdf.estimatedEnd': 'Konec (odhad)',
+  'pdf.scanQr': '↑ Naskenujte pro živé výsledky',
+  'pdf.date': 'Datum:',
+  'pdf.startTime': 'Čas:',
+  'pdf.teamCount': 'Počet týmů:',
+  'pdf.matchCount': 'Počet zápasů:',
+  'pdf.matchDuration': 'Délka zápasu:',
+  'pdf.breakDuration': 'Přestávka:',
+  'pdf.pitchCount': 'Počet hřišť:',
+  'pdf.scoring': 'Bodování',
+  'pdf.scoringValue': 'Výhra 3b · Remíza 1b · Prohra 0b',
+  'pdf.teams': 'Zúčastněné týmy',
+  'pdf.matchSchedule': 'Rozpis zápasů',
+  'pdf.round': 'kolo',
+  'pdf.colTime': 'Čas',
+  'pdf.colPitch': 'Hřiště',
+  'pdf.colHome': 'Domácí',
+  'pdf.colScore': 'Skóre',
+  'pdf.colAway': 'Hosté',
+  'pdf.rules': 'Pravidla a propozice',
+  'pdf.rulesMoreOnline': 'kompletní pravidla online',
+  'pdf.generated': 'Vygenerováno',
+  'pdf.downloadPdf': 'Stáhnout PDF propozice',
+  'pdf.generating': 'Generuji PDF…',
+  'pdf.downloadDesc': 'Stáhněte PDF s informacemi o turnaji, QR kódem, rozpisem zápasů a pravidly. Ideální pro tisk na nástěnku.',
+  'pdf.exportFailed': 'Nepodařilo se vygenerovat PDF.',
 } as const;
 
 export type TranslationKey = keyof typeof cs;

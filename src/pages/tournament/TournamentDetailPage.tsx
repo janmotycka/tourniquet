@@ -7,6 +7,7 @@ import { getTournamentPublicUrl, getAdminInviteUrl, generateQRCodeDataUrl } from
 import { exportTournamentPdf } from '../../utils/tournament-pdf';
 import type { Tournament, Match, Team, Player, Goal } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
+import { logger } from '../../utils/logger';
 
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
@@ -1534,7 +1535,7 @@ function ScorersTab({ tournament }: { tournament: Tournament }) {
 
 // ─── Settings tab ─────────────────────────────────────────────────────────────
 function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tournament: Tournament; navigate: (p: Page) => void; isOwner: boolean; leaveTournament: (tournamentId: string) => Promise<void> }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [adminCopied, setAdminCopied] = useState(false);
@@ -1588,10 +1589,10 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
   const handlePdfExport = async () => {
     setPdfExporting(true);
     try {
-      await exportTournamentPdf(tournament);
+      await exportTournamentPdf(tournament, t, locale);
     } catch (err) {
-      console.error('[PDF] Export failed:', err);
-      alert('Nepodařilo se vygenerovat PDF.');
+      logger.error('[PDF] Export failed:', err);
+      alert(t('pdf.exportFailed'));
     } finally {
       setPdfExporting(false);
     }
@@ -1690,16 +1691,16 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
 
       {/* PDF export */}
       <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15 }}>📄 Propozice k tisku</h3>
+        <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('pdf.downloadPdf')}</h3>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
-          Stáhněte PDF s informacemi o turnaji, týmy, rozpisem zápasů, pravidly a QR kódem pro sledování výsledků.
+          {t('pdf.downloadDesc')}
         </p>
         <button onClick={handlePdfExport} disabled={pdfExporting} style={{
           background: pdfExporting ? 'var(--border)' : 'var(--primary)', color: pdfExporting ? 'var(--text-muted)' : '#fff',
           fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 10,
           cursor: pdfExporting ? 'wait' : 'pointer', transition: 'background .2s',
         }}>
-          {pdfExporting ? '⏳ Generuji PDF…' : '📄 Stáhnout PDF propozice'}
+          {pdfExporting ? `⏳ ${t('pdf.generating')}` : `📄 ${t('pdf.downloadPdf')}`}
         </button>
       </div>
 
