@@ -79,7 +79,7 @@ export const createCheckoutSession = functions
     const uid = context.auth.uid;
     const email = context.auth.token.email;
     const { returnUrl, currency } = (data || {}) as CheckoutData;
-    const resolvedUrl = returnUrl || 'https://tourniquet-7a123.web.app';
+    const resolvedUrl = returnUrl || 'https://torq.cz';
     const resolvedCurrency: SupportedCurrency = currency || 'czk';
 
     const stripe = getStripe();
@@ -129,7 +129,7 @@ export const createPortalSession = functions
 
     const uid = context.auth.uid;
     const email = context.auth.token.email;
-    const returnUrl = (data as { returnUrl?: string })?.returnUrl || 'https://tourniquet-7a123.web.app';
+    const returnUrl = (data as { returnUrl?: string })?.returnUrl || 'https://torq.cz';
 
     const stripe = getStripe();
     const customerId = await getOrCreateCustomer(uid, email);
