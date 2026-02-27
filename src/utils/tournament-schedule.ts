@@ -1,4 +1,5 @@
 import type { Team, Match, Standing, TournamentSettings } from '../types/tournament.types';
+import { generateId } from './id';
 
 
 // ─── Round-robin schedule generator ──────────────────────────────────────────
@@ -278,11 +279,6 @@ export function estimateTournamentDuration(
 /** Vrátí počet skutečných zápasů pro N týmů */
 export function countRealMatches(numberOfTeams: number): number {
   return (numberOfTeams * (numberOfTeams - 1)) / 2;
-}
-
-/** Jednoduchý UUID-like generátor bez závislostí */
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
 }
 
 export { generateId };

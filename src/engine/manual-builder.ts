@@ -4,12 +4,9 @@ import type { GeneratorInput, TrainingUnit } from '../types/training.types';
 import { CATEGORY_CONFIGS, SUB_CATEGORY_CONFIGS } from '../data/categories.data';
 import { SKILL_FOCUS_CONFIGS } from '../data/skill-focus.data';
 import { getPhaseLabel } from './phase-splitter';
+import { generateId } from '../utils/id';
 
 type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-}
 
 export function buildManualTraining(
   input: GeneratorInput,
