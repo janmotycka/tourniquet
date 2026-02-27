@@ -61,7 +61,7 @@ export function LoginPage() {
           fontSize: 44, boxShadow: '0 8px 32px rgba(0,0,0,.10)',
         }}>⚽</div>
         <div style={{ textAlign: 'center' }}>
-          <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)', lineHeight: 1.1 }}>Tourniquet</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)', lineHeight: 1.1 }}>TORQ</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 4 }}>
             {t('login.subtitle')}
           </p>
