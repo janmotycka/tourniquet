@@ -1,16 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Pozadí -->
-  <rect width="512" height="512" rx="96" fill="#1B5E20"/>
-
-  <!-- Fotbalový míč - stylizovaný -->
-  <circle cx="256" cy="230" r="120" fill="white" opacity="0.95"/>
-
-  <!-- Míč - hexagonální vzor -->
-  <polygon points="256,140 302,167 302,221 256,248 210,221 210,167" fill="#1B5E20"/>
-  <polygon points="256,248 302,221 348,248 348,302 302,329 256,302" fill="#1B5E20" opacity="0.7"/>
-  <polygon points="256,248 210,221 164,248 164,302 210,329 256,302" fill="#1B5E20" opacity="0.7"/>
-
-  <!-- Písmeno T stylizované pod míčem -->
-  <rect x="176" y="380" width="160" height="24" rx="12" fill="white"/>
-  <rect x="240" y="380" width="32" height="72" rx="12" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Fotbalový míč – čistý, čitelný i v 16×16 -->
+  <circle cx="32" cy="32" r="30" fill="#fff" stroke="#444" stroke-width="2.5"/>
+  <!-- Centrální pětiúhelník -->
+  <path d="M32 16 L42 24 L39 36 L25 36 L22 24 Z" fill="#1B5E20"/>
+  <!-- Švy ke krajům -->
+  <path d="M32 16 L32 3" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M42 24 L56 18" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M39 36 L52 46" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M25 36 L12 46" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M22 24 L8 18" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- Dolní švy -->
+  <path d="M32 62 L32 50" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M52 46 L60 42" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <path d="M12 46 L4 42" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
 </svg>
