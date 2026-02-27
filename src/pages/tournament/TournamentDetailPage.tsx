@@ -8,6 +8,7 @@ import { exportTournamentPdf } from '../../utils/tournament-pdf';
 import type { Tournament, Match, Team, Player, Goal } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
 import { logger } from '../../utils/logger';
+import { colorSwatch, textOnColor } from '../../utils/team-colors';
 
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
@@ -18,7 +19,7 @@ function TeamBadge({ team, size = 12 }: { team?: Team; size?: number }) {
   if (team?.logoBase64) {
     return <img src={team.logoBase64} alt={team.name} style={{ width: size, height: size, borderRadius: size / 3, objectFit: 'cover', flexShrink: 0 }} />;
   }
-  return <div style={{ width: size, height: size, borderRadius: size / 3, background: team?.color ?? '#ccc', flexShrink: 0 }} />;
+  return <div style={colorSwatch(team?.color ?? '#ccc', size)} />;
 }
 
 // ─── Roster modal ─────────────────────────────────────────────────────────────
@@ -258,8 +259,8 @@ function RosterModal({ tournament, teamId, onClose, readOnly = false, onAddPlaye
                   }}
                 >
                   <div style={{
-                    width: 28, height: 28, borderRadius: 7,
-                    background: team.color, color: '#fff',
+                    ...colorSwatch(team.color, 28), borderRadius: 7,
+                    color: textOnColor(team.color),
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontWeight: 800, fontSize: 12,
                   }}>{p.jerseyNumber}</div>
@@ -989,11 +990,11 @@ function InlineGoalPanel({ match, teams, teamId, onGoal, onClose }: {
             ? <img src={team.logoBase64} alt="" style={{ width: 20, height: 20, borderRadius: 4, objectFit: 'cover' }} />
             : null
           }
-          <span style={{ color: '#fff', fontWeight: 700, fontSize: 13 }}>
+          <span style={{ color: textOnColor(teamColor), fontWeight: 700, fontSize: 13 }}>
             ⚽ {team?.name ?? '?'}
           </span>
         </div>
-        <button onClick={onClose} style={{ color: 'rgba(255,255,255,.75)', fontSize: 18, fontWeight: 700, lineHeight: 1 }}>✕</button>
+        <button onClick={onClose} style={{ color: textOnColor(teamColor), opacity: 0.75, fontSize: 18, fontWeight: 700, lineHeight: 1 }}>✕</button>
       </div>
 
       {/* Hráči */}
@@ -1019,7 +1020,7 @@ function InlineGoalPanel({ match, teams, teamId, onGoal, onClose }: {
               onClick={() => { onGoal(match.id, teamId, p.id); onClose(); }}
               style={{
                 padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                background: teamColor, color: '#fff',
+                background: teamColor, color: textOnColor(teamColor),
                 display: 'flex', alignItems: 'center', gap: 5,
               }}
             >

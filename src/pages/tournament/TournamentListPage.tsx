@@ -6,6 +6,7 @@ import { FeatureGate } from '../../components/FeatureGate';
 import { useI18n } from '../../i18n';
 import type { Page } from '../../App';
 import type { Tournament } from '../../types/tournament.types';
+import { colorSwatch } from '../../utils/team-colors';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -72,7 +73,7 @@ function TournamentCard({ t, onClick, isJoined, statusLabels }: { t: Tournament;
                 {team?.logoBase64 ? (
                   <img src={team.logoBase64} alt={team.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
                 ) : (
-                  <div style={{ width: 14, height: 14, borderRadius: 3, background: team?.color ?? '#ccc' }} />
+                  <div style={colorSwatch(team?.color ?? '#ccc', 14)} />
                 )}
                 <span style={{ fontSize: 10, fontWeight: 700, textAlign: 'center', color: 'var(--text)', lineHeight: 1.2 }}>
                   {team?.name ?? '?'}
