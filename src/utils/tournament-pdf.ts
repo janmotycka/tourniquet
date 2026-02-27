@@ -244,7 +244,9 @@ export async function exportTournamentPdf(
   y += 6;
 
   const hasPitches = (settings.numberOfPitches ?? 1) > 1;
-  const getTeamName = (id: string) => tournament.teams.find(t => t.id === id)?.name ?? '?';
+  const getTeam = (id: string) => tournament.teams.find(t => t.id === id);
+  const getTeamName = (id: string) => getTeam(id)?.name ?? '?';
+  const getTeamColor = (id: string) => getTeam(id)?.color ?? '#999';
 
   // Table header
   doc.setFillColor(240, 240, 240);
@@ -254,15 +256,17 @@ export async function exportTournamentPdf(
 
   const colTime = M + 2;
   const colPitch = M + 17;
-  const colHome = hasPitches ? M + 28 : M + 20;
-  const colScore = M + W / 2 + 5;
-  const colAway = colScore + 15;
+  // Centered layout: home right-aligned ← score (center) → away left-aligned
+  const centerX = M + W / 2;       // 105 mm — center of usable area
+  const scoreGap = 8;              // mm between team name edge and center score
+  const colHomeR = centerX - scoreGap;  // right edge of home team name
+  const colAwayL = centerX + scoreGap;  // left edge of away team name
 
   doc.text(t('pdf.colTime'), colTime, y + 3);
   if (hasPitches) doc.text(t('pdf.colPitch'), colPitch, y + 3);
-  doc.text(t('pdf.colHome'), colHome, y + 3);
-  doc.text(t('pdf.colScore'), colScore, y + 3);
-  doc.text(t('pdf.colAway'), colAway, y + 3);
+  doc.text(t('pdf.colHome'), colHomeR, y + 3, { align: 'right' });
+  doc.text(t('pdf.colScore'), centerX, y + 3, { align: 'center' });
+  doc.text(t('pdf.colAway'), colAwayL, y + 3);
   doc.setTextColor(0, 0, 0);
   y += 6;
 
@@ -295,19 +299,26 @@ export async function exportTournamentPdf(
         doc.text(String(m.pitchNumber ?? 1), colPitch + 4, y);
       }
 
+      // Home team — right-aligned before score + color dot
       setFont('bold', 6.5);
-      doc.text(getTeamName(m.homeTeamId), colHome, y);
+      doc.text(getTeamName(m.homeTeamId), colHomeR, y, { align: 'right' });
+      doc.setFillColor(...hexToRgb(getTeamColor(m.homeTeamId)));
+      doc.circle(colHomeR + 2, y - 1, 1, 'F');
 
+      // Score — centered
       setFont('normal', 6.5);
       doc.setTextColor(120, 120, 120);
       const scoreStr = m.status === 'finished'
         ? `${m.homeScore} : ${m.awayScore}`
         : '— : —';
-      doc.text(scoreStr, colScore, y);
+      doc.text(scoreStr, centerX, y, { align: 'center' });
       doc.setTextColor(0, 0, 0);
 
+      // Away team — left-aligned after score + color dot
+      doc.setFillColor(...hexToRgb(getTeamColor(m.awayTeamId)));
+      doc.circle(colAwayL - 2, y - 1, 1, 'F');
       setFont('bold', 6.5);
-      doc.text(getTeamName(m.awayTeamId), colAway, y);
+      doc.text(getTeamName(m.awayTeamId), colAwayL, y);
 
       y += lineH;
     }
