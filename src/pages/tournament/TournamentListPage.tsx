@@ -30,7 +30,7 @@ function TournamentCard({ t, onClick, isJoined, statusLabels }: { t: Tournament;
 
   // Pódium pro ukončené turnaje
   const podium = t.status === 'finished'
-    ? computeStandings(t.matches, t.teams).slice(0, 3)
+    ? computeStandings(t.matches, t.teams, t.settings.tiebreakerOrder, t.settings.penaltyResults).slice(0, 3)
     : null;
 
   return (

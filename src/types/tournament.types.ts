@@ -67,6 +67,24 @@ export interface Standing {
   points: number;         // won*3 + drawn*1
 }
 
+// ─── Tiebreaker criteria ─────────────────────────────────────────────────────
+
+/** Identifikátor kritéria pro rozhodování remízy v tabulce */
+export type TiebreakerCriterion = 'h2h' | 'goalDifference' | 'goalsFor' | 'goalsAgainst' | 'penalties';
+
+/** Výchozí pořadí kritérií (body jsou vždy #1, abeceda vždy poslední — nejsou v poli) */
+export const DEFAULT_TIEBREAKER_ORDER: TiebreakerCriterion[] = [
+  'h2h', 'goalDifference', 'goalsFor', 'penalties',
+];
+
+/** Výsledek pokutových kopů mezi dvěma remízujícími týmy */
+export interface PenaltyResult {
+  teamAId: string;
+  teamBId: string;
+  teamAScore: number;  // proměněné penalty týmu A
+  teamBScore: number;  // proměněné penalty týmu B
+}
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export interface TournamentSettings {
@@ -76,6 +94,8 @@ export interface TournamentSettings {
   startDate: string;                   // "YYYY-MM-DD"
   rules?: string;                      // propozice / pravidla turnaje
   numberOfPitches?: number;            // 1–8, default 1; zápasy v kole probíhají paralelně
+  tiebreakerOrder?: TiebreakerCriterion[];  // pořadí kritérií; chybí = DEFAULT_TIEBREAKER_ORDER
+  penaltyResults?: PenaltyResult[];         // ruční výsledky pokutových kopů
 }
 
 // ─── Tournament ───────────────────────────────────────────────────────────────

@@ -5,7 +5,8 @@ import { verifyPin, markPinVerified, isPinVerified } from '../../utils/pin-hash'
 import { computeStandings, formatMatchTime, computeMatchElapsed, computeCurrentMinute } from '../../utils/tournament-schedule';
 import { getTournamentPublicUrl, getAdminInviteUrl, generateQRCodeDataUrl } from '../../utils/qr-code';
 import { exportTournamentPdf } from '../../utils/tournament-pdf';
-import type { Tournament, Match, Team, Player, Goal } from '../../types/tournament.types';
+import type { Tournament, Match, Team, Player, Goal, TiebreakerCriterion, PenaltyResult } from '../../types/tournament.types';
+import { DEFAULT_TIEBREAKER_ORDER } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
 import { logger } from '../../utils/logger';
 import { colorSwatch, textOnColor, isLightColor, isNearWhite } from '../../utils/team-colors';
@@ -332,10 +333,71 @@ function RosterModal({ tournament, teamId, onClose, readOnly = false, onAddPlaye
 }
 
 // ─── Standings table ──────────────────────────────────────────────────────────
-function StandingsTab({ tournament, onTeamClick }: { tournament: Tournament; onTeamClick?: (teamId: string) => void }) {
+function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament: Tournament; onTeamClick?: (teamId: string) => void; isOwner?: boolean }) {
   const { t } = useI18n();
-  const standings = computeStandings(tournament.matches, tournament.teams);
+  const updateTournament = useTournamentStore(s => s.updateTournament);
+  const [penaltyPair, setPenaltyPair] = useState<{ teamA: string; teamB: string } | null>(null);
+  const [penaltyA, setPenaltyA] = useState(0);
+  const [penaltyB, setPenaltyB] = useState(0);
+  const [penaltySaved, setPenaltySaved] = useState(false);
+
+  const standings = computeStandings(
+    tournament.matches,
+    tournament.teams,
+    tournament.settings.tiebreakerOrder,
+    tournament.settings.penaltyResults,
+  );
   const getTeam = (id: string) => tournament.teams.find(tm => tm.id === id);
+
+  // Detekce remízujících párů kde penalties je v tiebreaker order
+  const tbOrder = tournament.settings.tiebreakerOrder ?? DEFAULT_TIEBREAKER_ORDER;
+  const hasPenaltyCriterion = tbOrder.includes('penalties');
+  const tiedPairs: Array<{ teamA: string; teamB: string; resolved: boolean }> = [];
+  if (hasPenaltyCriterion) {
+    for (let i = 0; i < standings.length - 1; i++) {
+      const a = standings[i];
+      const b = standings[i + 1];
+      if (a.points === b.points && a.played > 0) {
+        const existing = (tournament.settings.penaltyResults ?? []).find(
+          pr => (pr.teamAId === a.teamId && pr.teamBId === b.teamId) ||
+                (pr.teamAId === b.teamId && pr.teamBId === a.teamId),
+        );
+        tiedPairs.push({ teamA: a.teamId, teamB: b.teamId, resolved: !!existing });
+      }
+    }
+  }
+
+  const openPenaltyModal = (teamA: string, teamB: string) => {
+    const existing = (tournament.settings.penaltyResults ?? []).find(
+      pr => (pr.teamAId === teamA && pr.teamBId === teamB) ||
+            (pr.teamAId === teamB && pr.teamBId === teamA),
+    );
+    setPenaltyA(existing ? (existing.teamAId === teamA ? existing.teamAScore : existing.teamBScore) : 0);
+    setPenaltyB(existing ? (existing.teamAId === teamB ? existing.teamAScore : existing.teamBScore) : 0);
+    setPenaltyPair({ teamA, teamB });
+    setPenaltySaved(false);
+  };
+
+  const handleSavePenalty = async () => {
+    if (!penaltyPair) return;
+    const currentResults = tournament.settings.penaltyResults ?? [];
+    // Odstranit existující záznam pro tento pár
+    const filtered = currentResults.filter(
+      pr => !((pr.teamAId === penaltyPair.teamA && pr.teamBId === penaltyPair.teamB) ||
+              (pr.teamAId === penaltyPair.teamB && pr.teamBId === penaltyPair.teamA)),
+    );
+    const newResult: PenaltyResult = {
+      teamAId: penaltyPair.teamA,
+      teamBId: penaltyPair.teamB,
+      teamAScore: penaltyA,
+      teamBScore: penaltyB,
+    };
+    await updateTournament(tournament.id, {
+      settings: { ...tournament.settings, penaltyResults: [...filtered, newResult] },
+    });
+    setPenaltySaved(true);
+    setTimeout(() => { setPenaltyPair(null); setPenaltySaved(false); }, 1200);
+  };
 
   // Zobrazit všechny týmy i když ještě nehrály
   const allTeamIds = tournament.teams.map(tm => tm.id);
@@ -393,6 +455,112 @@ function StandingsTab({ tournament, onTeamClick }: { tournament: Tournament; onT
       <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
         {t('tournament.detail.played')} · {t('tournament.detail.won')} · {t('tournament.detail.lost')} · {t('tournament.detail.goalsFor')} · {t('tournament.detail.points')}
       </div>
+
+      {/* Penalty resolution for tied teams */}
+      {isOwner && tiedPairs.length > 0 && (
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '12px 14px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>
+            ⚽ {t('tournament.tiebreaker.penaltyTitle')}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {tiedPairs.map(pair => {
+              const teamA = getTeam(pair.teamA);
+              const teamB = getTeam(pair.teamB);
+              return (
+                <button
+                  key={`${pair.teamA}-${pair.teamB}`}
+                  onClick={() => openPenaltyModal(pair.teamA, pair.teamB)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px',
+                    borderRadius: 10, background: 'var(--surface-var)', textAlign: 'left',
+                    border: pair.resolved ? '1.5px solid #2E7D32' : '1.5px solid #FF8F00',
+                  }}
+                >
+                  <TeamBadge team={teamA} size={14} />
+                  <span style={{ fontWeight: 600, fontSize: 13, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {teamA?.name} vs {teamB?.name}
+                  </span>
+                  <TeamBadge team={teamB} size={14} />
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                    background: pair.resolved ? '#E8F5E9' : '#FFF3E0',
+                    color: pair.resolved ? '#2E7D32' : '#E65100',
+                  }}>
+                    {pair.resolved ? '✅' : t('tournament.tiebreaker.resolvePenalty')}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Penalty modal */}
+      {penaltyPair && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 200,
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        }} onClick={() => setPenaltyPair(null)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: 'var(--surface)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 480,
+            padding: '0 0 32px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+              <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+            </div>
+            <div style={{ padding: '8px 20px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ fontWeight: 800, fontSize: 18 }}>⚽ {t('tournament.tiebreaker.penaltyTitle')}</h2>
+                <button onClick={() => setPenaltyPair(null)} style={{ background: 'var(--surface-var)', width: 32, height: 32, borderRadius: 16, fontSize: 16, color: 'var(--text-muted)' }}>✕</button>
+              </div>
+
+              {/* Tým A */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <TeamBadge team={getTeam(penaltyPair.teamA)} size={18} />
+                <span style={{ fontWeight: 700, fontSize: 16, flex: 1 }}>{getTeam(penaltyPair.teamA)?.name}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button onClick={() => setPenaltyA(v => Math.max(0, v - 1))} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 18 }}>−</button>
+                  <span style={{ fontWeight: 800, fontSize: 22, minWidth: 32, textAlign: 'center', color: 'var(--primary)' }}>{penaltyA}</span>
+                  <button onClick={() => setPenaltyA(v => v + 1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 18 }}>+</button>
+                </div>
+              </div>
+
+              {/* Tým B */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <TeamBadge team={getTeam(penaltyPair.teamB)} size={18} />
+                <span style={{ fontWeight: 700, fontSize: 16, flex: 1 }}>{getTeam(penaltyPair.teamB)?.name}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button onClick={() => setPenaltyB(v => Math.max(0, v - 1))} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 18 }}>−</button>
+                  <span style={{ fontWeight: 800, fontSize: 22, minWidth: 32, textAlign: 'center', color: 'var(--primary)' }}>{penaltyB}</span>
+                  <button onClick={() => setPenaltyB(v => v + 1)} style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 18 }}>+</button>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+                {t('tournament.tiebreaker.penaltyGoals')}
+              </div>
+
+              <button
+                onClick={handleSavePenalty}
+                disabled={penaltyA === penaltyB}
+                style={{
+                  background: penaltySaved ? '#2E7D32' : (penaltyA === penaltyB ? 'var(--surface-var)' : 'var(--primary)'),
+                  color: penaltyA === penaltyB ? 'var(--text-muted)' : '#fff',
+                  fontWeight: 700, fontSize: 15, padding: '14px', borderRadius: 12,
+                  transition: 'background .2s', opacity: penaltyA === penaltyB ? 0.5 : 1,
+                }}
+              >
+                {penaltySaved ? `✅ ${t('tournament.tiebreaker.penaltySaved')}` : `💾 ${t('tournament.tiebreaker.resolvePenalty')}`}
+              </button>
+              {penaltyA === penaltyB && (
+                <div style={{ fontSize: 12, color: '#E65100', textAlign: 'center', marginTop: -8 }}>
+                  Penalty musí mít vítěze — skóre nemůže být stejné
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1565,6 +1733,14 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
   const [regenPitches, setRegenPitches] = useState(tournament.settings.numberOfPitches ?? 1);
   const [regenSaved, setRegenSaved] = useState(false);
 
+  // Tiebreaker criteria drag & drop
+  const [tbOrder, setTbOrder] = useState<TiebreakerCriterion[]>(
+    tournament.settings.tiebreakerOrder ?? DEFAULT_TIEBREAKER_ORDER,
+  );
+  const [tbDragIdx, setTbDragIdx] = useState<number | null>(null);
+  const [tbDragOverIdx, setTbDragOverIdx] = useState<number | null>(null);
+  const [tbSaved, setTbSaved] = useState(false);
+
   const deleteTournament = useTournamentStore(s => s.deleteTournament);
   const updateTournament = useTournamentStore(s => s.updateTournament);
   const regenerateSchedule = useTournamentStore(s => s.regenerateSchedule);
@@ -1797,40 +1973,109 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
       </div>
       )}
 
-      {/* Pravidla pro umístění v tabulce */}
+      {/* Kritéria pro umístění v tabulce — drag & drop */}
       <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>🏅 Kritéria pro umístění v tabulce</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>
-          V případě shody bodů rozhodují tato kritéria postupně:
+        <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>🏅 {t('tournament.tiebreaker.title')}</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+          {isOwner ? t('tournament.tiebreaker.desc') : 'V případě shody bodů rozhodují tato kritéria postupně:'}
         </p>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {[
-            { n: '1', label: 'Počet bodů', desc: 'výhra = 3 body, remíza = 1 bod, prohra = 0 bodů' },
-            { n: '2', label: 'Vzájemný zápas', desc: 'výsledek při shodě bodů' },
-            { n: '3', label: 'Gólový rozdíl', desc: 'vstřelené góly minus obdržené góly' },
-            { n: '4', label: 'Vstřelené góly', desc: 'celkový počet gólů ve prospěch týmu' },
-            { n: '5', label: 'Abeceda', desc: 'název týmu dle českého abecedního pořadí' },
-          ].map(item => (
-            <div key={item.n} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{
-                width: 22, height: 22, borderRadius: 11, background: 'var(--primary-light)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 800, color: 'var(--primary)', flexShrink: 0, marginTop: 1,
-              }}>{item.n}</div>
-              <div>
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{item.label}</span>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 6 }}>— {item.desc}</span>
-              </div>
+          {/* Fixní #1 — Body */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', background: 'var(--surface-var)', borderRadius: 10, opacity: 0.6 }}>
+            <div style={{
+              width: 22, height: 22, borderRadius: 11, background: 'var(--primary-light)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 800, color: 'var(--primary)', flexShrink: 0,
+            }}>1</div>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{t('tournament.tiebreaker.points')}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 6 }}>— {t('tournament.tiebreaker.pointsDesc')}</span>
             </div>
-          ))}
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>🔒</span>
+          </div>
+
+          {/* Draggable criteria */}
+          {tbOrder.map((criterion, idx) => {
+            const isDragging = tbDragIdx === idx;
+            const isDragOver = tbDragOverIdx === idx && tbDragIdx !== idx;
+            return (
+              <div
+                key={criterion}
+                draggable={isOwner}
+                onDragStart={() => { setTbDragIdx(idx); }}
+                onDragOver={(e) => { e.preventDefault(); setTbDragOverIdx(idx); }}
+                onDrop={() => {
+                  if (tbDragIdx === null || tbDragIdx === idx) { setTbDragIdx(null); setTbDragOverIdx(null); return; }
+                  setTbOrder(prev => {
+                    const next = [...prev];
+                    const [moved] = next.splice(tbDragIdx, 1);
+                    next.splice(idx, 0, moved);
+                    return next;
+                  });
+                  setTbDragIdx(null);
+                  setTbDragOverIdx(null);
+                  setTbSaved(false);
+                }}
+                onDragEnd={() => { setTbDragIdx(null); setTbDragOverIdx(null); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '7px 8px', background: 'var(--surface-var)', borderRadius: 10,
+                  opacity: isDragging ? 0.4 : 1,
+                  borderTop: isDragOver ? '2.5px solid var(--primary)' : '2.5px solid transparent',
+                  transition: 'opacity .15s, border-color .15s',
+                  cursor: isOwner ? 'grab' : 'default',
+                }}
+              >
+                <div style={{
+                  width: 22, height: 22, borderRadius: 11, background: 'var(--primary-light)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 800, color: 'var(--primary)', flexShrink: 0,
+                }}>{idx + 2}</div>
+                {isOwner && <span style={{ cursor: 'grab', fontSize: 14, color: 'var(--text-muted)', flexShrink: 0, userSelect: 'none' }}>⠿</span>}
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{t(`tournament.tiebreaker.${criterion}`)}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 6 }}>— {t(`tournament.tiebreaker.${criterion}Desc`)}</span>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Fixní poslední — Abeceda */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px', background: 'var(--surface-var)', borderRadius: 10, opacity: 0.6 }}>
+            <div style={{
+              width: 22, height: 22, borderRadius: 11, background: 'var(--primary-light)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 800, color: 'var(--primary)', flexShrink: 0,
+            }}>{tbOrder.length + 2}</div>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{t('tournament.tiebreaker.alphabet')}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 6 }}>— {t('tournament.tiebreaker.alphabetDesc')}</span>
+            </div>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>🔒</span>
+          </div>
         </div>
-        <div style={{
-          marginTop: 12, padding: '8px 12px', background: 'var(--surface-var)', borderRadius: 10,
-          fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5,
-          borderLeft: '3px solid var(--primary)',
-        }}>
-          💡 <strong>Tip:</strong> Tato pravidla jsou automatická. Pokud chcete použít jiná kritéria (např. vzájemné zápasy), popište je v propozicích a rozhodněte manuálně.
-        </div>
+
+        {/* Tlačítko Uložit (jen owner) */}
+        {isOwner && (
+          <button
+            onClick={async () => {
+              await updateTournament(tournament.id, {
+                settings: { ...tournament.settings, tiebreakerOrder: tbOrder },
+              });
+              setTbSaved(true);
+              setTimeout(() => setTbSaved(false), 2000);
+            }}
+            style={{
+              marginTop: 12, width: '100%',
+              background: tbSaved ? '#2E7D32' : 'var(--primary)', color: '#fff',
+              fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 10,
+              transition: 'background .2s',
+            }}
+          >
+            {tbSaved ? `✅ ${t('tournament.tiebreaker.saved')}` : `💾 ${t('tournament.tiebreaker.title')}`}
+          </button>
+        )}
       </div>
 
       {/* Informace */}
@@ -2116,7 +2361,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {tab === 'standings' && <StandingsTab tournament={tournament} onTeamClick={setRosterTeamId} />}
+        {tab === 'standings' && <StandingsTab tournament={tournament} onTeamClick={setRosterTeamId} isOwner={isOwner} />}
         {tab === 'matches' && (
           <MatchesTab
             tournament={tournament}

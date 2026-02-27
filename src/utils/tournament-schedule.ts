@@ -1,4 +1,5 @@
-import type { Team, Match, Standing, TournamentSettings } from '../types/tournament.types';
+import type { Team, Match, Standing, TournamentSettings, TiebreakerCriterion, PenaltyResult } from '../types/tournament.types';
+import { DEFAULT_TIEBREAKER_ORDER } from '../types/tournament.types';
 import { generateId } from './id';
 
 
@@ -108,30 +109,28 @@ export function parseStartDateTime(settings: TournamentSettings): Date {
 /**
  * Vypočítá tabulku z finished zápasů.
  * Čistá funkce — nikdy neukládáme standings přímo.
- * Řazení: body DESC → vzájemný zápas → gólový rozdíl DESC → vstřelené góly DESC → název ASC
+ * Řazení: body (vždy #1) → konfigurovatelná kritéria → abeceda (fallback).
  */
-export function computeStandings(matches: Match[], teams: Team[]): Standing[] {
+export function computeStandings(
+  matches: Match[],
+  teams: Team[],
+  tiebreakerOrder?: TiebreakerCriterion[],
+  penaltyResults?: PenaltyResult[],
+): Standing[] {
   const map = new Map<string, Standing>();
 
   // Inicializace pro všechny týmy
   for (const team of teams) {
     map.set(team.id, {
       teamId: team.id,
-      played: 0,
-      won: 0,
-      drawn: 0,
-      lost: 0,
-      goalsFor: 0,
-      goalsAgainst: 0,
-      goalDifference: 0,
-      points: 0,
+      played: 0, won: 0, drawn: 0, lost: 0,
+      goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0,
     });
   }
 
   // Zpracování dokončených zápasů
   for (const match of matches) {
     if (match.status !== 'finished') continue;
-
     const home = map.get(match.homeTeamId);
     const away = map.get(match.awayTeamId);
     if (!home || !away) continue;
@@ -144,18 +143,11 @@ export function computeStandings(matches: Match[], teams: Team[]): Standing[] {
     away.goalsAgainst += match.homeScore;
 
     if (match.homeScore > match.awayScore) {
-      home.won++;
-      home.points += 3;
-      away.lost++;
+      home.won++; home.points += 3; away.lost++;
     } else if (match.homeScore < match.awayScore) {
-      away.won++;
-      away.points += 3;
-      home.lost++;
+      away.won++; away.points += 3; home.lost++;
     } else {
-      home.drawn++;
-      home.points += 1;
-      away.drawn++;
-      away.points += 1;
+      home.drawn++; home.points += 1; away.drawn++; away.points += 1;
     }
 
     home.goalDifference = home.goalsFor - home.goalsAgainst;
@@ -163,42 +155,77 @@ export function computeStandings(matches: Match[], teams: Team[]): Standing[] {
   }
 
   const standings = Array.from(map.values());
+  const order = tiebreakerOrder ?? DEFAULT_TIEBREAKER_ORDER;
+  const penalties = penaltyResults ?? [];
 
-  /**
-   * Vrátí body získané týmem A ve vzájemném zápase (nebo zápasech) proti týmu B.
-   * Používá se jako kritérium při shodě celkových bodů.
-   */
-  const headToHeadPoints = (teamAId: string, teamBId: string): number => {
-    let pts = 0;
-    for (const m of matches) {
-      if (m.status !== 'finished') continue;
-      if (m.homeTeamId === teamAId && m.awayTeamId === teamBId) {
-        if (m.homeScore > m.awayScore) pts += 3;
-        else if (m.homeScore === m.awayScore) pts += 1;
-      } else if (m.homeTeamId === teamBId && m.awayTeamId === teamAId) {
-        if (m.awayScore > m.homeScore) pts += 3;
-        else if (m.awayScore === m.homeScore) pts += 1;
-      }
-    }
-    return pts;
-  };
-
-  // Řazení: body → vzájemný zápas → gólový rozdíl → vstřelené góly → abeceda
+  // Řazení: body (fixní #1) → konfigurovatelná kritéria → abeceda (fallback)
   standings.sort((a, b) => {
+    // Body jsou vždy první
     if (b.points !== a.points) return b.points - a.points;
-    // Vzájemný zápas (jen při shodě bodů mezi dvěma týmy)
-    const h2hA = headToHeadPoints(a.teamId, b.teamId);
-    const h2hB = headToHeadPoints(b.teamId, a.teamId);
-    if (h2hB !== h2hA) return h2hB - h2hA;
-    if (b.goalDifference !== a.goalDifference) return b.goalDifference - a.goalDifference;
-    if (b.goalsFor !== a.goalsFor) return b.goalsFor - a.goalsFor;
-    // Jméno týmu - abecedně
+
+    // Projít konfigurovaná kritéria
+    for (const criterion of order) {
+      const diff = compareByCriterion(criterion, a, b, matches, penalties);
+      if (diff !== 0) return diff;
+    }
+
+    // Fallback: abecedně
     const nameA = teams.find(t => t.id === a.teamId)?.name ?? '';
     const nameB = teams.find(t => t.id === b.teamId)?.name ?? '';
     return nameA.localeCompare(nameB, 'cs');
   });
 
   return standings;
+}
+
+/** Porovná dva týmy podle jednoho kritéria. Vrátí záporné číslo pokud A je lepší. */
+function compareByCriterion(
+  criterion: TiebreakerCriterion,
+  a: Standing, b: Standing,
+  matches: Match[],
+  penaltyResults: PenaltyResult[],
+): number {
+  switch (criterion) {
+    case 'h2h': {
+      const h2hA = headToHeadPoints(a.teamId, b.teamId, matches);
+      const h2hB = headToHeadPoints(b.teamId, a.teamId, matches);
+      return h2hB - h2hA;
+    }
+    case 'goalDifference':
+      return b.goalDifference - a.goalDifference;
+    case 'goalsFor':
+      return b.goalsFor - a.goalsFor;
+    case 'goalsAgainst':
+      return a.goalsAgainst - b.goalsAgainst; // méně obdržených = lepší
+    case 'penalties': {
+      const pr = penaltyResults.find(
+        p => (p.teamAId === a.teamId && p.teamBId === b.teamId) ||
+             (p.teamAId === b.teamId && p.teamBId === a.teamId),
+      );
+      if (!pr) return 0; // ještě nezadáno
+      const aScore = pr.teamAId === a.teamId ? pr.teamAScore : pr.teamBScore;
+      const bScore = pr.teamAId === b.teamId ? pr.teamAScore : pr.teamBScore;
+      return bScore - aScore;
+    }
+    default:
+      return 0;
+  }
+}
+
+/** Body získané týmem A ve vzájemném zápase(zápasech) proti týmu B. */
+function headToHeadPoints(teamAId: string, teamBId: string, matches: Match[]): number {
+  let pts = 0;
+  for (const m of matches) {
+    if (m.status !== 'finished') continue;
+    if (m.homeTeamId === teamAId && m.awayTeamId === teamBId) {
+      if (m.homeScore > m.awayScore) pts += 3;
+      else if (m.homeScore === m.awayScore) pts += 1;
+    } else if (m.homeTeamId === teamBId && m.awayTeamId === teamAId) {
+      if (m.awayScore > m.homeScore) pts += 3;
+      else if (m.awayScore === m.homeScore) pts += 1;
+    }
+  }
+  return pts;
 }
 
 // ─── Live match timer helpers ─────────────────────────────────────────────────
