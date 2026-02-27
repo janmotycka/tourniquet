@@ -17,6 +17,18 @@ export function isLightColor(hex: string): boolean {
   return (r * 299 + g * 587 + b * 114) / 1000 > 180;
 }
 
+/**
+ * Je barva příliš blízko bílé, aby byla viditelná na světlém pozadí?
+ * Používá se pro neaktivní stav tlačítek — žlutá projde, bílá ne.
+ */
+export function isNearWhite(hex: string): boolean {
+  const c = hex.replace('#', '');
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000 > 240;
+}
+
 /** Vrátí styl pro barevný čtverec/kolečko s inset okrajem pro světlé barvy */
 export function colorSwatch(c: string, size = 28): CSSProperties {
   return {
