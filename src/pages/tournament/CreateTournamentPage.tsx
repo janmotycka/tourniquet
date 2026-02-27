@@ -8,13 +8,9 @@ import { countRealMatches, estimateTournamentDuration, formatMatchTime, parseSta
 import type { TournamentSettings } from '../../types/tournament.types';
 import type { Club } from '../../types/club.types';
 
-interface Props { navigate: (p: Page) => void; }
+import { TEAM_COLORS, colorSwatch, textOnColor } from '../../utils/team-colors';
 
-// ─── Předdefinované barvy týmů ────────────────────────────────────────────────
-const TEAM_COLORS = [
-  '#E53935', '#1E88E5', '#43A047', '#FB8C00',
-  '#8E24AA', '#F4511E', '#00ACC1', '#6D4C41',
-];
+interface Props { navigate: (p: Page) => void; }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function today(): string {
@@ -195,7 +191,7 @@ function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: ClubPickerM
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {TEAM_COLORS.map(c => (
                   <button key={c} onClick={() => setNewClubColor(c)} style={{
-                    width: 28, height: 28, borderRadius: 8, background: c, flexShrink: 0,
+                    ...colorSwatch(c, 28),
                     border: newClubColor === c ? '3px solid var(--text)' : '3px solid transparent',
                   }} />
                 ))}
@@ -421,6 +417,7 @@ export function CreateTournamentPage({ navigate }: Props) {
 
   const resetMatchOrder = () => {
     setMatchOrder(generateDefaultMatchOrder(teams.length));
+    setScheduleValidated(false);
   };
 
   const moveMatchUp = (idx: number) => {
@@ -430,6 +427,7 @@ export function CreateTournamentPage({ navigate }: Props) {
       [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
       return next;
     });
+    setScheduleValidated(false);
   };
 
   const moveMatchDown = (idx: number) => {
@@ -439,6 +437,62 @@ export function CreateTournamentPage({ navigate }: Props) {
       [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
       return next;
     });
+    setScheduleValidated(false);
+  };
+
+  // ── Drag & Drop ──────────────────────────────────────────────────────────
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+
+  const handleDragStart = (idx: number) => {
+    setDragIdx(idx);
+  };
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    setDragOverIdx(idx);
+  };
+  const handleDrop = (idx: number) => {
+    if (dragIdx === null || dragIdx === idx) { setDragIdx(null); setDragOverIdx(null); return; }
+    setMatchOrder(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(dragIdx, 1);
+      next.splice(idx, 0, moved);
+      return next;
+    });
+    setDragIdx(null);
+    setDragOverIdx(null);
+    setScheduleValidated(false);
+  };
+  const handleDragEnd = () => { setDragIdx(null); setDragOverIdx(null); };
+
+  // ── Validace pořadí — kontrola odpočinku týmů ───────────────────────────
+  const [scheduleWarnings, setScheduleWarnings] = useState<string[]>([]);
+  const [scheduleValidated, setScheduleValidated] = useState(false);
+
+  const validateSchedule = () => {
+    const warnings: string[] = [];
+    // Pro každý tým najdi indexy jeho zápasů
+    const teamMatchIndices: Record<number, number[]> = {};
+    matchOrder.forEach((m, idx) => {
+      [m.homeTeamIndex, m.awayTeamIndex].forEach(ti => {
+        if (ti < 0) return; // skip BYE
+        if (!teamMatchIndices[ti]) teamMatchIndices[ti] = [];
+        teamMatchIndices[ti].push(idx);
+      });
+    });
+    // Zkontroluj mezery
+    for (const [ti, indices] of Object.entries(teamMatchIndices)) {
+      const teamIdx = Number(ti);
+      const teamName = teams[teamIdx]?.name ?? `Tým ${teamIdx + 1}`;
+      for (let i = 1; i < indices.length; i++) {
+        const gap = indices[i] - indices[i - 1];
+        if (gap === 1) {
+          warnings.push(`⚠️ ${teamName} hraje dva zápasy za sebou (${indices[i - 1] + 1}. a ${indices[i] + 1}. zápas)`);
+        }
+      }
+    }
+    setScheduleWarnings(warnings);
+    setScheduleValidated(true);
   };
 
   const computeDisplayTime = (index: number): string => {
@@ -589,7 +643,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                   {team.logoBase64 ? (
                     <img src={team.logoBase64} alt={team.name} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
                   ) : (
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: team.color, flexShrink: 0 }} />
+                    <div style={colorSwatch(team.color, 32)} />
                   )}
                   <input
                     value={team.name}
@@ -626,7 +680,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                       {TEAM_COLORS.map(c => (
                         <button key={c} onClick={() => updateTeam(tIdx, { color: c })} style={{
-                          width: 28, height: 28, borderRadius: 8, background: c, flexShrink: 0,
+                          ...colorSwatch(c, 28),
                           border: team.color === c ? '3px solid var(--text)' : '3px solid transparent',
                         }} />
                       ))}
@@ -663,9 +717,9 @@ export function CreateTournamentPage({ navigate }: Props) {
                     {team.players.map((p, pIdx) => (
                       <div key={pIdx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--surface-var)', borderRadius: 8 }}>
                         <span style={{
-                          width: 28, height: 28, borderRadius: 8, background: team.color,
-                          color: '#fff', fontWeight: 700, fontSize: 12,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                          ...colorSwatch(team.color, 28),
+                          color: textOnColor(team.color), fontWeight: 700, fontSize: 12,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>{p.jerseyNumber}</span>
                         <span style={{ flex: 1, fontSize: 14 }}>{p.name}</span>
                         <button onClick={() => removePlayer(tIdx, pIdx)} style={{
@@ -782,6 +836,40 @@ export function CreateTournamentPage({ navigate }: Props) {
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
                 {t('tournament.create.reorderHint')}
               </p>
+
+              {/* Tlačítko validace pořadí */}
+              <button
+                onClick={validateSchedule}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  background: 'var(--surface)', border: '1.5px solid var(--border)',
+                  borderRadius: 10, padding: '9px 14px', fontWeight: 600, fontSize: 13,
+                  color: 'var(--text)', cursor: 'pointer',
+                }}
+              >
+                🔍 {t('tournament.create.validateOrder')}
+              </button>
+
+              {/* Varování z validace */}
+              {scheduleValidated && scheduleWarnings.length > 0 && (
+                <div style={{
+                  background: '#FFF3E0', borderRadius: 10, padding: '10px 14px',
+                  display: 'flex', flexDirection: 'column', gap: 4,
+                }}>
+                  {scheduleWarnings.map((w, i) => (
+                    <div key={i} style={{ fontSize: 12, color: '#E65100', lineHeight: 1.4 }}>{w}</div>
+                  ))}
+                </div>
+              )}
+              {scheduleValidated && scheduleWarnings.length === 0 && (
+                <div style={{
+                  background: '#E8F5E9', borderRadius: 10, padding: '10px 14px',
+                  fontSize: 12, color: '#2E7D32', lineHeight: 1.4,
+                }}>
+                  {t('tournament.create.scheduleOk')}
+                </div>
+              )}
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {matchOrder.map((match, idx) => {
                   const homeTeam = teams[match.homeTeamIndex];
@@ -790,12 +878,30 @@ export function CreateTournamentPage({ navigate }: Props) {
                   const pitch = (idx % numberOfPitches) + 1;
                   const isFirst = idx === 0;
                   const isLast = idx === matchOrder.length - 1;
+                  const isDragging = dragIdx === idx;
+                  const isDragOver = dragOverIdx === idx && dragIdx !== idx;
 
                   return (
-                    <div key={`${match.homeTeamIndex}-${match.awayTeamIndex}-${match.roundIndex}`} style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '7px 8px', background: 'var(--surface-var)', borderRadius: 10,
-                    }}>
+                    <div
+                      key={`${match.homeTeamIndex}-${match.awayTeamIndex}-${match.roundIndex}`}
+                      draggable
+                      onDragStart={() => handleDragStart(idx)}
+                      onDragOver={(e) => handleDragOver(e, idx)}
+                      onDrop={() => handleDrop(idx)}
+                      onDragEnd={handleDragEnd}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '7px 8px', background: 'var(--surface-var)', borderRadius: 10,
+                        opacity: isDragging ? 0.4 : 1,
+                        borderTop: isDragOver ? '2.5px solid var(--primary)' : '2.5px solid transparent',
+                        transition: 'opacity .15s, border-color .15s',
+                        cursor: 'grab',
+                      }}
+                    >
+                      {/* Drag handle */}
+                      <span style={{ fontSize: 14, color: 'var(--text-muted)', flexShrink: 0, cursor: 'grab', userSelect: 'none', lineHeight: 1 }}>
+                        ⠿
+                      </span>
                       {/* Pořadové číslo */}
                       <span style={{ width: 22, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', fontWeight: 700, flexShrink: 0 }}>
                         {idx + 1}.
@@ -810,13 +916,13 @@ export function CreateTournamentPage({ navigate }: Props) {
                         </span>
                       )}
                       {/* Domácí barva */}
-                      <div style={{ width: 10, height: 10, borderRadius: 3, background: homeTeam?.color ?? '#ccc', flexShrink: 0 }} />
+                      <div style={colorSwatch(homeTeam?.color ?? '#ccc', 10)} />
                       {/* Názvy týmů */}
                       <span style={{ flex: 1, fontSize: 12, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {homeTeam?.name ?? '?'} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>vs</span> {awayTeam?.name ?? '?'}
                       </span>
                       {/* Hosté barva */}
-                      <div style={{ width: 10, height: 10, borderRadius: 3, background: awayTeam?.color ?? '#ccc', flexShrink: 0 }} />
+                      <div style={colorSwatch(awayTeam?.color ?? '#ccc', 10)} />
                       {/* Tlačítka ▲ ▼ */}
                       <button
                         onClick={() => moveMatchUp(idx)}

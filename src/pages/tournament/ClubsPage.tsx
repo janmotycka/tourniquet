@@ -3,14 +3,9 @@ import type { Page } from '../../App';
 import { useClubsStore } from '../../store/clubs.store';
 import type { Club } from '../../types/club.types';
 import { useI18n } from '../../i18n';
+import { TEAM_COLORS, colorSwatch } from '../../utils/team-colors';
 
 interface Props { navigate: (p: Page) => void; }
-
-const TEAM_COLORS = [
-  '#E53935', '#1E88E5', '#43A047', '#FB8C00',
-  '#8E24AA', '#F4511E', '#00ACC1', '#6D4C41',
-  '#F06292', '#26A69A', '#7E57C2', '#78909C',
-];
 
 // ─── Logo resize helper ────────────────────────────────────────────────────────
 async function resizeLogoToBase64(file: File): Promise<string> {
@@ -169,7 +164,7 @@ function ClubForm({
                   key={c}
                   onClick={() => setColor(c)}
                   style={{
-                    width: 36, height: 36, borderRadius: 10, background: c,
+                    ...colorSwatch(c, 36), borderRadius: 10,
                     border: color === c ? '3px solid var(--text)' : '3px solid transparent',
                     outline: color === c ? '2px solid #fff' : 'none',
                     outlineOffset: -4,
@@ -229,7 +224,7 @@ function ClubCard({ club, onEdit, onDelete }: { club: Club; onEdit: () => void; 
           {club.name}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-          <div style={{ width: 10, height: 10, borderRadius: 3, background: club.color, flexShrink: 0 }} />
+          <div style={colorSwatch(club.color, 10)} />
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{club.color}</span>
         </div>
       </div>
