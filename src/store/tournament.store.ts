@@ -19,6 +19,7 @@ import {
 } from '../services/user.firebase';
 import { verifyPin } from '../utils/pin-hash';
 import { useToastStore } from './toast.store';
+import { auth } from '../firebase';
 
 // ─── State interface ──────────────────────────────────────────────────────────
 
@@ -169,14 +170,38 @@ export const useTournamentStore = create<TournamentState>()(
         try {
           logger.debug('[Firebase] Loading data for uid:', uid);
 
-          // 1) Načti vlastní turnaje (nesmí selhat)
+          // Zajisti, že auth token je připravený pro DB operace
+          if (auth.currentUser) {
+            try {
+              await auth.currentUser.getIdToken(true);
+              logger.debug('[Firebase] Auth token refreshed');
+            } catch (tokenErr) {
+              logger.warn('[Firebase] Token refresh failed:', tokenErr);
+            }
+          }
+
+          // 1) Načti vlastní turnaje s retry logikou (3 pokusy)
           let tournaments: Tournament[] = [];
-          try {
-            tournaments = await loadTournamentsFromFirebase(uid);
-            logger.debug('[Firebase] Loaded', tournaments.length, 'own tournaments');
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            logger.error('[Firebase] Failed to load own tournaments:', msg);
+          let ownLoadFailed = false;
+          let ownLoadError = '';
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+              tournaments = await loadTournamentsFromFirebase(uid);
+              logger.debug('[Firebase] Loaded', tournaments.length, 'own tournaments (attempt', attempt + ')');
+              ownLoadError = '';
+              break;
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              ownLoadError = msg;
+              logger.error('[Firebase] Failed to load own tournaments (attempt', attempt + '):', msg);
+              if (attempt === 3) {
+                ownLoadFailed = true;
+                useToastStore.getState().show('error', `Nepodařilo se načíst turnaje: ${msg.slice(0, 120)}`, 8000);
+              } else {
+                // Před retry počkej — auth token se možná ještě nastavuje
+                await new Promise(r => setTimeout(r, attempt * 1000));
+              }
+            }
           }
 
           // 2) Načti sdílené turnaje (může selhat — nezablokuje vlastní)
@@ -197,7 +222,7 @@ export const useTournamentStore = create<TournamentState>()(
             tournaments: tournaments.length > 0 ? tournaments : get().tournaments,
             joinedTournaments,
             firebaseUid: uid,
-            syncError: null,
+            syncError: ownLoadFailed ? `Nepodařilo se načíst turnaje: ${ownLoadError}` : null,
           });
 
           // Subscribe na real-time updates pro sdílené turnaje
