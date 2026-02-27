@@ -105,7 +105,7 @@ export async function exportTournamentPdf(
   if (sortedMatches.length > 0) {
     const last = sortedMatches[sortedMatches.length - 1];
     const end = new Date(new Date(last.scheduledTime).getTime() + last.durationMinutes * 60000);
-    endTimeStr = end.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' });
+    endTimeStr = end.toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -248,25 +248,33 @@ export async function exportTournamentPdf(
   const getTeamName = (id: string) => getTeam(id)?.name ?? '?';
   const getTeamColor = (id: string) => getTeam(id)?.color ?? '#999';
 
+  // Measure longest team name for dynamic column positions
+  setFont('bold', 6.5);
+  let maxTeamW = 0;
+  for (const team of tournament.teams) {
+    maxTeamW = Math.max(maxTeamW, doc.getTextWidth(team.name));
+  }
+  maxTeamW = Math.min(maxTeamW, 60); // cap at 60mm for very long names
+
+  // Compact left-to-right layout: Time [Pitch] Home ● score ● Away
+  const colTime = M + 2;
+  const colPitch = M + 15;
+  const colHome = hasPitches ? colPitch + 10 : colTime + 14;    // home team left edge
+  const dotR = 3;                                                 // space for color dot
+  const colScoreX = colHome + maxTeamW + dotR + 5;               // score center
+  const colAway = colScoreX + 5 + dotR;                          // away team left edge
+
   // Table header
   doc.setFillColor(240, 240, 240);
   doc.rect(M, y - 1, W, 5, 'F');
   setFont('bold', 6.5);
   doc.setTextColor(80, 80, 80);
 
-  const colTime = M + 2;
-  const colPitch = M + 17;
-  // Centered layout: home right-aligned ← score (center) → away left-aligned
-  const centerX = M + W / 2;       // 105 mm — center of usable area
-  const scoreGap = 8;              // mm between team name edge and center score
-  const colHomeR = centerX - scoreGap;  // right edge of home team name
-  const colAwayL = centerX + scoreGap;  // left edge of away team name
-
   doc.text(t('pdf.colTime'), colTime, y + 3);
   if (hasPitches) doc.text(t('pdf.colPitch'), colPitch, y + 3);
-  doc.text(t('pdf.colHome'), colHomeR, y + 3, { align: 'right' });
-  doc.text(t('pdf.colScore'), centerX, y + 3, { align: 'center' });
-  doc.text(t('pdf.colAway'), colAwayL, y + 3);
+  doc.text(t('pdf.colHome'), colHome, y + 3);
+  doc.text(t('pdf.colScore'), colScoreX, y + 3, { align: 'center' });
+  doc.text(t('pdf.colAway'), colAway, y + 3);
   doc.setTextColor(0, 0, 0);
   y += 6;
 
@@ -299,11 +307,11 @@ export async function exportTournamentPdf(
         doc.text(String(m.pitchNumber ?? 1), colPitch + 4, y);
       }
 
-      // Home team — right-aligned before score + color dot
+      // Home team — left-aligned + color dot
       setFont('bold', 6.5);
-      doc.text(getTeamName(m.homeTeamId), colHomeR, y, { align: 'right' });
+      doc.text(getTeamName(m.homeTeamId), colHome, y);
       doc.setFillColor(...hexToRgb(getTeamColor(m.homeTeamId)));
-      doc.circle(colHomeR + 2, y - 1, 1, 'F');
+      doc.circle(colScoreX - dotR - 2, y - 1, 1, 'F');
 
       // Score — centered
       setFont('normal', 6.5);
@@ -311,14 +319,14 @@ export async function exportTournamentPdf(
       const scoreStr = m.status === 'finished'
         ? `${m.homeScore} : ${m.awayScore}`
         : '— : —';
-      doc.text(scoreStr, centerX, y, { align: 'center' });
+      doc.text(scoreStr, colScoreX, y, { align: 'center' });
       doc.setTextColor(0, 0, 0);
 
-      // Away team — left-aligned after score + color dot
+      // Away team — left-aligned + color dot
       doc.setFillColor(...hexToRgb(getTeamColor(m.awayTeamId)));
-      doc.circle(colAwayL - 2, y - 1, 1, 'F');
+      doc.circle(colAway - dotR + 0.5, y - 1, 1, 'F');
       setFont('bold', 6.5);
-      doc.text(getTeamName(m.awayTeamId), colAwayL, y);
+      doc.text(getTeamName(m.awayTeamId), colAway, y);
 
       y += lineH;
     }

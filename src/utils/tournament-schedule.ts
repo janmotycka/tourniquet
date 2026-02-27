@@ -248,10 +248,10 @@ export function formatElapsedTime(elapsedSeconds: number, durationMinutes: numbe
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Formátuje ISO timestamp na "HH:MM" */
+/** Formátuje ISO timestamp na "HH:MM" (vždy 24h formát) */
 export function formatMatchTime(isoString: string): string {
   const d = new Date(isoString);
-  return d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 /** Formátuje ISO datum na "Pá 5. dubna 2025" */
