@@ -1875,7 +1875,7 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
 }
 
 // ─── PIN gate ─────────────────────────────────────────────────────────────────
-function PinGate({ tournament, onVerified }: { tournament: Tournament; onVerified: () => void }) {
+function PinGate({ tournament, onVerified, onClose }: { tournament: Tournament; onVerified: () => void; onClose?: () => void }) {
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1927,13 +1927,25 @@ function PinGate({ tournament, onVerified }: { tournament: Tournament; onVerifie
           }}
         />
         {error && <div style={{ color: '#C62828', fontSize: 13, textAlign: 'center' }}>⚠️ {error}</div>}
-        <button onClick={handleVerify} disabled={loading || input.length < 4} style={{
-          background: loading || input.length < 4 ? 'var(--border)' : 'var(--primary)',
-          color: loading || input.length < 4 ? 'var(--text-muted)' : '#fff',
-          fontWeight: 700, fontSize: 16, padding: '14px', borderRadius: 12,
-        }}>
-          {loading ? 'Ověřuji…' : 'Potvrdit PIN'}
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {onClose && (
+            <button onClick={onClose} style={{
+              flex: 1, padding: '14px', borderRadius: 12,
+              fontWeight: 700, fontSize: 16, cursor: 'pointer',
+              background: 'var(--bg)', color: 'var(--text-muted)',
+              border: '1.5px solid var(--border)',
+            }}>
+              Zpět
+            </button>
+          )}
+          <button onClick={handleVerify} disabled={loading || input.length < 4} style={{
+            flex: 1, background: loading || input.length < 4 ? 'var(--border)' : 'var(--primary)',
+            color: loading || input.length < 4 ? 'var(--text-muted)' : '#fff',
+            fontWeight: 700, fontSize: 16, padding: '14px', borderRadius: 12,
+          }}>
+            {loading ? 'Ověřuji…' : 'Potvrdit PIN'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -2126,6 +2138,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
         <PinGate
           tournament={tournament}
           onVerified={() => { setPinVerified(true); setShowPinGate(false); }}
+          onClose={() => setShowPinGate(false)}
         />
       )}
 
