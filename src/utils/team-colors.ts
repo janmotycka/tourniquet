@@ -8,7 +8,7 @@ export const TEAM_COLORS = [
 ];
 
 /** Je barva příliš světlá? (bílá, žlutá apod.) */
-function isLightColor(hex: string): boolean {
+export function isLightColor(hex: string): boolean {
   const c = hex.replace('#', '');
   const r = parseInt(c.substring(0, 2), 16);
   const g = parseInt(c.substring(2, 4), 16);

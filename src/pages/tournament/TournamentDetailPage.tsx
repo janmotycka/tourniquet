@@ -8,7 +8,7 @@ import { exportTournamentPdf } from '../../utils/tournament-pdf';
 import type { Tournament, Match, Team, Player, Goal } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
 import { logger } from '../../utils/logger';
-import { colorSwatch, textOnColor } from '../../utils/team-colors';
+import { colorSwatch, textOnColor, isLightColor } from '../../utils/team-colors';
 
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
@@ -684,15 +684,19 @@ function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAddGoal, 
             {match.status === 'live' && (
               <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
                 <button onClick={() => setShowGoalModal('home')} style={{
-                  flex: 1, background: homeTeam?.color ?? 'var(--primary)', color: '#fff',
+                  flex: 1, background: homeTeam?.color ?? 'var(--primary)',
+                  color: textOnColor(homeTeam?.color ?? '#1a3c6e'),
                   fontWeight: 800, fontSize: 20, padding: '18px 10px', borderRadius: 14,
+                  boxShadow: homeTeam?.color && isLightColor(homeTeam.color) ? 'inset 0 0 0 2px rgba(0,0,0,0.15)' : undefined,
                 }}>
                   +1 ⚽<br />
                   <span style={{ fontSize: 13, opacity: 0.9, fontWeight: 600 }}>{homeTeam?.name}</span>
                 </button>
                 <button onClick={() => setShowGoalModal('away')} style={{
-                  flex: 1, background: awayTeam?.color ?? '#666', color: '#fff',
+                  flex: 1, background: awayTeam?.color ?? '#666',
+                  color: textOnColor(awayTeam?.color ?? '#666'),
                   fontWeight: 800, fontSize: 20, padding: '18px 10px', borderRadius: 14,
+                  boxShadow: awayTeam?.color && isLightColor(awayTeam.color) ? 'inset 0 0 0 2px rgba(0,0,0,0.15)' : undefined,
                 }}>
                   +1 ⚽<br />
                   <span style={{ fontSize: 13, opacity: 0.9, fontWeight: 600 }}>{awayTeam?.name}</span>
@@ -1162,9 +1166,14 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                                 title={`Gól: ${homeT?.name}`}
                                 style={{
                                   flex: 1, padding: '7px 0', borderRadius: 9, fontSize: 14, fontWeight: 800,
-                                  background: panelSide === 'home' ? (homeT?.color ?? '#666') : (homeT?.color ? homeT.color + '22' : 'var(--surface-var)'),
-                                  color: panelSide === 'home' ? '#fff' : (homeT?.color ?? 'var(--text-muted)'),
-                                  border: `2px solid ${homeT?.color ?? '#ccc'}`,
+                                  background: panelSide === 'home'
+                                    ? (homeT?.color ?? '#666')
+                                    : (homeT?.color && !isLightColor(homeT.color) ? homeT.color + '22' : 'var(--surface-var)'),
+                                  color: panelSide === 'home'
+                                    ? textOnColor(homeT?.color ?? '#666')
+                                    : (homeT?.color && !isLightColor(homeT.color) ? homeT.color : 'var(--text)'),
+                                  border: `2px solid ${homeT?.color && !isLightColor(homeT.color) ? homeT.color : 'var(--border)'}`,
+                                  boxShadow: panelSide === 'home' && homeT?.color && isLightColor(homeT.color) ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
                                   transition: 'all .12s',
                                 }}
                               >⚽ +1</button>
@@ -1182,9 +1191,14 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                                 title={`Gól: ${awayT?.name}`}
                                 style={{
                                   flex: 1, padding: '7px 0', borderRadius: 9, fontSize: 14, fontWeight: 800,
-                                  background: panelSide === 'away' ? (awayT?.color ?? '#666') : (awayT?.color ? awayT.color + '22' : 'var(--surface-var)'),
-                                  color: panelSide === 'away' ? '#fff' : (awayT?.color ?? 'var(--text-muted)'),
-                                  border: `2px solid ${awayT?.color ?? '#ccc'}`,
+                                  background: panelSide === 'away'
+                                    ? (awayT?.color ?? '#666')
+                                    : (awayT?.color && !isLightColor(awayT.color) ? awayT.color + '22' : 'var(--surface-var)'),
+                                  color: panelSide === 'away'
+                                    ? textOnColor(awayT?.color ?? '#666')
+                                    : (awayT?.color && !isLightColor(awayT.color) ? awayT.color : 'var(--text)'),
+                                  border: `2px solid ${awayT?.color && !isLightColor(awayT.color) ? awayT.color : 'var(--border)'}`,
+                                  boxShadow: panelSide === 'away' && awayT?.color && isLightColor(awayT.color) ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
                                   transition: 'all .12s',
                                 }}
                               >+1 ⚽</button>
