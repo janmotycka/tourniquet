@@ -2,152 +2,10 @@ import { useState } from 'react';
 import type { Page } from '../App';
 import { useAuth } from '../context/AuthContext';
 import { useSubscriptionStore } from '../store/subscription.store';
-import { useTournamentStore } from '../store/tournament.store';
 import { useI18n, getCurrencyForLocale } from '../i18n';
 import type { Locale } from '../i18n';
 
 interface Props { navigate: (p: Page) => void; }
-
-/** Diagnostický panel — testuje Firebase write/read a zobrazuje stav */
-function FirebaseDiagnostics({ user, t }: { user: { uid: string; email?: string | null } | null; t: (k: string, p?: Record<string, string | number>) => string }) {
-  const syncError = useTournamentStore(s => s.syncError);
-  const tournaments = useTournamentStore(s => s.tournaments);
-  const loadFromFirebase = useTournamentStore(s => s.loadFromFirebase);
-  const [testResult, setTestResult] = useState<string | null>(null);
-  const [testing, setTesting] = useState(false);
-
-  const runTest = async () => {
-    if (!user) { setTestResult('Nejste přihlášen.'); return; }
-    setTesting(true);
-    setTestResult(null);
-    try {
-      // Test 1: write to a temp node
-      const { ref, set, get, remove } = await import('firebase/database');
-      const { db } = await import('../firebase');
-      const testRef = ref(db, `_diagnostics/${user.uid}`);
-      await set(testRef, { test: true, ts: Date.now() });
-
-      // Test 2: read it back
-      const snap = await get(testRef);
-      if (!snap.exists()) {
-        setTestResult('CHYBA: Zápis se zdá OK, ale čtení vrátilo prázdný výsledek. Zkontrolujte Firebase Rules.');
-        setTesting(false);
-        return;
-      }
-
-      // Test 3: cleanup
-      await remove(testRef);
-
-      // Test 4: try writing to /public path (same as tournament sync)
-      const publicTestRef = ref(db, `public/_test_${user.uid}`);
-      await set(publicTestRef, { test: true, ts: Date.now() });
-      const publicSnap = await get(publicTestRef);
-      await remove(publicTestRef);
-
-      if (!publicSnap.exists()) {
-        setTestResult('CHYBA: Zápis do /public selhal. Zkontrolujte Firebase Rules pro cestu /public.');
-        setTesting(false);
-        return;
-      }
-
-      // Test 5: try /tournaments/{uid} path
-      const tournamentTestRef = ref(db, `tournaments/${user.uid}/_test`);
-      await set(tournamentTestRef, { test: true, ts: Date.now() });
-      const tournamentSnap = await get(tournamentTestRef);
-      await remove(tournamentTestRef);
-
-      if (!tournamentSnap.exists()) {
-        setTestResult('CHYBA: Zápis do /tournaments/{uid} selhal. Zkontrolujte Firebase Rules.');
-        setTesting(false);
-        return;
-      }
-
-      setTestResult(`OK — všechny testy prošly. Firebase je správně nakonfigurován. UID: ${user.uid}`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setTestResult(`CHYBA: ${msg}\n\nZkontrolujte Firebase Realtime Database → Rules v konzoli.`);
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  const handleReload = async () => {
-    if (!user) return;
-    setTesting(true);
-    try {
-      await loadFromFirebase(user.uid);
-      setTestResult(`Načteno ${useTournamentStore.getState().tournaments.length} turnajů z Firebase.`);
-    } catch (err) {
-      setTestResult(`Chyba při načítání: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-      setTesting(false);
-    }
-  };
-
-  return (
-    <div style={{
-      background: 'var(--surface)', borderRadius: 16, padding: 20,
-      boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-      display: 'flex', flexDirection: 'column', gap: 12,
-    }}>
-      <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.firebaseDiag')}</h2>
-
-      {/* Current state */}
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
-        UID: <code style={{ fontSize: 11, background: 'var(--surface-var)', padding: '2px 6px', borderRadius: 4 }}>{user?.uid ?? 'nepřihlášen'}</code><br />
-        Lokální turnaje: {tournaments.length}
-      </div>
-
-      {/* Sync error */}
-      {syncError && (
-        <div style={{
-          background: '#FFF3E0', border: '1px solid #FFB74D', borderRadius: 10,
-          padding: '10px 14px', fontSize: 12, color: '#BF360C', lineHeight: 1.4,
-        }}>
-          <strong>{t('settings.lastError')}</strong> {syncError}
-        </div>
-      )}
-
-      {/* Test result */}
-      {testResult && (
-        <div style={{
-          background: testResult.startsWith('OK') ? '#E8F5E9' : '#FFEBEE',
-          border: `1px solid ${testResult.startsWith('OK') ? '#A5D6A7' : '#EF9A9A'}`,
-          borderRadius: 10, padding: '10px 14px', fontSize: 12,
-          color: testResult.startsWith('OK') ? '#1B5E20' : '#B71C1C',
-          lineHeight: 1.5, whiteSpace: 'pre-wrap',
-        }}>
-          {testResult}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={runTest}
-          disabled={testing}
-          style={{
-            flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 13,
-            background: 'var(--primary-light)', color: 'var(--primary)',
-            opacity: testing ? 0.6 : 1,
-          }}
-        >
-          {testing ? 'Testuji...' : 'Test Firebase'}
-        </button>
-        <button
-          onClick={handleReload}
-          disabled={testing}
-          style={{
-            flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 13,
-            background: 'var(--surface-var)', color: 'var(--text)',
-            opacity: testing ? 0.6 : 1,
-          }}
-        >
-          Znovu načíst
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export function SettingsPage({ navigate }: Props) {
   const { user, logout } = useAuth();
@@ -366,9 +224,6 @@ export function SettingsPage({ navigate }: Props) {
             </div>
           )}
         </div>
-
-        {/* Firebase diagnostics */}
-        <FirebaseDiagnostics user={user} t={t} />
 
         {/* Logout */}
         <button
