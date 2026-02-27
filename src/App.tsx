@@ -21,6 +21,7 @@ import { MatchDetailPage } from './pages/match/MatchDetailPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ToastContainer } from './components/ToastContainer';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useTournamentStore } from './store/tournament.store';
 import { useSubscriptionStore } from './store/subscription.store';
 import { useToastStore } from './store/toast.store';
@@ -164,11 +165,13 @@ function AppRouter() {
 
 export default function App() {
   return (
-    <I18nProvider>
-      <AuthProvider>
-        <ToastContainer />
-        <AppRouter />
-      </AuthProvider>
-    </I18nProvider>
+    <ErrorBoundary>
+      <I18nProvider>
+        <AuthProvider>
+          <ToastContainer />
+          <AppRouter />
+        </AuthProvider>
+      </I18nProvider>
+    </ErrorBoundary>
   );
 }

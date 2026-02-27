@@ -6,12 +6,9 @@ import type { GeneratorInput, TrainingUnit } from '../types/training.types';
 import { calculatePhaseDurations, getPhaseLabel } from './phase-splitter';
 import { selectExercisesForPhase, selectStationExercises } from './exercise-selector';
 import { buildStations } from './station-builder';
+import { generateId } from '../utils/id';
 
 type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-}
 
 export function generateTrainingUnit(
   input: GeneratorInput,

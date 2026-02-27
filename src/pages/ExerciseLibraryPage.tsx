@@ -7,6 +7,7 @@ import { SKILL_FOCUS_CONFIGS } from '../data/skill-focus.data';
 import type { Exercise, PhaseType, SkillFocus, DifficultyLevel } from '../types/exercise.types';
 import type { AgeCategory } from '../types/category.types';
 import { useI18n } from '../i18n';
+import { generateId } from '../utils/id';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -143,7 +144,7 @@ function EditExerciseModal({
   const handleSave = () => {
     if (!form.name.trim()) return;
     const saved: Exercise = {
-      id: exercise?.id ?? `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: exercise?.id ?? `custom-${generateId()}`,
       name: form.name.trim(),
       description: form.description.trim(),
       instructions: instrText.split('\n').map(s => s.trim()).filter(Boolean),

@@ -12,6 +12,7 @@
  */
 
 import { create } from 'zustand';
+import { generateId } from '../utils/id';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
 
@@ -31,7 +32,7 @@ export const useToastStore = create<ToastState>((set, get) => ({
   toasts: [],
 
   show: (type, message, durationMs = 4000) => {
-    const id = Math.random().toString(36).slice(2, 10);
+    const id = generateId();
     set(s => ({ toasts: [...s.toasts, { id, type, message }] }));
     setTimeout(() => get().dismiss(id), durationMs);
   },

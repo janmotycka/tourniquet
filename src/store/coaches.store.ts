@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { generateId } from '../utils/id';
 
 export interface Coach {
   id: string;
@@ -25,7 +26,7 @@ export const useCoachesStore = create<CoachesState>()(
         savedCoaches: [
           ...s.savedCoaches,
           {
-            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            id: generateId(),
             name: name.trim(),
             emoji: emoji ?? DEFAULT_EMOJIS[get().savedCoaches.length % DEFAULT_EMOJIS.length],
           },

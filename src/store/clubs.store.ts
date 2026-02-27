@@ -1,10 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Club, CreateClubInput } from '../types/club.types';
-
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
-}
+import { generateId } from '../utils/id';
 
 interface ClubsState {
   clubs: Club[];

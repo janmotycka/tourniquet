@@ -9,11 +9,7 @@ import type {
   PlayerRating,
 } from '../types/match.types';
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
-
-function generateId(): string {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-}
+import { generateId } from '../utils/id';
 
 function now(): string {
   return new Date().toISOString();
