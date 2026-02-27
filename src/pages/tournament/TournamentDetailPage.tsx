@@ -8,7 +8,7 @@ import { exportTournamentPdf } from '../../utils/tournament-pdf';
 import type { Tournament, Match, Team, Player, Goal } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
 import { logger } from '../../utils/logger';
-import { colorSwatch, textOnColor, isLightColor } from '../../utils/team-colors';
+import { colorSwatch, textOnColor, isLightColor, isNearWhite } from '../../utils/team-colors';
 
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
@@ -1168,11 +1168,11 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                                   flex: 1, padding: '7px 0', borderRadius: 9, fontSize: 14, fontWeight: 800,
                                   background: panelSide === 'home'
                                     ? (homeT?.color ?? '#666')
-                                    : (homeT?.color && !isLightColor(homeT.color) ? homeT.color + '22' : 'var(--surface-var)'),
+                                    : (homeT?.color && !isNearWhite(homeT.color) ? homeT.color + '22' : 'var(--surface-var)'),
                                   color: panelSide === 'home'
                                     ? textOnColor(homeT?.color ?? '#666')
-                                    : (homeT?.color && !isLightColor(homeT.color) ? homeT.color : 'var(--text)'),
-                                  border: `2px solid ${homeT?.color && !isLightColor(homeT.color) ? homeT.color : 'var(--border)'}`,
+                                    : (homeT?.color && !isNearWhite(homeT.color) ? homeT.color : 'var(--text)'),
+                                  border: `2px solid ${homeT?.color && !isNearWhite(homeT.color) ? homeT.color : 'var(--border)'}`,
                                   boxShadow: panelSide === 'home' && homeT?.color && isLightColor(homeT.color) ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
                                   transition: 'all .12s',
                                 }}
@@ -1193,11 +1193,11 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                                   flex: 1, padding: '7px 0', borderRadius: 9, fontSize: 14, fontWeight: 800,
                                   background: panelSide === 'away'
                                     ? (awayT?.color ?? '#666')
-                                    : (awayT?.color && !isLightColor(awayT.color) ? awayT.color + '22' : 'var(--surface-var)'),
+                                    : (awayT?.color && !isNearWhite(awayT.color) ? awayT.color + '22' : 'var(--surface-var)'),
                                   color: panelSide === 'away'
                                     ? textOnColor(awayT?.color ?? '#666')
-                                    : (awayT?.color && !isLightColor(awayT.color) ? awayT.color : 'var(--text)'),
-                                  border: `2px solid ${awayT?.color && !isLightColor(awayT.color) ? awayT.color : 'var(--border)'}`,
+                                    : (awayT?.color && !isNearWhite(awayT.color) ? awayT.color : 'var(--text)'),
+                                  border: `2px solid ${awayT?.color && !isNearWhite(awayT.color) ? awayT.color : 'var(--border)'}`,
                                   boxShadow: panelSide === 'away' && awayT?.color && isLightColor(awayT.color) ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
                                   transition: 'all .12s',
                                 }}

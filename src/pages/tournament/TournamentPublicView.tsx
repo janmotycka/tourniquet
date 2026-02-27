@@ -989,6 +989,14 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
   }, [user, joinIntent]);
 
   useEffect(() => {
+    // Vždy vyčistit ?join=1 z URL — i pro ownera, aby nedošlo k náhodnému
+    // sdílení admin odkazu místo veřejného odkazu pro hosty
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('join')) {
+      url.searchParams.delete('join');
+      history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+
     if (adminJoin && !isTournamentOwner && !hasJoined) {
       if (user) {
         // Přihlášený → rovnou zobrazit PIN modal
@@ -998,14 +1006,8 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
         onJoinIntent?.(tournamentId);
         navigate({ name: 'home' });
       }
-      // Vyčistit ?join=1 z URL aby se nezobrazoval při refreshi
-      const url = new URL(window.location.href);
-      if (url.searchParams.has('join')) {
-        url.searchParams.delete('join');
-        history.replaceState(null, '', url.pathname + url.search + url.hash);
-      }
-      clearAdminJoin?.();
     }
+    clearAdminJoin?.();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminJoin]);
 
