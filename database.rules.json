@@ -73,6 +73,28 @@
       }
     },
 
+    // ─── Chat (diskuze hostů) ─────────────────────────────────────────────────
+    // Samostatná cesta mimo tournament sync (set() by přepsal zprávy)
+    // Čtení: kdokoli; Zápis: kdokoli (hosté nemají auth)
+    "chat": {
+      "$tournamentId": {
+        ".read": true,
+        ".write": true,
+        "$messageId": {
+          ".validate": "newData.hasChildren(['authorName', 'text', 'createdAt'])",
+          "authorName": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+          },
+          "text": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
+          },
+          "createdAt": {
+            ".validate": "newData.isString()"
+          }
+        }
+      }
+    },
+
     // ─── Uživatelská data ────────────────────────────────────────────────────
     "users": {
       "$uid": {

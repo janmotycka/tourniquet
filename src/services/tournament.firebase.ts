@@ -6,9 +6,9 @@
  *   /public/{tournamentId}             → read-only mirror (pro diváky přes QR)
  */
 
-import { ref, set, get, remove, onValue, off, DataSnapshot } from 'firebase/database';
+import { ref, set, get, remove, push, onValue, off, DataSnapshot, query, orderByChild, limitToLast } from 'firebase/database';
 import { db } from '../firebase';
-import type { Tournament } from '../types/tournament.types';
+import type { Tournament, ChatMessage } from '../types/tournament.types';
 import { logger } from '../utils/logger';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -180,4 +180,51 @@ export function subscribeToPublicTournament(
 
   onValue(r, handler, errorHandler);
   return () => off(r, 'value', handler);
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+const chatRef = (tournamentId: string) =>
+  ref(db, `chat/${tournamentId}`);
+
+/** Odešle zprávu do chatu turnaje (samostatná Firebase cesta, nesouvisí s tournament sync) */
+export async function sendChatMessage(
+  tournamentId: string,
+  authorName: string,
+  text: string,
+): Promise<void> {
+  const msgRef = push(chatRef(tournamentId));
+  await set(msgRef, {
+    authorName,
+    text: text.slice(0, 500), // limit délky zprávy
+    createdAt: new Date().toISOString(),
+  });
+}
+
+/** Subscribuje na posledních N zpráv v chatu turnaje */
+export function subscribeToChatMessages(
+  tournamentId: string,
+  callback: (messages: ChatMessage[]) => void,
+  maxMessages = 100,
+): () => void {
+  const q = query(chatRef(tournamentId), orderByChild('createdAt'), limitToLast(maxMessages));
+
+  const handler = (snapshot: DataSnapshot) => {
+    const messages: ChatMessage[] = [];
+    if (snapshot.exists()) {
+      snapshot.forEach(child => {
+        const val = child.val();
+        messages.push({
+          id: child.key!,
+          authorName: val.authorName ?? '?',
+          text: val.text ?? '',
+          createdAt: val.createdAt ?? '',
+        });
+      });
+    }
+    callback(messages);
+  };
+
+  onValue(q, handler);
+  return () => off(q, 'value', handler);
 }
