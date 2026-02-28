@@ -1226,7 +1226,7 @@ function InlineGoalPanel({ match, teams, teamId, onGoal, onClose }: {
 }
 
 // ─── Matches tab ──────────────────────────────────────────────────────────────
-function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinishMatchConfirm, onPauseMatch, onResumeMatch, onEditMatch, onCancelMatch }: {
+function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinishMatchConfirm, onPauseMatch, onResumeMatch, onEditMatch, onCancelMatch, onReorderMatches }: {
   tournament: Tournament;
   isVerified: boolean;
   onQuickGoal: (matchId: string, teamId: string, playerId: string | null) => void;
@@ -1236,9 +1236,12 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
   onResumeMatch: (matchId: string) => void;
   onEditMatch: (match: Match) => void;
   onCancelMatch?: (matchId: string) => void;
+  onReorderMatches?: (reorderedScheduledIds: string[]) => void;
 }) {
   const { t } = useI18n();
   const [openGoalPanel, setOpenGoalPanel] = useState<{ matchId: string; side: 'home' | 'away' } | null>(null);
+  const [matchDragIdx, setMatchDragIdx] = useState<number | null>(null);
+  const [matchDragOverIdx, setMatchDragOverIdx] = useState<number | null>(null);
   const getTeam = (id: string) => tournament.teams.find(tm => tm.id === id);
 
   const toggleGoal = (matchId: string, side: 'home' | 'away') => {
@@ -1274,7 +1277,7 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
             {section.label}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {section.matches.map(match => {
+            {section.matches.map((match, sectionIdx) => {
                 const homeT = getTeam(match.homeTeamId);
                 const awayT = getTeam(match.awayTeamId);
                 const isLive = match.status === 'live';
@@ -1288,8 +1291,35 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                 // Barva skóre
                 const scoreColor = isScheduled ? 'var(--text-muted)' : isLive ? (isPaused ? '#E65100' : '#C62828') : 'var(--text)';
 
+                // DnD — jen scheduled zápasy pro ownera
+                const canDrag = isScheduled && isVerified && !!onReorderMatches;
+                const isDragging = canDrag && matchDragIdx === sectionIdx;
+                const isDragOver = canDrag && matchDragOverIdx === sectionIdx && matchDragIdx !== sectionIdx;
+
                 return (
-                  <div key={match.id}>
+                  <div
+                    key={match.id}
+                    draggable={canDrag}
+                    onDragStart={canDrag ? () => setMatchDragIdx(sectionIdx) : undefined}
+                    onDragOver={canDrag ? (e) => { e.preventDefault(); setMatchDragOverIdx(sectionIdx); } : undefined}
+                    onDrop={canDrag ? () => {
+                      if (matchDragIdx === null || matchDragIdx === sectionIdx) {
+                        setMatchDragIdx(null); setMatchDragOverIdx(null); return;
+                      }
+                      const ids = scheduledMatches.map(m => m.id);
+                      const [moved] = ids.splice(matchDragIdx, 1);
+                      ids.splice(sectionIdx, 0, moved);
+                      onReorderMatches!(ids);
+                      setMatchDragIdx(null); setMatchDragOverIdx(null);
+                    } : undefined}
+                    onDragEnd={() => { setMatchDragIdx(null); setMatchDragOverIdx(null); }}
+                    style={{
+                      opacity: isDragging ? 0.5 : 1,
+                      background: isDragOver ? '#FFF8E1' : 'transparent',
+                      borderRadius: isDragOver ? 14 : 0,
+                      transition: 'all .15s',
+                    }}
+                  >
                     <div style={{
                       background: 'var(--surface)',
                       borderRadius: panelOpen ? '14px 14px 0 0' : 14,
@@ -1435,6 +1465,13 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                       {/* ══ SCHEDULED / FINISHED — kompaktní jednořádkový layout ══ */}
                       {!isLive && (
                         <div style={{ display: 'flex', alignItems: 'center', padding: '9px 12px', gap: 8 }}>
+                          {/* Drag handle — jen scheduled + owner */}
+                          {canDrag && (
+                            <span style={{
+                              cursor: 'grab', fontSize: 14, color: 'var(--text-muted)', flexShrink: 0,
+                              userSelect: 'none', lineHeight: 1, opacity: 0.5,
+                            }}>☰</span>
+                          )}
                           {/* Status vlevo: ikonka + čas (jen plánované)/tlačítko */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 40, flexShrink: 0 }}>
                             {isFinished
@@ -2368,6 +2405,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
   const pauseMatch = useTournamentStore(s => s.pauseMatch);
   const resumeMatch = useTournamentStore(s => s.resumeMatch);
   const cancelMatchStore = useTournamentStore(s => s.cancelMatch);
+  const reorderMatchesStore = useTournamentStore(s => s.reorderMatches);
   const addPlayer = useTournamentStore(s => s.addPlayer);
   const removePlayer = useTournamentStore(s => s.removePlayer);
   const updatePlayer = useTournamentStore(s => s.updatePlayer);
@@ -2524,6 +2562,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
             onResumeMatch={handleResumeMatch}
             onEditMatch={setSelectedMatch}
             onCancelMatch={isOwner ? (matchId) => cancelMatchStore(tournamentId, matchId) : undefined}
+            onReorderMatches={isOwner ? (ids) => reorderMatchesStore(tournamentId, ids) : undefined}
           />
         )}
         {tab === 'scorers' && <ScorersTab tournament={tournament} />}

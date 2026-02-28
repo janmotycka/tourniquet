@@ -93,6 +93,7 @@ interface TournamentState {
   // Správa týmů & zápasů
   removeTeam: (tournamentId: string, teamId: string) => Promise<void>;
   cancelMatch: (tournamentId: string, matchId: string) => Promise<void>;
+  reorderMatches: (tournamentId: string, reorderedScheduledIds: string[]) => Promise<void>;
 
   // Přegenerování harmonogramu
   regenerateSchedule: (tournamentId: string, newSettings: TournamentSettings) => Promise<void>;
@@ -811,6 +812,29 @@ export const useTournamentStore = create<TournamentState>()(
             t.settings,
           ),
         })));
+        const updated = get().getTournamentById(tournamentId);
+        if (updated) {
+          const err = await syncToFirebase(get().firebaseUid, updated);
+          if (err) set({ syncError: err });
+        }
+      },
+
+      reorderMatches: async (tournamentId, reorderedScheduledIds) => {
+        set(state => mutateBothArrays(state, tournamentId, t => {
+          const kept = t.matches.filter(m => m.status === 'finished' || m.status === 'live');
+          // Seřadit scheduled zápasy dle nového pořadí ID
+          const scheduledMap = new Map(
+            t.matches.filter(m => m.status === 'scheduled').map(m => [m.id, m]),
+          );
+          const reordered = reorderedScheduledIds
+            .map(id => scheduledMap.get(id))
+            .filter(Boolean) as Match[];
+          return {
+            ...t,
+            updatedAt: new Date().toISOString(),
+            matches: recalculateMatchTimes([...kept, ...reordered], t.settings),
+          };
+        }));
         const updated = get().getTournamentById(tournamentId);
         if (updated) {
           const err = await syncToFirebase(get().firebaseUid, updated);
