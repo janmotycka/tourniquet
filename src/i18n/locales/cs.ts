@@ -556,6 +556,19 @@ export const cs = {
   'tournament.tiebreaker.penaltyPending': 'Penalty nerozhodnuty',
   'tournament.tiebreaker.penaltySaved': 'Výsledek penalt uložen!',
 
+  // ─── Team management ────────────────────────────────────────────────────
+  'tournament.teams.title': 'Správa týmů',
+  'tournament.teams.noShow': 'Nepřijel',
+  'tournament.teams.noShowConfirm': 'Tým {name} nepřijel? Všechny jeho zápasy budou odebrány a časy zbylých zápasů přepočítány.',
+  'tournament.teams.removed': 'Tým odebrán, rozpis aktualizován!',
+  'tournament.teams.matchesRemoved': '{count} zápasů odebráno',
+  'tournament.teams.minTeams': 'Nelze odebrat — musí zůstat alespoň 2 týmy',
+
+  // ─── Match cancel ──────────────────────────────────────────────────────
+  'tournament.match.cancel': 'Zrušit',
+  'tournament.match.cancelConfirm': 'Zrušit tento zápas? Bude odebrán z rozpisu a časy zbylých zápasů se přepočítají.',
+  'tournament.match.cancelled': 'Zápas zrušen',
+
   // ─── Match List ───────────────────────────────────────────────────────────
   'match.live': '● ŽIVĚ',
   'match.played': 'Odehráno',

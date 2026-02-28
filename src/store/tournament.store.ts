@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Tournament, Match, Goal, CreateTournamentInput, TournamentSettings } from '../types/tournament.types';
-import { generateRoundRobinSchedule, generateId, computeMatchStartTime, parseStartDateTime } from '../utils/tournament-schedule';
+import { generateRoundRobinSchedule, generateId, computeMatchStartTime, parseStartDateTime, recalculateMatchTimes } from '../utils/tournament-schedule';
 import { logger } from '../utils/logger';
 import { sanitizeTournamentInput, clampNumber, LIMITS } from '../utils/validation';
 import {
@@ -89,6 +89,10 @@ interface TournamentState {
 
   // Týmy
   updateTeamName: (tournamentId: string, teamId: string, name: string) => Promise<void>;
+
+  // Správa týmů & zápasů
+  removeTeam: (tournamentId: string, teamId: string) => Promise<void>;
+  cancelMatch: (tournamentId: string, matchId: string) => Promise<void>;
 
   // Přegenerování harmonogramu
   regenerateSchedule: (tournamentId: string, newSettings: TournamentSettings) => Promise<void>;
@@ -763,6 +767,48 @@ export const useTournamentStore = create<TournamentState>()(
       },
 
       // ── Přegenerování harmonogramu ────────────────────────────────────────
+
+      removeTeam: async (tournamentId, teamId) => {
+        const tournament = get().getTournamentById(tournamentId);
+        if (!tournament) return;
+
+        // Odebrat tým a všechny jeho zápasy, přepočítat časy zbylých
+        set(state => mutateBothArrays(state, tournamentId, t => {
+          const remainingTeams = t.teams.filter(tm => tm.id !== teamId);
+          const remainingMatches = t.matches.filter(
+            m => m.homeTeamId !== teamId && m.awayTeamId !== teamId,
+          );
+          return {
+            ...t,
+            teams: remainingTeams,
+            matches: recalculateMatchTimes(remainingMatches, t.settings),
+            updatedAt: new Date().toISOString(),
+          };
+        }));
+        const updated = get().getTournamentById(tournamentId);
+        if (updated) {
+          const err = await syncToFirebase(get().firebaseUid, updated);
+          if (err) set({ syncError: err });
+        }
+      },
+
+      cancelMatch: async (tournamentId, matchId) => {
+        set(state => mutateBothArrays(state, tournamentId, t => ({
+          ...t,
+          updatedAt: new Date().toISOString(),
+          matches: recalculateMatchTimes(
+            t.matches.map(m =>
+              m.id === matchId ? { ...m, status: 'cancelled' as const } : m,
+            ).filter(m => m.status !== 'cancelled'),
+            t.settings,
+          ),
+        })));
+        const updated = get().getTournamentById(tournamentId);
+        if (updated) {
+          const err = await syncToFirebase(get().firebaseUid, updated);
+          if (err) set({ syncError: err });
+        }
+      },
 
       regenerateSchedule: async (tournamentId, newSettings) => {
         const tournament = get().getTournamentById(tournamentId);

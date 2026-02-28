@@ -1215,7 +1215,7 @@ function InlineGoalPanel({ match, teams, teamId, onGoal, onClose }: {
 }
 
 // ─── Matches tab ──────────────────────────────────────────────────────────────
-function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinishMatchConfirm, onPauseMatch, onResumeMatch, onEditMatch }: {
+function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinishMatchConfirm, onPauseMatch, onResumeMatch, onEditMatch, onCancelMatch }: {
   tournament: Tournament;
   isVerified: boolean;
   onQuickGoal: (matchId: string, teamId: string, playerId: string | null) => void;
@@ -1224,6 +1224,7 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
   onPauseMatch: (matchId: string) => void;
   onResumeMatch: (matchId: string) => void;
   onEditMatch: (match: Match) => void;
+  onCancelMatch?: (matchId: string) => void;
 }) {
   const { t } = useI18n();
   const [openGoalPanel, setOpenGoalPanel] = useState<{ matchId: string; side: 'home' | 'away' } | null>(null);
@@ -1502,8 +1503,24 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                               }}
                             >✏️</button>
                           )}
-                          {/* placeholder pro alignment */}
-                          {(!isVerified || isScheduled) && <div style={{ width: 30, flexShrink: 0 }} />}
+                          {/* Cancel scheduled / placeholder */}
+                          {isVerified && isScheduled && onCancelMatch ? (
+                            <button
+                              onClick={() => {
+                                if (confirm(t('tournament.match.cancelConfirm'))) {
+                                  onCancelMatch(match.id);
+                                }
+                              }}
+                              style={{
+                                flexShrink: 0, width: 30, height: 30, borderRadius: 8,
+                                background: '#FFEBEE', color: '#C62828',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 12, border: '1px solid #FFCDD2',
+                              }}
+                            >✕</button>
+                          ) : (!isVerified || isScheduled) ? (
+                            <div style={{ width: 30, flexShrink: 0 }} />
+                          ) : null}
                         </div>
                       )}
                     </div>
@@ -1741,9 +1758,13 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
   const [tbDragOverIdx, setTbDragOverIdx] = useState<number | null>(null);
   const [tbSaved, setTbSaved] = useState(false);
 
+  // Team removal
+  const [teamRemoved, setTeamRemoved] = useState(false);
+
   const deleteTournament = useTournamentStore(s => s.deleteTournament);
   const updateTournament = useTournamentStore(s => s.updateTournament);
   const regenerateSchedule = useTournamentStore(s => s.regenerateSchedule);
+  const removeTeam = useTournamentStore(s => s.removeTeam);
 
   useEffect(() => {
     generateQRCodeDataUrl(tournament.id).then(setQrUrl).catch(() => {});
@@ -1917,6 +1938,65 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
           {rulesSaved ? '✅ Uloženo!' : '💾 Uložit propozice'}
         </button>
       </div>
+
+      {/* Správa týmů — odebrání nepřijízdivších */}
+      {isOwner && (
+      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+        <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>👥 {t('tournament.teams.title')}</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+          Pokud tým nepřijel, odeberte ho. Zápasy se přepočítají.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {tournament.teams.map(team => {
+            const matchCount = tournament.matches.filter(
+              m => m.homeTeamId === team.id || m.awayTeamId === team.id,
+            ).length;
+            return (
+              <div key={team.id} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 10px', background: 'var(--surface-var)', borderRadius: 10,
+              }}>
+                <TeamBadge team={team} size={14} />
+                <span style={{ flex: 1, fontWeight: 600, fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {team.name}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                  {matchCount} {matchCount === 1 ? 'zápas' : matchCount < 5 ? 'zápasy' : 'zápasů'}
+                </span>
+                <button
+                  onClick={async () => {
+                    if (tournament.teams.length <= 2) {
+                      alert(t('tournament.teams.minTeams'));
+                      return;
+                    }
+                    const msg = t('tournament.teams.noShowConfirm').replace('{name}', team.name);
+                    if (!confirm(msg)) return;
+                    await removeTeam(tournament.id, team.id);
+                    setTeamRemoved(true);
+                    setTimeout(() => setTeamRemoved(false), 2500);
+                  }}
+                  style={{
+                    padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    background: '#FFEBEE', color: '#C62828', border: '1px solid #FFCDD2',
+                    flexShrink: 0,
+                  }}
+                >
+                  🚫 {t('tournament.teams.noShow')}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        {teamRemoved && (
+          <div style={{
+            marginTop: 10, padding: '10px 14px', background: '#E8F5E9', borderRadius: 10,
+            fontSize: 13, fontWeight: 700, color: '#2E7D32', textAlign: 'center',
+          }}>
+            ✅ {t('tournament.teams.removed')}
+          </div>
+        )}
+      </div>
+      )}
 
       {/* Přegenerování harmonogramu — only for owners */}
       {isOwner && (
@@ -2217,6 +2297,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
   const resetMatch = useTournamentStore(s => s.resetMatch);
   const pauseMatch = useTournamentStore(s => s.pauseMatch);
   const resumeMatch = useTournamentStore(s => s.resumeMatch);
+  const cancelMatchStore = useTournamentStore(s => s.cancelMatch);
   const addPlayer = useTournamentStore(s => s.addPlayer);
   const removePlayer = useTournamentStore(s => s.removePlayer);
   const updatePlayer = useTournamentStore(s => s.updatePlayer);
@@ -2372,6 +2453,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
             onPauseMatch={handlePauseMatch}
             onResumeMatch={handleResumeMatch}
             onEditMatch={setSelectedMatch}
+            onCancelMatch={isOwner ? (matchId) => cancelMatchStore(tournamentId, matchId) : undefined}
           />
         )}
         {tab === 'scorers' && <ScorersTab tournament={tournament} />}

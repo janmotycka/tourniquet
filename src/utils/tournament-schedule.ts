@@ -104,6 +104,38 @@ export function parseStartDateTime(settings: TournamentSettings): Date {
   return new Date(`${settings.startDate}T${settings.startTime}:00`);
 }
 
+/**
+ * Přepočítá matchIndex, scheduledTime a pitchNumber pro zbylé zápasy po odebrání týmu.
+ * Odehrané/živé zápasy se přesunou na začátek, naplánované dostanou nové časy.
+ */
+export function recalculateMatchTimes(
+  matches: Match[],
+  settings: TournamentSettings,
+): Match[] {
+  const startDateTime = parseStartDateTime(settings);
+  const numberOfPitches = settings.numberOfPitches ?? 1;
+
+  // Oddělíme odehrané/živé (zachovat) a naplánované (přepočítat)
+  const kept = matches.filter(m => m.status === 'finished' || m.status === 'live');
+  const scheduled = matches.filter(m => m.status === 'scheduled');
+
+  // Odehrané zůstávají na svých indexech; naplánované přečíslujeme za ně
+  let nextIndex = kept.length;
+
+  const recalculated = scheduled.map(m => {
+    const idx = nextIndex++;
+    const slotIndex = Math.floor(idx / numberOfPitches);
+    const pitchNumber = (idx % numberOfPitches) + 1;
+    const scheduledTime = computeMatchStartTime(
+      startDateTime, slotIndex,
+      settings.matchDurationMinutes, settings.breakBetweenMatchesMinutes,
+    );
+    return { ...m, matchIndex: idx, pitchNumber, scheduledTime: scheduledTime.toISOString() };
+  });
+
+  return [...kept, ...recalculated];
+}
+
 // ─── Standings computation ────────────────────────────────────────────────────
 
 /**

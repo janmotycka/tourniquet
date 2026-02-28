@@ -558,6 +558,19 @@ export const en: Record<TranslationKey, string> = {
   'tournament.tiebreaker.penaltyPending': 'Penalty pending',
   'tournament.tiebreaker.penaltySaved': 'Penalty result saved!',
 
+  // ─── Team management ────────────────────────────────────────────────────
+  'tournament.teams.title': 'Team management',
+  'tournament.teams.noShow': 'No-show',
+  'tournament.teams.noShowConfirm': 'Team {name} didn\'t show up? All their matches will be removed and remaining match times recalculated.',
+  'tournament.teams.removed': 'Team removed, schedule updated!',
+  'tournament.teams.matchesRemoved': '{count} matches removed',
+  'tournament.teams.minTeams': 'Cannot remove — at least 2 teams must remain',
+
+  // ─── Match cancel ──────────────────────────────────────────────────────
+  'tournament.match.cancel': 'Cancel',
+  'tournament.match.cancelConfirm': 'Cancel this match? It will be removed from the schedule and remaining match times recalculated.',
+  'tournament.match.cancelled': 'Match cancelled',
+
   // ─── Match List ───────────────────────────────────────────────────────────
   'match.live': '● LIVE',
   'match.played': 'Played',
