@@ -568,6 +568,7 @@ export const cs = {
   'tournament.match.cancel': 'Zrušit',
   'tournament.match.cancelConfirm': 'Zrušit tento zápas? Bude odebrán z rozpisu a časy zbylých zápasů se přepočítají.',
   'tournament.match.cancelled': 'Zápas zrušen',
+  'tournament.matches.dragHint': 'Přetáhněte pro změnu pořadí',
 
   // ─── Scorer visibility ─────────────────────────────────────────────────
   'tournament.scorers.visibilityTitle': 'Viditelnost tabulky střelců',

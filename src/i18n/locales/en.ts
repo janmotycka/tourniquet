@@ -570,6 +570,7 @@ export const en: Record<TranslationKey, string> = {
   'tournament.match.cancel': 'Cancel',
   'tournament.match.cancelConfirm': 'Cancel this match? It will be removed from the schedule and remaining match times recalculated.',
   'tournament.match.cancelled': 'Match cancelled',
+  'tournament.matches.dragHint': 'Drag to reorder',
 
   // ─── Scorer visibility ─────────────────────────────────────────────────
   'tournament.scorers.visibilityTitle': 'Scorer table visibility',
