@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Page } from '../../App';
 import { useTournamentStore } from '../../store/tournament.store';
 import { verifyPin, markPinVerified, isPinVerified } from '../../utils/pin-hash';
@@ -10,6 +10,10 @@ import { DEFAULT_TIEBREAKER_ORDER } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
 import { logger } from '../../utils/logger';
 import { colorSwatch, textOnColor, isLightColor, isNearWhite } from '../../utils/team-colors';
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
@@ -1248,43 +1252,40 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
     );
   };
 
-  if (tournament.matches.length === 0) {
-    return <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('tournament.detail.noMatches')}</div>;
-  }
-
   // Řazení: live → scheduled (podle času) → finished (od nejnovějšího)
   const liveMatches = tournament.matches.filter(m => m.status === 'live');
   const scheduledMatches = tournament.matches
     .filter(m => m.status === 'scheduled')
     .sort((a, b) => new Date(a.scheduledTime).getTime() - new Date(b.scheduledTime).getTime());
-
-  const moveMatch = (idx: number, direction: -1 | 1) => {
-    if (!onReorderMatches) return;
-    const ids = scheduledMatches.map(m => m.id);
-    const targetIdx = idx + direction;
-    if (targetIdx < 0 || targetIdx >= ids.length) return;
-    [ids[idx], ids[targetIdx]] = [ids[targetIdx], ids[idx]];
-    onReorderMatches(ids);
-  };
   const finishedMatches = tournament.matches
     .filter(m => m.status === 'finished')
     .sort((a, b) => new Date(b.finishedAt ?? b.scheduledTime).getTime() - new Date(a.finishedAt ?? a.scheduledTime).getTime());
 
-  const sections: { label: string; matches: Match[]; color: string }[] = [
-    { label: '🔴 Právě hrají', matches: liveMatches, color: '#C62828' },
-    { label: '🕐 Nadcházející', matches: scheduledMatches, color: 'var(--text-muted)' },
-    { label: '✅ Odehrané', matches: finishedMatches, color: 'var(--text-muted)' },
-  ].filter(s => s.matches.length > 0);
+  const canReorder = isVerified && !!onReorderMatches && scheduledMatches.length > 1;
 
-  return (
-    <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {sections.map(section => (
-        <div key={section.label}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: section.color, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-            {section.label}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {section.matches.map((match, sectionIdx) => {
+  // DnD sensors — pointer (desktop) + touch (mobile) s aktivační vzdáleností
+  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 5 } });
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } });
+  const sensors = useSensors(pointerSensor, touchSensor);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !onReorderMatches) return;
+    const ids = scheduledMatches.map(m => m.id);
+    const oldIndex = ids.indexOf(active.id as string);
+    const newIndex = ids.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+    ids.splice(oldIndex, 1);
+    ids.splice(newIndex, 0, active.id as string);
+    onReorderMatches(ids);
+  }, [scheduledMatches, onReorderMatches]);
+
+  if (tournament.matches.length === 0) {
+    return <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('tournament.detail.noMatches')}</div>;
+  }
+
+  // Renderovací helper pro jednu kartu zápasu (sdílený pro live/scheduled/finished)
+  const renderMatchCard = (match: Match, opts: { showDragHandle?: boolean } = {}) => {
                 const homeT = getTeam(match.homeTeamId);
                 const awayT = getTeam(match.awayTeamId);
                 const isLive = match.status === 'live';
@@ -1298,15 +1299,8 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                 // Barva skóre
                 const scoreColor = isScheduled ? 'var(--text-muted)' : isLive ? (isPaused ? '#E65100' : '#C62828') : 'var(--text)';
 
-                // Reorder — jen scheduled zápasy pro ownera
-                const canReorder = isScheduled && isVerified && !!onReorderMatches;
-
                 return (
-                  <div
-                    key={match.id}
-                    style={{
-                    }}
-                  >
+                  <div>
                     <div style={{
                       background: 'var(--surface)',
                       borderRadius: panelOpen ? '14px 14px 0 0' : 14,
@@ -1452,36 +1446,15 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                       {/* ══ SCHEDULED / FINISHED — kompaktní jednořádkový layout ══ */}
                       {!isLive && (
                         <div style={{ display: 'flex', alignItems: 'center', padding: '9px 12px', gap: 8 }}>
-                          {/* Move up/down — jen scheduled + owner */}
-                          {canReorder && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
-                              <button
-                                onClick={() => moveMatch(sectionIdx, -1)}
-                                disabled={sectionIdx === 0}
-                                style={{
-                                  width: 22, height: 16, borderRadius: '5px 5px 2px 2px',
-                                  background: sectionIdx === 0 ? 'var(--surface-var)' : '#E3F2FD',
-                                  color: sectionIdx === 0 ? 'var(--text-muted)' : '#1565C0',
-                                  border: sectionIdx === 0 ? '1px solid var(--border)' : '1px solid #90CAF9',
-                                  fontSize: 10, fontWeight: 900, lineHeight: 1,
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  opacity: sectionIdx === 0 ? 0.4 : 1,
-                                }}
-                              >▲</button>
-                              <button
-                                onClick={() => moveMatch(sectionIdx, 1)}
-                                disabled={sectionIdx === scheduledMatches.length - 1}
-                                style={{
-                                  width: 22, height: 16, borderRadius: '2px 2px 5px 5px',
-                                  background: sectionIdx === scheduledMatches.length - 1 ? 'var(--surface-var)' : '#E3F2FD',
-                                  color: sectionIdx === scheduledMatches.length - 1 ? 'var(--text-muted)' : '#1565C0',
-                                  border: sectionIdx === scheduledMatches.length - 1 ? '1px solid var(--border)' : '1px solid #90CAF9',
-                                  fontSize: 10, fontWeight: 900, lineHeight: 1,
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  opacity: sectionIdx === scheduledMatches.length - 1 ? 0.4 : 1,
-                                }}
-                              >▼</button>
-                            </div>
+                          {/* Drag handle — jen scheduled + owner s DnD */}
+                          {opts.showDragHandle && (
+                            <span
+                              className="drag-handle"
+                              style={{
+                                cursor: 'grab', fontSize: 16, color: 'var(--text-muted)', flexShrink: 0,
+                                userSelect: 'none', lineHeight: 1, opacity: 0.5, touchAction: 'none',
+                              }}
+                            >☰</span>
                           )}
                           {/* Status vlevo: ikonka + čas (jen plánované)/tlačítko */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 40, flexShrink: 0 }}>
@@ -1599,10 +1572,71 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                     )}
                   </div>
                 );
-              })}
-            </div>
+  };
+
+  // Sortable wrapper pro scheduled match
+  const SortableMatchCard = ({ match }: { match: Match }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: match.id });
+    return (
+      <div ref={setNodeRef} style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 10 : undefined,
+        position: 'relative',
+      }} {...attributes} {...listeners}>
+        {renderMatchCard(match, { showDragHandle: canReorder })}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* 🔴 Live */}
+      {liveMatches.length > 0 && (
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#C62828', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            🔴 Právě hrají
           </div>
-        ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {liveMatches.map(m => <div key={m.id}>{renderMatchCard(m)}</div>)}
+          </div>
+        </div>
+      )}
+
+      {/* 🕐 Scheduled — s DnD pokud je owner */}
+      {scheduledMatches.length > 0 && (
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            🕐 Nadcházející
+          </div>
+          {canReorder ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={scheduledMatches.map(m => m.id)} strategy={verticalListSortingStrategy}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {scheduledMatches.map(m => <SortableMatchCard key={m.id} match={m} />)}
+                </div>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {scheduledMatches.map(m => <div key={m.id}>{renderMatchCard(m)}</div>)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ✅ Finished */}
+      {finishedMatches.length > 0 && (
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            ✅ Odehrané
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {finishedMatches.map(m => <div key={m.id}>{renderMatchCard(m)}</div>)}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
