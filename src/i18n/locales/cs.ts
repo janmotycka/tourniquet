@@ -569,6 +569,25 @@ export const cs = {
   'tournament.match.cancelConfirm': 'Zrušit tento zápas? Bude odebrán z rozpisu a časy zbylých zápasů se přepočítají.',
   'tournament.match.cancelled': 'Zápas zrušen',
 
+  // ─── Scorer visibility ─────────────────────────────────────────────────
+  'tournament.scorers.visibilityTitle': 'Viditelnost tabulky střelců',
+  'tournament.scorers.visibilityDesc': 'Hosté uvidí střelce pouze když je zapnete',
+  'tournament.scorers.visible': 'Viditelná pro hosty',
+  'tournament.scorers.hidden': 'Skrytá (jen rozhodčí)',
+  'tournament.scorers.hiddenBanner': 'Tabulku střelců zveřejní organizátor',
+
+  // ─── Chat ──────────────────────────────────────────────────────────────
+  'tournament.chat.title': 'Diskuze',
+  'tournament.chat.enableTitle': 'Diskuze hostů',
+  'tournament.chat.enableDesc': 'Povolte diskuzi, aby hosté mohli psát komentáře',
+  'tournament.chat.enabled': 'Diskuze zapnuta',
+  'tournament.chat.disabled': 'Diskuze vypnuta',
+  'tournament.chat.placeholder': 'Napište zprávu…',
+  'tournament.chat.send': 'Odeslat',
+  'tournament.chat.namePrompt': 'Vaše jméno',
+  'tournament.chat.empty': 'Zatím žádné zprávy. Buďte první!',
+  'tournament.chat.disabledBanner': 'Diskuze není povolena organizátorem',
+
   // ─── Match List ───────────────────────────────────────────────────────────
   'match.live': '● ŽIVĚ',
   'match.played': 'Odehráno',

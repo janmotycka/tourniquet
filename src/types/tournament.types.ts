@@ -96,6 +96,17 @@ export interface TournamentSettings {
   numberOfPitches?: number;            // 1–8, default 1; zápasy v kole probíhají paralelně
   tiebreakerOrder?: TiebreakerCriterion[];  // pořadí kritérií; chybí = DEFAULT_TIEBREAKER_ORDER
   penaltyResults?: PenaltyResult[];         // ruční výsledky pokutových kopů
+  scorersVisible?: boolean;                 // tabulka střelců viditelná pro hosty; default true
+  chatEnabled?: boolean;                    // diskuze hostů; default false
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  id: string;
+  authorName: string;
+  text: string;
+  createdAt: string;  // ISO timestamp
 }
 
 // ─── Tournament ───────────────────────────────────────────────────────────────

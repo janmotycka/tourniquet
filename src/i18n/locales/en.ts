@@ -571,6 +571,25 @@ export const en: Record<TranslationKey, string> = {
   'tournament.match.cancelConfirm': 'Cancel this match? It will be removed from the schedule and remaining match times recalculated.',
   'tournament.match.cancelled': 'Match cancelled',
 
+  // ─── Scorer visibility ─────────────────────────────────────────────────
+  'tournament.scorers.visibilityTitle': 'Scorer table visibility',
+  'tournament.scorers.visibilityDesc': 'Guests can see scorers only when enabled',
+  'tournament.scorers.visible': 'Visible to guests',
+  'tournament.scorers.hidden': 'Hidden (referees only)',
+  'tournament.scorers.hiddenBanner': 'Scorer table will be published by the organizer',
+
+  // ─── Chat ──────────────────────────────────────────────────────────────
+  'tournament.chat.title': 'Discussion',
+  'tournament.chat.enableTitle': 'Guest discussion',
+  'tournament.chat.enableDesc': 'Enable discussion so guests can post comments',
+  'tournament.chat.enabled': 'Discussion enabled',
+  'tournament.chat.disabled': 'Discussion disabled',
+  'tournament.chat.placeholder': 'Write a message…',
+  'tournament.chat.send': 'Send',
+  'tournament.chat.namePrompt': 'Your name',
+  'tournament.chat.empty': 'No messages yet. Be the first!',
+  'tournament.chat.disabledBanner': 'Discussion is not enabled by the organizer',
+
   // ─── Match List ───────────────────────────────────────────────────────────
   'match.live': '● LIVE',
   'match.played': 'Played',

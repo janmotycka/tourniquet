@@ -2064,6 +2064,65 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
       </div>
       )}
 
+      {/* Viditelnost střelců + Chat — toggley */}
+      {isOwner && (
+      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Scorer visibility */}
+        <div>
+          <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>⚽ {t('tournament.scorers.visibilityTitle')}</h3>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{t('tournament.scorers.visibilityDesc')}</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[true, false].map(val => (
+              <button
+                key={String(val)}
+                onClick={async () => {
+                  await updateTournament(tournament.id, {
+                    settings: { ...tournament.settings, scorersVisible: val },
+                  });
+                }}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 13,
+                  background: (tournament.settings.scorersVisible ?? true) === val ? 'var(--primary)' : 'var(--surface-var)',
+                  color: (tournament.settings.scorersVisible ?? true) === val ? '#fff' : 'var(--text)',
+                  transition: 'background .15s',
+                }}
+              >
+                {val ? `👁 ${t('tournament.scorers.visible')}` : `🔒 ${t('tournament.scorers.hidden')}`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ height: 1, background: 'var(--border)' }} />
+
+        {/* Chat toggle */}
+        <div>
+          <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>💬 {t('tournament.chat.enableTitle')}</h3>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{t('tournament.chat.enableDesc')}</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[true, false].map(val => (
+              <button
+                key={String(val)}
+                onClick={async () => {
+                  await updateTournament(tournament.id, {
+                    settings: { ...tournament.settings, chatEnabled: val },
+                  });
+                }}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 13,
+                  background: (tournament.settings.chatEnabled ?? false) === val ? 'var(--primary)' : 'var(--surface-var)',
+                  color: (tournament.settings.chatEnabled ?? false) === val ? '#fff' : 'var(--text)',
+                  transition: 'background .15s',
+                }}
+              >
+                {val ? `✅ ${t('tournament.chat.enabled')}` : `❌ ${t('tournament.chat.disabled')}`}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      )}
+
       {/* Kritéria pro umístění v tabulce — drag & drop */}
       <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
         <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>🏅 {t('tournament.tiebreaker.title')}</h3>
