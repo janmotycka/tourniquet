@@ -1240,8 +1240,6 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
 }) {
   const { t } = useI18n();
   const [openGoalPanel, setOpenGoalPanel] = useState<{ matchId: string; side: 'home' | 'away' } | null>(null);
-  const [matchDragIdx, setMatchDragIdx] = useState<number | null>(null);
-  const [matchDragOverIdx, setMatchDragOverIdx] = useState<number | null>(null);
   const getTeam = (id: string) => tournament.teams.find(tm => tm.id === id);
 
   const toggleGoal = (matchId: string, side: 'home' | 'away') => {
@@ -1259,6 +1257,15 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
   const scheduledMatches = tournament.matches
     .filter(m => m.status === 'scheduled')
     .sort((a, b) => new Date(a.scheduledTime).getTime() - new Date(b.scheduledTime).getTime());
+
+  const moveMatch = (idx: number, direction: -1 | 1) => {
+    if (!onReorderMatches) return;
+    const ids = scheduledMatches.map(m => m.id);
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= ids.length) return;
+    [ids[idx], ids[targetIdx]] = [ids[targetIdx], ids[idx]];
+    onReorderMatches(ids);
+  };
   const finishedMatches = tournament.matches
     .filter(m => m.status === 'finished')
     .sort((a, b) => new Date(b.finishedAt ?? b.scheduledTime).getTime() - new Date(a.finishedAt ?? a.scheduledTime).getTime());
@@ -1291,33 +1298,13 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                 // Barva skóre
                 const scoreColor = isScheduled ? 'var(--text-muted)' : isLive ? (isPaused ? '#E65100' : '#C62828') : 'var(--text)';
 
-                // DnD — jen scheduled zápasy pro ownera
-                const canDrag = isScheduled && isVerified && !!onReorderMatches;
-                const isDragging = canDrag && matchDragIdx === sectionIdx;
-                const isDragOver = canDrag && matchDragOverIdx === sectionIdx && matchDragIdx !== sectionIdx;
+                // Reorder — jen scheduled zápasy pro ownera
+                const canReorder = isScheduled && isVerified && !!onReorderMatches;
 
                 return (
                   <div
                     key={match.id}
-                    draggable={canDrag}
-                    onDragStart={canDrag ? () => setMatchDragIdx(sectionIdx) : undefined}
-                    onDragOver={canDrag ? (e) => { e.preventDefault(); setMatchDragOverIdx(sectionIdx); } : undefined}
-                    onDrop={canDrag ? () => {
-                      if (matchDragIdx === null || matchDragIdx === sectionIdx) {
-                        setMatchDragIdx(null); setMatchDragOverIdx(null); return;
-                      }
-                      const ids = scheduledMatches.map(m => m.id);
-                      const [moved] = ids.splice(matchDragIdx, 1);
-                      ids.splice(sectionIdx, 0, moved);
-                      onReorderMatches!(ids);
-                      setMatchDragIdx(null); setMatchDragOverIdx(null);
-                    } : undefined}
-                    onDragEnd={() => { setMatchDragIdx(null); setMatchDragOverIdx(null); }}
                     style={{
-                      opacity: isDragging ? 0.5 : 1,
-                      background: isDragOver ? '#FFF8E1' : 'transparent',
-                      borderRadius: isDragOver ? 14 : 0,
-                      transition: 'all .15s',
                     }}
                   >
                     <div style={{
@@ -1465,12 +1452,36 @@ function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinis
                       {/* ══ SCHEDULED / FINISHED — kompaktní jednořádkový layout ══ */}
                       {!isLive && (
                         <div style={{ display: 'flex', alignItems: 'center', padding: '9px 12px', gap: 8 }}>
-                          {/* Drag handle — jen scheduled + owner */}
-                          {canDrag && (
-                            <span style={{
-                              cursor: 'grab', fontSize: 14, color: 'var(--text-muted)', flexShrink: 0,
-                              userSelect: 'none', lineHeight: 1, opacity: 0.5,
-                            }}>☰</span>
+                          {/* Move up/down — jen scheduled + owner */}
+                          {canReorder && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
+                              <button
+                                onClick={() => moveMatch(sectionIdx, -1)}
+                                disabled={sectionIdx === 0}
+                                style={{
+                                  width: 22, height: 16, borderRadius: '5px 5px 2px 2px',
+                                  background: sectionIdx === 0 ? 'var(--surface-var)' : '#E3F2FD',
+                                  color: sectionIdx === 0 ? 'var(--text-muted)' : '#1565C0',
+                                  border: sectionIdx === 0 ? '1px solid var(--border)' : '1px solid #90CAF9',
+                                  fontSize: 10, fontWeight: 900, lineHeight: 1,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  opacity: sectionIdx === 0 ? 0.4 : 1,
+                                }}
+                              >▲</button>
+                              <button
+                                onClick={() => moveMatch(sectionIdx, 1)}
+                                disabled={sectionIdx === scheduledMatches.length - 1}
+                                style={{
+                                  width: 22, height: 16, borderRadius: '2px 2px 5px 5px',
+                                  background: sectionIdx === scheduledMatches.length - 1 ? 'var(--surface-var)' : '#E3F2FD',
+                                  color: sectionIdx === scheduledMatches.length - 1 ? 'var(--text-muted)' : '#1565C0',
+                                  border: sectionIdx === scheduledMatches.length - 1 ? '1px solid var(--border)' : '1px solid #90CAF9',
+                                  fontSize: 10, fontWeight: 900, lineHeight: 1,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  opacity: sectionIdx === scheduledMatches.length - 1 ? 0.4 : 1,
+                                }}
+                              >▼</button>
+                            </div>
                           )}
                           {/* Status vlevo: ikonka + čas (jen plánované)/tlačítko */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 40, flexShrink: 0 }}>
