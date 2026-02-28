@@ -350,19 +350,30 @@ function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament: Tourna
   const getTeam = (id: string) => tournament.teams.find(tm => tm.id === id);
 
   // Detekce remízujících párů kde penalties je v tiebreaker order
+  // Seskupíme týmy dle bodů a vygenerujeme všechny páry uvnitř skupiny
   const tbOrder = tournament.settings.tiebreakerOrder ?? DEFAULT_TIEBREAKER_ORDER;
   const hasPenaltyCriterion = tbOrder.includes('penalties');
   const tiedPairs: Array<{ teamA: string; teamB: string; resolved: boolean }> = [];
   if (hasPenaltyCriterion) {
-    for (let i = 0; i < standings.length - 1; i++) {
-      const a = standings[i];
-      const b = standings[i + 1];
-      if (a.points === b.points && a.played > 0) {
-        const existing = (tournament.settings.penaltyResults ?? []).find(
-          pr => (pr.teamAId === a.teamId && pr.teamBId === b.teamId) ||
-                (pr.teamAId === b.teamId && pr.teamBId === a.teamId),
-        );
-        tiedPairs.push({ teamA: a.teamId, teamB: b.teamId, resolved: !!existing });
+    const pointGroups = new Map<number, Standing[]>();
+    for (const s of standings) {
+      if (s.played === 0) continue;
+      const arr = pointGroups.get(s.points) ?? [];
+      arr.push(s);
+      pointGroups.set(s.points, arr);
+    }
+    for (const group of pointGroups.values()) {
+      if (group.length < 2) continue;
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i + 1; j < group.length; j++) {
+          const a = group[i];
+          const b = group[j];
+          const existing = (tournament.settings.penaltyResults ?? []).find(
+            pr => (pr.teamAId === a.teamId && pr.teamBId === b.teamId) ||
+                  (pr.teamAId === b.teamId && pr.teamBId === a.teamId),
+          );
+          tiedPairs.push({ teamA: a.teamId, teamB: b.teamId, resolved: !!existing });
+        }
       }
     }
   }
@@ -578,7 +589,7 @@ function GoalModal({ match, teams, onAdd, onClose }: {
   const [isOwnGoal, setIsOwnGoal] = useState(false);
   // Auto-minuta z timeru (pokud live), jinak 1
   const [minute, setMinute] = useState(() =>
-    match.status === 'live' ? computeCurrentMinute(match.startedAt) : 1
+    match.status === 'live' ? computeCurrentMinute(match.startedAt, match.pausedAt, match.pausedElapsed) : 1
   );
   const [ownGoalTeamId, setOwnGoalTeamId] = useState(match.homeTeamId);
 

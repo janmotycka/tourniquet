@@ -16,6 +16,8 @@ export function generateRoundRobinSchedule(
   teams: Team[],
   settings: TournamentSettings
 ): Match[] {
+  if (teams.length < 2) return [];
+
   const startDateTime = parseStartDateTime(settings);
   const { matchDurationMinutes, breakBetweenMatchesMinutes } = settings;
   const numberOfPitches = settings.numberOfPitches ?? 1;
@@ -332,7 +334,8 @@ export function estimateTournamentDuration(
   const numberOfPitches = settings.numberOfPitches ?? 1;
   // S více hřišti probíhají zápasy paralelně — celkový čas se dělí počtem hřišť
   const slots = Math.ceil(realMatches / numberOfPitches);
-  return slots * (settings.matchDurationMinutes + settings.breakBetweenMatchesMinutes);
+  if (slots <= 0) return 0;
+  return slots * settings.matchDurationMinutes + (slots - 1) * settings.breakBetweenMatchesMinutes;
 }
 
 /** Vrátí počet skutečných zápasů pro N týmů */
