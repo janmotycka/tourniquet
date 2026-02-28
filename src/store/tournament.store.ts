@@ -610,7 +610,11 @@ export const useTournamentStore = create<TournamentState>()(
           updatedAt: new Date().toISOString(),
           matches: t.matches.map((m): Match => {
             if (m.id !== matchId) return m;
-            return { ...m, status: 'live', startedAt: new Date().toISOString(), pausedAt: null, pausedElapsed: 0 };
+            // Zachovat dosavadní elapsed čas — timer pokračuje, ne restartuje
+            const priorElapsed = m.finishedAt && m.startedAt
+              ? Math.floor((new Date(m.finishedAt).getTime() - new Date(m.startedAt).getTime()) / 1000) + (m.pausedElapsed ?? 0)
+              : (m.pausedElapsed ?? 0);
+            return { ...m, status: 'live', startedAt: new Date().toISOString(), pausedAt: null, pausedElapsed: priorElapsed };
           }),
         })));
         const updated = get().getTournamentById(tournamentId);
@@ -772,16 +776,20 @@ export const useTournamentStore = create<TournamentState>()(
         const tournament = get().getTournamentById(tournamentId);
         if (!tournament) return;
 
-        // Odebrat tým a všechny jeho zápasy, přepočítat časy zbylých
+        // Odebrat tým, jeho zápasy a osiřelé penaltyResults; přepočítat časy zbylých
         set(state => mutateBothArrays(state, tournamentId, t => {
           const remainingTeams = t.teams.filter(tm => tm.id !== teamId);
           const remainingMatches = t.matches.filter(
             m => m.homeTeamId !== teamId && m.awayTeamId !== teamId,
           );
+          const cleanPenalties = (t.settings.penaltyResults ?? []).filter(
+            pr => pr.teamAId !== teamId && pr.teamBId !== teamId,
+          );
           return {
             ...t,
             teams: remainingTeams,
             matches: recalculateMatchTimes(remainingMatches, t.settings),
+            settings: { ...t.settings, penaltyResults: cleanPenalties },
             updatedAt: new Date().toISOString(),
           };
         }));
