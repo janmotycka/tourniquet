@@ -5,7 +5,7 @@ import { verifyPin, markPinVerified, isPinVerified } from '../../utils/pin-hash'
 import { computeStandings, formatMatchTime, computeMatchElapsed, computeCurrentMinute } from '../../utils/tournament-schedule';
 import { getTournamentPublicUrl, getAdminInviteUrl, generateQRCodeDataUrl } from '../../utils/qr-code';
 import { exportTournamentPdf } from '../../utils/tournament-pdf';
-import type { Tournament, Match, Team, Player, Goal, TiebreakerCriterion, PenaltyResult } from '../../types/tournament.types';
+import type { Tournament, Match, Team, Player, Goal, Standing, TiebreakerCriterion, PenaltyResult } from '../../types/tournament.types';
 import { DEFAULT_TIEBREAKER_ORDER } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
 import { logger } from '../../utils/logger';
