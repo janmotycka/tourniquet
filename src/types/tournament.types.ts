@@ -1,7 +1,7 @@
 // ─── Tournament module types ──────────────────────────────────────────────────
 
 export type TournamentStatus = 'draft' | 'active' | 'finished';
-export type MatchStatus = 'scheduled' | 'live' | 'finished';
+export type MatchStatus = 'scheduled' | 'live' | 'finished' | 'cancelled';
 
 // ─── Player & Team ────────────────────────────────────────────────────────────
 
