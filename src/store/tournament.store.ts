@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Tournament, Match, Goal, CreateTournamentInput, TournamentSettings } from '../types/tournament.types';
+import type { Tournament, Match, Goal, CreateTournamentInput, TournamentSettings, RosterSubmission } from '../types/tournament.types';
 import { generateRoundRobinSchedule, generateId, computeMatchStartTime, parseStartDateTime, recalculateMatchTimes } from '../utils/tournament-schedule';
 import { logger } from '../utils/logger';
 import { sanitizeTournamentInput, clampNumber, LIMITS } from '../utils/validation';
@@ -94,6 +94,10 @@ interface TournamentState {
   removeTeam: (tournamentId: string, teamId: string) => Promise<void>;
   cancelMatch: (tournamentId: string, matchId: string) => Promise<void>;
   reorderMatches: (tournamentId: string, reorderedScheduledIds: string[]) => Promise<void>;
+
+  // Soupisky
+  generateRosterTokens: (tournamentId: string) => Promise<void>;
+  acceptRoster: (tournamentId: string, teamId: string, submission: RosterSubmission) => Promise<void>;
 
   // Přegenerování harmonogramu
   regenerateSchedule: (tournamentId: string, newSettings: TournamentSettings) => Promise<void>;
@@ -835,6 +839,47 @@ export const useTournamentStore = create<TournamentState>()(
             matches: recalculateMatchTimes([...kept, ...reordered], t.settings),
           };
         }));
+        const updated = get().getTournamentById(tournamentId);
+        if (updated) {
+          const err = await syncToFirebase(get().firebaseUid, updated);
+          if (err) set({ syncError: err });
+        }
+      },
+
+      generateRosterTokens: async (tournamentId) => {
+        set(state => mutateBothArrays(state, tournamentId, t => ({
+          ...t,
+          updatedAt: new Date().toISOString(),
+          teams: t.teams.map(team =>
+            team.rosterToken ? team : { ...team, rosterToken: generateId() },
+          ),
+        })));
+        const updated = get().getTournamentById(tournamentId);
+        if (updated) {
+          const err = await syncToFirebase(get().firebaseUid, updated);
+          if (err) set({ syncError: err });
+        }
+      },
+
+      acceptRoster: async (tournamentId, teamId, submission) => {
+        set(state => mutateBothArrays(state, tournamentId, t => ({
+          ...t,
+          updatedAt: new Date().toISOString(),
+          teams: t.teams.map(team => {
+            if (team.id !== teamId) return team;
+            return {
+              ...team,
+              coach: submission.coach,
+              players: submission.players.map((p) => ({
+                id: generateId(),
+                name: p.name,
+                jerseyNumber: p.jerseyNumber,
+                birthYear: p.birthYear,
+              })),
+              rosterSubmittedAt: submission.submittedAt,
+            };
+          }),
+        })));
         const updated = get().getTournamentById(tournamentId);
         if (updated) {
           const err = await syncToFirebase(get().firebaseUid, updated);

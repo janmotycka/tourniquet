@@ -35,3 +35,17 @@ export function parseTournamentHashFromUrl(): string | null {
   const match = hash.match(/^#tournament=([a-zA-Z0-9_-]+)$/);
   return match ? match[1] : null;
 }
+
+/** Vrátí URL pro roster form (odkaz pro trenéra k vyplnění soupisky) */
+export function getRosterFormUrl(tournamentId: string, rosterToken: string): string {
+  const base = window.location.origin + window.location.pathname;
+  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  return `${cleanBase}#roster=${tournamentId}&k=${rosterToken}`;
+}
+
+/** Parsuje roster form hash z URL */
+export function parseRosterHashFromUrl(): { tournamentId: string; teamToken: string } | null {
+  const hash = window.location.hash;
+  const match = hash.match(/^#roster=([a-zA-Z0-9_-]+)&k=([a-zA-Z0-9_-]+)$/);
+  return match ? { tournamentId: match[1], teamToken: match[2] } : null;
+}
