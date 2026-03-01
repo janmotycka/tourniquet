@@ -236,6 +236,7 @@ function ContactRow({ contact, onTap }: { contact: Contact; onTap: () => void })
 // ─── Contact detail / edit bottom-sheet ──────────────────────────────────────
 function ContactDetailSheet({
   contact,
+  defaultClubId,
   clubs,
   onSave,
   onDelete,
@@ -243,6 +244,7 @@ function ContactDetailSheet({
   t,
 }: {
   contact: Contact | null; // null = create mode
+  defaultClubId: string | null;
   clubs: Club[];
   onSave: (data: { name: string; phone: string; email: string; clubId: string | null; clubName: string | null }) => void;
   onDelete: (contactId: string) => void;
@@ -252,7 +254,7 @@ function ContactDetailSheet({
   const [name, setName] = useState(contact?.name ?? '');
   const [phone, setPhone] = useState(contact?.phone ?? '');
   const [email, setEmail] = useState(contact?.email ?? '');
-  const [clubId, setClubId] = useState<string | null>(contact?.clubId ?? null);
+  const [clubId, setClubId] = useState<string | null>(contact?.clubId ?? defaultClubId);
 
   const canSave = name.trim().length > 0 && phone.trim().length > 0;
 
@@ -679,6 +681,7 @@ export function ClubsPage({ navigate }: Props) {
       {showContactSheet && (
         <ContactDetailSheet
           contact={viewingContact}
+          defaultClubId={contactSheetClubId}
           clubs={clubs}
           onSave={handleSaveContact}
           onDelete={handleDeleteContact}
