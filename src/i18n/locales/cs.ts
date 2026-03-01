@@ -876,6 +876,9 @@ export const cs = {
   'roster.preview': 'Zobrazit',
   'roster.acceptSuccess': 'Soupiska přijata!',
   'roster.previewTitle': 'Náhled soupisky',
+  'roster.fillRoster': 'Vyplnit',
+  'roster.fillRosterTitle': 'Vyplnit soupisku',
+  'roster.fillRosterSaving': 'Ukládám…',
 
   // ─── PDF export ──────────────────────────────────────────────────────────
   'pdf.start': 'Začátek',

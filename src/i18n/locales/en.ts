@@ -878,6 +878,9 @@ export const en: Record<TranslationKey, string> = {
   'roster.preview': 'Preview',
   'roster.acceptSuccess': 'Roster accepted!',
   'roster.previewTitle': 'Roster preview',
+  'roster.fillRoster': 'Fill in',
+  'roster.fillRosterTitle': 'Fill in roster',
+  'roster.fillRosterSaving': 'Saving…',
 
   // ─── PDF export ──────────────────────────────────────────────────────────
   'pdf.start': 'Start',
