@@ -5,9 +5,13 @@
 
 import { create } from 'zustand';
 import type { Page } from '../App';
-import { parseTournamentHashFromUrl } from '../utils/qr-code';
+import { parseTournamentHashFromUrl, parseRosterHashFromUrl } from '../utils/qr-code';
 
 function getInitialPage(): Page {
+  // Roster form link (#roster={tournamentId}&k={token})
+  const roster = parseRosterHashFromUrl();
+  if (roster) return { name: 'roster-form', tournamentId: roster.tournamentId, teamToken: roster.teamToken };
+  // Public view link (#tournament={id})
   const tournamentId = parseTournamentHashFromUrl();
   if (tournamentId) return { name: 'tournament-public', tournamentId };
   return { name: 'home' };

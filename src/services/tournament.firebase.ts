@@ -41,6 +41,9 @@ function toPublicFirebase(t: Tournament): object {
         jerseyNumber: p.jerseyNumber,
         // birthYear záměrně VYNECHÁN — GDPR (osobní údaje nezletilých)
       })),
+      // rosterToken zůstává (potřebný pro roster form URL)
+      // coach: stripnout email (GDPR), ponechat jméno pro public view
+      coach: team.coach ? { name: team.coach.name, phone: '', email: '' } : null,
     })),
   };
   return JSON.parse(JSON.stringify(sanitized));

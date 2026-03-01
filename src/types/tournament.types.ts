@@ -12,6 +12,12 @@ export interface Player {
   birthYear: number | null; // rok narození, např. 2012
 }
 
+export interface TeamCoach {
+  name: string;
+  phone: string;
+  email: string;
+}
+
 export interface Team {
   id: string;
   name: string;
@@ -19,6 +25,17 @@ export interface Team {
   players: Player[];
   clubId?: string | null;      // reference na uložený klub
   logoBase64?: string | null;  // kopie loga při vytvoření turnaje
+  rosterToken?: string;              // unikátní token pro odkaz na soupisku
+  rosterSubmittedAt?: string | null; // ISO timestamp odeslaní soupisky trenérem
+  coach?: TeamCoach | null;          // kontakt trenéra (vyplněno přes roster form)
+}
+
+export interface RosterSubmission {
+  coach: TeamCoach;
+  players: Array<{ name: string; jerseyNumber: number; birthYear: number | null }>;
+  submittedAt: string;  // ISO timestamp
+  teamId: string;
+  teamName: string;
 }
 
 // ─── Goal ─────────────────────────────────────────────────────────────────────

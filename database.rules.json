@@ -95,6 +95,48 @@
       }
     },
 
+    // ─── Soupisky (roster form od trenérů) ─────────────────────────────────────
+    // Samostatná cesta — trenéři nemají auth, zapisují přes unikátní token v URL
+    "rosters": {
+      "$tournamentId": {
+        ".read": true,
+        "$teamId": {
+          ".read": true,
+          ".write": true,
+          ".validate": "newData.hasChildren(['coach', 'players', 'submittedAt', 'teamId', 'teamName'])",
+          "coach": {
+            ".validate": "newData.hasChildren(['name', 'phone'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+            },
+            "phone": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 20"
+            },
+            "email": {
+              ".validate": "newData.isString() && newData.val().length <= 100"
+            }
+          },
+          "submittedAt": {
+            ".validate": "newData.isString()"
+          },
+          "teamId": {
+            ".validate": "newData.isString()"
+          },
+          "teamName": {
+            ".validate": "newData.isString()"
+          }
+        }
+      }
+    },
+
+    // ─── Kontakty trenérů (databáze pro organizátora) ────────────────────────
+    "contacts": {
+      "$uid": {
+        ".read":  "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
     // ─── Uživatelská data ────────────────────────────────────────────────────
     "users": {
       "$uid": {

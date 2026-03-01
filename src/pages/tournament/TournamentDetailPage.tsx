@@ -3,9 +3,11 @@ import type { Page } from '../../App';
 import { useTournamentStore } from '../../store/tournament.store';
 import { verifyPin, markPinVerified, isPinVerified } from '../../utils/pin-hash';
 import { computeStandings, formatMatchTime, computeMatchElapsed, computeCurrentMinute } from '../../utils/tournament-schedule';
-import { getTournamentPublicUrl, getAdminInviteUrl, generateQRCodeDataUrl } from '../../utils/qr-code';
+import { getTournamentPublicUrl, getAdminInviteUrl, generateQRCodeDataUrl, getRosterFormUrl } from '../../utils/qr-code';
+import { subscribeToRosters } from '../../services/roster.firebase';
+import { useContactsStore } from '../../store/contacts.store';
 import { exportTournamentPdf } from '../../utils/tournament-pdf';
-import type { Tournament, Match, Team, Player, Goal, Standing, TiebreakerCriterion, PenaltyResult } from '../../types/tournament.types';
+import type { Tournament, Match, Team, Player, Goal, Standing, TiebreakerCriterion, PenaltyResult, RosterSubmission } from '../../types/tournament.types';
 import { DEFAULT_TIEBREAKER_ORDER } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
 import { logger } from '../../utils/logger';
@@ -1854,6 +1856,26 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
   // Team removal
   const [teamRemoved, setTeamRemoved] = useState(false);
 
+  // Roster management
+  const [rosterMap, setRosterMap] = useState<Record<string, RosterSubmission>>({});
+  const [rosterLinkCopied, setRosterLinkCopied] = useState<string | null>(null);
+  const [rosterPreview, setRosterPreview] = useState<RosterSubmission | null>(null);
+  const [rosterAccepted, setRosterAccepted] = useState<string | null>(null);
+  const generateRosterTokens = useTournamentStore(s => s.generateRosterTokens);
+  const acceptRoster = useTournamentStore(s => s.acceptRoster);
+  const firebaseUid = useTournamentStore(s => s.firebaseUid);
+  const createOrUpdateContact = useContactsStore(s => s.createOrUpdateContact);
+
+  // Subscribe to roster submissions in real-time
+  useEffect(() => {
+    const hasTokens = tournament.teams.some(tm => tm.rosterToken);
+    if (!hasTokens) return;
+    const unsubscribe = subscribeToRosters(tournament.id, (rosters) => {
+      setRosterMap(rosters);
+    });
+    return unsubscribe;
+  }, [tournament.id, tournament.teams]);
+
   const deleteTournament = useTournamentStore(s => s.deleteTournament);
   const updateTournament = useTournamentStore(s => s.updateTournament);
   const regenerateSchedule = useTournamentStore(s => s.regenerateSchedule);
@@ -1991,6 +2013,171 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
           }}>
             {adminCopied ? '✅ Zkopírováno!' : '🔑 Kopírovat odkaz pro rozhodčí'}
           </button>
+        </div>
+      )}
+
+      {/* Soupisky — roster management */}
+      {isOwner && (
+      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('roster.adminTitle')}</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+          {t('roster.adminDesc')}
+        </p>
+
+        {/* Generate links button — if teams don't have tokens yet */}
+        {!tournament.teams.some(tm => tm.rosterToken) && (
+          <button
+            onClick={() => generateRosterTokens(tournament.id)}
+            style={{
+              background: 'var(--primary)', color: '#fff', fontWeight: 700,
+              fontSize: 14, padding: '12px 20px', borderRadius: 10,
+            }}
+          >
+            🔗 {t('roster.generateLinks')}
+          </button>
+        )}
+
+        {/* Per-team roster status */}
+        {tournament.teams.some(tm => tm.rosterToken) && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {tournament.teams.map(team => {
+              const submission = rosterMap[team.id];
+              const isAccepted = !!team.rosterSubmittedAt;
+              const isSubmitted = !!submission;
+
+              const status = isAccepted
+                ? t('roster.statusAccepted')
+                : isSubmitted
+                  ? t('roster.statusSubmitted')
+                  : t('roster.statusWaiting');
+
+              return (
+                <div key={team.id} style={{
+                  padding: '10px 12px', background: 'var(--surface-var)', borderRadius: 12,
+                  display: 'flex', flexDirection: 'column', gap: 6,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <TeamBadge team={team} size={14} />
+                    <span style={{ flex: 1, fontWeight: 600, fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {team.name}
+                    </span>
+                    <span style={{ fontSize: 12, flexShrink: 0 }}>{status}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {/* Copy link */}
+                    {team.rosterToken && (
+                      <button
+                        onClick={async () => {
+                          const url = getRosterFormUrl(tournament.id, team.rosterToken!);
+                          await navigator.clipboard.writeText(url);
+                          setRosterLinkCopied(team.id);
+                          setTimeout(() => setRosterLinkCopied(null), 2000);
+                        }}
+                        style={{
+                          padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                          background: rosterLinkCopied === team.id ? '#E8F5E9' : 'var(--primary-light)',
+                          color: rosterLinkCopied === team.id ? '#2E7D32' : 'var(--primary)',
+                          border: 'none', cursor: 'pointer',
+                        }}
+                      >
+                        {rosterLinkCopied === team.id ? '✅' : '🔗'} {rosterLinkCopied === team.id ? t('roster.linkCopied') : t('roster.copyLink')}
+                      </button>
+                    )}
+
+                    {/* Preview button */}
+                    {isSubmitted && (
+                      <button
+                        onClick={() => setRosterPreview(submission)}
+                        style={{
+                          padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                          background: 'var(--surface)', color: 'var(--text-muted)',
+                          border: '1px solid var(--border)', cursor: 'pointer',
+                        }}
+                      >
+                        👁 {t('roster.preview')}
+                      </button>
+                    )}
+
+                    {/* Accept button */}
+                    {isSubmitted && !isAccepted && (
+                      <button
+                        onClick={async () => {
+                          await acceptRoster(tournament.id, team.id, submission);
+                          // Save coach contact to contacts database
+                          if (firebaseUid && submission.coach.phone) {
+                            createOrUpdateContact(firebaseUid, {
+                              name: submission.coach.name,
+                              phone: submission.coach.phone,
+                              email: submission.coach.email || undefined,
+                              clubId: team.clubId ?? null,
+                              clubName: team.name,
+                            }).catch(() => {}); // non-critical
+                          }
+                          setRosterAccepted(team.id);
+                          setTimeout(() => setRosterAccepted(null), 2500);
+                        }}
+                        style={{
+                          padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                          background: rosterAccepted === team.id ? '#E8F5E9' : '#E8F5E9',
+                          color: '#2E7D32', border: '1px solid #C8E6C9', cursor: 'pointer',
+                        }}
+                      >
+                        ✅ {rosterAccepted === team.id ? t('roster.acceptSuccess') : t('roster.accept')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      )}
+
+      {/* Roster preview modal */}
+      {rosterPreview && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={() => setRosterPreview(null)}
+        >
+          <div
+            style={{ background: 'var(--surface)', borderRadius: 20, padding: '24px', width: '100%', maxWidth: 400, maxHeight: '80vh', overflow: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>{t('roster.previewTitle')}</h3>
+              <button onClick={() => setRosterPreview(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>{t('roster.coach')}</div>
+              <p style={{ fontSize: 15, fontWeight: 600, margin: '2px 0' }}>{rosterPreview.coach.name}</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0' }}>📞 {rosterPreview.coach.phone}</p>
+              {rosterPreview.coach.email && (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0' }}>📧 {rosterPreview.coach.email}</p>
+              )}
+            </div>
+
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
+              {t('roster.players')} ({rosterPreview.players.length})
+            </div>
+            {rosterPreview.players.map((p, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: i < rosterPreview.players.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', width: 28, textAlign: 'center' }}>
+                  {p.jerseyNumber || '–'}
+                </span>
+                <span style={{ flex: 1, fontSize: 14 }}>{p.name}</span>
+                {p.birthYear && (
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.birthYear}</span>
+                )}
+              </div>
+            ))}
+
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12 }}>
+              {t('roster.statusSubmitted')} · {new Date(rosterPreview.submittedAt).toLocaleString()}
+            </p>
+          </div>
         </div>
       )}
 

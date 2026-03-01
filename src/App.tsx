@@ -14,6 +14,7 @@ import { TournamentListPage } from './pages/tournament/TournamentListPage';
 import { CreateTournamentPage } from './pages/tournament/CreateTournamentPage';
 import { TournamentDetailPage } from './pages/tournament/TournamentDetailPage';
 import { TournamentPublicView } from './pages/tournament/TournamentPublicView';
+import { RosterFormPage } from './pages/tournament/RosterFormPage';
 import { ClubsPage } from './pages/tournament/ClubsPage';
 import { MatchListPage } from './pages/match/MatchListPage';
 import { CreateMatchPage } from './pages/match/CreateMatchPage';
@@ -26,6 +27,7 @@ import { useTournamentStore } from './store/tournament.store';
 import { useSubscriptionStore } from './store/subscription.store';
 import { useToastStore } from './store/toast.store';
 import { usePageStore } from './store/page.store';
+import { useContactsStore } from './store/contacts.store';
 import type { TrainingUnit } from './types/training.types';
 
 export type Page =
@@ -41,6 +43,7 @@ export type Page =
   | { name: 'tournament-create' }
   | { name: 'tournament-detail'; tournamentId: string }
   | { name: 'tournament-public'; tournamentId: string }
+  | { name: 'roster-form'; tournamentId: string; teamToken: string }
   | { name: 'clubs' }
   | { name: 'match-list' }
   | { name: 'match-create' }
@@ -56,6 +59,7 @@ function AppRouter() {
   const setFirebaseUid = useTournamentStore(s => s.setFirebaseUid);
   const subscribeToStatus = useSubscriptionStore(s => s.subscribeToStatus);
   const showToast = useToastStore(s => s.show);
+  const loadContacts = useContactsStore(s => s.loadFromFirebase);
 
   const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin } = usePageStore();
 
@@ -68,16 +72,17 @@ function AppRouter() {
     setPage(p);
   };
 
-  // Po přihlášení načteme data z Firebase + subscription listener
+  // Po přihlášení načteme data z Firebase + subscription listener + kontakty
   useEffect(() => {
     if (user) {
       loadFromFirebase(user.uid);
+      loadContacts(user.uid);
       const unsubscribe = subscribeToStatus(user.uid);
       return () => unsubscribe();
     } else {
       setFirebaseUid(null);
     }
-  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus]);
+  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts]);
 
   // Po přihlášení + existuje joinIntent → přesměrovat zpět na public view
   useEffect(() => {
@@ -110,6 +115,17 @@ function AppRouter() {
         <div style={{ fontSize: 48 }}>⚽</div>
         <p style={{ color: 'var(--text-muted)', fontSize: 15 }}>{t('app.loading')}</p>
       </div>
+    );
+  }
+
+  // Roster form — trenér vyplní soupisku, nevyžaduje přihlášení
+  if (page.name === 'roster-form') {
+    return (
+      <RosterFormPage
+        tournamentId={page.tournamentId}
+        teamToken={page.teamToken}
+        navigate={navigate}
+      />
     );
   }
 
