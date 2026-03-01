@@ -1,16 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Fotbalový míč – čistý, čitelný i v 16×16 -->
-  <circle cx="32" cy="32" r="30" fill="#fff" stroke="#444" stroke-width="2.5"/>
-  <!-- Centrální pětiúhelník -->
-  <path d="M32 16 L42 24 L39 36 L25 36 L22 24 Z" fill="#1B5E20"/>
-  <!-- Švy ke krajům -->
-  <path d="M32 16 L32 3" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M42 24 L56 18" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M39 36 L52 46" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M25 36 L12 46" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M22 24 L8 18" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <!-- Dolní švy -->
-  <path d="M32 62 L32 50" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M52 46 L60 42" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
-  <path d="M12 46 L4 42" stroke="#555" stroke-width="2" stroke-linecap="round" fill="none"/>
+  <!-- Fotbalový míč – výrazný, čitelný i v 16×16 -->
+  <!-- Pozadí – zelený kruh (jako trávník) -->
+  <circle cx="32" cy="32" r="31" fill="#1B5E20"/>
+  <!-- Bílý míč -->
+  <circle cx="32" cy="32" r="22" fill="#fff"/>
+  <!-- Centrální černý pětiúhelník -->
+  <path d="M32 19 L39 25 L37 33 L27 33 L25 25 Z" fill="#333"/>
+  <!-- 5 švů od centrálního pětiúhelníku ke kraji -->
+  <path d="M32 19 L32 11" stroke="#999" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+  <path d="M39 25 L47 20" stroke="#999" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+  <path d="M37 33 L44 40" stroke="#999" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+  <path d="M27 33 L20 40" stroke="#999" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+  <path d="M25 25 L17 20" stroke="#999" stroke-width="1.8" stroke-linecap="round" fill="none"/>
 </svg>
