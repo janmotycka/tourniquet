@@ -4,6 +4,7 @@ import { useMatchesStore } from '../../store/matches.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useI18n } from '../../i18n';
 import { computePlayerStats, computeTeamStats } from '../../utils/match-stats';
+import { exportSeasonPlayerStatsCSV } from '../../utils/export-csv';
 import type { PlayerSeasonStats } from '../../utils/match-stats';
 
 interface Props { navigate: (p: Page) => void; }
@@ -89,6 +90,17 @@ export function MatchStatsPage({ navigate }: Props) {
             {t('common.back')}
           </button>
           <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('matchStats.title')}</h1>
+          {hasData && (
+            <button
+              onClick={() => exportSeasonPlayerStatsCSV(playerStats, t)}
+              style={{
+                background: 'var(--surface-var)', borderRadius: 10,
+                padding: '8px 12px', fontWeight: 600, fontSize: 13,
+              }}
+            >
+              📥 {t('csv.exportPlayerStats')}
+            </button>
+          )}
         </div>
 
         {/* Filtr klubu (pokud je víc než 1) */}
