@@ -2,6 +2,8 @@
 
 export type TournamentStatus = 'draft' | 'active' | 'finished';
 export type MatchStatus = 'scheduled' | 'live' | 'finished' | 'cancelled';
+export type TournamentFormat = 'round-robin' | 'groups-knockout' | 'knockout';
+export type MatchStage = 'group' | 'quarterfinal' | 'semifinal' | 'third-place' | 'final';
 
 // ─── Player & Team ────────────────────────────────────────────────────────────
 
@@ -68,6 +70,14 @@ export interface Match {
   roundIndex: number;          // 0-based číslo rundy
   matchIndex: number;          // globální pořadové číslo zápasu (pro výpočet času)
   pitchNumber?: number;        // číslo hřiště (1-based); default 1; optional pro zpětnou kompatibilitu
+
+  // ── Knockout / Groups extension (optional — backward compatible) ──────
+  stage?: MatchStage;                // fáze turnaje (group, semifinal, final…)
+  groupId?: string;                  // ID skupiny (pro group stage matches)
+  bracketPosition?: number;          // pozice v bracket vizualizaci (0-based)
+  nextMatchId?: string;              // vítěz postupuje do tohoto zápasu
+  homeTeamPlaceholder?: string;      // "1. Sk. A" — dokud se neurčí skutečný tým
+  awayTeamPlaceholder?: string;
 }
 
 // ─── Standing (computed, never stored) ───────────────────────────────────────
@@ -102,6 +112,14 @@ export interface PenaltyResult {
   teamBScore: number;  // proměněné penalty týmu B
 }
 
+// ─── Group definition (for groups+knockout format) ──────────────────────────
+
+export interface GroupDefinition {
+  id: string;
+  name: string;         // "Skupina A", "Skupina B"
+  teamIds: string[];    // IDs týmů ve skupině
+}
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export interface TournamentSettings {
@@ -115,6 +133,12 @@ export interface TournamentSettings {
   penaltyResults?: PenaltyResult[];         // ruční výsledky pokutových kopů
   scorersVisible?: boolean;                 // tabulka střelců viditelná pro hosty; default true
   chatEnabled?: boolean;                    // diskuze hostů; default false
+
+  // ── Knockout / Groups extension (optional — backward compatible) ──────
+  format?: TournamentFormat;               // default 'round-robin' pokud chybí
+  groups?: GroupDefinition[];              // definice skupin (pro groups-knockout)
+  advancePerGroup?: number;                // kolik týmů postupuje ze skupiny (1 nebo 2)
+  thirdPlaceMatch?: boolean;               // zápas o 3. místo
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
@@ -186,6 +210,12 @@ export interface FirebaseMatch {
   roundIndex: number;
   matchIndex: number;
   pitchNumber?: number;
+  stage?: MatchStage;
+  groupId?: string;
+  bracketPosition?: number;
+  nextMatchId?: string;
+  homeTeamPlaceholder?: string;
+  awayTeamPlaceholder?: string;
 }
 
 export interface FirebaseTournamentData {
