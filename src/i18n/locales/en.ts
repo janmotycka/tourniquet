@@ -886,6 +886,25 @@ export const en: Record<TranslationKey, string> = {
   'roster.fillRosterTitle': 'Fill in roster',
   'roster.fillRosterSaving': 'Saving…',
 
+  // ─── Knockout / Groups ──────────────────────────────────────────────────
+  'knockout.format': 'Tournament Format',
+  'knockout.roundRobin': 'Round Robin',
+  'knockout.groupsKnockout': 'Groups + Playoff',
+  'knockout.pureKnockout': 'Knockout',
+  'knockout.groupCount': 'Number of groups',
+  'knockout.advancePerGroup': 'Advance per group',
+  'knockout.thirdPlace': 'Third place match',
+  'knockout.group': 'Group',
+  'knockout.quarterfinal': 'Quarterfinal',
+  'knockout.semifinal': 'Semifinal',
+  'knockout.final': 'Final',
+  'knockout.thirdPlaceMatch': '3rd place',
+  'knockout.groupStage': 'Group Stage',
+  'knockout.playoffStage': 'Playoff',
+  'knockout.winner': 'Winner',
+  'knockout.tbd': 'TBD',
+  'knockout.vs': 'vs',
+
   // ─── CSV Export ──────────────────────────────────────────────────────────
   'csv.export': 'CSV',
   'csv.exportStandings': 'Standings CSV',

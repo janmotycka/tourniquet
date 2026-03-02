@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Tournament, Match, Goal, CreateTournamentInput, TournamentSettings, RosterSubmission } from '../types/tournament.types';
-import { generateRoundRobinSchedule, generateId, computeMatchStartTime, parseStartDateTime, recalculateMatchTimes } from '../utils/tournament-schedule';
+import { generateRoundRobinSchedule, generateGroupsKnockoutSchedule, generatePureKnockoutSchedule, advanceTeamsFromGroups, generateId, computeMatchStartTime, parseStartDateTime, recalculateMatchTimes } from '../utils/tournament-schedule';
 import { logger } from '../utils/logger';
 import { sanitizeTournamentInput, clampNumber, LIMITS } from '../utils/validation';
 import {
@@ -366,8 +366,28 @@ export const useTournamentStore = create<TournamentState>()(
         }));
 
         let matches: Match[];
+        const tournamentFormat = input.settings.format ?? 'round-robin';
 
-        if (input.matchOrder && input.matchOrder.length > 0) {
+        if (tournamentFormat === 'groups-knockout' && input.settings.groups) {
+          // Skupiny + knockout: vyplň skupiny reálnými teamIds
+          const settingsWithRealGroups = {
+            ...input.settings,
+            groups: input.settings.groups.map(g => ({
+              ...g,
+              teamIds: g.teamIds.map((placeholder, pIdx) => {
+                // Placeholder formát: 'team-placeholder-N' kde N je index v poli teams
+                const match = placeholder.match(/^team-placeholder-(\d+)$/);
+                if (match) return teams[parseInt(match[1])]?.id ?? placeholder;
+                return placeholder;
+              }),
+            })),
+          };
+          matches = generateGroupsKnockoutSchedule(teams, settingsWithRealGroups);
+          // Aktualizuj settings s reálnými groupIds
+          input = { ...input, settings: settingsWithRealGroups };
+        } else if (tournamentFormat === 'knockout') {
+          matches = generatePureKnockoutSchedule(teams, input.settings);
+        } else if (input.matchOrder && input.matchOrder.length > 0) {
           // Vlastní pořadí z wizardu — vytvořit zápasy dle zadaného pořadí
           const startDateTime = parseStartDateTime(input.settings);
           const numberOfPitches = clampNumber(input.settings.numberOfPitches ?? 1, LIMITS.numberOfPitches.min, LIMITS.numberOfPitches.max);
@@ -491,10 +511,56 @@ export const useTournamentStore = create<TournamentState>()(
 
       finishMatch: async (tournamentId, matchId) => {
         set(state => mutateBothArrays(state, tournamentId, t => {
-          const updatedMatches = t.matches.map((m): Match => {
+          let updatedMatches = t.matches.map((m): Match => {
             if (m.id !== matchId) return m;
             return { ...m, status: 'finished', finishedAt: new Date().toISOString() };
           });
+
+          const format = t.settings.format ?? 'round-robin';
+          const finishedMatch = updatedMatches.find(m => m.id === matchId);
+
+          // ── Knockout advancement: vítěz postupuje do nextMatchId ──
+          if (finishedMatch?.nextMatchId && finishedMatch.status === 'finished') {
+            const winnerId = finishedMatch.homeScore > finishedMatch.awayScore
+              ? finishedMatch.homeTeamId
+              : finishedMatch.awayTeamId;
+            const loserId = finishedMatch.homeScore > finishedMatch.awayScore
+              ? finishedMatch.awayTeamId
+              : finishedMatch.homeTeamId;
+
+            updatedMatches = updatedMatches.map(m => {
+              if (m.id !== finishedMatch.nextMatchId) return m;
+              // Nasadit vítěze na volnou pozici (home nebo away)
+              if (!m.homeTeamId) return { ...m, homeTeamId: winnerId };
+              if (!m.awayTeamId) return { ...m, awayTeamId: winnerId };
+              return m;
+            });
+
+            // Nasadit poraženého do zápasu o 3. místo (pokud existuje)
+            if (finishedMatch.stage === 'semifinal') {
+              const thirdPlaceMatch = updatedMatches.find(m => m.stage === 'third-place');
+              if (thirdPlaceMatch) {
+                updatedMatches = updatedMatches.map(m => {
+                  if (m.id !== thirdPlaceMatch.id) return m;
+                  if (!m.homeTeamId) return { ...m, homeTeamId: loserId };
+                  if (!m.awayTeamId) return { ...m, awayTeamId: loserId };
+                  return m;
+                });
+              }
+            }
+          }
+
+          // ── Groups-knockout: po dokončení skupinové fáze nasadit do bracketu ──
+          if (format === 'groups-knockout' && finishedMatch?.stage === 'group') {
+            const allGroupMatchesFinished = updatedMatches
+              .filter(m => m.stage === 'group')
+              .every(m => m.status === 'finished');
+
+            if (allGroupMatchesFinished) {
+              updatedMatches = advanceTeamsFromGroups(updatedMatches, t.teams, t.settings);
+            }
+          }
+
           const allFinished = updatedMatches.every(m => m.status === 'finished');
           return {
             ...t,

@@ -428,6 +428,91 @@ function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament: Tourna
       .map(teamId => ({ teamId, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0 })),
   ];
 
+  const format = tournament.settings.format ?? 'round-robin';
+  const groups = tournament.settings.groups ?? [];
+
+  // Pro groups-knockout: zobrazit per-group tabulky
+  if (format === 'groups-knockout' && groups.length > 0) {
+    return (
+      <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {groups.map(group => {
+          const groupTeams = tournament.teams.filter(tm => group.teamIds.includes(tm.id));
+          const groupMatches = tournament.matches.filter(m => m.groupId === group.id);
+          const groupStandings = computeStandings(groupMatches, groupTeams, tournament.settings.tiebreakerOrder, tournament.settings.penaltyResults);
+
+          return (
+            <div key={group.id}>
+              <h3 style={{ fontWeight: 800, fontSize: 15, marginBottom: 8, color: 'var(--primary)' }}>
+                {group.name}
+              </h3>
+              <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '24px minmax(0,1fr) 26px 26px 26px 38px 32px', gap: 4, padding: '8px 12px', background: 'var(--surface-var)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
+                  <span>#</span><span>{t('tournament.teamA').replace(/ A$/, '')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.played')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.won')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.lost')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.goalsFor')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.points')}</span>
+                </div>
+                {groupStandings.map((s, idx) => {
+                  const team = getTeam(s.teamId);
+                  const isAdvancing = idx < (tournament.settings.advancePerGroup ?? 1) && s.played > 0;
+                  return (
+                    <div
+                      key={s.teamId}
+                      onClick={() => onTeamClick?.(s.teamId)}
+                      style={{
+                        display: 'grid', gridTemplateColumns: '24px minmax(0,1fr) 26px 26px 26px 38px 32px', gap: 4,
+                        padding: '10px 12px', alignItems: 'center',
+                        borderTop: idx > 0 ? '1px solid var(--border)' : 'none',
+                        background: isAdvancing ? 'var(--primary-light)' : 'transparent',
+                        cursor: onTeamClick ? 'pointer' : 'default',
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, color: isAdvancing ? 'var(--primary)' : 'var(--text-muted)', fontSize: 13 }}>{idx + 1}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        <TeamBadge team={team} size={12} />
+                        <span style={{ fontWeight: isAdvancing ? 800 : 600, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team?.name ?? '?'}</span>
+                      </div>
+                      <span style={{ textAlign: 'center', fontSize: 13 }}>{s.played}</span>
+                      <span style={{ textAlign: 'center', fontSize: 13, color: '#2E7D32', fontWeight: 600 }}>{s.won}</span>
+                      <span style={{ textAlign: 'center', fontSize: 13, color: '#C62828', fontWeight: 600 }}>{s.lost}</span>
+                      <span style={{ textAlign: 'center', fontSize: 12 }}>{s.goalsFor}:{s.goalsAgainst}</span>
+                      <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 15, color: isAdvancing ? 'var(--primary)' : 'var(--text)' }}>{s.points}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Knockout bracket — zjednodušený přehled */}
+        {tournament.matches.some(m => m.stage && m.stage !== 'group') && (
+          <div>
+            <h3 style={{ fontWeight: 800, fontSize: 15, marginBottom: 8, color: 'var(--primary)' }}>
+              {t('knockout.playoffStage')}
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {tournament.matches.filter(m => m.stage && m.stage !== 'group').sort((a, b) => a.matchIndex - b.matchIndex).map(m => {
+                const homeTeam = tournament.teams.find(tm => tm.id === m.homeTeamId);
+                const awayTeam = tournament.teams.find(tm => tm.id === m.awayTeamId);
+                const stageName = m.stage === 'quarterfinal' ? t('knockout.quarterfinal') : m.stage === 'semifinal' ? t('knockout.semifinal') : m.stage === 'final' ? t('knockout.final') : t('knockout.thirdPlaceMatch');
+                return (
+                  <div key={m.id} style={{ background: 'var(--surface)', borderRadius: 12, padding: '10px 14px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', marginBottom: 4 }}>{stageName}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontWeight: 700, fontSize: 14 }}>{homeTeam?.name ?? m.homeTeamPlaceholder ?? t('knockout.tbd')}</span>
+                      <span style={{ fontWeight: 900, fontSize: 16, color: m.status === 'finished' ? 'var(--text)' : 'var(--text-muted)' }}>
+                        {m.status === 'finished' ? `${m.homeScore} : ${m.awayScore}` : t('knockout.vs')}
+                      </span>
+                      <span style={{ fontWeight: 700, fontSize: 14 }}>{awayTeam?.name ?? m.awayTeamPlaceholder ?? t('knockout.tbd')}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>

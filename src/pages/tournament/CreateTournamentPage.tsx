@@ -4,8 +4,8 @@ import { useTournamentStore } from '../../store/tournament.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useI18n } from '../../i18n';
 import { hashPin, generatePinSalt } from '../../utils/pin-hash';
-import { countRealMatches, estimateTournamentDuration, formatMatchTime, parseStartDateTime } from '../../utils/tournament-schedule';
-import type { TournamentSettings } from '../../types/tournament.types';
+import { countRealMatches, estimateTournamentDuration, formatMatchTime, parseStartDateTime, generateGroupStageSchedule, generateGroupsKnockoutSchedule, generatePureKnockoutSchedule } from '../../utils/tournament-schedule';
+import type { TournamentSettings, TournamentFormat, GroupDefinition } from '../../types/tournament.types';
 import type { Club } from '../../types/club.types';
 
 import { TEAM_COLORS, colorSwatch, textOnColor } from '../../utils/team-colors';
@@ -249,6 +249,10 @@ export function CreateTournamentPage({ navigate }: Props) {
   const [breakDuration, setBreakDuration] = useState(5);
   const [numberOfPitches, setNumberOfPitches] = useState(1);
   const [rules, setRules] = useState('');
+  const [format, setFormat] = useState<TournamentFormat>('round-robin');
+  const [groupCount, setGroupCount] = useState(2);
+  const [advancePerGroup, setAdvancePerGroup] = useState(1);
+  const [thirdPlaceMatch, setThirdPlaceMatch] = useState(false);
 
   // Krok 1 — Týmy
   const [teams, setTeams] = useState<TeamDraft[]>(() => defaultTeams(t));
@@ -270,6 +274,26 @@ export function CreateTournamentPage({ navigate }: Props) {
   const createTournament = useTournamentStore(s => s.createTournament);
   const { clubs, createClub } = useClubsStore();
 
+  // Automaticky generuj skupiny z týmů
+  const autoGroups: GroupDefinition[] = (() => {
+    if (format !== 'groups-knockout' || teams.length < 4) return [];
+    const gc = Math.min(groupCount, Math.floor(teams.length / 2));
+    const groups: GroupDefinition[] = [];
+    for (let g = 0; g < gc; g++) {
+      groups.push({
+        id: `group-${String.fromCharCode(65 + g)}`,
+        name: `Skupina ${String.fromCharCode(65 + g)}`,
+        teamIds: [],
+      });
+    }
+    // Distribuce týmů do skupin (hadovitě)
+    teams.forEach((_, i) => {
+      const gIdx = i % gc;
+      groups[gIdx].teamIds.push(`team-placeholder-${i}`); // placeholder — vyplní se při vytváření
+    });
+    return groups;
+  })();
+
   const settings: TournamentSettings = {
     matchDurationMinutes: matchDuration,
     breakBetweenMatchesMinutes: breakDuration,
@@ -277,6 +301,10 @@ export function CreateTournamentPage({ navigate }: Props) {
     startDate,
     rules: rules.trim() || undefined,
     numberOfPitches: numberOfPitches > 1 ? numberOfPitches : undefined,
+    format: format !== 'round-robin' ? format : undefined,
+    groups: format === 'groups-knockout' ? autoGroups : undefined,
+    advancePerGroup: format === 'groups-knockout' ? advancePerGroup : undefined,
+    thirdPlaceMatch: (format !== 'round-robin' && thirdPlaceMatch) ? true : undefined,
   };
 
   const totalMatches = countRealMatches(teams.length);
@@ -596,6 +624,79 @@ export function CreateTournamentPage({ navigate }: Props) {
               <Stepper label={t('tournament.create.break')} value={breakDuration} min={0} max={15} step={1} onChange={setBreakDuration} unit={t('common.min')} />
               <div style={{ height: 1, background: 'var(--border)' }} />
               <Stepper label={t('tournament.create.pitchCount')} value={numberOfPitches} min={1} max={8} step={1} onChange={setNumberOfPitches} unit="" />
+            </div>
+
+            {/* Formát turnaje */}
+            <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+              <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('knockout.format')}</h3>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {([
+                  ['round-robin', t('knockout.roundRobin'), '🔄'],
+                  ['groups-knockout', t('knockout.groupsKnockout'), '🏆'],
+                  ['knockout', t('knockout.pureKnockout'), '⚡'],
+                ] as [TournamentFormat, string, string][]).map(([f, label, icon]) => (
+                  <button
+                    key={f}
+                    onClick={() => setFormat(f)}
+                    style={{
+                      flex: 1, padding: '10px 8px', borderRadius: 12, textAlign: 'center',
+                      background: format === f ? 'var(--primary)' : 'var(--surface-var)',
+                      color: format === f ? '#fff' : 'var(--text)',
+                      fontWeight: 600, fontSize: 13, border: 'none',
+                      transition: 'background .15s',
+                    }}
+                  >
+                    <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Nastavení pro skupiny+knockout */}
+              {format === 'groups-knockout' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 4 }}>
+                  <Stepper label={t('knockout.groupCount')} value={groupCount} min={2} max={4} step={1} onChange={setGroupCount} unit="" />
+                  <Stepper label={t('knockout.advancePerGroup')} value={advancePerGroup} min={1} max={2} step={1} onChange={setAdvancePerGroup} unit="" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <label style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{t('knockout.thirdPlace')}</label>
+                    <button
+                      onClick={() => setThirdPlaceMatch(!thirdPlaceMatch)}
+                      style={{
+                        width: 44, height: 26, borderRadius: 13,
+                        background: thirdPlaceMatch ? 'var(--primary)' : 'var(--border)',
+                        position: 'relative', transition: 'background .2s',
+                      }}
+                    >
+                      <div style={{
+                        width: 20, height: 20, borderRadius: 10, background: '#fff',
+                        position: 'absolute', top: 3,
+                        left: thirdPlaceMatch ? 21 : 3, transition: 'left .2s',
+                      }} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Nastavení pro čistý vyřazovák */}
+              {format === 'knockout' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <label style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{t('knockout.thirdPlace')}</label>
+                  <button
+                    onClick={() => setThirdPlaceMatch(!thirdPlaceMatch)}
+                    style={{
+                      width: 44, height: 26, borderRadius: 13,
+                      background: thirdPlaceMatch ? 'var(--primary)' : 'var(--border)',
+                      position: 'relative', transition: 'background .2s',
+                    }}
+                  >
+                    <div style={{
+                      width: 20, height: 20, borderRadius: 10, background: '#fff',
+                      position: 'absolute', top: 3,
+                      left: thirdPlaceMatch ? 21 : 3, transition: 'left .2s',
+                    }} />
+                  </button>
+                </div>
+              )}
             </div>
 
             <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
