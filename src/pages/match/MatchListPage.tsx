@@ -165,6 +165,16 @@ export function MatchListPage({ navigate }: Props) {
           </button>
           <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('match.list.title')}</h1>
           <button
+            onClick={() => navigate({ name: 'match-stats' })}
+            style={{
+              background: 'var(--surface-var)', borderRadius: 10,
+              padding: '8px 12px', fontWeight: 700, fontSize: 16,
+            }}
+            title={t('matchStats.title')}
+          >
+            📊
+          </button>
+          <button
             onClick={() => navigate({ name: 'match-create' })}
             style={{
               background: '#1565C0', color: '#fff', borderRadius: 12,

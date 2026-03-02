@@ -20,6 +20,7 @@ import { ClubsPage } from './pages/tournament/ClubsPage';
 import { MatchListPage } from './pages/match/MatchListPage';
 import { CreateMatchPage } from './pages/match/CreateMatchPage';
 import { MatchDetailPage } from './pages/match/MatchDetailPage';
+import { MatchStatsPage } from './pages/match/MatchStatsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ToastContainer } from './components/ToastContainer';
@@ -50,6 +51,7 @@ export type Page =
   | { name: 'match-list' }
   | { name: 'match-create' }
   | { name: 'match-detail'; matchId: string }
+  | { name: 'match-stats' }
   | { name: 'settings' };
 
 // ─── Vnitřní router (vyžaduje auth, kromě public view) ───────────────────────
@@ -178,6 +180,7 @@ function AppRouter() {
       {page.name === 'match-list' && <MatchListPage navigate={navigate} />}
       {page.name === 'match-create' && <CreateMatchPage navigate={navigate} />}
       {page.name === 'match-detail' && <MatchDetailPage matchId={page.matchId} navigate={navigate} />}
+      {page.name === 'match-stats' && <MatchStatsPage navigate={navigate} />}
       {page.name === 'settings' && <SettingsPage navigate={navigate} />}
     </div>
   );
