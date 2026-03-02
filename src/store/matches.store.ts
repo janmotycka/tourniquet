@@ -10,15 +10,38 @@ import type {
 } from '../types/match.types';
 
 import { generateId } from '../utils/id';
+import { saveMatchToFirebase, deleteMatchFromFirebase, loadMatchesFromFirebase } from '../services/match.firebase';
+import { logger } from '../utils/logger';
+import { useToastStore } from './toast.store';
 
 function now(): string {
   return new Date().toISOString();
+}
+
+// ─── Firebase sync helper ─────────────────────────────────────────────────────
+
+async function syncMatch(uid: string | null, match: SeasonMatch): Promise<string | null> {
+  if (!uid) return null; // not logged in, skip silently (localStorage only)
+  try {
+    await saveMatchToFirebase(uid, match);
+    return null;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error('[Firebase] Match sync failed:', msg);
+    return `Firebase sync selhal: ${msg}`;
+  }
 }
 
 // ─── State interface ──────────────────────────────────────────────────────────
 
 interface MatchesState {
   matches: SeasonMatch[];
+  firebaseUid: string | null;
+  syncError: string | null;
+
+  // Firebase
+  setFirebaseUid: (uid: string | null) => void;
+  loadFromFirebase: (uid: string) => Promise<void>;
 
   // CRUD
   createMatch: (input: CreateSeasonMatchInput) => SeasonMatch;
@@ -50,6 +73,40 @@ export const useMatchesStore = create<MatchesState>()(
   persist(
     (set, get) => ({
       matches: [],
+      firebaseUid: null,
+      syncError: null,
+
+      // ── Firebase ──────────────────────────────────────────────────────────
+
+      setFirebaseUid: (uid) => {
+        if (!uid) {
+          set({ firebaseUid: null, syncError: null });
+        } else {
+          set({ firebaseUid: uid });
+        }
+      },
+
+      loadFromFirebase: async (uid) => {
+        let matches: SeasonMatch[] = [];
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            matches = await loadMatchesFromFirebase(uid);
+            break;
+          } catch (err) {
+            if (attempt === 3) {
+              logger.error('[Firebase] Failed to load matches after 3 attempts', err);
+              useToastStore.getState().show('error', 'Nepodařilo se načíst zápasy z cloudu.', 6000);
+              return;
+            }
+            await new Promise(r => setTimeout(r, attempt * 1000));
+          }
+        }
+        // Merge: Firebase data takes priority, keep local-only matches
+        const localMatches = get().matches;
+        const firebaseIds = new Set(matches.map(m => m.id));
+        const localOnly = localMatches.filter(m => !firebaseIds.has(m.id));
+        set({ matches: [...matches, ...localOnly], firebaseUid: uid });
+      },
 
       // ── CRUD ────────────────────────────────────────────────────────────────
 
@@ -81,6 +138,7 @@ export const useMatchesStore = create<MatchesState>()(
           updatedAt: now(),
         };
         set(state => ({ matches: [match, ...state.matches] }));
+        syncMatch(get().firebaseUid, match).then(err => { if (err) set({ syncError: err }); });
         return match;
       },
 
@@ -90,10 +148,14 @@ export const useMatchesStore = create<MatchesState>()(
             m.id !== id ? m : { ...m, ...patch, updatedAt: now() }
           ),
         }));
+        const updated = get().matches.find(m => m.id === id);
+        if (updated) syncMatch(get().firebaseUid, updated).then(err => { if (err) set({ syncError: err }); });
       },
 
       deleteMatch: (id) => {
+        const uid = get().firebaseUid;
         set(state => ({ matches: state.matches.filter(m => m.id !== id) }));
+        if (uid) deleteMatchFromFirebase(uid, id).catch(err => logger.error('[Firebase] Delete match failed', err));
       },
 
       getMatchById: (id) => get().matches.find(m => m.id === id),
@@ -113,6 +175,8 @@ export const useMatchesStore = create<MatchesState>()(
             }
           ),
         }));
+        const m = get().matches.find(x => x.id === id);
+        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
       },
 
       finishMatch: (id) => {
@@ -135,6 +199,8 @@ export const useMatchesStore = create<MatchesState>()(
             };
           }),
         }));
+        const fm = get().matches.find(x => x.id === id);
+        if (fm) syncMatch(get().firebaseUid, fm).then(err => { if (err) set({ syncError: err }); });
       },
 
       pauseMatch: (id) => {
@@ -152,6 +218,8 @@ export const useMatchesStore = create<MatchesState>()(
             };
           }),
         }));
+        const m = get().matches.find(x => x.id === id);
+        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
       },
 
       resumeMatch: (id) => {
@@ -166,6 +234,8 @@ export const useMatchesStore = create<MatchesState>()(
             };
           }),
         }));
+        const m = get().matches.find(x => x.id === id);
+        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
       },
 
       // ── Události ─────────────────────────────────────────────────────────────
@@ -188,6 +258,8 @@ export const useMatchesStore = create<MatchesState>()(
             return { ...m, goals: [...m.goals, newGoal], homeScore, awayScore, updatedAt: now() };
           }),
         }));
+        const m = get().matches.find(x => x.id === matchId);
+        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
       },
 
       removeGoal: (matchId, goalId) => {
@@ -208,6 +280,8 @@ export const useMatchesStore = create<MatchesState>()(
             return { ...m, goals: m.goals.filter(g => g.id !== goalId), homeScore, awayScore, updatedAt: now() };
           }),
         }));
+        const m = get().matches.find(x => x.id === matchId);
+        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
       },
 
       addCard: (matchId, card) => {
@@ -217,6 +291,8 @@ export const useMatchesStore = create<MatchesState>()(
             m.id !== matchId ? m : { ...m, cards: [...m.cards, newCard], updatedAt: now() }
           ),
         }));
+        const m = get().matches.find(x => x.id === matchId);
+        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
       },
 
       removeCard: (matchId, cardId) => {
@@ -225,6 +301,8 @@ export const useMatchesStore = create<MatchesState>()(
             m.id !== matchId ? m : { ...m, cards: m.cards.filter(c => c.id !== cardId), updatedAt: now() }
           ),
         }));
+        const m = get().matches.find(x => x.id === matchId);
+        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
       },
 
       addSubstitution: (matchId, sub) => {
@@ -241,6 +319,8 @@ export const useMatchesStore = create<MatchesState>()(
             return { ...m, substitutions: [...m.substitutions, newSub], lineup: updatedLineup, updatedAt: now() };
           }),
         }));
+        const m = get().matches.find(x => x.id === matchId);
+        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
       },
 
       removeSubstitution: (matchId, subId) => {
@@ -249,6 +329,8 @@ export const useMatchesStore = create<MatchesState>()(
             m.id !== matchId ? m : { ...m, substitutions: m.substitutions.filter(s => s.id !== subId), updatedAt: now() }
           ),
         }));
+        const m = get().matches.find(x => x.id === matchId);
+        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
       },
 
       // ── Hodnocení ──────────────────────────────────────────────────────────
@@ -259,8 +341,13 @@ export const useMatchesStore = create<MatchesState>()(
             m.id !== matchId ? m : { ...m, ratings, note: note ?? m.note, updatedAt: now() }
           ),
         }));
+        const m = get().matches.find(x => x.id === matchId);
+        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
       },
     }),
-    { name: 'trenink-matches' }
+    {
+      name: 'trenink-matches',
+      partialize: (state) => ({ matches: state.matches }),
+    }
   )
 );
