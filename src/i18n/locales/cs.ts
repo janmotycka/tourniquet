@@ -884,6 +884,25 @@ export const cs = {
   'roster.fillRosterTitle': 'Vyplnit soupisku',
   'roster.fillRosterSaving': 'Ukládám…',
 
+  // ─── Knockout / Groups ──────────────────────────────────────────────────
+  'knockout.format': 'Formát turnaje',
+  'knockout.roundRobin': 'Každý s každým',
+  'knockout.groupsKnockout': 'Skupiny + playoff',
+  'knockout.pureKnockout': 'Vyřazovák',
+  'knockout.groupCount': 'Počet skupin',
+  'knockout.advancePerGroup': 'Postupuje ze skupiny',
+  'knockout.thirdPlace': 'Zápas o 3. místo',
+  'knockout.group': 'Skupina',
+  'knockout.quarterfinal': 'Čtvrtfinále',
+  'knockout.semifinal': 'Semifinále',
+  'knockout.final': 'Finále',
+  'knockout.thirdPlaceMatch': 'O 3. místo',
+  'knockout.groupStage': 'Skupinová fáze',
+  'knockout.playoffStage': 'Playoff',
+  'knockout.winner': 'Vítěz',
+  'knockout.tbd': 'Čeká se…',
+  'knockout.vs': 'vs',
+
   // ─── CSV Export ──────────────────────────────────────────────────────────
   'csv.export': 'CSV',
   'csv.exportStandings': 'Tabulka CSV',
