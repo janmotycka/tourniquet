@@ -191,8 +191,7 @@ export function TournamentListPage({ navigate }: Props) {
   // Merge owned + joined tournaments with _isJoined flag
   type MergedTournament = Tournament & { _isJoined: boolean };
 
-  // Řazení: active → draft (nejnovější) → finished (nejnovější)
-  // useMemo: přepočítá se jen při změně tournaments nebo joinedTournaments
+  // Řazení: active → draft → finished; uvnitř skupiny dle startDate (nejbližší nahoře, finished: nejnovější nahoře)
   const sorted = useMemo<MergedTournament[]>(() => {
     const merged: MergedTournament[] = [
       ...tournaments.map(t => ({ ...t, _isJoined: false })),
@@ -201,7 +200,10 @@ export function TournamentListPage({ navigate }: Props) {
     const order: Record<string, number> = { active: 0, draft: 1, finished: 2 };
     return merged.sort((a, b) => {
       if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      const dateA = new Date(a.settings.startDate).getTime();
+      const dateB = new Date(b.settings.startDate).getTime();
+      // finished: nejnovější nahoře (desc); active/draft: nejbližší datum nahoře (asc)
+      return a.status === 'finished' ? dateB - dateA : dateA - dateB;
     });
   }, [tournaments, joinedTournaments]);
 
