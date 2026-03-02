@@ -129,6 +129,14 @@
       }
     },
 
+    // ─── Zápasy sezóny (Match Tracker — owner-only) ────────────────────────
+    "matches": {
+      "$uid": {
+        ".read":  "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
     // ─── Kontakty trenérů (databáze pro organizátora) ────────────────────────
     "contacts": {
       "$uid": {

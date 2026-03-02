@@ -29,6 +29,7 @@ import { useSubscriptionStore } from './store/subscription.store';
 import { useToastStore } from './store/toast.store';
 import { usePageStore } from './store/page.store';
 import { useContactsStore } from './store/contacts.store';
+import { useMatchesStore } from './store/matches.store';
 import type { TrainingUnit } from './types/training.types';
 
 export type Page =
@@ -61,6 +62,8 @@ function AppRouter() {
   const subscribeToStatus = useSubscriptionStore(s => s.subscribeToStatus);
   const showToast = useToastStore(s => s.show);
   const loadContacts = useContactsStore(s => s.loadFromFirebase);
+  const loadMatches = useMatchesStore(s => s.loadFromFirebase);
+  const setMatchesFirebaseUid = useMatchesStore(s => s.setFirebaseUid);
 
   const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin } = usePageStore();
 
@@ -78,12 +81,14 @@ function AppRouter() {
     if (user) {
       loadFromFirebase(user.uid);
       loadContacts(user.uid);
+      loadMatches(user.uid);
       const unsubscribe = subscribeToStatus(user.uid);
       return () => unsubscribe();
     } else {
       setFirebaseUid(null);
+      setMatchesFirebaseUid(null);
     }
-  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts]);
+  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, loadMatches, setMatchesFirebaseUid]);
 
   // Po přihlášení + existuje joinIntent → přesměrovat zpět na public view
   useEffect(() => {
