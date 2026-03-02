@@ -80,13 +80,11 @@ export const stripeWebhook = functions
 
     const stripe = getStripe();
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    const skipVerify = process.env.STRIPE_SKIP_WEBHOOK_VERIFY === 'true';
 
     let event: Stripe.Event;
 
-    // Verifikace podpisu
+    // Verifikace podpisu — POVINNÁ v produkci
     if (webhookSecret) {
-      // Vždy verifikovat pokud je secret nastaven (dev i prod)
       const signature = req.headers['stripe-signature'] as string;
       try {
         event = stripe.webhooks.constructEvent(req.rawBody, signature, webhookSecret);
@@ -95,9 +93,9 @@ export const stripeWebhook = functions
         res.status(400).send('Webhook signature verification failed');
         return;
       }
-    } else if (skipVerify) {
-      // Pouze pro lokální vývoj — musí být explicitně povoleno
-      console.warn('[Webhook] Verification skipped — only allowed in dev (STRIPE_SKIP_WEBHOOK_VERIFY=true)');
+    } else if (process.env.FUNCTIONS_EMULATOR === 'true') {
+      // Pouze Firebase emulator (lokální vývoj) — nikdy v produkci
+      console.warn('[Webhook] Signature verification skipped — emulator only');
       event = req.body as Stripe.Event;
     } else {
       // Produkce bez secretu = odmítnout

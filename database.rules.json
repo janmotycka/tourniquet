@@ -74,13 +74,16 @@
     },
 
     // ─── Chat (diskuze hostů) ─────────────────────────────────────────────────
-    // Samostatná cesta mimo tournament sync (set() by přepsal zprávy)
-    // Čtení: kdokoli; Zápis: kdokoli (hosté nemají auth)
+    // Čtení: kdokoli; Zápis: pouze přidávání nových zpráv (push), nikoliv smazání
+    // Max 200 zpráv per turnaj (starší se mažou na klientu)
     "chat": {
       "$tournamentId": {
         ".read": true,
-        ".write": true,
+        // Zakážeme write na úrovni kolekce (žádný hromadný delete/set)
+        // Povolujeme jen push nových zpráv na úrovni $messageId
         "$messageId": {
+          // Povoleno pouze vytvoření nové zprávy, nikoliv přepsání existující
+          ".write": "!data.exists()",
           ".validate": "newData.hasChildren(['authorName', 'text', 'createdAt'])",
           "authorName": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
@@ -89,20 +92,22 @@
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
           },
           "createdAt": {
-            ".validate": "newData.isString()"
+            ".validate": "newData.isString() && newData.val().length <= 30"
           }
         }
       }
     },
 
     // ─── Soupisky (roster form od trenérů) ─────────────────────────────────────
-    // Samostatná cesta — trenéři nemají auth, zapisují přes unikátní token v URL
+    // Trenéři zapisují přes odkaz s tokenem. Token se ověřuje na klientu
+    // (public mirror obsahuje rosterToken per team).
+    // Rule: zápis povolen jen pokud roster ještě neexistuje NEBO je auth owner turnaje.
     "rosters": {
       "$tournamentId": {
         ".read": true,
         "$teamId": {
           ".read": true,
-          ".write": true,
+          ".write": "!data.exists() || (auth != null && root.child('public').child($tournamentId).child('ownerUid').val() === auth.uid)",
           ".validate": "newData.hasChildren(['coach', 'players', 'submittedAt', 'teamId', 'teamName'])",
           "coach": {
             ".validate": "newData.hasChildren(['name', 'phone'])",
@@ -116,14 +121,24 @@
               ".validate": "newData.isString() && newData.val().length <= 100"
             }
           },
+          "players": {
+            "$playerId": {
+              "name": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+              },
+              "jerseyNumber": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999"
+              }
+            }
+          },
           "submittedAt": {
-            ".validate": "newData.isString()"
+            ".validate": "newData.isString() && newData.val().length <= 30"
           },
           "teamId": {
-            ".validate": "newData.isString()"
+            ".validate": "newData.isString() && newData.val().length <= 50"
           },
           "teamName": {
-            ".validate": "newData.isString()"
+            ".validate": "newData.isString() && newData.val().length <= 100"
           }
         }
       }

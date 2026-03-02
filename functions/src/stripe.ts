@@ -44,6 +44,30 @@ function getProductId(): string {
   return id;
 }
 
+// ─── Security: povolené return URL domény ────────────────────────────────────
+
+const ALLOWED_RETURN_ORIGINS = [
+  'https://torq.cz',
+  'https://www.torq.cz',
+  'https://tourniquet-7a123.web.app',
+  'https://tourniquet-7a123.firebaseapp.com',
+];
+
+function sanitizeReturnUrl(url: string | undefined): string {
+  const fallback = 'https://torq.cz';
+  if (!url) return fallback;
+  try {
+    const parsed = new URL(url);
+    if (ALLOWED_RETURN_ORIGINS.includes(parsed.origin)) {
+      return url;
+    }
+  } catch {
+    // Nevalidní URL
+  }
+  console.warn(`[Stripe] Blocked disallowed returnUrl: ${url}`);
+  return fallback;
+}
+
 // ─── Helper: get or create Stripe customer ──────────────────────────────────
 
 async function getOrCreateCustomer(uid: string, email: string | undefined): Promise<string> {
@@ -79,7 +103,7 @@ export const createCheckoutSession = functions
     const uid = context.auth.uid;
     const email = context.auth.token.email;
     const { returnUrl, currency } = (data || {}) as CheckoutData;
-    const resolvedUrl = returnUrl || 'https://torq.cz';
+    const resolvedUrl = sanitizeReturnUrl(returnUrl);
     const resolvedCurrency: SupportedCurrency = currency || 'czk';
 
     const stripe = getStripe();
@@ -129,7 +153,7 @@ export const createPortalSession = functions
 
     const uid = context.auth.uid;
     const email = context.auth.token.email;
-    const returnUrl = (data as { returnUrl?: string })?.returnUrl || 'https://torq.cz';
+    const returnUrl = sanitizeReturnUrl((data as { returnUrl?: string })?.returnUrl);
 
     const stripe = getStripe();
     const customerId = await getOrCreateCustomer(uid, email);

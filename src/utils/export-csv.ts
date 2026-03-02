@@ -10,8 +10,16 @@ import { computeStandings } from './tournament-schedule';
 // ─── Base helper ─────────────────────────────────────────────────────────────
 
 function escapeCsvField(value: string | number): string {
-  const str = String(value);
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+  let str = String(value);
+
+  // Formula injection guard — buňky začínající =, +, -, @, \t, \r
+  // mohou být interpretovány jako formule v Excelu/Google Sheets.
+  // Prefix apostrof neutralizuje formuli a Excel ho nezobrazí.
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
+
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes("'")) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
