@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { I18nProvider, useI18n } from './i18n';
+import { ThemeProvider } from './theme/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { TrainingHomePage } from './pages/TrainingHomePage';
@@ -182,12 +183,14 @@ function AppRouter() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <I18nProvider>
-        <AuthProvider>
-          <ToastContainer />
-          <AppRouter />
-        </AuthProvider>
-      </I18nProvider>
+      <ThemeProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <ToastContainer />
+            <AppRouter />
+          </AuthProvider>
+        </I18nProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

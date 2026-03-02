@@ -31,6 +31,30 @@
   line-height: 1.5;
 }
 
+[data-theme="dark"] {
+  --primary: #7986CB;
+  --primary-light: #1A237E;
+  --secondary: #FF8A50;
+  --bg: #121212;
+  --surface: #1E1E2E;
+  --surface-var: #2A2A3C;
+  --border: #333344;
+  --text: #E8E8F0;
+  --text-sub: #C8C8D8;
+  --text-muted: #8888A0;
+  --text-disabled: #555566;
+  --error: #EF5350;
+
+  --pripravka: #FF8A50; --pripravka-light: #2A1A10;
+  --mladsi: #66BB6A;    --mladsi-light: #1A2A1A;
+  --starsi: #42A5F5;    --starsi-light: #0D1A2A;
+  --dorost: #AB47BC;    --dorost-light: #1A0D22;
+
+  --warmup: #FFB74D;      --warmup-light: #2A1A0D;   --warmup-text: #FFB74D;
+  --main-ph: #42A5F5;     --main-ph-light: #0D1A2A;  --main-ph-text: #64B5F6;
+  --cooldown: #66BB6A;    --cooldown-light: #0D2A0D; --cooldown-text: #81C784;
+}
+
 body { margin: 0; min-height: 100dvh; background: var(--bg); }
 
 #root {
