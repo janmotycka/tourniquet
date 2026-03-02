@@ -7,6 +7,7 @@ import { getTournamentPublicUrl, getAdminInviteUrl, generateQRCodeDataUrl, getRo
 import { subscribeToRosters, submitRoster } from '../../services/roster.firebase';
 import { useContactsStore } from '../../store/contacts.store';
 import { exportTournamentPdf } from '../../utils/tournament-pdf';
+import { exportTournamentStandingsCSV, exportTournamentMatchesCSV, exportTournamentScorersCSV } from '../../utils/export-csv';
 import type { Tournament, Match, Team, Player, Goal, Standing, TiebreakerCriterion, PenaltyResult, RosterSubmission } from '../../types/tournament.types';
 import { DEFAULT_TIEBREAKER_ORDER } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
@@ -2422,6 +2423,27 @@ function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tourn
         }}>
           {pdfExporting ? `⏳ ${t('pdf.generating')}` : `📄 ${t('pdf.downloadPdf')}`}
         </button>
+        {/* CSV export buttons */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={() => exportTournamentStandingsCSV(tournament, t)} style={{
+            background: 'var(--surface-var)', fontWeight: 600, fontSize: 13, padding: '8px 14px',
+            borderRadius: 8, color: 'var(--text)',
+          }}>
+            📊 {t('csv.exportStandings')}
+          </button>
+          <button onClick={() => exportTournamentMatchesCSV(tournament, t)} style={{
+            background: 'var(--surface-var)', fontWeight: 600, fontSize: 13, padding: '8px 14px',
+            borderRadius: 8, color: 'var(--text)',
+          }}>
+            📋 {t('csv.exportMatches')}
+          </button>
+          <button onClick={() => exportTournamentScorersCSV(tournament, t)} style={{
+            background: 'var(--surface-var)', fontWeight: 600, fontSize: 13, padding: '8px 14px',
+            borderRadius: 8, color: 'var(--text)',
+          }}>
+            ⚽ {t('csv.exportScorers')}
+          </button>
+        </div>
       </div>
 
       {/* Propozice */}
