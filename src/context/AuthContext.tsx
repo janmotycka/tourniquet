@@ -21,8 +21,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-/** True pouze pokud je explicitně nastaven VITE_DEV_AUTH_BYPASS=true v .env */
-const DEV_AUTH_BYPASS = import.meta.env.VITE_DEV_AUTH_BYPASS === 'true';
+/**
+ * Dev auth bypass — povoleno POUZE v development mode + explicitní env flag.
+ * V production buildu (npx vite build) je import.meta.env.DEV === false,
+ * takže bypass nikdy neproběhne, i kdyby .env.local soubor existoval.
+ */
+const DEV_AUTH_BYPASS = import.meta.env.DEV === true && import.meta.env.VITE_DEV_AUTH_BYPASS === 'true';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -62,9 +66,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch((err) => {
         const code = (err as { code?: string }).code ?? 'unknown';
-        const msg = (err as { message?: string }).message ?? '';
-        logger.error('[Auth] popup error:', code, msg);
-        setAuthError(`Google přihlášení selhalo (${code}). ${msg}`);
+        logger.error('[Auth] popup error:', code);
+        // Generická chyba — neleakujeme Firebase error kódy uživateli
+        if (code === 'auth/popup-closed-by-user') return; // uživatel zavřel popup, není chyba
+        if (code === 'auth/too-many-requests') {
+          setAuthError('Příliš mnoho pokusů. Zkuste to za chvíli.');
+        } else {
+          setAuthError('Přihlášení přes Google se nezdařilo. Zkuste to znovu.');
+        }
       });
   };
 
@@ -107,7 +116,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = async (email: string): Promise<string | null> => {
     try {
-      // actionCodeSettings říká Firebase, kam přesměrovat po resetu hesla
       const actionCodeSettings = {
         url: window.location.origin + window.location.pathname,
         handleCodeInApp: false,
@@ -116,14 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? '';
-      const msg = (err as { message?: string }).message ?? '';
-      logger.error('[Auth] resetPassword error:', code, msg);
+      logger.error('[Auth] resetPassword error:', code);
+      // Bezpečnost: nesdělujeme zda účet existuje (prevence user enumeration)
       if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
-        return 'Účet s tímto emailem neexistuje.';
+        return null; // tváříme se že email byl odeslán
       }
       if (code === 'auth/invalid-email') return 'Neplatná emailová adresa.';
       if (code === 'auth/too-many-requests') return 'Příliš mnoho pokusů. Zkuste to za chvíli.';
-      return `Nepodařilo se odeslat reset hesla. (${code || msg})`;
+      return 'Nepodařilo se odeslat reset hesla. Zkuste to znovu.';
     }
   };
 

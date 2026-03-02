@@ -790,6 +790,8 @@ function PublicChat({ tournamentId }: { tournamentId: string }) {
   );
   const [showNameInput, setShowNameInput] = useState(!localStorage.getItem('torq_chat_name'));
   const [sending, setSending] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
+  const lastSentRef = React.useRef<number>(0);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -801,11 +803,23 @@ function PublicChat({ tournamentId }: { tournamentId: string }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
+  const CHAT_COOLDOWN_MS = 3000; // 1 zpráva / 3 sekundy
+
   const handleSend = async () => {
     if (!text.trim() || !authorName.trim() || sending) return;
+
+    // Klientský rate limit — max 1 zpráva / 3 s
+    const now = Date.now();
+    if (now - lastSentRef.current < CHAT_COOLDOWN_MS) {
+      setRateLimited(true);
+      setTimeout(() => setRateLimited(false), CHAT_COOLDOWN_MS);
+      return;
+    }
+
     setSending(true);
     try {
       await sendChatMessage(tournamentId, authorName.trim(), text.trim());
+      lastSentRef.current = Date.now();
       setText('');
     } catch {
       // silent fail
@@ -912,13 +926,13 @@ function PublicChat({ tournamentId }: { tournamentId: string }) {
           />
           <button
             onClick={handleSend}
-            disabled={!text.trim() || sending}
+            disabled={!text.trim() || sending || rateLimited}
             style={{
-              padding: '10px 14px', borderRadius: 10, background: text.trim() ? 'var(--primary)' : 'var(--surface-var)',
-              color: text.trim() ? '#fff' : 'var(--text-muted)', fontWeight: 700, fontSize: 14,
+              padding: '10px 14px', borderRadius: 10, background: text.trim() && !rateLimited ? 'var(--primary)' : 'var(--surface-var)',
+              color: text.trim() && !rateLimited ? '#fff' : 'var(--text-muted)', fontWeight: 700, fontSize: 14,
               flexShrink: 0, transition: 'background .15s',
             }}
-          >➤</button>
+          >{rateLimited ? '⏳' : '➤'}</button>
         </div>
       )}
     </div>
