@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { useSubscriptionStore } from '../store/subscription.store';
 import { useI18n, getCurrencyForLocale } from '../i18n';
 import type { Locale } from '../i18n';
+import { useTheme } from '../theme/ThemeContext';
+import type { ThemePreference } from '../theme/ThemeContext';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -14,6 +16,7 @@ export function SettingsPage({ navigate }: Props) {
   const createCheckoutSession = useSubscriptionStore(s => s.createCheckoutSession);
   const openCustomerPortal = useSubscriptionStore(s => s.openCustomerPortal);
   const { t, locale, setLocale } = useI18n();
+  const { theme, setTheme } = useTheme();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -97,6 +100,32 @@ export function SettingsPage({ navigate }: Props) {
                   background: locale === loc ? 'var(--primary)' : 'var(--surface-var)',
                   color: locale === loc ? '#fff' : 'var(--text)',
                   border: locale === loc ? 'none' : '1.5px solid var(--border)',
+                  transition: 'all .15s',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Theme / Vzhled */}
+        <div style={{
+          background: 'var(--surface)', borderRadius: 16, padding: 20,
+          boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+          display: 'flex', flexDirection: 'column', gap: 12,
+        }}>
+          <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.theme')}</h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {([['light', t('settings.themeLight')], ['dark', t('settings.themeDark')], ['auto', t('settings.themeAuto')]] as [ThemePreference, string][]).map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => setTheme(val)}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 12, fontWeight: 600, fontSize: 14,
+                  background: theme === val ? 'var(--primary)' : 'var(--surface-var)',
+                  color: theme === val ? '#fff' : 'var(--text)',
+                  border: theme === val ? 'none' : '1.5px solid var(--border)',
                   transition: 'all .15s',
                 }}
               >
