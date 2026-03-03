@@ -499,6 +499,12 @@ export function CreateTournamentPage({ navigate }: Props) {
 
   const validateSchedule = () => {
     const warnings: string[] = [];
+    const slotMinutes = matchDuration + breakDuration;
+
+    // Pomocná fce: čas slotu v minutách od startu turnaje
+    const slotTime = (matchIdx: number) =>
+      Math.floor(matchIdx / numberOfPitches) * slotMinutes;
+
     // Pro každý tým najdi indexy jeho zápasů
     const teamMatchIndices: Record<number, number[]> = {};
     matchOrder.forEach((m, idx) => {
@@ -508,14 +514,32 @@ export function CreateTournamentPage({ navigate }: Props) {
         teamMatchIndices[ti].push(idx);
       });
     });
-    // Zkontroluj mezery
+
+    // Průměrná mezera pro porovnání (kolik slotů mezi zápasy by mělo být ideálně)
+    const totalSlots = Math.ceil(matchOrder.length / numberOfPitches);
+    const teamCount = Object.keys(teamMatchIndices).length;
+
     for (const [ti, indices] of Object.entries(teamMatchIndices)) {
       const teamIdx = Number(ti);
       const teamName = teams[teamIdx]?.name ?? `Tým ${teamIdx + 1}`;
+      const avgGapSlots = teamCount > 0 && indices.length > 1
+        ? totalSlots / indices.length
+        : 0;
+
       for (let i = 1; i < indices.length; i++) {
-        const gap = indices[i] - indices[i - 1];
-        if (gap === 1) {
+        const gapSlots = Math.floor(indices[i] / numberOfPitches) - Math.floor(indices[i - 1] / numberOfPitches);
+        const gapMinutes = slotTime(indices[i]) - slotTime(indices[i - 1]);
+
+        // 1) Dva zápasy po sobě (bez odpočinku)
+        if (gapSlots <= 1) {
           warnings.push(`⚠️ ${teamName} hraje dva zápasy za sebou (${indices[i - 1] + 1}. a ${indices[i] + 1}. zápas)`);
+        }
+        // 2) Příliš dlouhá pauza — víc než 2.5× průměrná mezera NEBO víc než 60 minut
+        else if (avgGapSlots > 0 && gapSlots > avgGapSlots * 2.5 && gapMinutes > 60) {
+          const hrs = Math.floor(gapMinutes / 60);
+          const mins = gapMinutes % 60;
+          const timeStr = hrs > 0 ? `${hrs}h ${mins}min` : `${gapMinutes} min`;
+          warnings.push(`⏳ ${teamName} čeká ${timeStr} mezi ${indices[i - 1] + 1}. a ${indices[i] + 1}. zápasem`);
         }
       }
     }
