@@ -69,6 +69,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useI18n(): I18nContextValue {
   const ctx = useContext(I18nContext);
   if (!ctx) throw new Error('useI18n must be used within I18nProvider');
@@ -79,10 +80,12 @@ export function useI18n(): I18nContextValue {
 
 export type Currency = 'czk' | 'eur' | 'usd';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function getCurrencyForLocale(locale: Locale): Currency {
   return locale === 'cs' ? 'czk' : 'eur';
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatPrice(locale: Locale): string {
   if (locale === 'cs') return '99 Kč/měsíc';
   return '€3.99/month';

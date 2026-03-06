@@ -7,6 +7,7 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
 import { logger } from '../utils/logger';
+import { useI18n } from '../i18n';
 
 interface AuthContextType {
   user: User | null;
@@ -29,6 +30,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const DEV_AUTH_BYPASS = import.meta.env.DEV === true && import.meta.env.VITE_DEV_AUTH_BYPASS === 'true';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -70,9 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Generická chyba — neleakujeme Firebase error kódy uživateli
         if (code === 'auth/popup-closed-by-user') return; // uživatel zavřel popup, není chyba
         if (code === 'auth/too-many-requests') {
-          setAuthError('Příliš mnoho pokusů. Zkuste to za chvíli.');
+          setAuthError(t('auth.tooManyAttempts'));
         } else {
-          setAuthError('Přihlášení přes Google se nezdařilo. Zkuste to znovu.');
+          setAuthError(t('auth.googleFailed'));
         }
       });
   };
@@ -85,12 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? '';
       if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-        return 'Nesprávný email nebo heslo.';
+        return t('auth.invalidCredentials');
       }
-      if (code === 'auth/invalid-email') return 'Neplatná emailová adresa.';
-      if (code === 'auth/too-many-requests') return 'Příliš mnoho pokusů. Zkuste to za chvíli.';
-      if (code === 'auth/operation-not-allowed') return 'Přihlašování emailem není povoleno. Kontaktujte správce.';
-      return 'Přihlášení se nezdařilo. Zkuste to znovu.';
+      if (code === 'auth/invalid-email') return t('auth.invalidEmail');
+      if (code === 'auth/too-many-requests') return t('auth.tooManyAttempts');
+      if (code === 'auth/operation-not-allowed') return t('auth.emailAuthDisabled');
+      return t('auth.signInFailed');
     }
   };
 
@@ -106,11 +108,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? '';
-      if (code === 'auth/email-already-in-use') return 'Tento email je již zaregistrován.';
-      if (code === 'auth/invalid-email') return 'Neplatná emailová adresa.';
-      if (code === 'auth/weak-password') return 'Heslo musí mít alespoň 6 znaků.';
-      if (code === 'auth/operation-not-allowed') return 'Přihlašování emailem není povoleno. Kontaktujte správce.';
-      return 'Registrace se nezdařila. Zkuste to znovu.';
+      if (code === 'auth/email-already-in-use') return t('auth.emailInUse');
+      if (code === 'auth/invalid-email') return t('auth.invalidEmail');
+      if (code === 'auth/weak-password') return t('auth.weakPassword');
+      if (code === 'auth/operation-not-allowed') return t('auth.emailAuthDisabled');
+      return t('auth.registrationFailed');
     }
   };
 
@@ -129,9 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
         return null; // tváříme se že email byl odeslán
       }
-      if (code === 'auth/invalid-email') return 'Neplatná emailová adresa.';
-      if (code === 'auth/too-many-requests') return 'Příliš mnoho pokusů. Zkuste to za chvíli.';
-      return 'Nepodařilo se odeslat reset hesla. Zkuste to znovu.';
+      if (code === 'auth/invalid-email') return t('auth.invalidEmail');
+      if (code === 'auth/too-many-requests') return t('auth.tooManyAttempts');
+      return t('auth.resetFailed');
     }
   };
 
@@ -146,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');

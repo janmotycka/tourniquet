@@ -235,3 +235,21 @@ export interface FirebaseTournamentData {
   }>;
   matches: Record<string, FirebaseMatch>;
 }
+
+// ─── Tournament Template ──────────────────────────────────────────────────────
+
+export interface TournamentTemplate {
+  id: string;
+  name: string;
+  createdAt: string;
+  settings: TournamentSettings;
+  teamSnapshots: Array<{
+    name: string;
+    color: string;
+    clubId?: string | null;
+    logoBase64?: string | null;
+    playerCount: number;
+  }>;
+  teamCount: number;
+  sourceTournamentName: string;
+}

@@ -2,6 +2,10 @@ import { useState } from 'react';
 import type { Page } from '../App';
 import { useAuth } from '../context/AuthContext';
 import { useSubscriptionStore } from '../store/subscription.store';
+import { useTournamentStore } from '../store/tournament.store';
+import { useMatchesStore } from '../store/matches.store';
+import { useClubsStore } from '../store/clubs.store';
+import { useToastStore } from '../store/toast.store';
 import { useI18n, getCurrencyForLocale } from '../i18n';
 import type { Locale } from '../i18n';
 import { useTheme } from '../theme/ThemeContext';
@@ -15,11 +19,16 @@ export function SettingsPage({ navigate }: Props) {
   const isPremium = useSubscriptionStore(s => s.isPremium);
   const createCheckoutSession = useSubscriptionStore(s => s.createCheckoutSession);
   const openCustomerPortal = useSubscriptionStore(s => s.openCustomerPortal);
+  const tournaments = useTournamentStore(s => s.tournaments);
+  const matches = useMatchesStore(s => s.matches);
+  const clubs = useClubsStore(s => s.clubs);
+  const showToast = useToastStore(s => s.show);
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useTheme();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const handleSubscribe = async () => {
     setLoading(true);
@@ -66,6 +75,12 @@ export function SettingsPage({ navigate }: Props) {
 
   const dateLocale = locale === 'cs' ? 'cs-CZ' : 'en-US';
 
+  const cardStyle = {
+    background: 'var(--surface)', borderRadius: 16, padding: 20,
+    boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+    display: 'flex' as const, flexDirection: 'column' as const, gap: 12,
+  };
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
@@ -73,7 +88,7 @@ export function SettingsPage({ navigate }: Props) {
         display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px',
         borderBottom: '1px solid var(--border)', background: 'var(--surface)',
       }}>
-        <button onClick={() => navigate({ name: 'home' })} style={{
+        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{
           width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
           fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>←</button>
@@ -83,64 +98,8 @@ export function SettingsPage({ navigate }: Props) {
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* Language / Jazyk */}
-        <div style={{
-          background: 'var(--surface)', borderRadius: 16, padding: 20,
-          boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-          display: 'flex', flexDirection: 'column', gap: 12,
-        }}>
-          <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.language')}</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {([['cs', '🇨🇿 Čeština'], ['en', '🇬🇧 English']] as [Locale, string][]).map(([loc, label]) => (
-              <button
-                key={loc}
-                onClick={() => setLocale(loc)}
-                style={{
-                  flex: 1, padding: '12px', borderRadius: 12, fontWeight: 600, fontSize: 14,
-                  background: locale === loc ? 'var(--primary)' : 'var(--surface-var)',
-                  color: locale === loc ? '#fff' : 'var(--text)',
-                  border: locale === loc ? 'none' : '1.5px solid var(--border)',
-                  transition: 'all .15s',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Theme / Vzhled */}
-        <div style={{
-          background: 'var(--surface)', borderRadius: 16, padding: 20,
-          boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-          display: 'flex', flexDirection: 'column', gap: 12,
-        }}>
-          <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.theme')}</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {([['light', t('settings.themeLight')], ['dark', t('settings.themeDark')], ['auto', t('settings.themeAuto')]] as [ThemePreference, string][]).map(([val, label]) => (
-              <button
-                key={val}
-                onClick={() => setTheme(val)}
-                style={{
-                  flex: 1, padding: '12px', borderRadius: 12, fontWeight: 600, fontSize: 14,
-                  background: theme === val ? 'var(--primary)' : 'var(--surface-var)',
-                  color: theme === val ? '#fff' : 'var(--text)',
-                  border: theme === val ? 'none' : '1.5px solid var(--border)',
-                  transition: 'all .15s',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Profil */}
-        <div style={{
-          background: 'var(--surface)', borderRadius: 16, padding: 20,
-          boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-          display: 'flex', flexDirection: 'column', gap: 12,
-        }}>
+        {/* 1. Profil */}
+        <div style={cardStyle}>
           <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.profile')}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {user?.photoURL ? (
@@ -160,12 +119,8 @@ export function SettingsPage({ navigate }: Props) {
           </div>
         </div>
 
-        {/* Subscription */}
-        <div style={{
-          background: 'var(--surface)', borderRadius: 16, padding: 20,
-          boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-          display: 'flex', flexDirection: 'column', gap: 14,
-        }}>
+        {/* 2. Subscription */}
+        <div style={{ ...cardStyle, gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.subscription')}</h2>
             <span style={{
@@ -254,7 +209,185 @@ export function SettingsPage({ navigate }: Props) {
           )}
         </div>
 
-        {/* Logout */}
+        {/* 3. Preferences — Language + Theme merged */}
+        <div style={cardStyle}>
+          <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.preferences')}</h2>
+
+          {/* Language */}
+          <div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{t('settings.language')}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {([['cs', '🇨🇿 Čeština'], ['en', '🇬🇧 English']] as [Locale, string][]).map(([loc, label]) => (
+                <button
+                  key={loc}
+                  onClick={() => setLocale(loc)}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+                    background: locale === loc ? 'var(--primary)' : 'var(--surface-var)',
+                    color: locale === loc ? '#fff' : 'var(--text)',
+                    border: locale === loc ? 'none' : '1.5px solid var(--border)',
+                    transition: 'all .15s',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Theme */}
+          <div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{t('settings.theme')}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {([['light', t('settings.themeLight')], ['dark', t('settings.themeDark')], ['auto', t('settings.themeAuto')]] as [ThemePreference, string][]).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setTheme(val)}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 14,
+                    background: theme === val ? 'var(--primary)' : 'var(--surface-var)',
+                    color: theme === val ? '#fff' : 'var(--text)',
+                    border: theme === val ? 'none' : '1.5px solid var(--border)',
+                    transition: 'all .15s',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Feedback */}
+        <div style={cardStyle}>
+          <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.feedback')}</h2>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+            {t('settings.feedbackDesc')}
+          </p>
+          <a
+            href={`mailto:feedback@torq.cz?subject=${encodeURIComponent(t('settings.feedbackSubject'))}`}
+            style={{
+              background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600,
+              fontSize: 15, padding: '12px', borderRadius: 12, textAlign: 'center',
+              textDecoration: 'none', border: '1.5px solid var(--border)',
+              display: 'block',
+            }}
+          >
+            ✉️ {t('settings.feedbackBtn')}
+          </a>
+        </div>
+
+        {/* 5. Data Management (GDPR) */}
+        <div style={cardStyle}>
+          <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.dataManagement')}</h2>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+            {t('settings.dataManagementDesc')}
+          </p>
+
+          {/* Export dat */}
+          <button
+            onClick={async () => {
+              setExporting(true);
+              try {
+                const data = {
+                  exportedAt: new Date().toISOString(),
+                  user: { email: user?.email, displayName: user?.displayName },
+                  tournaments,
+                  seasonMatches: matches,
+                  clubs,
+                };
+                const json = JSON.stringify(data, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `torq-export-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('success', t('settings.exportDone'));
+              } catch {
+                showToast('error', 'Export failed');
+              } finally {
+                setExporting(false);
+              }
+            }}
+            disabled={exporting}
+            style={{
+              background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600,
+              fontSize: 14, padding: '12px', borderRadius: 12,
+              border: '1.5px solid var(--border)', textAlign: 'center',
+              opacity: exporting ? 0.6 : 1,
+            }}
+          >
+            📥 {exporting ? t('settings.exporting') : t('settings.exportData')}
+          </button>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+            {t('settings.exportDataDesc')}
+          </p>
+
+          {/* Smazání účtu */}
+          <div style={{
+            background: '#FFF3E0', borderRadius: 12, padding: 14,
+            display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4,
+          }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: '#E65100' }}>
+              {t('settings.deleteAccount')}
+            </div>
+            <p style={{ fontSize: 12, color: '#BF360C', lineHeight: 1.5, margin: 0 }}>
+              {t('settings.deleteAccountDesc')}
+            </p>
+            <a
+              href="mailto:privacy@torq.cz?subject=Account%20Deletion%20Request"
+              style={{
+                background: '#FFF', color: '#E65100', fontWeight: 600,
+                fontSize: 13, padding: '10px', borderRadius: 10, textAlign: 'center',
+                textDecoration: 'none', border: '1.5px solid #FFCC80',
+                display: 'block',
+              }}
+            >
+              ✉️ {t('settings.deleteAccountBtn')}
+            </a>
+          </div>
+        </div>
+
+        {/* 6. Legal */}
+        <div style={cardStyle}>
+          <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.legal')}</h2>
+          <button
+            onClick={() => navigate({ name: 'privacy-policy' })}
+            style={{
+              background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600,
+              fontSize: 14, padding: '12px 16px', borderRadius: 12, textAlign: 'left',
+              border: '1.5px solid var(--border)', display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            {t('settings.privacyPolicy')}
+            <span style={{ color: 'var(--text-muted)' }}>→</span>
+          </button>
+          <button
+            onClick={() => navigate({ name: 'terms-of-service' })}
+            style={{
+              background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600,
+              fontSize: 14, padding: '12px 16px', borderRadius: 12, textAlign: 'left',
+              border: '1.5px solid var(--border)', display: 'flex', alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            {t('settings.termsOfService')}
+            <span style={{ color: 'var(--text-muted)' }}>→</span>
+          </button>
+        </div>
+
+        {/* Beta badge */}
+        <div style={{
+          textAlign: 'center', fontSize: 12, color: 'var(--text-muted)',
+          opacity: 0.6, padding: '4px 0',
+        }}>
+          🚧 {t('home.betaNotice')}
+        </div>
+
+        {/* 7. Logout — always last */}
         <button
           onClick={logout}
           style={{

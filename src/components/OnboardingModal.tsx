@@ -42,6 +42,14 @@ const MODULES: ModuleCard[] = [
     bg: 'linear-gradient(135deg, #E3F2FD, #BBDEFB)',
     page: { name: 'match-list' },
   },
+  {
+    emoji: '🏟',
+    titleKey: 'onboarding.clubTitle',
+    descKey: 'onboarding.clubDesc',
+    color: '#4A148C',
+    bg: 'linear-gradient(135deg, #F3E5F5, #E1BEE7)',
+    page: { name: 'clubs' },
+  },
 ];
 
 export function OnboardingModal({ navigate }: Props) {
@@ -145,6 +153,20 @@ export function OnboardingModal({ navigate }: Props) {
               <div style={{ color: card.color, fontSize: 20, opacity: 0.6 }}>›</div>
             </button>
           ))}
+        </div>
+
+        {/* Beta notice */}
+        <div style={{
+          background: '#FFF8E1', borderRadius: 12, padding: '12px 16px',
+          border: '1px solid #FFE082', marginBottom: 12,
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+        }}>
+          <span style={{ fontSize: 18, flexShrink: 0 }}>🚧</span>
+          <div style={{ fontSize: 13, color: '#5D4037', lineHeight: 1.5 }}>
+            <strong>{t('onboarding.betaTitle')}</strong>
+            <br />
+            {t('onboarding.betaDesc')}
+          </div>
         </div>
 
         {/* Přeskočit */}

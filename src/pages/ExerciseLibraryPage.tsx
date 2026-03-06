@@ -351,7 +351,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
       {/* Header */}
       <div style={{ padding: '12px 20px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={() => navigate({ name: 'home' })}
-          style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
+          aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
         <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('exercises.title')}</h1>
         <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{filtered.length} cvičení</span>
       </div>

@@ -48,10 +48,6 @@ function playerMinutesInMatch(match: SeasonMatch, playerId: string): number {
   const inLineup = match.lineup.find(lp => lp.playerId === playerId);
   if (!inLineup) return 0;
 
-  const isStarter = inLineup.isStarter || match.lineup.some(
-    lp => lp.playerId === playerId && lp.substituteOrder === 0
-  );
-
   // Najdi střídání kde hráč vyšel ven
   const subbedOut = match.substitutions.find(s => s.playerOutId === playerId);
   // Najdi střídání kde hráč přišel dovnitř

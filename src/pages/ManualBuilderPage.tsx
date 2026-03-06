@@ -160,7 +160,7 @@ export function ManualBuilderPage({ navigate }: Props) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px' }}>
-          <button onClick={() => navigate({ name: 'home' })} style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
+          <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
           <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('manual.title')}</h1>
         </div>
 
@@ -286,7 +286,7 @@ export function ManualBuilderPage({ navigate }: Props) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px' }}>
-        <button onClick={() => setBuilderStep('setup')} style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
+        <button onClick={() => setBuilderStep('setup')} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
         <h1 style={{ fontWeight: 800, fontSize: 18, flex: 1 }}>
           {subCatCfg ? t(subCatCfg.label) : ''}
         </h1>

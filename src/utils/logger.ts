@@ -6,8 +6,10 @@
  *   import { logger } from '../utils/logger';
  *   logger.debug('[Store] data loaded');
  *   logger.warn('[Firebase] fallback path');
- *   logger.error('[Stripe] failed', err);  // error vždy (i v prod)
+ *   logger.error('[Stripe] failed', err);  // error vždy (i v prod) + Sentry
  */
+
+import { Sentry } from '../sentry';
 
 const isDev = import.meta.env.DEV;
 
@@ -20,8 +22,15 @@ export const logger = {
   warn: (...args: unknown[]): void => {
     if (isDev) console.warn(...args);
   },
-  /** Vždy — skutečné chyby (Stripe, Firebase auth failures, ...) */
+  /** Vždy — skutečné chyby (Stripe, Firebase auth failures, ...) + Sentry */
   error: (...args: unknown[]): void => {
     console.error(...args);
+    // Odeslat do Sentry (pokud je inicializovaný)
+    const err = args.find((a): a is Error => a instanceof Error);
+    if (err) {
+      Sentry.captureException(err);
+    } else {
+      Sentry.captureMessage(args.map(String).join(' '), 'error');
+    }
   },
 };

@@ -498,7 +498,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
         <button onClick={() => setShowPicker(true)} style={{
           width: '100%', padding: '10px', borderRadius: 12, border: `1.5px dashed ${colors.bar}`,
           background: colors.bg, color: colors.text, fontWeight: 600, fontSize: 13,
-        }}>+ Přidat cvičení</button>
+        }}>+ {t('training.detail.addExercise')}</button>
       </div>
 
       {showPicker && (
@@ -630,6 +630,7 @@ function PhaseBlock({ phase, onExerciseClick, numberOfPlayers, coachNames }: {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export function TrainingDetailPage({ training, navigate }: Props) {
+  const { t } = useI18n();
   const [saved, setSaved] = useState(training.isSaved);
   const [selectedEx, setSelectedEx] = useState<Exercise | null>(null);
   const [showShare, setShowShare] = useState(false);
@@ -678,7 +679,7 @@ export function TrainingDetailPage({ training, navigate }: Props) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'var(--bg)' }}>
-        <button onClick={() => navigate({ name: 'home' })} style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
+        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
         <span style={{ fontWeight: 700, fontSize: 15 }}>{editMode ? '✏️ Úprava' : 'Trénink'}</span>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {!editMode && <>
@@ -733,7 +734,7 @@ export function TrainingDetailPage({ training, navigate }: Props) {
 
         {/* Phase blocks */}
         <h2 style={{ fontWeight: 700, fontSize: 16, marginBottom: 12 }}>
-          {editMode ? '✏️ Upravit fáze' : 'Průběh tréninku'}
+          {editMode ? '✏️ ' + t('training.detail.editPhases') : t('training.detail.trainingProgress')}
         </h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {editMode
@@ -765,13 +766,13 @@ export function TrainingDetailPage({ training, navigate }: Props) {
       {/* Footer */}
       {editMode ? (
         <div style={{ padding: '16px 20px 28px', borderTop: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', gap: 10 }}>
-          <button onClick={() => setEditMode(false)} style={{ flex: 1, padding: '14px', borderRadius: 14, background: 'var(--surface)', fontWeight: 600, fontSize: 15 }}>Zrušit</button>
-          <button onClick={saveEdits} style={{ flex: 2, padding: '14px', borderRadius: 14, background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 15 }}>💾 Uložit úpravy</button>
+          <button onClick={() => setEditMode(false)} style={{ flex: 1, padding: '14px', borderRadius: 14, background: 'var(--surface)', fontWeight: 600, fontSize: 15 }}>{t('common.cancel')}</button>
+          <button onClick={saveEdits} style={{ flex: 2, padding: '14px', borderRadius: 14, background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 15 }}>💾 {t('training.detail.saveEdits')}</button>
         </div>
       ) : !saved ? (
         <div style={{ padding: '16px 20px 28px', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
           <button onClick={handleSave} style={{ width: '100%', padding: '15px', borderRadius: 16, fontWeight: 700, fontSize: 16, background: 'var(--primary)', color: '#fff' }}>
-            🔖 Uložit trénink
+            🔖 {t('training.detail.saveTraining')}
           </button>
         </div>
       ) : null}

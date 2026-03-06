@@ -66,6 +66,12 @@ export function LoginPage() {
             {t('login.subtitle')}
           </p>
         </div>
+        <span style={{
+          fontSize: 11, color: 'var(--text-muted)', background: 'var(--surface-var)',
+          padding: '4px 12px', borderRadius: 8, opacity: 0.7,
+        }}>
+          🚧 {t('home.betaNotice')}
+        </span>
       </div>
 
       {/* Login card */}

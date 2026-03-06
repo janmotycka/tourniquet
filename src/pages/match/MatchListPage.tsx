@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
 import { useSubscriptionStore } from '../../store/subscription.store';
+import { useConfirmStore } from '../../store/confirm.store';
 import { FeatureGate } from '../../components/FeatureGate';
 import { useI18n } from '../../i18n';
 import type { SeasonMatch } from '../../types/match.types';
@@ -141,9 +142,12 @@ export function MatchListPage({ navigate }: Props) {
     [sorted, filter]
   );
 
-  const handleDelete = (m: SeasonMatch, e: React.MouseEvent) => {
+  const ask = useConfirmStore(s => s.ask);
+
+  const handleDelete = async (m: SeasonMatch, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(t('match.list.deleteConfirm', { opponent: m.opponent }))) {
+    const ok = await ask({ title: t('common.delete'), message: t('match.list.deleteConfirm', { opponent: m.opponent }), destructive: true });
+    if (ok) {
       deleteMatch(m.id);
     }
   };

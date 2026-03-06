@@ -1,29 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { I18nProvider, useI18n } from './i18n';
 import { ThemeProvider } from './theme/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
-import { TrainingHomePage } from './pages/TrainingHomePage';
-import { GeneratorPage } from './pages/generator/GeneratorPage';
-import { TrainingDetailPage } from './pages/TrainingDetailPage';
-import { SavedPage } from './pages/SavedPage';
-import { ExerciseLibraryPage } from './pages/ExerciseLibraryPage';
-import { ManualBuilderPage } from './pages/ManualBuilderPage';
-import { CalendarPage } from './pages/CalendarPage';
-import { TournamentListPage } from './pages/tournament/TournamentListPage';
-import { CreateTournamentPage } from './pages/tournament/CreateTournamentPage';
-import { TournamentDetailPage } from './pages/tournament/TournamentDetailPage';
 import { TournamentPublicView } from './pages/tournament/TournamentPublicView';
 import { RosterFormPage } from './pages/tournament/RosterFormPage';
-import { ClubsPage } from './pages/tournament/ClubsPage';
-import { MatchListPage } from './pages/match/MatchListPage';
-import { CreateMatchPage } from './pages/match/CreateMatchPage';
-import { MatchDetailPage } from './pages/match/MatchDetailPage';
-import { MatchStatsPage } from './pages/match/MatchStatsPage';
-import { SettingsPage } from './pages/SettingsPage';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ToastContainer } from './components/ToastContainer';
+import { CookieConsent } from './components/CookieConsent';
+import { ConnectionStatus } from './components/ConnectionStatus';
+import { ConfirmModal } from './components/ConfirmModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useTournamentStore } from './store/tournament.store';
 import { useSubscriptionStore } from './store/subscription.store';
@@ -31,7 +18,29 @@ import { useToastStore } from './store/toast.store';
 import { usePageStore } from './store/page.store';
 import { useContactsStore } from './store/contacts.store';
 import { useMatchesStore } from './store/matches.store';
+import { useTemplatesStore } from './store/templates.store';
+import { useClubsStore } from './store/clubs.store';
 import type { TrainingUnit } from './types/training.types';
+
+// ─── Lazy-loaded stránky (sekundární, ne na kritické cestě) ─────────────────
+const TrainingHomePage = lazy(() => import('./pages/TrainingHomePage').then(m => ({ default: m.TrainingHomePage })));
+const GeneratorPage = lazy(() => import('./pages/generator/GeneratorPage').then(m => ({ default: m.GeneratorPage })));
+const TrainingDetailPage = lazy(() => import('./pages/TrainingDetailPage').then(m => ({ default: m.TrainingDetailPage })));
+const SavedPage = lazy(() => import('./pages/SavedPage').then(m => ({ default: m.SavedPage })));
+const ExerciseLibraryPage = lazy(() => import('./pages/ExerciseLibraryPage').then(m => ({ default: m.ExerciseLibraryPage })));
+const ManualBuilderPage = lazy(() => import('./pages/ManualBuilderPage').then(m => ({ default: m.ManualBuilderPage })));
+const CalendarPage = lazy(() => import('./pages/CalendarPage').then(m => ({ default: m.CalendarPage })));
+const TournamentListPage = lazy(() => import('./pages/tournament/TournamentListPage').then(m => ({ default: m.TournamentListPage })));
+const CreateTournamentPage = lazy(() => import('./pages/tournament/CreateTournamentPage').then(m => ({ default: m.CreateTournamentPage })));
+const TournamentDetailPage = lazy(() => import('./pages/tournament/TournamentDetailPage').then(m => ({ default: m.TournamentDetailPage })));
+const ClubsPage = lazy(() => import('./pages/tournament/ClubsPage').then(m => ({ default: m.ClubsPage })));
+const MatchListPage = lazy(() => import('./pages/match/MatchListPage').then(m => ({ default: m.MatchListPage })));
+const CreateMatchPage = lazy(() => import('./pages/match/CreateMatchPage').then(m => ({ default: m.CreateMatchPage })));
+const MatchDetailPage = lazy(() => import('./pages/match/MatchDetailPage').then(m => ({ default: m.MatchDetailPage })));
+const MatchStatsPage = lazy(() => import('./pages/match/MatchStatsPage').then(m => ({ default: m.MatchStatsPage })));
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage').then(m => ({ default: m.TermsOfServicePage })));
 
 export type Page =
   | { name: 'home' }
@@ -52,7 +61,22 @@ export type Page =
   | { name: 'match-create' }
   | { name: 'match-detail'; matchId: string }
   | { name: 'match-stats' }
-  | { name: 'settings' };
+  | { name: 'settings' }
+  | { name: 'privacy-policy' }
+  | { name: 'terms-of-service' };
+
+// ─── Fallback spinner pro Suspense ──────────────────────────────────────────
+
+function PageSpinner() {
+  return (
+    <div style={{
+      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minHeight: 200, flexDirection: 'column', gap: 12,
+    }}>
+      <div style={{ fontSize: 32 }}>⚽</div>
+    </div>
+  );
+}
 
 // ─── Vnitřní router (vyžaduje auth, kromě public view) ───────────────────────
 
@@ -66,6 +90,9 @@ function AppRouter() {
   const loadContacts = useContactsStore(s => s.loadFromFirebase);
   const loadMatches = useMatchesStore(s => s.loadFromFirebase);
   const setMatchesFirebaseUid = useMatchesStore(s => s.setFirebaseUid);
+  const loadTemplates = useTemplatesStore(s => s.loadFromFirebase);
+  const loadClubs = useClubsStore(s => s.loadFromFirebase);
+  const setClubsFirebaseUid = useClubsStore(s => s.setFirebaseUid);
 
   const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin } = usePageStore();
 
@@ -84,13 +111,16 @@ function AppRouter() {
       loadFromFirebase(user.uid);
       loadContacts(user.uid);
       loadMatches(user.uid);
+      loadTemplates(user.uid);
+      loadClubs(user.uid);
       const unsubscribe = subscribeToStatus(user.uid);
       return () => unsubscribe();
     } else {
       setFirebaseUid(null);
       setMatchesFirebaseUid(null);
+      setClubsFirebaseUid(null);
     }
-  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, loadMatches, setMatchesFirebaseUid]);
+  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, loadMatches, setMatchesFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid]);
 
   // Po přihlášení + existuje joinIntent → přesměrovat zpět na public view
   useEffect(() => {
@@ -161,27 +191,31 @@ function AppRouter() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
       <OnboardingModal navigate={navigate} />
 
-      {page.name === 'home' && <HomePage navigate={navigate} />}
-      {page.name === 'training-home' && <TrainingHomePage navigate={navigate} />}
-      {page.name === 'generator' && <GeneratorPage navigate={navigate} />}
-      {page.name === 'training' && (
-        <TrainingDetailPage training={page.training} navigate={navigate} />
-      )}
-      {page.name === 'saved' && <SavedPage navigate={navigate} />}
-      {page.name === 'library' && <ExerciseLibraryPage navigate={navigate} />}
-      {page.name === 'manual-builder' && <ManualBuilderPage navigate={navigate} />}
-      {page.name === 'calendar' && <CalendarPage navigate={navigate} />}
-      {page.name === 'tournament-list' && <TournamentListPage navigate={navigate} />}
-      {page.name === 'tournament-create' && <CreateTournamentPage navigate={navigate} />}
-      {page.name === 'tournament-detail' && (
-        <TournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
-      )}
-      {page.name === 'clubs' && <ClubsPage navigate={navigate} />}
-      {page.name === 'match-list' && <MatchListPage navigate={navigate} />}
-      {page.name === 'match-create' && <CreateMatchPage navigate={navigate} />}
-      {page.name === 'match-detail' && <MatchDetailPage matchId={page.matchId} navigate={navigate} />}
-      {page.name === 'match-stats' && <MatchStatsPage navigate={navigate} />}
-      {page.name === 'settings' && <SettingsPage navigate={navigate} />}
+      <Suspense fallback={<PageSpinner />}>
+        {page.name === 'home' && <HomePage navigate={navigate} />}
+        {page.name === 'training-home' && <TrainingHomePage navigate={navigate} />}
+        {page.name === 'generator' && <GeneratorPage navigate={navigate} />}
+        {page.name === 'training' && (
+          <TrainingDetailPage training={page.training} navigate={navigate} />
+        )}
+        {page.name === 'saved' && <SavedPage navigate={navigate} />}
+        {page.name === 'library' && <ExerciseLibraryPage navigate={navigate} />}
+        {page.name === 'manual-builder' && <ManualBuilderPage navigate={navigate} />}
+        {page.name === 'calendar' && <CalendarPage navigate={navigate} />}
+        {page.name === 'tournament-list' && <TournamentListPage navigate={navigate} />}
+        {page.name === 'tournament-create' && <CreateTournamentPage navigate={navigate} />}
+        {page.name === 'tournament-detail' && (
+          <TournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
+        )}
+        {page.name === 'clubs' && <ClubsPage navigate={navigate} />}
+        {page.name === 'match-list' && <MatchListPage navigate={navigate} />}
+        {page.name === 'match-create' && <CreateMatchPage navigate={navigate} />}
+        {page.name === 'match-detail' && <MatchDetailPage matchId={page.matchId} navigate={navigate} />}
+        {page.name === 'match-stats' && <MatchStatsPage navigate={navigate} />}
+        {page.name === 'settings' && <SettingsPage navigate={navigate} />}
+        {page.name === 'privacy-policy' && <PrivacyPolicyPage navigate={navigate} />}
+        {page.name === 'terms-of-service' && <TermsOfServicePage navigate={navigate} />}
+      </Suspense>
     </div>
   );
 }
@@ -194,8 +228,11 @@ export default function App() {
       <ThemeProvider>
         <I18nProvider>
           <AuthProvider>
+            <ConnectionStatus />
             <ToastContainer />
+            <ConfirmModal />
             <AppRouter />
+            <CookieConsent onPrivacyPolicy={() => usePageStore.getState().setPage({ name: 'privacy-policy' })} />
           </AuthProvider>
         </I18nProvider>
       </ThemeProvider>

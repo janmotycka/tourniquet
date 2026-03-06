@@ -228,7 +228,8 @@ export const useTournamentStore = create<TournamentState>()(
           }
 
           set({
-            tournaments: tournaments.length > 0 ? tournaments : get().tournaments,
+            // Pokud load selhal, zachovej cache; pokud uspěl (i s 0), nastav správně
+            tournaments: ownLoadFailed ? get().tournaments : tournaments,
             joinedTournaments,
             firebaseUid: uid,
             syncError: ownLoadFailed ? `Nepodařilo se načíst turnaje: ${ownLoadError}` : null,
@@ -348,7 +349,7 @@ export const useTournamentStore = create<TournamentState>()(
 
       createTournament: async (rawInput) => {
         // Sanitizovat vstup — ořízne stringy a čísla na bezpečné rozsahy
-        const input = sanitizeTournamentInput(rawInput);
+        let input = sanitizeTournamentInput(rawInput);
 
         const now = new Date().toISOString();
         const uid = get().firebaseUid;
@@ -374,7 +375,7 @@ export const useTournamentStore = create<TournamentState>()(
             ...input.settings,
             groups: input.settings.groups.map(g => ({
               ...g,
-              teamIds: g.teamIds.map((placeholder, pIdx) => {
+              teamIds: g.teamIds.map((placeholder) => {
                 // Placeholder formát: 'team-placeholder-N' kde N je index v poli teams
                 const match = placeholder.match(/^team-placeholder-(\d+)$/);
                 if (match) return teams[parseInt(match[1])]?.id ?? placeholder;
@@ -480,7 +481,7 @@ export const useTournamentStore = create<TournamentState>()(
           try {
             await deleteTournamentFromFirebase(uid, id);
           } catch (err) {
-            console.error('[Firebase] Delete failed:', err);
+            logger.error('[Firebase] Delete failed:', err);
           }
         }
       },

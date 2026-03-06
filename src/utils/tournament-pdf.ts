@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+import type { jsPDF as JsPDFType } from 'jspdf';
 import type { Tournament } from '../types/tournament.types';
 import { formatMatchTime } from './tournament-schedule';
 import { generateQRCodeDataUrl, getTournamentPublicUrl } from './qr-code';
@@ -10,7 +10,7 @@ type TFn = (key: string, params?: Record<string, string | number>) => string;
 
 // ─── Font loader (Roboto s českou diakritikou) ──────────────────────────────
 
-let fontCache: { regular?: string; bold?: string } = {};
+const fontCache: { regular?: string; bold?: string } = {};
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   let binary = '';
@@ -23,7 +23,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-async function loadFonts(doc: jsPDF): Promise<boolean> {
+async function loadFonts(doc: JsPDFType): Promise<boolean> {
   try {
     if (!fontCache.regular || !fontCache.bold) {
       // Fonty jsou v public/fonts/ — servírované Vite dev serverem nebo hostingem
@@ -74,6 +74,7 @@ export async function exportTournamentPdf(
   t: TFn,
   locale: Locale,
 ): Promise<void> {
+  const { default: jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth(); // 210
   const pageH = doc.internal.pageSize.getHeight(); // 297

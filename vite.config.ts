@@ -1,10 +1,21 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 // https://vite.dev/config/
 export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+  },
+
   build: {
+    // Source maps pro Sentry (automaticky uploadovány přes sentryVitePlugin)
+    sourcemap: !!process.env.SENTRY_AUTH_TOKEN,
     rollupOptions: {
       output: {
         // Rozdělení bundlu na menší chunky → rychlejší první načtení
@@ -29,6 +40,11 @@ export default defineConfig({
         // Precachuj statické assety (JS, CSS, HTML, fonty, obrázky)
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
 
+        // Zajisti rychlé přepnutí na nový SW a smazání starých cache
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+
         // Firebase Realtime DB a Functions — vždy network-first (real-time data)
         runtimeCaching: [
           {
@@ -36,7 +52,19 @@ export default defineConfig({
             handler: 'NetworkOnly',
           },
           {
+            urlPattern: /^https:\/\/.*\.firebasedatabase\.app\/.*/i,
+            handler: 'NetworkOnly',
+          },
+          {
             urlPattern: /^https:\/\/.*\.cloudfunctions\.net\/.*/i,
+            handler: 'NetworkOnly',
+          },
+          {
+            urlPattern: /^https:\/\/identitytoolkit\.googleapis\.com\/.*/i,
+            handler: 'NetworkOnly',
+          },
+          {
+            urlPattern: /^https:\/\/securetoken\.googleapis\.com\/.*/i,
             handler: 'NetworkOnly',
           },
           // Google Fonts — cache-first
@@ -104,5 +132,14 @@ export default defineConfig({
         type: 'module',
       },
     }),
-  ],
+
+    // Sentry — upload source maps při buildu (vyžaduje SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT env vars)
+    process.env.SENTRY_AUTH_TOKEN
+      ? sentryVitePlugin({
+          org: process.env.SENTRY_ORG,
+          project: process.env.SENTRY_PROJECT,
+          authToken: process.env.SENTRY_AUTH_TOKEN,
+        })
+      : null,
+  ].filter(Boolean),
 });

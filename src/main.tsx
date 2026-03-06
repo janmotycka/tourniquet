@@ -1,3 +1,6 @@
+// Sentry musí být importován jako první — inicializuje error tracking
+import './sentry';
+
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
@@ -11,12 +14,12 @@ import { logger } from './utils/logger'
 window.addEventListener('unhandledrejection', (event) => {
   const msg = event.reason instanceof Error ? event.reason.message : String(event.reason);
   logger.error('[Global] Unhandled rejection:', msg);
-  useToastStore.getState().show('error', `Neočekávaná chyba: ${msg.slice(0, 120)}`, 6000);
+  useToastStore.getState().show('error', `Unexpected error: ${msg.slice(0, 120)}`, 6000);
 });
 
 window.addEventListener('error', (event) => {
   logger.error('[Global] Uncaught error:', event.message);
-  useToastStore.getState().show('error', `Chyba: ${event.message.slice(0, 120)}`, 6000);
+  useToastStore.getState().show('error', `Error: ${event.message.slice(0, 120)}`, 6000);
 });
 
 // ─── Render ──────────────────────────────────────────────────────────────────

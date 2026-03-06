@@ -386,7 +386,7 @@ export function CalendarPage({ navigate }: Props) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px' }}>
-        <button onClick={() => navigate({ name: 'home' })} style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
+        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
         <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('calendar.title')}</h1>
         <button onClick={() => {
           setMultiSelect(s => {
@@ -571,7 +571,7 @@ export function CalendarPage({ navigate }: Props) {
                 style={{
                   padding: '12px', borderRadius: 12, border: '1.5px dashed var(--primary)',
                   background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600, fontSize: 13, marginTop: 4,
-                }}>+ Přidat další trénink</button>
+                }}>+ {t('calendar.addTraining')}</button>
             </div>
           </div>
         </div>

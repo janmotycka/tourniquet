@@ -67,14 +67,16 @@ function TournamentCard({ t, onClick, isJoined, statusLabels }: { t: Tournament;
               <div key={s.teamId} style={{
                 flex: 1, background: 'var(--surface-var)', borderRadius: 10,
                 padding: '8px 10px', display: 'flex', flexDirection: 'column',
-                alignItems: 'center', gap: 3,
+                alignItems: 'center', gap: 4,
               }}>
-                <span style={{ fontSize: 18 }}>{PODIUM_EMOJI[idx]}</span>
-                {team?.logoBase64 ? (
-                  <img src={team.logoBase64} alt={team.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
-                ) : (
-                  <div style={colorSwatch(team?.color ?? '#ccc', 14)} />
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 18, lineHeight: 1 }}>{PODIUM_EMOJI[idx]}</span>
+                  {team?.logoBase64 ? (
+                    <img src={team.logoBase64} alt={team.name} style={{ width: 22, height: 22, borderRadius: 4, objectFit: 'cover' }} />
+                  ) : (
+                    <div style={colorSwatch(team?.color ?? '#ccc', 18)} />
+                  )}
+                </div>
                 <span style={{ fontSize: 10, fontWeight: 700, textAlign: 'center', color: 'var(--text)', lineHeight: 1.2 }}>
                   {team?.name ?? '?'}
                 </span>
@@ -90,14 +92,14 @@ function TournamentCard({ t, onClick, isJoined, statusLabels }: { t: Tournament;
             display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1,
           }}>
             <span style={{ fontWeight: 800, fontSize: 18, color: 'var(--primary)' }}>{t.teams.length}</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>týmů</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tr('tournament.list.teamsUnit')}</span>
           </div>
           <div style={{
             background: 'var(--surface-var)', borderRadius: 10, padding: '8px 12px',
             display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1,
           }}>
             <span style={{ fontWeight: 800, fontSize: 18, color: 'var(--primary)' }}>{t.matches.length}</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>zápasů</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tr('tournament.list.matchesUnit')}</span>
           </div>
           <div style={{
             background: 'var(--surface-var)', borderRadius: 10, padding: '8px 12px',
@@ -106,7 +108,7 @@ function TournamentCard({ t, onClick, isJoined, statusLabels }: { t: Tournament;
             <span style={{ fontWeight: 800, fontSize: 18, color: finishedMatches > 0 ? '#43A047' : 'var(--text-muted)' }}>
               {finishedMatches}
             </span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>odehráno</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{tr('tournament.list.playedUnit')}</span>
           </div>
         </div>
       )}
@@ -159,11 +161,11 @@ export function TournamentListPage({ navigate }: Props) {
     }
 
     if (!id) {
-      setJoinError('Zadejte ID turnaje nebo odkaz.');
+      setJoinError(t('tournament.list.enterIdOrLink'));
       return;
     }
     if (!/^\d{6}$/.test(joinPin)) {
-      setJoinError('PIN musí být přesně 6 číslic.');
+      setJoinError(t('tournament.list.pinFormat'));
       return;
     }
 
@@ -179,10 +181,10 @@ export function TournamentListPage({ navigate }: Props) {
         setJoinError('');
         navigate({ name: 'tournament-detail', tournamentId: id });
       } else {
-        setJoinError(result.error ?? 'Nepodařilo se připojit.');
+        setJoinError(result.error ?? t('tournament.list.joinFailed'));
       }
     } catch {
-      setJoinError('Chyba při připojování k turnaji.');
+      setJoinError(t('tournament.list.joinError'));
     } finally {
       setJoining(false);
     }
@@ -191,21 +193,39 @@ export function TournamentListPage({ navigate }: Props) {
   // Merge owned + joined tournaments with _isJoined flag
   type MergedTournament = Tournament & { _isJoined: boolean };
 
-  // Řazení: active → draft → finished; uvnitř skupiny dle startDate (nejbližší nahoře, finished: nejnovější nahoře)
-  const sorted = useMemo<MergedTournament[]>(() => {
+  // Archiv toggle
+  const [archiveExpanded, setArchiveExpanded] = useState(false);
+
+  // Vyhledávání
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Rozdělit na aktivní (active/draft) a archivované (finished), filtrovat podle hledání
+  const { activeTournaments, archivedTournaments } = useMemo(() => {
     const merged: MergedTournament[] = [
       ...tournaments.map(t => ({ ...t, _isJoined: false })),
       ...joinedTournaments.map(t => ({ ...t, _isJoined: true })),
-    ];
-    const order: Record<string, number> = { active: 0, draft: 1, finished: 2 };
-    return merged.sort((a, b) => {
-      if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
-      const dateA = new Date(a.settings.startDate).getTime();
-      const dateB = new Date(b.settings.startDate).getTime();
-      // finished: nejnovější nahoře (desc); active/draft: nejbližší datum nahoře (asc)
-      return a.status === 'finished' ? dateB - dateA : dateA - dateB;
+    ].filter(t => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return t.name.toLowerCase().includes(q)
+        || t.teams.some(team => team.name.toLowerCase().includes(q));
     });
-  }, [tournaments, joinedTournaments]);
+    const active: MergedTournament[] = [];
+    const archived: MergedTournament[] = [];
+    for (const t of merged) {
+      if (t.status === 'finished') archived.push(t);
+      else active.push(t);
+    }
+    // active/draft: active first, then draft; within group by nearest date asc
+    const statusOrder: Record<string, number> = { active: 0, draft: 1 };
+    active.sort((a, b) => {
+      if (statusOrder[a.status] !== statusOrder[b.status]) return statusOrder[a.status] - statusOrder[b.status];
+      return new Date(a.settings.startDate).getTime() - new Date(b.settings.startDate).getTime();
+    });
+    // finished: nejnovější nahoře (desc)
+    archived.sort((a, b) => new Date(b.settings.startDate).getTime() - new Date(a.settings.startDate).getTime());
+    return { activeTournaments: active, archivedTournaments: archived };
+  }, [tournaments, joinedTournaments, searchQuery]);
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -214,7 +234,7 @@ export function TournamentListPage({ navigate }: Props) {
         display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px',
         borderBottom: '1px solid var(--border)', background: 'var(--surface)',
       }}>
-        <button onClick={() => navigate({ name: 'home' })} style={{
+        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{
           width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
           fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>←</button>
@@ -228,7 +248,7 @@ export function TournamentListPage({ navigate }: Props) {
         <button onClick={() => setShowJoinModal(true)} style={{
           background: '#E3F2FD', color: '#1565C0', fontWeight: 700, fontSize: 14,
           padding: '8px 14px', borderRadius: 10,
-        }}>🔗 Připojit se</button>
+        }}>🔗 {t('tournament.list.joinBtn')}</button>
         <button onClick={() => navigate({ name: 'tournament-create' })} style={{
           background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 14,
           padding: '8px 16px', borderRadius: 10,
@@ -259,9 +279,26 @@ export function TournamentListPage({ navigate }: Props) {
         </div>
       )}
 
+      {/* Search */}
+      {(tournaments.length + joinedTournaments.length) > 3 && (
+        <div style={{ padding: '12px 20px 0' }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder={t('common.search')}
+            style={{
+              width: '100%', padding: '10px 14px', borderRadius: 10,
+              border: '1.5px solid var(--border)', background: 'var(--surface)',
+              fontSize: 14, color: 'var(--text)', outline: 'none',
+            }}
+          />
+        </div>
+      )}
+
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {sorted.length === 0 ? (
+        {activeTournaments.length === 0 && archivedTournaments.length === 0 ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '60px 20px' }}>
             <div style={{ fontSize: 64 }}>🏆</div>
             <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center' }}>{t('tournament.list.noTournaments')}</h2>
@@ -277,7 +314,8 @@ export function TournamentListPage({ navigate }: Props) {
           </div>
         ) : (
           <>
-            {sorted.map(t => (
+            {/* Aktivní a rozpracované turnaje */}
+            {activeTournaments.map(t => (
               <TournamentCard
                 key={t.id}
                 t={t}
@@ -301,6 +339,42 @@ export function TournamentListPage({ navigate }: Props) {
                 ➕ Vytvořit nový turnaj
               </button>
             </FeatureGate>
+
+            {/* Archiv ukončených turnajů */}
+            {archivedTournaments.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <button
+                  onClick={() => setArchiveExpanded(prev => !prev)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                    padding: '12px 16px', borderRadius: 14,
+                    background: 'var(--surface-var)',
+                    color: 'var(--text-muted)', fontWeight: 700, fontSize: 14,
+                  }}
+                >
+                  <span style={{
+                    display: 'inline-block', transition: 'transform .2s',
+                    transform: archiveExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                    fontSize: 12,
+                  }}>▶</span>
+                  <span>📦 {t('tournament.archive')} ({archivedTournaments.length})</span>
+                </button>
+
+                {archiveExpanded && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+                    {archivedTournaments.map(t => (
+                      <TournamentCard
+                        key={t.id}
+                        t={t}
+                        isJoined={t._isJoined}
+                        statusLabels={statusLabels}
+                        onClick={() => navigate({ name: 'tournament-detail', tournamentId: t.id })}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -318,7 +392,7 @@ export function TournamentListPage({ navigate }: Props) {
             boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
           }} onClick={e => e.stopPropagation()}>
             <h2 style={{ fontWeight: 800, fontSize: 18, textAlign: 'center' }}>
-              Připojit se k turnaji
+              {t('tournament.list.joinTitle')}
             </h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -383,7 +457,7 @@ export function TournamentListPage({ navigate }: Props) {
                   background: 'var(--surface-var)', color: 'var(--text)',
                 }}
               >
-                Zrušit
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleJoin}
@@ -394,7 +468,7 @@ export function TournamentListPage({ navigate }: Props) {
                   opacity: joining ? 0.6 : 1, cursor: joining ? 'not-allowed' : 'pointer',
                 }}
               >
-                {joining ? 'Připojuji...' : 'Připojit se'}
+                {joining ? t('tournament.list.joining') : t('tournament.list.joinBtn')}
               </button>
             </div>
           </div>

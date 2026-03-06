@@ -22,7 +22,7 @@ export function TrainingHomePage({ navigate }: Props) {
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={() => navigate({ name: 'home' })} style={{
+        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{
           width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
           fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }}>←</button>

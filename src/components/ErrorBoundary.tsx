@@ -1,5 +1,7 @@
 import { Component } from 'react';
 import type { ReactNode, ErrorInfo } from 'react';
+import { Sentry } from '../sentry';
+import { logger } from '../utils/logger';
 
 interface Props {
   children: ReactNode;
@@ -18,7 +20,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[ErrorBoundary]', error, info.componentStack);
+    logger.error('[ErrorBoundary]', error, info.componentStack);
+    // Odeslat do Sentry s component stack
+    Sentry.captureException(error, {
+      contexts: {
+        react: { componentStack: info.componentStack ?? '' },
+      },
+    });
   }
 
   handleReload = () => {
@@ -35,9 +43,11 @@ export class ErrorBoundary extends Component<Props, State> {
         fontFamily: 'system-ui, -apple-system, sans-serif',
       }}>
         <div style={{ fontSize: 48 }}>⚠️</div>
-        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Něco se pokazilo</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
+          Something went wrong
+        </h1>
         <p style={{ fontSize: 14, color: '#666', textAlign: 'center', maxWidth: 400, lineHeight: 1.5 }}>
-          Aplikace narazila na neočekávanou chybu. Zkuste stránku obnovit.
+          The application encountered an unexpected error. Please try reloading the page.
         </p>
         <button
           onClick={this.handleReload}
@@ -47,7 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
             border: 'none', cursor: 'pointer',
           }}
         >
-          Obnovit stránku
+          Reload page
         </button>
       </div>
     );

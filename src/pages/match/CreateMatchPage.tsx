@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useI18n } from '../../i18n';
 import type { MatchLineupPlayer, SubstitutionSettings } from '../../types/match.types';
-import type { Club } from '../../types/club.types';
+import type { Club, AgeCategory } from '../../types/club.types';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -39,12 +39,31 @@ function nowTimeStr(): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+// ─── Club logo/color badge ────────────────────────────────────────────────────
+function ClubBadge({ club, size = 32 }: { club: Club; size?: number }) {
+  return club.logoBase64 ? (
+    <img src={club.logoBase64} alt={club.name} style={{ width: size, height: size, borderRadius: size * 0.25, objectFit: 'cover' }} />
+  ) : (
+    <div style={{ width: size, height: size, borderRadius: size * 0.25, background: club.color, flexShrink: 0 }} />
+  );
+}
+
 // ─── CreateMatchPage ────────────────────────────────────────────────────────────
 
 export function CreateMatchPage({ navigate }: Props) {
   const { t } = useI18n();
   const clubs = useClubsStore(s => s.clubs);
   const createMatch = useMatchesStore(s => s.createMatch);
+
+  // Detekce domovského klubu (myClub = první s ageCategories > 0)
+  const myClub = useMemo(
+    () => clubs.find(c => (c.ageCategories ?? []).length > 0),
+    [clubs],
+  );
+  const opponentClubs = useMemo(
+    () => clubs.filter(c => c.id !== myClub?.id),
+    [clubs, myClub],
+  );
 
   const [step, setStep] = useState(0);
 
@@ -55,8 +74,9 @@ export function CreateMatchPage({ navigate }: Props) {
   const [kickoffTime, setKickoffTime] = useState(nowTimeStr());
   const [competition, setCompetition] = useState('');
   const [durationMinutes, setDurationMinutes] = useState(60);
-  const [selectedClubId, setSelectedClubId] = useState<string>(clubs[0]?.id ?? '');
-
+  // Auto-select myClub, fallback to first club
+  const [selectedClubId, setSelectedClubId] = useState<string>(myClub?.id ?? clubs[0]?.id ?? '');
+  const [selectedCategory, setSelectedCategory] = useState<AgeCategory | null>(null);
   // Step 1: lineup
   const [lineup, setLineup] = useState<MatchLineupPlayer[]>([]);
   const [subInterval, setSubInterval] = useState(15);
@@ -65,10 +85,30 @@ export function CreateMatchPage({ navigate }: Props) {
   // When club is selected, populate default lineup
   const selectedClub = clubs.find(c => c.id === selectedClubId);
 
-  const initLineupFromClub = (club: Club) => {
-    const players = [...club.defaultPlayers].sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+  // Kategorie zvoleného klubu (pro filtrování hráčů)
+  const clubCategories = useMemo(() => {
+    if (!selectedClub) return [];
+    return selectedClub.ageCategories ?? [];
+  }, [selectedClub]);
+
+  const initLineupFromClub = (club: Club, category?: AgeCategory | null) => {
+    // Preferuj nový roster (players) nad starým (defaultPlayers)
+    let rosterPlayers: Array<{ name: string; jerseyNumber: number }>;
+    const activePlayers = (club.players ?? []).filter(p => p.active);
+
+    if (activePlayers.length > 0 && category) {
+      // Filtruj hráče podle kategorie
+      rosterPlayers = activePlayers
+        .filter(p => p.ageCategory === category)
+        .map(p => ({ name: p.name, jerseyNumber: p.jerseyNumber }));
+    } else if (activePlayers.length > 0) {
+      rosterPlayers = activePlayers.map(p => ({ name: p.name, jerseyNumber: p.jerseyNumber }));
+    } else {
+      rosterPlayers = [...(club.defaultPlayers ?? [])];
+    }
+    const sorted = rosterPlayers.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
     const maxStarters = 11;
-    const newLineup: MatchLineupPlayer[] = players.map((p, idx) => ({
+    const newLineup: MatchLineupPlayer[] = sorted.map((p, idx) => ({
       playerId: `${club.id}-${p.jerseyNumber}`,
       jerseyNumber: p.jerseyNumber,
       name: p.name,
@@ -80,8 +120,14 @@ export function CreateMatchPage({ navigate }: Props) {
 
   const handleClubChange = (clubId: string) => {
     setSelectedClubId(clubId);
+    setSelectedCategory(null);
     const club = clubs.find(c => c.id === clubId);
     if (club) initLineupFromClub(club);
+  };
+
+  const handleCategoryChange = (cat: AgeCategory) => {
+    setSelectedCategory(cat);
+    if (selectedClub) initLineupFromClub(selectedClub, cat);
   };
 
   const toggleStarter = (playerId: string) => {
@@ -157,10 +203,48 @@ export function CreateMatchPage({ navigate }: Props) {
       <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.basicInfo')}</h3>
 
+        {/* ── Soupeř: picker + text input ── */}
         <div>
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
             {t('match.create.opponent')}
           </label>
+
+          {/* Opponent clubs rychlý výběr */}
+          {opponentClubs.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{
+                display: 'flex', flexWrap: 'wrap', gap: 6,
+              }}>
+                {opponentClubs.map(club => {
+                  const isSelected = opponent === club.name;
+                  return (
+                    <button
+                      key={club.id}
+                      onClick={() => setOpponent(isSelected ? '' : club.name)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '6px 10px', borderRadius: 10,
+                        border: `2px solid ${isSelected ? '#1565C0' : 'var(--border)'}`,
+                        background: isSelected ? '#E3F2FD' : 'var(--bg)',
+                        fontSize: 13, fontWeight: 600, color: 'var(--text)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <ClubBadge club={club} size={20} />
+                      <span style={{
+                        maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {club.name}
+                      </span>
+                      {isSelected && <span style={{ color: '#1565C0', fontSize: 14, marginLeft: 2 }}>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Text input — vždy viditelný pro ruční zadání / editaci */}
           <input
             type="text"
             value={opponent}
@@ -172,6 +256,11 @@ export function CreateMatchPage({ navigate }: Props) {
               background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box',
             }}
           />
+          {opponentClubs.length > 0 && (
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>
+              {t('match.create.opponentPickerHint')}
+            </p>
+          )}
         </div>
 
         <div>
@@ -248,8 +337,106 @@ export function CreateMatchPage({ navigate }: Props) {
         <Stepper label={t('match.create.matchDuration')} value={durationMinutes} min={10} max={120} onChange={setDurationMinutes} unit={t('common.min')} />
       </div>
 
-      {/* Club selection */}
-      {clubs.length > 0 && (
+      {/* ── Náš klub — auto-selected, kompaktní zobrazení ── */}
+      {selectedClub ? (
+        <div style={{
+          background: 'var(--surface)', borderRadius: 16, padding: '16px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.ourClub')}</h3>
+
+          {/* Vybraný klub — row */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+            borderRadius: 12, border: '2px solid #1565C0', background: '#E3F2FD',
+          }}>
+            <ClubBadge club={selectedClub} size={36} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{selectedClub.name}</div>
+              {selectedClub === myClub && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, color: '#1565C0',
+                }}>
+                  {t('clubs.myClubBadge')}
+                </span>
+              )}
+            </div>
+            <span style={{ color: '#1565C0', fontSize: 20, flexShrink: 0 }}>✓</span>
+          </div>
+
+          {/* Pokud má víc klubů, možnost přepnout */}
+          {clubs.length > 1 && (
+            <details style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>
+                {t('match.create.changeClub')}
+              </summary>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
+                {clubs.filter(c => c.id !== selectedClubId).map(club => (
+                  <button
+                    key={club.id}
+                    onClick={() => handleClubChange(club.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px',
+                      borderRadius: 10, border: '1.5px solid var(--border)',
+                      background: 'var(--bg)', textAlign: 'left', cursor: 'pointer',
+                    }}
+                  >
+                    <ClubBadge club={club} size={28} />
+                    <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{club.name}</span>
+                  </button>
+                ))}
+              </div>
+            </details>
+          )}
+
+          {/* ── Výběr kategorie hráčů ── */}
+          {clubCategories.length > 1 && (
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                {t('match.create.selectCategory')}
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {clubCategories.map(cat => {
+                  const isActive = selectedCategory === cat;
+                  const playerCount = (selectedClub.players ?? []).filter(p => p.ageCategory === cat && p.active).length;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => handleCategoryChange(cat)}
+                      style={{
+                        padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                        background: isActive ? '#1565C0' : 'var(--surface-var)',
+                        color: isActive ? '#fff' : 'var(--text)',
+                        border: isActive ? '2px solid #1565C0' : '2px solid var(--border)',
+                        cursor: 'pointer', transition: 'all .15s',
+                      }}
+                    >
+                      {cat} ({playerCount})
+                    </button>
+                  );
+                })}
+              </div>
+              {!selectedCategory && (
+                <p style={{ fontSize: 11, color: '#E65100', margin: '6px 0 0', fontWeight: 600 }}>
+                  {t('match.create.categoryHint')}
+                </p>
+              )}
+            </div>
+          )}
+
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+            {t('match.create.clubRosterInfo')}
+          </p>
+        </div>
+      ) : clubs.length === 0 ? (
+        <div style={{
+          background: 'var(--surface)', borderRadius: 16, padding: '16px',
+          fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.6,
+        }}>
+          {t('match.create.noClubInfo')}
+        </div>
+      ) : (
+        /* Fallback: žádný myClub, ale jsou kluby → zobrazit seznam */
         <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.ourClub')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -264,28 +451,12 @@ export function CreateMatchPage({ navigate }: Props) {
                   textAlign: 'left',
                 }}
               >
-                {club.logoBase64 ? (
-                  <img src={club.logoBase64} alt={club.name} style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} />
-                ) : (
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: club.color, flexShrink: 0 }} />
-                )}
+                <ClubBadge club={club} size={32} />
                 <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{club.name}</span>
                 {selectedClubId === club.id && <span style={{ marginLeft: 'auto', color: '#1565C0', fontSize: 18 }}>✓</span>}
               </button>
             ))}
           </div>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
-            {t('match.create.clubRosterInfo')}
-          </p>
-        </div>
-      )}
-
-      {clubs.length === 0 && (
-        <div style={{
-          background: 'var(--surface)', borderRadius: 16, padding: '16px',
-          fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.6,
-        }}>
-          {t('match.create.noClubInfo')}
         </div>
       )}
     </div>
@@ -472,10 +643,11 @@ export function CreateMatchPage({ navigate }: Props) {
         position: 'fixed', bottom: 0, left: 0, right: 0,
         padding: '12px 16px', background: 'var(--surface)',
         boxShadow: '0 -1px 0 var(--border)',
+        maxWidth: 480, margin: '0 auto',
       }}>
         {step === 0 ? (
           <button
-            onClick={() => { setStep(1); if (selectedClub && lineup.length === 0) initLineupFromClub(selectedClub); }}
+            onClick={() => { setStep(1); if (selectedClub && lineup.length === 0) initLineupFromClub(selectedClub, selectedCategory); }}
             disabled={!step0Valid}
             style={{
               width: '100%', padding: '14px', borderRadius: 14, fontWeight: 800, fontSize: 16,

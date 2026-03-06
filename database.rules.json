@@ -74,7 +74,7 @@
     },
 
     // ─── Chat (diskuze hostů) ─────────────────────────────────────────────────
-    // Čtení: kdokoli; Zápis: pouze přidávání nových zpráv (push), nikoliv smazání
+    // Čtení: kdokoli; Zápis: pouze přihlášení uživatelé, push nových zpráv
     // Max 200 zpráv per turnaj (starší se mažou na klientu)
     "chat": {
       "$tournamentId": {
@@ -82,8 +82,8 @@
         // Zakážeme write na úrovni kolekce (žádný hromadný delete/set)
         // Povolujeme jen push nových zpráv na úrovni $messageId
         "$messageId": {
-          // Povoleno pouze vytvoření nové zprávy, nikoliv přepsání existující
-          ".write": "!data.exists()",
+          // Povoleno pouze přihlášeným uživatelům a pouze vytvoření nové zprávy
+          ".write": "auth != null && !data.exists()",
           ".validate": "newData.hasChildren(['authorName', 'text', 'createdAt'])",
           "authorName": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
@@ -101,11 +101,16 @@
     // ─── Soupisky (roster form od trenérů) ─────────────────────────────────────
     // Trenéři zapisují přes odkaz s tokenem. Token se ověřuje na klientu
     // (public mirror obsahuje rosterToken per team).
-    // Rule: zápis povolen jen pokud roster ještě neexistuje NEBO je auth owner turnaje.
+    // Čtení: pouze owner turnaje (chrání osobní údaje trenérů — jméno, telefon, email)
+    // Zápis: pokud roster ještě neexistuje NEBO je auth owner turnaje.
     "rosters": {
       "$tournamentId": {
-        ".read": true,
+        // Hromadné čtení všech soupisek: pouze owner turnaje
+        // (chrání osobní údaje trenérů — jméno, telefon, email)
+        ".read": "auth != null && root.child('public').child($tournamentId).child('ownerUid').val() === auth.uid",
         "$teamId": {
+          // Čtení jednotlivé soupisky: povoleno i nepřihlášeným
+          // (trenér přes odkaz s tokenem vidí "již odesláno")
           ".read": true,
           ".write": "!data.exists() || (auth != null && root.child('public').child($tournamentId).child('ownerUid').val() === auth.uid)",
           ".validate": "newData.hasChildren(['coach', 'players', 'submittedAt', 'teamId', 'teamName'])",
@@ -154,6 +159,14 @@
 
     // ─── Kontakty trenérů (databáze pro organizátora) ────────────────────────
     "contacts": {
+      "$uid": {
+        ".read":  "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    // ─── Šablony turnajů ─────────────────────────────────────────────────────
+    "templates": {
       "$uid": {
         ".read":  "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid"

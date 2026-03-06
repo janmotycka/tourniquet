@@ -350,7 +350,7 @@ export function countRealMatches(numberOfTeams: number): number {
  * Každá skupina hraje vlastní miniligový turnaj.
  */
 export function generateGroupStageSchedule(
-  teams: Team[],
+  _teams: Team[],
   settings: TournamentSettings,
 ): Match[] {
   const groups = settings.groups ?? [];

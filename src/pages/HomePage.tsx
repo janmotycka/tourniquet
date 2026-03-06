@@ -1,6 +1,7 @@
 import type { Page } from '../App';
 import { useAuth } from '../context/AuthContext';
 import { useSubscriptionStore } from '../store/subscription.store';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 import { useI18n } from '../i18n';
 
 interface Props { navigate: (p: Page) => void; }
@@ -9,6 +10,7 @@ export function HomePage({ navigate }: Props) {
   const { user } = useAuth();
   const isPremium = useSubscriptionStore(s => s.isPremium);
   const { t } = useI18n();
+  const { canInstall, install } = usePWAInstall();
 
   return (
     <div style={{
@@ -33,6 +35,7 @@ export function HomePage({ navigate }: Props) {
         <button
           onClick={() => navigate({ name: 'settings' })}
           title={t('home.settings')}
+          aria-label={t('home.settings')}
           style={{
             flexShrink: 0, width: 40, height: 40, borderRadius: 12,
             background: 'var(--surface)', border: '1.5px solid var(--border)',
@@ -148,22 +151,71 @@ export function HomePage({ navigate }: Props) {
           </div>
         </button>
 
+        {/* 🏟 My Club */}
+        <button
+          onClick={() => navigate({ name: 'clubs' })}
+          style={{
+            background: 'linear-gradient(135deg, #4A148C 0%, #7B1FA2 100%)',
+            borderRadius: 22, padding: '24px',
+            display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
+            boxShadow: '0 4px 16px rgba(74,20,140,.25)', width: '100%',
+            color: '#fff',
+          }}
+        >
+          <div style={{ fontSize: 44 }}>🏟</div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.club')}</div>
+            <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
+              {t('home.clubDesc')}
+            </div>
+          </div>
+          <div style={{
+            background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '10px 16px',
+            fontWeight: 700, fontSize: 15, textAlign: 'center',
+          }}>
+            {t('common.open')}
+          </div>
+        </button>
+
       </div>
 
-      {/* Disabled club module chip */}
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8,
-          background: 'var(--surface)', borderRadius: 20, padding: '10px 18px',
-          boxShadow: '0 1px 3px rgba(0,0,0,.06)', opacity: 0.55,
-          border: '1.5px dashed var(--border)',
-        }}>
-          <span style={{ fontSize: 18 }}>🏟</span>
-          <div>
-            <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>{t('home.club')}</span>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 6 }}>{t('common.soon')}</span>
-          </div>
+      {/* PWA install prompt */}
+      {canInstall && (
+        <div style={{ padding: '0 20px 8px', textAlign: 'center' }}>
+          <button
+            onClick={install}
+            style={{
+              background: 'linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%)',
+              color: '#fff', fontWeight: 700, fontSize: 14,
+              padding: '12px 24px', borderRadius: 12, border: 'none',
+              cursor: 'pointer', width: '100%', maxWidth: 400,
+              boxShadow: '0 2px 8px rgba(27,94,32,.3)',
+            }}
+          >
+            📲 {t('app.installPWA')}
+          </button>
         </div>
+      )}
+
+      {/* Beta notice + feedback */}
+      <div style={{
+        textAlign: 'center', padding: '16px 0 4px', fontSize: 12,
+        color: 'var(--text-muted)', lineHeight: 1.5,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+      }}>
+        <span style={{
+          display: 'inline-block', background: 'var(--surface-var)',
+          borderRadius: 8, padding: '6px 14px',
+          border: '1px solid var(--border)', opacity: 0.7,
+        }}>
+          🚧 {t('home.betaNotice')}
+        </span>
+        <a
+          href={`mailto:feedback@torq.cz?subject=${encodeURIComponent(t('settings.feedbackSubject'))}`}
+          style={{ color: 'var(--text-muted)', textDecoration: 'underline', opacity: 0.6, fontSize: 12 }}
+        >
+          {t('home.feedbackLink')}
+        </a>
       </div>
 
     </div>
