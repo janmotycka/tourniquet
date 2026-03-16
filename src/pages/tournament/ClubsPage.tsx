@@ -178,7 +178,7 @@ export function ClubsPage({ navigate }: Props) {
         </div>
         <button onClick={openCreateOpponent} style={{
           background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 14,
-          padding: '8px 16px', borderRadius: 10,
+          padding: '8px 16px', borderRadius: 12,
         }}>{t('clubs.new')}</button>
       </div>
 
@@ -194,7 +194,7 @@ export function ClubsPage({ navigate }: Props) {
             </p>
             <button onClick={openCreateMyClub} style={{
               background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 16,
-              padding: '14px 32px', borderRadius: 14,
+              padding: '14px 32px', borderRadius: 12,
             }}>
               {t('clubs.createMyClub')}
             </button>

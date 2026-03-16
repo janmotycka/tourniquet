@@ -12,6 +12,7 @@ import { SKILL_FOCUS_CONFIGS } from '../data/skill-focus.data';
 import { formatMinutes, formatDate } from '../utils/time';
 import { formatTrainingForShare, shareToWhatsApp, copyToClipboard } from '../utils/training-share';
 import { useI18n } from '../i18n';
+import { safeClone } from '../utils/clone';
 
 const PHASE_COLORS: Record<PhaseType, { bg: string; text: string; bar: string; label: string }> = {
   warmup: { bg: 'var(--warmup-light)', text: 'var(--warmup-text)', bar: 'var(--warmup)', label: 'phase.warmup' },
@@ -101,7 +102,7 @@ function ExerciseModal({ ex, onClose }: { ex: Exercise; onClose: () => void }) {
           )}
           {ex.variations && ex.variations.length > 0 && (
             <div>
-              <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>🔀 Varianty</h3>
+              <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>🔀 {t('training.detail.variations')}</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {ex.variations.map((v, i) => (
                   <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -142,24 +143,24 @@ function ShareModal({ training, onClose }: { training: TrainingUnit; onClose: ()
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: 'var(--bg)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480,
+        background: 'var(--bg)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 480,
         padding: '20px 20px 40px', display: 'flex', flexDirection: 'column', gap: 12,
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
         </div>
-        <h2 style={{ fontWeight: 800, fontSize: 20, marginBottom: 4 }}>Sdílet trénink</h2>
+        <h2 style={{ fontWeight: 800, fontSize: 20, marginBottom: 4 }}>{t('training.share.title')}</h2>
         <button style={btnStyle('#25D366')} onClick={() => shareToWhatsApp(text)}>
           <span style={{ fontSize: 30 }}>📱</span>
-          <div><div style={{ fontWeight: 700, fontSize: 15 }}>WhatsApp</div><div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Sdílet jako zprávu</div></div>
+          <div><div style={{ fontWeight: 700, fontSize: 15 }}>WhatsApp</div><div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('training.share.asMessage')}</div></div>
         </button>
         <button style={btnStyle('#007AFF')} onClick={handleCopy}>
           <span style={{ fontSize: 30 }}>{copied ? '✅' : '📋'}</span>
-          <div><div style={{ fontWeight: 700, fontSize: 15 }}>{copied ? 'Zkopírováno!' : 'Kopírovat text'}</div><div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Kopírovat do schránky</div></div>
+          <div><div style={{ fontWeight: 700, fontSize: 15 }}>{copied ? t('training.share.copied') : t('training.share.copyText')}</div><div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('training.share.copyToClipboard')}</div></div>
         </button>
         <button style={btnStyle('#666')} onClick={() => setShowText(s => !s)}>
           <span style={{ fontSize: 30 }}>📄</span>
-          <div><div style={{ fontWeight: 700, fontSize: 15 }}>{showText ? 'Skrýt náhled' : 'Zobrazit text'}</div><div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Textový přehled</div></div>
+          <div><div style={{ fontWeight: 700, fontSize: 15 }}>{showText ? t('training.share.hidePreview') : t('training.share.showText')}</div><div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('training.share.textOverview')}</div></div>
         </button>
         {showText && (
           <textarea readOnly value={text} rows={10} style={{
@@ -195,11 +196,11 @@ function ExercisePicker({ forPhase, category, onSelect, onClose }: {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200,
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 200,
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: 'var(--bg)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480,
+        background: 'var(--bg)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 480,
         maxHeight: '85dvh', display: 'flex', flexDirection: 'column',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
@@ -381,7 +382,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
 
   return (
     <div
-      style={{ background: 'var(--surface)', borderRadius: 16, borderLeft: `4px solid ${colors.bar}`, boxShadow: '0 1px 4px rgba(0,0,0,.05)', overflow: 'visible',
+      style={{ background: 'var(--surface)', borderRadius: 14, borderLeft: `4px solid ${colors.bar}`, boxShadow: '0 1px 4px rgba(0,0,0,.05)', overflow: 'visible',
         outline: isDropTarget ? `2px dashed ${colors.bar}` : 'none',
       }}
       onDragOver={isDropTarget ? e => { e.preventDefault(); } : undefined}
@@ -426,7 +427,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {!hasStations && (
-                    <span style={{ color: 'var(--text-muted)', fontSize: 16, cursor: 'grab', padding: '0 2px' }} title="Přetáhni">⠿</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 16, cursor: 'grab', padding: '0 2px' }} title={t('training.detail.dragHandle')}>⠿</span>
                   )}
                   {hasStations && (
                     <div style={{ width: 24, height: 24, borderRadius: 12, background: colors.bar, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11, flexShrink: 0 }}>
@@ -440,7 +441,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
                   {!hasStations && (
                     <button onClick={() => setMoveExId(ex.id)}
                       style={{ fontSize: 13, padding: '4px 7px', background: 'var(--primary-light)', borderRadius: 6, color: 'var(--primary)' }}
-                      title="Přesunout do jiné fáze">⇄</button>
+                      title={t('training.detail.moveToPhaseBtn')}>⇄</button>
                   )}
                   <button onClick={() => removeItem(idx)}
                     style={{ fontSize: 13, padding: '4px 7px', background: '#FFEAEA', borderRadius: 6, color: '#dc3545' }}>✕</button>
@@ -451,8 +452,8 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
                     <select value={station!.coachAssigned ?? ''}
                       onChange={e => updateStationCoach(idx, e.target.value === '__none__' ? null : e.target.value || null)}
                       style={{ width: '100%', padding: '6px 8px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', fontSize: 13, color: 'var(--text)' }}>
-                      <option value="">— nepřiřazeno —</option>
-                      <option value="__none__">🔓 Volné stanoviště</option>
+                      <option value="">{t('training.detail.unassigned')}</option>
+                      <option value="__none__">🔓 {t('training.detail.freeStation')}</option>
                       {coaches.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
                     </select>
                   </div>
@@ -474,7 +475,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
                         }));
                       }}
                       style={{ width: '100%', padding: '6px 8px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', fontSize: 13, color: 'var(--text)' }}>
-                      <option value="">👤 Bez trenéra</option>
+                      <option value="">👤 {t('training.detail.noCoach')}</option>
                       {coaches.map(c => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
                     </select>
                   </div>
@@ -489,7 +490,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
             textAlign: 'center', border: `1.5px dashed ${isDropTarget ? colors.bar : 'var(--border)'}`,
             borderRadius: 10, background: isDropTarget ? colors.bg : 'transparent',
           }}>
-            {isDropTarget ? `Pustit sem → ${colors.label}` : 'Žádná cvičení'}
+            {isDropTarget ? `${t('training.detail.dropHere')} ${colors.label}` : t('training.detail.noExercises')}
           </div>
         )}
       </div>
@@ -509,7 +510,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
           onClick={() => setMoveExId(null)}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg)', borderRadius: 20, padding: 24, maxWidth: 320, width: '100%' }}>
-            <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>Přesunout do fáze</h3>
+            <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 16 }}>{t('training.detail.moveToPhaseTitle')}</h3>
             {(['warmup', 'main', 'cooldown'] as PhaseType[])
               .filter(pt => pt !== phase.type && allPhases.some(p => p.type === pt))
               .map(pt => (
@@ -529,6 +530,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
 
 // ─── View phase block ─────────────────────────────────────────────────────────
 function ExerciseRow({ ex, onClick, numberOfPlayers }: { ex: Exercise; onClick: () => void; numberOfPlayers?: number }) {
+  const { t } = useI18n();
   const playerWarning = numberOfPlayers !== undefined && (
     numberOfPlayers < ex.players.min ||
     (ex.players.max !== 'unlimited' && numberOfPlayers > ex.players.max)
@@ -543,14 +545,14 @@ function ExerciseRow({ ex, onClick, numberOfPlayers }: { ex: Exercise; onClick: 
       <div style={{ flex: 1 }}>
         <div style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
           {ex.name}
-          {playerWarning && <span title={`Cvičení je pro ${ex.players.min}–${ex.players.max === 'unlimited' ? '∞' : ex.players.max} hráčů`} style={{ fontSize: 14 }}>⚠️</span>}
+          {playerWarning && <span title={t('training.detail.suitableForPlayers', { min: ex.players.min, max: ex.players.max === 'unlimited' ? '∞' : String(ex.players.max) })} style={{ fontSize: 14 }}>⚠️</span>}
         </div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
           {ex.duration.recommended} min
           {ex.equipment.length > 0 && ` • ${ex.equipment.slice(0, 2).join(', ')}`}
           {playerWarning && (
             <span style={{ color: '#92400E', fontWeight: 600, marginLeft: 6 }}>
-              (vhodné pro {ex.players.min}–{ex.players.max === 'unlimited' ? '∞' : ex.players.max} hráčů)
+              ({t('training.detail.suitableForLabel', { min: ex.players.min, max: ex.players.max === 'unlimited' ? '∞' : String(ex.players.max) })})
             </span>
           )}
         </div>
@@ -566,13 +568,14 @@ function PhaseBlock({ phase, onExerciseClick, numberOfPlayers, coachNames }: {
   numberOfPlayers?: number;
   coachNames?: Record<string, string>;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(true);
   const colors = PHASE_COLORS[phase.type];
   const hasStations = (phase.stations?.length ?? 0) > 0;
   const exercises = hasStations ? phase.stations!.map(s => s.exercise) : phase.exercises;
 
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 16, borderLeft: `4px solid ${colors.bar}`, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 14, borderLeft: `4px solid ${colors.bar}`, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
       <button onClick={() => setOpen(o => !o)} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px',
         width: '100%', background: 'none', color: 'var(--text)',
@@ -597,7 +600,7 @@ function PhaseBlock({ phase, onExerciseClick, numberOfPlayers, coachNames }: {
                   <ExerciseRow ex={s.exercise} onClick={() => onExerciseClick(s.exercise)} numberOfPlayers={numberOfPlayers} />
                   <div style={{ display: 'flex', gap: 8, marginTop: 4, paddingLeft: 4, flexWrap: 'wrap' }}>
                     {s.coachAssigned === null ? (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: '#856404', background: '#FFF3CD', padding: '2px 8px', borderRadius: 6 }}>🔓 Volné stanoviště</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#856404', background: '#FFF3CD', padding: '2px 8px', borderRadius: 6 }}>🔓 {t('training.detail.freeStation')}</span>
                     ) : s.coachName ? (
                       <span style={{ fontSize: 11, fontWeight: 600, color: colors.text }}>👤 {s.coachName}</span>
                     ) : null}
@@ -607,7 +610,7 @@ function PhaseBlock({ phase, onExerciseClick, numberOfPlayers, coachNames }: {
               </div>
             ))
           ) : exercises.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>Žádná cvičení</p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>{t('training.detail.noExercises')}</p>
           ) : (
             exercises.map((ex, idx) => (
               <div key={ex.id}>
@@ -615,7 +618,7 @@ function PhaseBlock({ phase, onExerciseClick, numberOfPlayers, coachNames }: {
                 {phase.type === 'warmup' && phase.exerciseCoachAssignments && phase.exerciseCoachAssignments[idx] != null && coachNames && (
                   <div style={{ fontSize: 11, color: 'var(--warmup-text)', fontWeight: 700, padding: '0 2px 3px', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span>👤</span>
-                    <span>{coachNames[phase.exerciseCoachAssignments[idx]!] ?? 'Trenér'}</span>
+                    <span>{coachNames[phase.exerciseCoachAssignments[idx]!] ?? t('training.detail.coachFallback')}</span>
                   </div>
                 )}
                 <ExerciseRow ex={ex} onClick={() => onExerciseClick(ex)} numberOfPlayers={numberOfPlayers} />
@@ -630,7 +633,7 @@ function PhaseBlock({ phase, onExerciseClick, numberOfPlayers, coachNames }: {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export function TrainingDetailPage({ training, navigate }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [saved, setSaved] = useState(training.isSaved);
   const [selectedEx, setSelectedEx] = useState<Exercise | null>(null);
   const [showShare, setShowShare] = useState(false);
@@ -651,7 +654,7 @@ export function TrainingDetailPage({ training, navigate }: Props) {
   const handleSave = () => { saveTraining(training); setSaved(true); };
 
   const enterEditMode = () => {
-    setEditPhases(JSON.parse(JSON.stringify(training.phases)) as PhaseConfig[]);
+    setEditPhases(safeClone(training.phases));
     setEditMode(true);
   };
 
@@ -680,10 +683,10 @@ export function TrainingDetailPage({ training, navigate }: Props) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'var(--bg)' }}>
         <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
-        <span style={{ fontWeight: 700, fontSize: 15 }}>{editMode ? '✏️ Úprava' : 'Trénink'}</span>
+        <span style={{ fontWeight: 700, fontSize: 15 }}>{editMode ? `✏️ ${t('training.detail.editing')}` : t('training.detail.trainingLabel')}</span>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {!editMode && <>
-            <button onClick={enterEditMode} style={{ background: 'none', fontSize: 20 }} title="Upravit trénink">✏️</button>
+            <button onClick={enterEditMode} style={{ background: 'none', fontSize: 20 }} title={t('training.detail.editTrainingTitle')}>✏️</button>
             <button onClick={() => setShowShare(true)} style={{ background: 'none', fontSize: 20 }}>📤</button>
             {!saved
               ? <button onClick={handleSave} style={{ background: 'none', fontSize: 22, color: 'var(--primary)' }}>🔖</button>
@@ -711,15 +714,15 @@ export function TrainingDetailPage({ training, navigate }: Props) {
           </div>
           <h1 style={{ fontWeight: 800, fontSize: 20, lineHeight: 1.2 }}>{training.title}</h1>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>🔲 {training.input.numberOfCoaches} {training.input.numberOfCoaches === 1 ? 'stanoviště' : 'stanoviště'}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>🔲 {training.input.numberOfCoaches} {t('training.detail.stations')}</span>
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>🎯 {training.input.skillFocus.map(sf => SKILL_FOCUS_CONFIGS[sf]?.label ?? sf).join(', ')}</span>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>📅 {formatDate(training.createdAt)}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>📅 {formatDate(training.createdAt, locale)}</span>
           </div>
           {/* Player count control */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
             <span style={{ fontSize: 13, color: 'var(--text-muted)', flex: 1 }}>
-              👥 Počet hráčů: <strong style={{ color: 'var(--text)' }}>{previewPlayers ?? '—'}</strong>
-              {previewPlayers && <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>(varování u nevhodných cvičení)</span>}
+              👥 {t('training.detail.playerCount')} <strong style={{ color: 'var(--text)' }}>{previewPlayers ?? '—'}</strong>
+              {previewPlayers && <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>({t('training.detail.playerWarningHint')})</span>}
             </span>
             <button onClick={() => setPreviewPlayers(n => Math.max(4, (n ?? 12) - 1))}
               style={{ width: 28, height: 28, borderRadius: 14, background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700, fontSize: 16 }}>−</button>
@@ -767,11 +770,11 @@ export function TrainingDetailPage({ training, navigate }: Props) {
       {editMode ? (
         <div style={{ padding: '16px 20px 28px', borderTop: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', gap: 10 }}>
           <button onClick={() => setEditMode(false)} style={{ flex: 1, padding: '14px', borderRadius: 14, background: 'var(--surface)', fontWeight: 600, fontSize: 15 }}>{t('common.cancel')}</button>
-          <button onClick={saveEdits} style={{ flex: 2, padding: '14px', borderRadius: 14, background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 15 }}>💾 {t('training.detail.saveEdits')}</button>
+          <button onClick={saveEdits} style={{ flex: 2, padding: '14px', borderRadius: 12, background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 15 }}>💾 {t('training.detail.saveEdits')}</button>
         </div>
       ) : !saved ? (
         <div style={{ padding: '16px 20px 28px', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
-          <button onClick={handleSave} style={{ width: '100%', padding: '15px', borderRadius: 16, fontWeight: 700, fontSize: 16, background: 'var(--primary)', color: '#fff' }}>
+          <button onClick={handleSave} style={{ width: '100%', padding: '15px', borderRadius: 12, fontWeight: 700, fontSize: 16, background: 'var(--primary)', color: '#fff' }}>
             🔖 {t('training.detail.saveTraining')}
           </button>
         </div>

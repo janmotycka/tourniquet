@@ -40,6 +40,14 @@ export interface RosterSubmission {
   teamName: string;
 }
 
+export interface RegistrationSubmission {
+  teamName: string;
+  coachName: string;
+  coachPhone: string;
+  coachEmail: string;
+  submittedAt: string;  // ISO timestamp
+}
+
 // ─── Goal ─────────────────────────────────────────────────────────────────────
 
 export interface Goal {
@@ -133,12 +141,30 @@ export interface TournamentSettings {
   penaltyResults?: PenaltyResult[];         // ruční výsledky pokutových kopů
   scorersVisible?: boolean;                 // tabulka střelců viditelná pro hosty; default true
   chatEnabled?: boolean;                    // diskuze hostů; default false
+  mvpVotingEnabled?: boolean;               // MVP hlasování diváků; default false
 
   // ── Knockout / Groups extension (optional — backward compatible) ──────
   format?: TournamentFormat;               // default 'round-robin' pokud chybí
   groups?: GroupDefinition[];              // definice skupin (pro groups-knockout)
   advancePerGroup?: number;                // kolik týmů postupuje ze skupiny (1 nebo 2)
   thirdPlaceMatch?: boolean;               // zápas o 3. místo
+
+  // ── Roster validation ───────────────────────────────────────────────
+  maxBirthYear?: number;                   // min. rok narození hráče (např. 2014 = jen 2014+)
+  maxPlayersPerRoster?: number;            // max. počet hráčů na soupisce (warning, ne blokace)
+
+  // ── Registration ────────────────────────────────────────────────────
+  registrationEnabled?: boolean;           // povolena veřejná registrace týmů
+  maxTeams?: number;                       // maximální počet týmů v turnaji
+
+  // ── Awards (ocenění trenérů) ──────────────────────────────────────
+  awards?: TournamentAward[];             // ocenění udělená trenéry/poradatelem
+}
+
+export interface TournamentAward {
+  title: string;       // "Nejlepší hráč", "Nejlepší brankář", custom...
+  playerName: string;  // jméno oceněného
+  teamId?: string;     // ID týmu (volitelné)
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
@@ -166,6 +192,7 @@ export interface Tournament {
   pinSalt?: string;        // salt pro rainbow-table ochranu (chybí u starých turnajů)
   firebaseSynced: boolean;
   lastSyncedAt: string | null;
+  joinedUsers?: Record<string, true>;  // {uid: true} — uživatelé připojení přes PIN (pro Firebase rules)
 }
 
 // ─── Store input ──────────────────────────────────────────────────────────────
@@ -184,6 +211,22 @@ export interface CreateTournamentInput {
   pinSalt: string;  // random salt vygenerovaný přes generatePinSalt()
   /** Volitelné vlastní pořadí zápasů (indexy do pole teams). Pokud chybí, použije se výchozí round-robin. */
   matchOrder?: Array<{ homeTeamIndex: number; awayTeamIndex: number; roundIndex: number }>;
+}
+
+// ─── Catalog entry (lightweight index for public landing page) ───────────────
+
+export interface CatalogEntry {
+  id: string;
+  name: string;
+  status: TournamentStatus;
+  startDate: string;              // "YYYY-MM-DD"
+  startTime: string;              // "HH:MM"
+  teamCount: number;
+  teamNames: string[];            // pro zobrazení
+  teamColors: string[];           // hex barvy týmů
+  format: TournamentFormat;
+  ownerUid: string;
+  updatedAt: string;              // ISO timestamp
 }
 
 // ─── Firebase serializable data ───────────────────────────────────────────────

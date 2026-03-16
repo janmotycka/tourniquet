@@ -1,17 +1,19 @@
 /**
  * Firebase Realtime Database — Season match service
  *
- * Cesta: /matches/{ownerUid}/{matchId}
- * Owner-only: žádné public zrcadlo, žádné sdílení.
+ * Cesta: /matches/{ownerUid}/{matchId}        (privátní, owner-only)
+ *        /public-matches/{matchId}             (veřejné, pro rodiče)
  */
 
-import { ref, set, get, remove } from 'firebase/database';
+import { ref, set, get, remove, onValue, off } from 'firebase/database';
 import { db } from '../firebase';
-import type { SeasonMatch } from '../types/match.types';
+import type { SeasonMatch, PublicSeasonMatch } from '../types/match.types';
 import { logger } from '../utils/logger';
+import { safeClone } from '../utils/clone';
 
 const matchesRef = (uid: string) => ref(db, `matches/${uid}`);
 const matchRef = (uid: string, matchId: string) => ref(db, `matches/${uid}/${matchId}`);
+const publicMatchRef = (matchId: string) => ref(db, `public-matches/${matchId}`);
 
 // Firebase RTDB smaže prázdné pole [] → musíme normalizovat při čtení
 function ensureArray(val: unknown): unknown[] {
@@ -38,16 +40,86 @@ function normalizeMatch(raw: Record<string, unknown>): SeasonMatch {
   } as SeasonMatch;
 }
 
-/** Uloží/aktualizuje zápas */
-export async function saveMatchToFirebase(uid: string, match: SeasonMatch): Promise<void> {
-  // Strip undefined values (Firebase neakceptuje undefined)
-  const clean = JSON.parse(JSON.stringify(match));
-  await set(matchRef(uid, match.id), clean);
+/** Převede SeasonMatch na PublicSeasonMatch (GDPR: bez ratings, note, clubId) */
+function toPublicMatch(match: SeasonMatch, ownerUid: string): PublicSeasonMatch {
+  return {
+    id: match.id,
+    ownerUid,
+    opponent: match.opponent,
+    isHome: match.isHome,
+    date: match.date,
+    kickoffTime: match.kickoffTime,
+    competition: match.competition,
+    durationMinutes: match.durationMinutes,
+    status: match.status,
+    startedAt: match.startedAt,
+    pausedAt: match.pausedAt,
+    pausedElapsed: match.pausedElapsed,
+    finishedAt: match.finishedAt,
+    homeScore: match.homeScore,
+    awayScore: match.awayScore,
+    lineup: match.lineup,
+    goals: match.goals,
+    substitutions: match.substitutions,
+    cards: match.cards,
+    updatedAt: match.updatedAt,
+  };
 }
 
-/** Smaže zápas */
+/** Uloží/aktualizuje zápas + volitelně public mirror */
+export async function saveMatchToFirebase(uid: string, match: SeasonMatch): Promise<void> {
+  // Strip undefined values (Firebase neakceptuje undefined)
+  const clean = safeClone(match);
+  const writes: Promise<void>[] = [set(matchRef(uid, match.id), clean)];
+  if (match.isPublic) {
+    const publicData = safeClone(toPublicMatch(match, uid));
+    writes.push(set(publicMatchRef(match.id), publicData));
+  }
+  await Promise.all(writes);
+}
+
+/** Smaže zápas (i veřejný mirror pokud existuje) */
 export async function deleteMatchFromFirebase(uid: string, matchId: string): Promise<void> {
-  await remove(matchRef(uid, matchId));
+  await Promise.all([
+    remove(matchRef(uid, matchId)),
+    remove(publicMatchRef(matchId)).catch(() => {}), // might not exist
+  ]);
+}
+
+/** Smaže veřejný mirror zápasu */
+export async function deletePublicMatch(matchId: string): Promise<void> {
+  await remove(publicMatchRef(matchId));
+}
+
+/** Real-time subscription na veřejný zápas (pro rodiče) */
+export function subscribeToPublicMatch(
+  matchId: string,
+  callback: (match: PublicSeasonMatch | null) => void,
+): () => void {
+  const r = publicMatchRef(matchId);
+  const handler = (snapshot: import('firebase/database').DataSnapshot) => {
+    if (!snapshot.exists()) {
+      callback(null);
+      return;
+    }
+    const raw = snapshot.val() as Record<string, unknown>;
+    callback({
+      ...raw,
+      lineup: ensureArray(raw.lineup),
+      goals: ensureArray(raw.goals),
+      substitutions: ensureArray(raw.substitutions),
+      cards: ensureArray(raw.cards),
+      homeScore: (raw.homeScore as number) ?? 0,
+      awayScore: (raw.awayScore as number) ?? 0,
+      pausedElapsed: (raw.pausedElapsed as number) ?? 0,
+      status: (raw.status as string) ?? 'planned',
+      startedAt: (raw.startedAt as string) ?? null,
+      pausedAt: (raw.pausedAt as string) ?? null,
+      finishedAt: (raw.finishedAt as string) ?? null,
+    } as PublicSeasonMatch);
+  };
+  onValue(r, handler, () => callback(null));
+  return () => off(r, 'value', handler);
 }
 
 /** Načte všechny zápasy uživatele */

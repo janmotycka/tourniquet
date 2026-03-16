@@ -197,15 +197,19 @@ export function computeTeamStats(
   const form: ('W' | 'D' | 'L')[] = [];
 
   for (const m of sorted) {
-    goalsFor += m.homeScore;
-    goalsAgainst += m.awayScore;
+    // Respect isHome flag: when playing away, our goals are in awayScore
+    const ourGoals = m.isHome ? m.homeScore : m.awayScore;
+    const oppGoals = m.isHome ? m.awayScore : m.homeScore;
 
-    if (m.awayScore === 0) cleanSheets++;
+    goalsFor += ourGoals;
+    goalsAgainst += oppGoals;
 
-    if (m.homeScore > m.awayScore) {
+    if (oppGoals === 0) cleanSheets++;
+
+    if (ourGoals > oppGoals) {
       wins++;
       form.push('W');
-    } else if (m.homeScore < m.awayScore) {
+    } else if (ourGoals < oppGoals) {
       losses++;
       form.push('L');
     } else {

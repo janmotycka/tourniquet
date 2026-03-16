@@ -71,7 +71,9 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         };
 
         set({ loading: true });
-        onValue(subscriptionRef, handler);
+        onValue(subscriptionRef, handler, () => {
+          set({ subscription: { ...DEFAULT_SUBSCRIPTION }, loading: false });
+        });
 
         // Vrátí cleanup funkci
         return () => off(subscriptionRef, 'value', handler);

@@ -22,7 +22,7 @@ function Stepper({ value, min, max, onChange, label, unit }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}
           style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 20, color: value <= min ? 'var(--text-muted)' : 'var(--text)' }}>−</button>
-        <span style={{ fontWeight: 800, fontSize: 18, minWidth: 36, textAlign: 'center', color: '#1565C0' }}>{value}</span>
+        <span style={{ fontWeight: 800, fontSize: 18, minWidth: 36, textAlign: 'center', color: 'var(--primary)' }}>{value}</span>
         <button onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}
           style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 20, color: value >= max ? 'var(--text-muted)' : 'var(--text)' }}>+</button>
       </div>
@@ -200,7 +200,7 @@ export function CreateMatchPage({ navigate }: Props) {
 
   const renderStep0 = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '16px' }}>
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.basicInfo')}</h3>
 
         {/* ── Soupeř: picker + text input ── */}
@@ -224,8 +224,8 @@ export function CreateMatchPage({ navigate }: Props) {
                       style={{
                         display: 'flex', alignItems: 'center', gap: 6,
                         padding: '6px 10px', borderRadius: 10,
-                        border: `2px solid ${isSelected ? '#1565C0' : 'var(--border)'}`,
-                        background: isSelected ? '#E3F2FD' : 'var(--bg)',
+                        border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                        background: isSelected ? 'var(--primary-light)' : 'var(--bg)',
                         fontSize: 13, fontWeight: 600, color: 'var(--text)',
                         cursor: 'pointer',
                       }}
@@ -236,7 +236,7 @@ export function CreateMatchPage({ navigate }: Props) {
                       }}>
                         {club.name}
                       </span>
-                      {isSelected && <span style={{ color: '#1565C0', fontSize: 14, marginLeft: 2 }}>✓</span>}
+                      {isSelected && <span style={{ color: 'var(--primary)', fontSize: 14, marginLeft: 2 }}>✓</span>}
                     </button>
                   );
                 })}
@@ -274,7 +274,7 @@ export function CreateMatchPage({ navigate }: Props) {
                 onClick={() => setIsHome(v)}
                 style={{
                   flex: 1, padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 14,
-                  background: isHome === v ? '#1565C0' : 'var(--surface-var)',
+                  background: isHome === v ? 'var(--primary)' : 'var(--surface-var)',
                   color: isHome === v ? '#fff' : 'var(--text)',
                 }}
               >
@@ -332,7 +332,7 @@ export function CreateMatchPage({ navigate }: Props) {
       </div>
 
       {/* Match settings */}
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
         <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{t('match.create.settings')}</h3>
         <Stepper label={t('match.create.matchDuration')} value={durationMinutes} min={10} max={120} onChange={setDurationMinutes} unit={t('common.min')} />
       </div>
@@ -340,7 +340,7 @@ export function CreateMatchPage({ navigate }: Props) {
       {/* ── Náš klub — auto-selected, kompaktní zobrazení ── */}
       {selectedClub ? (
         <div style={{
-          background: 'var(--surface)', borderRadius: 16, padding: '16px',
+          background: 'var(--surface)', borderRadius: 14, padding: '16px',
           display: 'flex', flexDirection: 'column', gap: 10,
         }}>
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.ourClub')}</h3>
@@ -348,20 +348,20 @@ export function CreateMatchPage({ navigate }: Props) {
           {/* Vybraný klub — row */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
-            borderRadius: 12, border: '2px solid #1565C0', background: '#E3F2FD',
+            borderRadius: 12, border: '2px solid var(--primary)', background: 'var(--primary-light)',
           }}>
             <ClubBadge club={selectedClub} size={36} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{selectedClub.name}</div>
               {selectedClub === myClub && (
                 <span style={{
-                  fontSize: 10, fontWeight: 700, color: '#1565C0',
+                  fontSize: 10, fontWeight: 700, color: 'var(--primary)',
                 }}>
                   {t('clubs.myClubBadge')}
                 </span>
               )}
             </div>
-            <span style={{ color: '#1565C0', fontSize: 20, flexShrink: 0 }}>✓</span>
+            <span style={{ color: 'var(--primary)', fontSize: 20, flexShrink: 0 }}>✓</span>
           </div>
 
           {/* Pokud má víc klubů, možnost přepnout */}
@@ -405,9 +405,9 @@ export function CreateMatchPage({ navigate }: Props) {
                       onClick={() => handleCategoryChange(cat)}
                       style={{
                         padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                        background: isActive ? '#1565C0' : 'var(--surface-var)',
+                        background: isActive ? 'var(--primary)' : 'var(--surface-var)',
                         color: isActive ? '#fff' : 'var(--text)',
-                        border: isActive ? '2px solid #1565C0' : '2px solid var(--border)',
+                        border: isActive ? '2px solid var(--primary)' : '2px solid var(--border)',
                         cursor: 'pointer', transition: 'all .15s',
                       }}
                     >
@@ -430,14 +430,14 @@ export function CreateMatchPage({ navigate }: Props) {
         </div>
       ) : clubs.length === 0 ? (
         <div style={{
-          background: 'var(--surface)', borderRadius: 16, padding: '16px',
+          background: 'var(--surface)', borderRadius: 14, padding: '16px',
           fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.6,
         }}>
           {t('match.create.noClubInfo')}
         </div>
       ) : (
         /* Fallback: žádný myClub, ale jsou kluby → zobrazit seznam */
-        <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.ourClub')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {clubs.map(club => (
@@ -446,14 +446,14 @@ export function CreateMatchPage({ navigate }: Props) {
                 onClick={() => handleClubChange(club.id)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
-                  borderRadius: 10, border: `2px solid ${selectedClubId === club.id ? '#1565C0' : 'var(--border)'}`,
-                  background: selectedClubId === club.id ? '#E3F2FD' : 'var(--bg)',
+                  borderRadius: 10, border: `2px solid ${selectedClubId === club.id ? 'var(--primary)' : 'var(--border)'}`,
+                  background: selectedClubId === club.id ? 'var(--primary-light)' : 'var(--bg)',
                   textAlign: 'left',
                 }}
               >
                 <ClubBadge club={club} size={32} />
                 <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>{club.name}</span>
-                {selectedClubId === club.id && <span style={{ marginLeft: 'auto', color: '#1565C0', fontSize: 18 }}>✓</span>}
+                {selectedClubId === club.id && <span style={{ marginLeft: 'auto', color: 'var(--primary)', fontSize: 18 }}>✓</span>}
               </button>
             ))}
           </div>
@@ -468,7 +468,7 @@ export function CreateMatchPage({ navigate }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '16px' }}>
       {/* Substitution assistant settings */}
       {benchers.length > 0 && (
-        <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.subAssistant')}</h3>
           <Stepper label={t('match.create.subEvery')} value={subInterval} min={5} max={45} onChange={setSubInterval} unit={t('common.min')} />
           <div style={{ height: 1, background: 'var(--border)' }} />
@@ -480,7 +480,7 @@ export function CreateMatchPage({ navigate }: Props) {
       )}
 
       {/* Starters */}
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.startingLineup')}</h3>
           <span style={{
@@ -502,7 +502,7 @@ export function CreateMatchPage({ navigate }: Props) {
               borderBottom: '1px solid var(--border)',
             }}>
               <div style={{
-                width: 30, height: 30, borderRadius: 8, background: '#1565C0',
+                width: 30, height: 30, borderRadius: 8, background: 'var(--primary)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0,
               }}>
@@ -525,7 +525,7 @@ export function CreateMatchPage({ navigate }: Props) {
 
       {/* Bench / substitutes */}
       {(benchers.length > 0 || lineup.length === 0) && (
-        <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.benchTitle')}</h3>
           {benchers.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
@@ -574,8 +574,8 @@ export function CreateMatchPage({ navigate }: Props) {
                     disabled={starters.length >= 11}
                     style={{
                       fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 8,
-                      background: starters.length >= 11 ? 'var(--surface-var)' : '#E3F2FD',
-                      color: starters.length >= 11 ? 'var(--text-muted)' : '#1565C0',
+                      background: starters.length >= 11 ? 'var(--surface-var)' : 'var(--primary-light)',
+                      color: starters.length >= 11 ? 'var(--text-muted)' : 'var(--primary)',
                     }}
                   >
                     {t('match.create.toStart')}
@@ -627,7 +627,7 @@ export function CreateMatchPage({ navigate }: Props) {
           {[t('match.create.stepBasicInfo'), t('match.create.stepLineup')].map((_label, i) => (
             <div key={i} style={{
               flex: 1, height: 4, borderRadius: 4,
-              background: i <= step ? '#1565C0' : 'var(--border)',
+              background: i <= step ? 'var(--primary)' : 'var(--border)',
             }} />
           ))}
         </div>
@@ -651,7 +651,7 @@ export function CreateMatchPage({ navigate }: Props) {
             disabled={!step0Valid}
             style={{
               width: '100%', padding: '14px', borderRadius: 14, fontWeight: 800, fontSize: 16,
-              background: step0Valid ? '#1565C0' : 'var(--border)', color: step0Valid ? '#fff' : 'var(--text-muted)',
+              background: step0Valid ? 'var(--primary)' : 'var(--border)', color: step0Valid ? '#fff' : 'var(--text-muted)',
             }}
           >
             {t('match.create.continueLineup')}
@@ -662,7 +662,7 @@ export function CreateMatchPage({ navigate }: Props) {
             disabled={!step1Valid}
             style={{
               width: '100%', padding: '14px', borderRadius: 14, fontWeight: 800, fontSize: 16,
-              background: step1Valid ? '#1565C0' : 'var(--border)', color: step1Valid ? '#fff' : 'var(--text-muted)',
+              background: step1Valid ? 'var(--primary)' : 'var(--border)', color: step1Valid ? '#fff' : 'var(--text-muted)',
             }}
           >
             {t('match.create.createMatch')}
@@ -689,7 +689,7 @@ function ManualPlayerAdd({ onAdd, t }: { onAdd: (name: string, jersey: number) =
   };
 
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '14px 16px' }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
       <button
         onClick={() => setExpanded(e => !e)}
         style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 14, width: '100%' }}
@@ -724,8 +724,8 @@ function ManualPlayerAdd({ onAdd, t }: { onAdd: (name: string, jersey: number) =
             onClick={handleAdd}
             disabled={!name.trim() || !jersey}
             style={{
-              padding: '9px 14px', borderRadius: 10, fontWeight: 700, fontSize: 14,
-              background: '#1565C0', color: '#fff', opacity: (!name.trim() || !jersey) ? 0.5 : 1,
+              padding: '9px 14px', borderRadius: 12, fontWeight: 700, fontSize: 14,
+              background: 'var(--primary)', color: '#fff', opacity: (!name.trim() || !jersey) ? 0.5 : 1,
             }}
           >
             +

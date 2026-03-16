@@ -3,6 +3,7 @@ import type { AgeCategory } from '../../types/club.types';
 import { AGE_CATEGORIES } from '../../types/club.types';
 import { TEAM_COLORS, colorSwatch } from '../../utils/team-colors';
 import { resizeLogoToBase64 } from './resize-logo';
+import { useToastStore } from '../../store/toast.store';
 
 interface ClubFormProps {
   initial: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[] };
@@ -36,7 +37,7 @@ export function ClubForm({
       const b64 = await resizeLogoToBase64(file);
       setLogoBase64(b64);
     } catch {
-      alert(t('clubs.imageError'));
+      useToastStore.getState().show(t('clubs.imageError'), 'error');
     } finally {
       setLogoLoading(false);
       if (logoRef.current) logoRef.current.value = '';

@@ -1,22 +1,25 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n';
+import { Z } from '../utils/z-index';
 
 const STORAGE_KEY = 'torq_consent';
 
 export function CookieConsent({ onPrivacyPolicy }: { onPrivacyPolicy?: () => void }) {
   const { t } = useI18n();
-  const [dismissed, setDismissed] = useState(() => localStorage.getItem(STORAGE_KEY) === '1');
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(STORAGE_KEY) === '1'; } catch { return false; }
+  });
 
   if (dismissed) return null;
 
   const accept = () => {
-    localStorage.setItem(STORAGE_KEY, '1');
+    try { localStorage.setItem(STORAGE_KEY, '1'); } catch { /* storage full or blocked */ }
     setDismissed(true);
   };
 
   return (
     <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999,
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: Z.banner,
       background: 'var(--surface)', borderTop: '1px solid var(--border)',
       boxShadow: '0 -2px 12px rgba(0,0,0,.1)',
       padding: '12px 16px',
@@ -45,7 +48,7 @@ export function CookieConsent({ onPrivacyPolicy }: { onPrivacyPolicy?: () => voi
         onClick={accept}
         style={{
           background: 'var(--primary)', color: '#fff', fontWeight: 700,
-          fontSize: 13, padding: '8px 20px', borderRadius: 10,
+          fontSize: 13, padding: '8px 20px', borderRadius: 12,
           border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
           flexShrink: 0,
         }}

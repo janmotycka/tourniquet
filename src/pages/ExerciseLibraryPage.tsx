@@ -60,7 +60,7 @@ function ExerciseModal({ exercise, onClose }: { exercise: Exercise; onClose: () 
       display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
     }} onClick={onClose}>
       <div style={{
-        background: 'var(--bg)', borderRadius: '24px 24px 0 0', padding: '24px 20px 40px',
+        background: 'var(--bg)', borderRadius: '20px 20px 0 0', padding: '24px 20px 40px',
         maxHeight: '80vh', overflowY: 'auto', maxWidth: 480, width: '100%', margin: '0 auto',
       }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
@@ -177,16 +177,16 @@ function EditExerciseModal({
   }));
 
   const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: .5, marginBottom: 6 };
-  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 14, color: 'var(--text)', boxSizing: 'border-box' };
+  const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--surface)', fontSize: 16, color: 'var(--text)', boxSizing: 'border-box' };
 
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 200,
-      background: 'rgba(0,0,0,0.55)',
+      background: 'rgba(0,0,0,.5)',
       display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
     }}>
       <div style={{
-        background: 'var(--bg)', borderRadius: '24px 24px 0 0', padding: '24px 20px 40px',
+        background: 'var(--bg)', borderRadius: '20px 20px 0 0', padding: '24px 20px 40px',
         maxHeight: '92vh', overflowY: 'auto', maxWidth: 480, width: '100%', margin: '0 auto',
         display: 'flex', flexDirection: 'column', gap: 18,
       }}>
@@ -207,7 +207,7 @@ function EditExerciseModal({
 
         {/* Instructions */}
         <div><div style={labelStyle}>{t('exercises.procedureLabel')}</div>
-          <textarea style={{ ...inputStyle, minHeight: 100, resize: 'vertical' }} value={instrText} onChange={e => setInstrText(e.target.value)} placeholder="1. krok&#10;2. krok&#10;3. krok..." />
+          <textarea style={{ ...inputStyle, minHeight: 100, resize: 'vertical' }} value={instrText} onChange={e => setInstrText(e.target.value)} placeholder={t('exercises.instructionsPlaceholder')} />
         </div>
 
         {/* Phase */}
@@ -353,7 +353,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
         <button onClick={() => navigate({ name: 'home' })}
           aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
         <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('exercises.title')}</h1>
-        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{filtered.length} cvičení</span>
+        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{filtered.length} {t('exercises.exerciseCount')}</span>
       </div>
 
       {/* Search */}
@@ -475,7 +475,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
       <div style={{ padding: '12px 20px 28px', borderTop: '1px solid var(--border)', background: 'var(--bg)' }}>
         <button onClick={() => setEditingExercise('new')}
           style={{
-            width: '100%', padding: '14px', borderRadius: 16, fontWeight: 700, fontSize: 15,
+            width: '100%', padding: '14px', borderRadius: 12, fontWeight: 700, fontSize: 15,
             background: 'var(--primary)', color: '#fff',
           }}>{t('exercises.addCustom')}</button>
       </div>

@@ -5,15 +5,21 @@
 
 import { create } from 'zustand';
 import type { Page } from '../App';
-import { parseTournamentHashFromUrl, parseRosterHashFromUrl } from '../utils/qr-code';
+import { parseTournamentHashFromUrl, parseRosterHashFromUrl, parseRegistrationHashFromUrl, parseMatchHashFromUrl } from '../utils/qr-code';
 
 function getInitialPage(): Page {
   // Roster form link (#roster={tournamentId}&k={token})
   const roster = parseRosterHashFromUrl();
   if (roster) return { name: 'roster-form', tournamentId: roster.tournamentId, teamToken: roster.teamToken };
+  // Registration form link (#register={tournamentId})
+  const registration = parseRegistrationHashFromUrl();
+  if (registration) return { name: 'registration-form', tournamentId: registration.tournamentId };
   // Public view link (#tournament={id})
   const tournamentId = parseTournamentHashFromUrl();
   if (tournamentId) return { name: 'tournament-public', tournamentId };
+  // Public match view (#match={id})
+  const matchId = parseMatchHashFromUrl();
+  if (matchId) return { name: 'match-public', matchId };
   return { name: 'home' };
 }
 

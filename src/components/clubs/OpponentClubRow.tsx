@@ -30,7 +30,7 @@ export function OpponentClubRow({
 
   return (
     <div style={{
-      background: 'var(--surface)', borderRadius: 12,
+      background: 'var(--surface)', borderRadius: 14,
       border: '1px solid var(--border)',
       overflow: 'hidden',
     }}>

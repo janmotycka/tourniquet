@@ -25,8 +25,14 @@ describe('formatMinutes', () => {
 
 describe('formatDate', () => {
   it('formats ISO date string in Czech locale', () => {
-    const result = formatDate('2025-06-15T10:00:00Z');
+    const result = formatDate('2025-06-15T10:00:00Z', 'cs');
     // Should contain day, month, year in Czech
+    expect(result).toContain('2025');
+    expect(result).toContain('15');
+  });
+
+  it('formats ISO date string in English locale', () => {
+    const result = formatDate('2025-06-15T10:00:00Z', 'en');
     expect(result).toContain('2025');
     expect(result).toContain('15');
   });

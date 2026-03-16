@@ -71,7 +71,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   const isOvertime = elapsed > totalSeconds;
   const progress = Math.min(1, elapsed / totalSeconds);
 
-  const timerColor = isOvertime ? '#C62828' : elapsed > totalSeconds - 60 ? '#E65100' : '#1565C0';
+  const timerColor = isOvertime ? '#C62828' : elapsed > totalSeconds - 60 ? '#E65100' : 'var(--primary)';
 
   const getPlayerName = (playerId: string | null) =>
     playerId ? (match.lineup.find(p => p.playerId === playerId)?.name ?? '?') : 'Neznámý';
@@ -101,7 +101,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
 
       {/* Score card */}
       <div style={{
-        background: match.status === 'live' ? '#1565C0' : 'var(--surface)',
+        background: match.status === 'live' ? 'var(--primary)' : 'var(--surface)',
         borderRadius: 20, padding: '20px',
         boxShadow: match.status === 'live' ? '0 4px 20px rgba(21,101,192,.30)' : '0 1px 4px rgba(0,0,0,.06)',
       }}>
@@ -193,7 +193,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
       {/* Next substitution info */}
       {!alertActive && match.status === 'live' && match.substitutionSettings && match.lineup.some(p => !p.isStarter) && (
         <div style={{
-          background: 'var(--surface)', borderRadius: 12, padding: '10px 14px',
+          background: 'var(--surface)', borderRadius: 14, padding: '10px 14px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13,
         }}>
           <span style={{ color: 'var(--text-muted)' }}>🔄 Příští střídání v</span>
@@ -254,7 +254,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                 onClick={() => setSubModal(true)}
                 style={{
                   flex: 1, padding: '12px', borderRadius: 14, fontWeight: 700, fontSize: 14,
-                  background: '#E3F2FD', color: '#1565C0', border: '1.5px solid #BBDEFB',
+                  background: 'var(--primary-light)', color: 'var(--primary)', border: '1.5px solid #BBDEFB',
                 }}
               >
                 {t('match.detail.subBtn')}
@@ -300,7 +300,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
 
       {/* Goals log */}
       {match.goals.length > 0 && (
-        <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
           <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: 'var(--text-muted)' }}>{t('match.detail.goalsLog')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[...match.goals].reverse().map(g => (
@@ -329,7 +329,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
 
       {/* Cards log */}
       {match.cards.length > 0 && (
-        <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
           <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: 'var(--text-muted)' }}>🟨 Karty</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {match.cards.map(c => {

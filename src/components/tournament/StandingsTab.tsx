@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { Tournament, Standing, PenaltyResult } from '../../types/tournament.types';
 import { DEFAULT_TIEBREAKER_ORDER } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
@@ -15,13 +15,38 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
   const [penaltyB, setPenaltyB] = useState(0);
   const [penaltySaved, setPenaltySaved] = useState(false);
 
-  const standings = computeStandings(
+  const hasLiveMatch = tournament.matches.some(m => m.status === 'live');
+
+  const standings = useMemo(() => computeStandings(
     tournament.matches,
     tournament.teams,
     tournament.settings.tiebreakerOrder,
     tournament.settings.penaltyResults,
-  );
+    true, // includeLive — admin sees live standings
+  ), [tournament.matches, tournament.teams, tournament.settings.tiebreakerOrder, tournament.settings.penaltyResults]);
+
+  // Base standings WITHOUT live matches (for position change calculation)
+  const baseStandings = useMemo(() => hasLiveMatch ? computeStandings(
+    tournament.matches,
+    tournament.teams,
+    tournament.settings.tiebreakerOrder,
+    tournament.settings.penaltyResults,
+    false,
+  ) : null, [hasLiveMatch, tournament.matches, tournament.teams, tournament.settings.tiebreakerOrder, tournament.settings.penaltyResults]);
+
+  const basePositionMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (baseStandings) {
+      baseStandings.forEach((s, i) => map.set(s.teamId, i + 1));
+    }
+    return map;
+  }, [baseStandings]);
+
   const getTeam = (id: string) => tournament.teams.find(tm => tm.id === id);
+
+  const isTeamInLive = (teamId: string) => hasLiveMatch && tournament.matches.some(
+    m => m.status === 'live' && (m.homeTeamId === teamId || m.awayTeamId === teamId),
+  );
 
   // Detekce remízujících párů kde penalties je v tiebreaker order
   // Seskupíme týmy dle bodů a vygenerujeme všechny páry uvnitř skupiny
@@ -104,7 +129,14 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
         {groups.map(group => {
           const groupTeams = tournament.teams.filter(tm => group.teamIds.includes(tm.id));
           const groupMatches = tournament.matches.filter(m => m.groupId === group.id);
-          const groupStandings = computeStandings(groupMatches, groupTeams, tournament.settings.tiebreakerOrder, tournament.settings.penaltyResults);
+          const groupStandings = computeStandings(groupMatches, groupTeams, tournament.settings.tiebreakerOrder, tournament.settings.penaltyResults, true);
+          const groupBaseStandings = hasLiveMatch
+            ? computeStandings(groupMatches, groupTeams, tournament.settings.tiebreakerOrder, tournament.settings.penaltyResults, false)
+            : null;
+          const groupBaseMap = new Map<string, number>();
+          if (groupBaseStandings) {
+            groupBaseStandings.forEach((s, i) => groupBaseMap.set(s.teamId, i + 1));
+          }
 
           return (
             <div key={group.id}>
@@ -118,6 +150,11 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                 {groupStandings.map((s, idx) => {
                   const team = getTeam(s.teamId);
                   const isAdvancing = idx < (tournament.settings.advancePerGroup ?? 1) && s.played > 0;
+                  const inLive = isTeamInLive(s.teamId);
+                  const gCurrentPos = idx + 1;
+                  const gBasePos = groupBaseMap.get(s.teamId);
+                  const gRawChange = gBasePos != null ? gBasePos - gCurrentPos : 0;
+                  const gPosChange = inLive ? gRawChange : 0;
                   return (
                     <div
                       key={s.teamId}
@@ -126,11 +163,22 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                         display: 'grid', gridTemplateColumns: '24px minmax(0,1fr) 26px 26px 26px 38px 32px', gap: 4,
                         padding: '10px 12px', alignItems: 'center',
                         borderTop: idx > 0 ? '1px solid var(--border)' : 'none',
-                        background: isAdvancing ? 'var(--primary-light)' : 'transparent',
+                        background: isAdvancing ? 'var(--primary-light)' : inLive ? 'rgba(183,28,28,.04)' : 'transparent',
                         cursor: onTeamClick ? 'pointer' : 'default',
                       }}
                     >
-                      <span style={{ fontWeight: 700, color: isAdvancing ? 'var(--primary)' : 'var(--text-muted)', fontSize: 13 }}>{idx + 1}</span>
+                      <span style={{
+                        fontWeight: 700, fontSize: 13, textAlign: 'center',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0,
+                        color: gPosChange > 0 ? '#2E7D32' : gPosChange < 0 ? '#C62828' : isAdvancing ? 'var(--primary)' : 'var(--text-muted)',
+                      }}>
+                        <span>{gCurrentPos}</span>
+                        {gPosChange !== 0 && (
+                          <span style={{ fontSize: 9, lineHeight: 1, fontWeight: 800, color: gPosChange > 0 ? '#2E7D32' : '#C62828' }}>
+                            {gPosChange > 0 ? '▲' : '▼'}
+                          </span>
+                        )}
+                      </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                         <TeamBadge team={team} size={12} />
                         <span style={{ fontWeight: isAdvancing ? 800 : 600, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team?.name ?? '?'}</span>
@@ -169,6 +217,11 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
         {displayStandings.map((s, idx) => {
           const team = getTeam(s.teamId);
           const isFirst = idx === 0 && s.played > 0;
+          const inLive = isTeamInLive(s.teamId);
+          const currentPos = idx + 1;
+          const basePos = basePositionMap.get(s.teamId);
+          const rawChange = basePos != null ? basePos - currentPos : 0;
+          const posChange = inLive ? rawChange : 0;
           return (
             <div
               key={s.teamId}
@@ -177,12 +230,21 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                 display: 'grid', gridTemplateColumns: '24px minmax(0,1fr) 26px 26px 26px 38px 32px', gap: 4,
                 padding: '10px 12px', alignItems: 'center',
                 borderTop: idx > 0 ? '1px solid var(--border)' : 'none',
-                background: isFirst ? 'var(--primary-light)' : 'transparent',
+                background: isFirst ? 'var(--primary-light)' : inLive ? 'rgba(183,28,28,.04)' : 'transparent',
                 cursor: onTeamClick ? 'pointer' : 'default',
               }}
             >
-              <span style={{ fontWeight: 700, color: isFirst ? 'var(--primary)' : 'var(--text-muted)', fontSize: 13 }}>
-                {isFirst ? '🥇' : idx + 1}
+              <span style={{
+                fontWeight: 700, fontSize: 13, textAlign: 'center',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0,
+                color: posChange > 0 ? '#2E7D32' : posChange < 0 ? '#C62828' : isFirst ? 'var(--primary)' : 'var(--text-muted)',
+              }}>
+                <span>{isFirst ? '🥇' : currentPos}</span>
+                {posChange !== 0 && (
+                  <span style={{ fontSize: 9, lineHeight: 1, fontWeight: 800, color: posChange > 0 ? '#2E7D32' : '#C62828' }}>
+                    {posChange > 0 ? '▲' : '▼'}
+                  </span>
+                )}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                 <TeamBadge team={team} size={12} />
@@ -304,7 +366,7 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
               </button>
               {penaltyA === penaltyB && (
                 <div style={{ fontSize: 12, color: '#E65100', textAlign: 'center', marginTop: -8 }}>
-                  Penalty musí mít vítěze — skóre nemůže být stejné
+                  {t('tournament.detail.penaltyMustHaveWinner')}
                 </div>
               )}
             </div>

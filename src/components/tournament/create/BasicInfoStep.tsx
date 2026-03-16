@@ -61,7 +61,7 @@ export function BasicInfoStep({
         </button>
       )}
 
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
         <div>
           <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>{t('tournament.create.name')}</label>
           <input
@@ -104,7 +104,7 @@ export function BasicInfoStep({
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.matchDurations')}</h3>
         <Stepper label={t('tournament.create.matchDuration')} value={matchDuration} min={1} max={120} step={1} onChange={setMatchDuration} unit={t('common.min')} />
         <div style={{ height: 1, background: 'var(--border)' }} />
@@ -114,7 +114,7 @@ export function BasicInfoStep({
       </div>
 
       {/* Format turnaje */}
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('knockout.format')}</h3>
         <div style={{ display: 'flex', gap: 8 }}>
           {([
@@ -186,7 +186,7 @@ export function BasicInfoStep({
         )}
       </div>
 
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
         <div>
           <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, display: 'block' }}>
             {t('tournament.create.rules')}

@@ -1,6 +1,8 @@
 import type { Team, Match, Standing, TournamentSettings, TiebreakerCriterion, PenaltyResult, GroupDefinition, MatchStage } from '../types/tournament.types';
 import { DEFAULT_TIEBREAKER_ORDER } from '../types/tournament.types';
 import { generateId } from './id';
+import type { Locale } from '../i18n';
+import { getDateLocale } from '../i18n';
 
 
 // ─── Round-robin schedule generator ──────────────────────────────────────────
@@ -150,6 +152,8 @@ export function computeStandings(
   teams: Team[],
   tiebreakerOrder?: TiebreakerCriterion[],
   penaltyResults?: PenaltyResult[],
+  /** Include live (in-progress) matches in standings calculation */
+  includeLive?: boolean,
 ): Standing[] {
   const map = new Map<string, Standing>();
 
@@ -162,9 +166,9 @@ export function computeStandings(
     });
   }
 
-  // Zpracování dokončených zápasů
+  // Zpracování zápasů (finished + optionally live)
   for (const match of matches) {
-    if (match.status !== 'finished') continue;
+    if (match.status !== 'finished' && !(includeLive && match.status === 'live')) continue;
     const home = map.get(match.homeTeamId);
     const away = map.get(match.awayTeamId);
     if (!home || !away) continue;
@@ -310,15 +314,15 @@ export function formatElapsedTime(elapsedSeconds: number, durationMinutes: numbe
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Formátuje ISO timestamp na "HH:MM" (vždy 24h formát) */
-export function formatMatchTime(isoString: string): string {
+export function formatMatchTime(isoString: string, locale: Locale): string {
   const d = new Date(isoString);
-  return d.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return d.toLocaleTimeString(getDateLocale(locale), { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 /** Formátuje ISO datum na "Pá 5. dubna 2025" */
-export function formatMatchDate(isoString: string): string {
+export function formatMatchDate(isoString: string, locale: Locale): string {
   const d = new Date(isoString);
-  return d.toLocaleDateString('cs-CZ', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+  return d.toLocaleDateString(getDateLocale(locale), { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 /** Odhadne celkovou délku turnaje v minutách */
@@ -839,7 +843,7 @@ function resolvePlaceholder(
     const idx = parseInt(winnerMatch[2]) - 1;
     const stageMatches = matches.filter(m => m.stage === stage).sort((a, b) => a.matchIndex - b.matchIndex);
     const sourceMatch = stageMatches[idx];
-    if (sourceMatch?.status === 'finished') {
+    if (sourceMatch?.status === 'finished' && sourceMatch.homeScore !== sourceMatch.awayScore) {
       return sourceMatch.homeScore > sourceMatch.awayScore ? sourceMatch.homeTeamId : sourceMatch.awayTeamId;
     }
   }
@@ -851,7 +855,7 @@ function resolvePlaceholder(
     const idx = parseInt(loserMatch[2]) - 1;
     const stageMatches = matches.filter(m => m.stage === stage).sort((a, b) => a.matchIndex - b.matchIndex);
     const sourceMatch = stageMatches[idx];
-    if (sourceMatch?.status === 'finished') {
+    if (sourceMatch?.status === 'finished' && sourceMatch.homeScore !== sourceMatch.awayScore) {
       return sourceMatch.homeScore > sourceMatch.awayScore ? sourceMatch.awayTeamId : sourceMatch.homeTeamId;
     }
   }

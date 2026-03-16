@@ -503,7 +503,7 @@ export function GeneratorPage({ navigate }: Props) {
             </div>
 
             {/* Duration slider */}
-            <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px 16px' }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px 16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
                 <span style={{ fontSize: 44, fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>{store.totalDuration}</span>
                 <span style={{ fontSize: 16, color: 'var(--text-muted)', fontWeight: 600 }}>{t('common.minutes')}</span>
@@ -570,7 +570,7 @@ export function GeneratorPage({ navigate }: Props) {
 
             {/* Phase draggable bar */}
             {phaseDurations && (
-              <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('generator.phaseLayout')}</h3>
                 <DraggablePhaseBar
                   totalDuration={store.totalDuration}
@@ -817,7 +817,7 @@ export function GeneratorPage({ navigate }: Props) {
             </div>
 
             {/* Summary */}
-            <div style={{ background: 'var(--surface)', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden' }}>
               {[
                 {
                   icon: '👥',
@@ -844,7 +844,7 @@ export function GeneratorPage({ navigate }: Props) {
             </div>
 
             {/* Phase durations */}
-            <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('generator.phaseDurations')}</h3>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('generator.total')}: {store.totalDuration} {t('common.min')}</span>

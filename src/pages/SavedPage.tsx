@@ -9,7 +9,7 @@ import { useI18n } from '../i18n';
 interface Props { navigate: (p: Page) => void; }
 
 export function SavedPage({ navigate }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { savedTrainings, deleteTraining } = useTrainingsStore(s => ({
     savedTrainings: s.savedTrainings,
     deleteTraining: s.deleteTraining,
@@ -38,7 +38,7 @@ export function SavedPage({ navigate }: Props) {
             <h2 style={{ fontWeight: 700, fontSize: 18 }}>{t('saved.empty')}</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>{t('saved.emptyDesc')}</p>
             <button onClick={() => navigate({ name: 'generator' })} style={{
-              marginTop: 8, padding: '14px 28px', borderRadius: 14, background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 15,
+              marginTop: 8, padding: '14px 28px', borderRadius: 12, background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 15,
             }}>
               {t('saved.newTraining')}
             </button>
@@ -50,7 +50,7 @@ export function SavedPage({ navigate }: Props) {
               return (
                 <div key={tr.id} style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
-                  background: 'var(--surface)', borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+                  background: 'var(--surface)', borderRadius: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)',
                 }}>
                   <button onClick={() => navigate({ name: 'training', training: tr })}
                     style={{ flex: 1, textAlign: 'left', background: 'none', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -62,7 +62,7 @@ export function SavedPage({ navigate }: Props) {
                         <span>•</span>
                         <span>{formatMinutes(tr.totalDuration)}</span>
                         <span>•</span>
-                        <span>{formatDate(tr.updatedAt)}</span>
+                        <span>{formatDate(tr.updatedAt, locale)}</span>
                       </div>
                     </div>
                     <span style={{ color: 'var(--text-muted)' }}>›</span>

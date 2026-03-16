@@ -87,7 +87,34 @@ export interface SeasonMatch {
   ratings: PlayerRating[];   // hodnocení po zápase
   note?: string;             // trenérova poznámka k zápasu
 
+  isPublic?: boolean;        // true = sdíleno přes veřejný odkaz pro rodiče
+
   createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Public match (GDPR: bez ratings, note, clubId) ──────────────────────────
+
+export interface PublicSeasonMatch {
+  id: string;
+  ownerUid: string;          // pro Firebase rules
+  opponent: string;
+  isHome: boolean;
+  date: string;
+  kickoffTime: string;
+  competition: string;
+  durationMinutes: number;
+  status: SeasonMatchStatus;
+  startedAt: string | null;
+  pausedAt: string | null;
+  pausedElapsed: number;
+  finishedAt: string | null;
+  homeScore: number;
+  awayScore: number;
+  lineup: MatchLineupPlayer[];
+  goals: MatchGoal[];
+  substitutions: MatchSubstitution[];
+  cards: MatchCard[];
   updatedAt: string;
 }
 

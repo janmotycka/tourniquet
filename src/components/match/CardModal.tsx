@@ -26,13 +26,13 @@ export function CardModal({ match, onAdd, onClose, t }: CardModalProps) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)',
-      display: 'flex', alignItems: 'flex-end', zIndex: 100,
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 100,
     }} onClick={onClose}>
       <div
         style={{
           background: 'var(--surface)', borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
-          width: '100%', maxHeight: '85dvh', overflowY: 'auto',
+          width: '100%', maxWidth: 480, maxHeight: '85dvh', overflowY: 'auto',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -61,7 +61,7 @@ export function CardModal({ match, onAdd, onClose, t }: CardModalProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button onClick={() => setMinute(m => Math.max(1, m - 1))}
               style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontSize: 20, fontWeight: 700 }}>−</button>
-            <span style={{ fontWeight: 800, fontSize: 22, minWidth: 40, textAlign: 'center', color: '#1565C0' }}>{minute}'</span>
+            <span style={{ fontWeight: 800, fontSize: 22, minWidth: 40, textAlign: 'center', color: 'var(--primary)' }}>{minute}'</span>
             <button onClick={() => setMinute(m => m + 1)}
               style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontSize: 20, fontWeight: 700 }}>+</button>
           </div>
@@ -78,13 +78,13 @@ export function CardModal({ match, onAdd, onClose, t }: CardModalProps) {
                 style={{
                   padding: '8px 12px', borderRadius: 10, fontSize: 13, fontWeight: 600, textAlign: 'left',
                   display: 'flex', alignItems: 'center', gap: 10,
-                  background: playerId === p.playerId ? '#E3F2FD' : 'var(--bg)',
-                  border: `1.5px solid ${playerId === p.playerId ? '#1565C0' : 'var(--border)'}`,
-                  color: playerId === p.playerId ? '#1565C0' : 'var(--text)',
+                  background: playerId === p.playerId ? 'var(--primary-light)' : 'var(--bg)',
+                  border: `1.5px solid ${playerId === p.playerId ? 'var(--primary)' : 'var(--border)'}`,
+                  color: playerId === p.playerId ? 'var(--primary)' : 'var(--text)',
                 }}
               >
                 <span style={{
-                  width: 26, height: 26, borderRadius: 7, background: '#1565C0',
+                  width: 26, height: 26, borderRadius: 7, background: 'var(--primary)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 800, color: '#fff', flexShrink: 0,
                 }}>{p.jerseyNumber}</span>
@@ -99,7 +99,7 @@ export function CardModal({ match, onAdd, onClose, t }: CardModalProps) {
           disabled={!playerId}
           style={{
             width: '100%', padding: '14px', borderRadius: 14, fontWeight: 800, fontSize: 16,
-            background: playerId ? '#1565C0' : 'var(--border)', color: playerId ? '#fff' : 'var(--text-muted)',
+            background: playerId ? 'var(--primary)' : 'var(--border)', color: playerId ? '#fff' : 'var(--text-muted)',
           }}
         >
           {t('match.detail.addCard')}

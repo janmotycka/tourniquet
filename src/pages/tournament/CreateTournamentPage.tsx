@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import type { Page } from '../../App';
+import { useAuth } from '../../context/AuthContext';
 import { useTournamentStore } from '../../store/tournament.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useTemplatesStore } from '../../store/templates.store';
 import { useI18n } from '../../i18n';
 import type { TournamentTemplate } from '../../types/tournament.types';
-import { hashPin, generatePinSalt } from '../../utils/pin-hash';
+import { hashPin, generatePinSalt, markPinVerified } from '../../utils/pin-hash';
 import { countRealMatches, estimateTournamentDuration } from '../../utils/tournament-schedule';
 import type { TournamentSettings, TournamentFormat, GroupDefinition } from '../../types/tournament.types';
 import type { Club, AgeCategory } from '../../types/club.types';
@@ -28,7 +29,9 @@ interface Props { navigate: (p: Page) => void; }
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function CreateTournamentPage({ navigate }: Props) {
   const { t } = useI18n();
+  const { user } = useAuth();
   const templates = useTemplatesStore(s => s.templates);
+  const deleteTemplate = useTemplatesStore(s => s.deleteTemplate);
   const [step, setStep] = useState(0);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
@@ -226,6 +229,8 @@ export function CreateTournamentPage({ navigate }: Props) {
         pinSalt,
         matchOrder,
       });
+      // Auto-verify PIN — owner just set it, no need to re-enter
+      markPinVerified(tournament.id);
       navigate({ name: 'tournament-detail', tournamentId: tournament.id });
     } finally {
       setCreating(false);
@@ -259,6 +264,7 @@ export function CreateTournamentPage({ navigate }: Props) {
         <TemplatePickerModal
           templates={templates}
           onSelect={applyTemplate}
+          onDelete={user ? (id) => deleteTemplate(user.uid, id) : undefined}
           onClose={() => setShowTemplatePicker(false)}
         />
       )}

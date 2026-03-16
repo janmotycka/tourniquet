@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { cs, type TranslationKey } from './locales/cs';
 import { en } from './locales/en';
+import { de } from './locales/de';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type Locale = 'cs' | 'en';
+export type Locale = 'cs' | 'en' | 'de';
 
 interface I18nContextValue {
   locale: Locale;
@@ -14,16 +15,17 @@ interface I18nContextValue {
 
 // ─── Translations map ────────────────────────────────────────────────────────
 
-const translations: Record<Locale, Record<string, string>> = { cs, en };
+const translations: Record<Locale, Record<string, string>> = { cs, en, de };
 
 // ─── Detect browser locale ──────────────────────────────────────────────────
 
 function detectLocale(): Locale {
   const stored = localStorage.getItem('trenink-locale');
-  if (stored === 'cs' || stored === 'en') return stored;
+  if (stored === 'cs' || stored === 'en' || stored === 'de') return stored;
 
   const browserLang = navigator.language.toLowerCase();
   if (browserLang.startsWith('cs') || browserLang.startsWith('sk')) return 'cs';
+  if (browserLang.startsWith('de')) return 'de';
   return 'en';
 }
 
@@ -76,6 +78,15 @@ export function useI18n(): I18nContextValue {
   return ctx;
 }
 
+// ─── Date locale helper ─────────────────────────────────────────────────────
+
+const DATE_LOCALE_MAP: Record<Locale, string> = { cs: 'cs-CZ', en: 'en-US', de: 'de-DE' };
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function getDateLocale(locale: Locale): string {
+  return DATE_LOCALE_MAP[locale] ?? 'en-US';
+}
+
 // ─── Currency helper ─────────────────────────────────────────────────────────
 
 export type Currency = 'czk' | 'eur' | 'usd';
@@ -88,5 +99,6 @@ export function getCurrencyForLocale(locale: Locale): Currency {
 // eslint-disable-next-line react-refresh/only-export-components
 export function formatPrice(locale: Locale): string {
   if (locale === 'cs') return '99 Kč/měsíc';
+  if (locale === 'de') return '€3,99/Monat';
   return '€3.99/month';
 }

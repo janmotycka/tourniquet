@@ -4,7 +4,10 @@ import { useTrainingsStore } from '../store/trainings.store';
 import { CATEGORY_CONFIGS } from '../data/categories.data';
 import { formatMinutes } from '../utils/time';
 import type { TrainingUnit } from '../types/training.types';
-import { useI18n } from '../i18n';
+import { useI18n, getDateLocale } from '../i18n';
+import type { Locale } from '../i18n';
+import { copyToClipboard } from '../utils/training-share';
+import { useToastStore } from '../store/toast.store';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -17,14 +20,14 @@ function todayYMD(): string {
   return toYMD(new Date());
 }
 
-function formatScheduledDate(dateStr: string): string {
+function formatScheduledDate(dateStr: string, locale: Locale): string {
   const [y, m, d] = dateStr.split('-').map(Number);
   const date = new Date(y, m - 1, d);
-  return date.toLocaleDateString('cs-CZ', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+  return date.toLocaleDateString(getDateLocale(locale), { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function formatMonthYear(year: number, month: number): string {
-  return new Date(year, month, 1).toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' });
+function formatMonthYear(year: number, month: number, locale: Locale): string {
+  return new Date(year, month, 1).toLocaleDateString(getDateLocale(locale), { month: 'long', year: 'numeric' });
 }
 
 // ─── Schedule Modal (pick a training to assign to a day) ───────────────────
@@ -34,16 +37,16 @@ function ScheduleModal({ date, savedTrainings, onSchedule, onClose }: {
   onSchedule: (trainingId: string, date: string) => void;
   onClose: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const available = savedTrainings.filter(tr => tr.isSaved);
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200,
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 200,
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: 'var(--bg)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480,
+        background: 'var(--bg)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 480,
         maxHeight: '75dvh', display: 'flex', flexDirection: 'column',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
@@ -51,7 +54,7 @@ function ScheduleModal({ date, savedTrainings, onSchedule, onClose }: {
         </div>
         <div style={{ padding: '8px 20px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <h3 style={{ fontWeight: 800, fontSize: 16, flex: 1 }}>{t('calendar.assignTraining')}</h3>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{formatScheduledDate(date)}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{formatScheduledDate(date, locale)}</div>
           <button onClick={onClose} style={{ background: 'var(--surface-var)', width: 32, height: 32, borderRadius: 16, fontSize: 16, color: 'var(--text-muted)' }}>✕</button>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -85,10 +88,10 @@ function ScheduleModal({ date, savedTrainings, onSchedule, onClose }: {
 }
 
 // ─── Share helper ─────────────────────────────────────────────────────────────
-function buildShareText(trainings: TrainingUnit[]): string {
+function buildShareText(trainings: TrainingUnit[], locale: Locale): string {
   return trainings.map(t => {
     const cfg = CATEGORY_CONFIGS[t.input.category];
-    const dateStr = t.scheduledDate ? `📅 ${formatScheduledDate(t.scheduledDate)}\n` : '';
+    const dateStr = t.scheduledDate ? `📅 ${formatScheduledDate(t.scheduledDate, locale)}\n` : '';
     const phases = t.phases.map(p => {
       if (p.stations && p.stations.length > 0) {
         const stationLines = p.stations.map(s =>
@@ -195,7 +198,7 @@ function AgendaView({
   onSchedule: (t: TrainingUnit) => void;
   onUnschedule: (id: string) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const scheduled = savedTrainings.filter(tr => tr.scheduledDate).sort((a, b) => (a.scheduledDate! > b.scheduledDate! ? 1 : -1));
   const unscheduled = savedTrainings.filter(tr => !tr.scheduledDate);
 
@@ -223,7 +226,7 @@ function AgendaView({
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tr.title}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              {showDate && tr.scheduledDate && <span>{formatScheduledDate(tr.scheduledDate)} · </span>}
+              {showDate && tr.scheduledDate && <span>{formatScheduledDate(tr.scheduledDate, locale)} · </span>}
               {cfg.label} · {formatMinutes(tr.totalDuration)}
             </div>
           </div>
@@ -279,7 +282,7 @@ function AgendaView({
 
 // ─── Main CalendarPage ────────────────────────────────────────────────────────
 export function CalendarPage({ navigate }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { savedTrainings, scheduleTraining } = useTrainingsStore(s => ({
     savedTrainings: s.savedTrainings,
     scheduleTraining: s.scheduleTraining,
@@ -345,7 +348,7 @@ export function CalendarPage({ navigate }: Props) {
   const handleShareSelected = () => {
     const toShare = savedTrainings.filter(tr => selectedIds.has(tr.id));
     if (toShare.length === 0) return;
-    const text = buildShareText(toShare);
+    const text = buildShareText(toShare, locale);
     const encoded = encodeURIComponent(text);
     const whatsappUrl = `https://wa.me/?text=${encoded}`;
     if (navigator.share) {
@@ -357,12 +360,11 @@ export function CalendarPage({ navigate }: Props) {
     }
   };
 
-  const handleCopySelected = () => {
+  const handleCopySelected = async () => {
     const toShare = savedTrainings.filter(tr => selectedIds.has(tr.id));
     if (toShare.length === 0) return;
-    navigator.clipboard.writeText(buildShareText(toShare)).then(() => {
-      alert(t('calendar.copied'));
-    });
+    await copyToClipboard(buildShareText(toShare, locale));
+    useToastStore.getState().show(t('calendar.copied'), 'success');
   };
 
   // Navigate calendar months
@@ -422,7 +424,7 @@ export function CalendarPage({ navigate }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', padding: '0 20px 12px' }}>
           <button onClick={prevMonth} style={{ background: 'var(--surface-var)', borderRadius: 10, padding: '8px 12px', color: 'var(--text)', fontWeight: 700 }}>‹</button>
           <span style={{ flex: 1, textAlign: 'center', fontWeight: 700, fontSize: 16, textTransform: 'capitalize' }}>
-            {formatMonthYear(calYear, calMonth)}
+            {formatMonthYear(calYear, calMonth, locale)}
           </span>
           <button onClick={nextMonth} style={{ background: 'var(--surface-var)', borderRadius: 10, padding: '8px 12px', color: 'var(--text)', fontWeight: 700 }}>›</button>
         </div>
@@ -460,13 +462,13 @@ export function CalendarPage({ navigate }: Props) {
             flex: 1, padding: '13px', borderRadius: 14, fontWeight: 700, fontSize: 14,
             background: 'var(--surface-var)', color: 'var(--text)',
           }}>
-            📋 Kopírovat ({selectedIds.size})
+            📋 {t('calendar.copyCount', { count: selectedIds.size })}
           </button>
           <button onClick={handleShareSelected} style={{
             flex: 2, padding: '13px', borderRadius: 14, fontWeight: 700, fontSize: 14,
             background: '#25D366', color: '#fff',
           }}>
-            📲 Sdílet {selectedIds.size} {selectedIds.size === 1 ? t('calendar.training1') : selectedIds.size < 5 ? t('calendar.training2to4') : t('calendar.training5plus')}
+            📲 {t('calendar.shareCount')} {selectedIds.size} {selectedIds.size === 1 ? t('calendar.training1') : selectedIds.size < 5 ? t('calendar.training2to4') : t('calendar.training5plus')}
           </button>
         </div>
       )}
@@ -484,7 +486,7 @@ export function CalendarPage({ navigate }: Props) {
       {/* Date picker modal — when clicking "+ Naplánovat" in agenda */}
       {scheduleTarget && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200,
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 200,
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
         }} onClick={() => { setScheduleTarget(null); setScheduleDate(null); }}>
           <div onClick={e => e.stopPropagation()} style={{
@@ -532,18 +534,18 @@ export function CalendarPage({ navigate }: Props) {
       {/* Day-click detail modal (multiple trainings on a day) */}
       {dayClickDate && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200,
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 200,
           display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
         }} onClick={() => setDayClickDate(null)}>
           <div onClick={e => e.stopPropagation()} style={{
-            background: 'var(--bg)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480,
+            background: 'var(--bg)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 480,
             maxHeight: '65dvh', display: 'flex', flexDirection: 'column',
           }}>
             <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
               <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
             </div>
             <div style={{ padding: '8px 20px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <h3 style={{ fontWeight: 800, fontSize: 16, flex: 1 }}>{formatScheduledDate(dayClickDate)}</h3>
+              <h3 style={{ fontWeight: 800, fontSize: 16, flex: 1 }}>{formatScheduledDate(dayClickDate, locale)}</h3>
               <button onClick={() => setDayClickDate(null)}
                 style={{ background: 'var(--surface-var)', width: 32, height: 32, borderRadius: 16, fontSize: 16, color: 'var(--text-muted)' }}>✕</button>
             </div>

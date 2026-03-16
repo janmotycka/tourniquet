@@ -26,7 +26,7 @@ function matchResult(m: SeasonMatch, t: (key: string, params?: Record<string, st
 function statusBadge(m: SeasonMatch, t: (key: string, params?: Record<string, string | number>) => string): { label: string; color: string; bg: string } {
   if (m.status === 'live') return { label: t('match.live'), color: '#fff', bg: '#C62828' };
   if (m.status === 'finished') return { label: t('match.played'), color: '#555', bg: '#EEE' };
-  return { label: t('match.scheduled'), color: '#1565C0', bg: '#E3F2FD' };
+  return { label: t('match.scheduled'), color: 'var(--primary)', bg: 'var(--primary-light)' };
 }
 
 // ─── MatchCard ─────────────────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ function MatchCard({ match, onClick, t }: { match: SeasonMatch; onClick: () => v
     <button
       onClick={onClick}
       style={{
-        background: 'var(--surface)', borderRadius: 16, padding: '14px 16px',
+        background: 'var(--surface)', borderRadius: 14, padding: '14px 16px',
         boxShadow: isLive ? '0 0 0 2px #C62828' : '0 1px 4px rgba(0,0,0,.07)',
         display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left',
         width: '100%', transition: 'transform .1s',
@@ -181,7 +181,7 @@ export function MatchListPage({ navigate }: Props) {
           <button
             onClick={() => navigate({ name: 'match-create' })}
             style={{
-              background: '#1565C0', color: '#fff', borderRadius: 12,
+              background: 'var(--primary)', color: '#fff', borderRadius: 12,
               padding: '10px 16px', fontWeight: 700, fontSize: 14,
             }}
           >
@@ -196,7 +196,7 @@ export function MatchListPage({ navigate }: Props) {
               onClick={() => setFilter(key as 'all' | 'live' | 'planned' | 'finished')}
               style={{
                 fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 8,
-                background: filter === key ? '#1565C0' : 'var(--surface-var)',
+                background: filter === key ? 'var(--primary)' : 'var(--surface-var)',
                 color: filter === key ? '#fff' : 'var(--text-muted)',
                 flexShrink: 0,
               }}
@@ -237,7 +237,7 @@ export function MatchListPage({ navigate }: Props) {
               <button
                 onClick={() => navigate({ name: 'match-create' })}
                 style={{
-                  background: '#1565C0', color: '#fff', borderRadius: 14,
+                  background: 'var(--primary)', color: '#fff', borderRadius: 12,
                   padding: '12px 24px', fontWeight: 700, fontSize: 16, marginTop: 8,
                 }}
               >

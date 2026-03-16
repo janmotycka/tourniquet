@@ -1,9 +1,9 @@
 import type { Tournament } from '../../../types/tournament.types';
-import { useI18n } from '../../../i18n';
+import { useI18n, getDateLocale } from '../../../i18n';
 import { StandingsCriteriaBox } from './StandingsCriteriaBox';
 
 export function PublicRules({ tournament }: { tournament: Tournament }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { settings } = tournament;
   const rules = settings.rules;
 
@@ -18,7 +18,7 @@ export function PublicRules({ tournament }: { tournament: Tournament }) {
     : null;
 
   const formatTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' });
+    new Date(iso).toLocaleTimeString(getDateLocale(locale), { hour: '2-digit', minute: '2-digit' });
 
   const totalGoals = tournament.matches.reduce((s, m) => s + m.homeScore + m.awayScore, 0);
   const playedMatches = tournament.matches.filter(m => m.status === 'finished').length;
@@ -40,12 +40,12 @@ export function PublicRules({ tournament }: { tournament: Tournament }) {
           {
             icon: '📅',
             label: t('tournament.public.date'),
-            value: new Date(settings.startDate).toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+            value: new Date(settings.startDate).toLocaleDateString(getDateLocale(locale), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
           },
           firstMatch && {
             icon: '🕐',
             label: t('tournament.public.time'),
-            value: `${formatTime(firstMatch.scheduledTime)}${endTime ? ` – ${endTime.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}` : ''}`,
+            value: `${formatTime(firstMatch.scheduledTime)}${endTime ? ` – ${endTime.toLocaleTimeString(getDateLocale(locale), { hour: '2-digit', minute: '2-digit' })}` : ''}`,
           },
           {
             icon: '👥',

@@ -42,6 +42,8 @@ export function subscribeToRosters(
   const handler = (snapshot: import('firebase/database').DataSnapshot) => {
     callback(snapshot.exists() ? snapshot.val() : {});
   };
-  onValue(r, handler);
+  onValue(r, handler, () => {
+    callback({});
+  });
   return () => off(r, 'value', handler);
 }

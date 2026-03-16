@@ -44,7 +44,7 @@ function FormBadge({ result }: { result: 'W' | 'D' | 'L' }) {
 function StatBox({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return (
     <div style={{
-      background: 'var(--surface)', borderRadius: 12, padding: '10px 14px',
+      background: 'var(--surface)', borderRadius: 14, padding: '10px 14px',
       textAlign: 'center', flex: '1 1 0',
     }}>
       <div style={{ fontWeight: 900, fontSize: 22, color: color ?? 'var(--text)' }}>{value}</div>
@@ -110,7 +110,7 @@ export function MatchStatsPage({ navigate }: Props) {
               onClick={() => setClubFilter(null)}
               style={{
                 fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 8,
-                background: !clubFilter ? '#1565C0' : 'var(--surface-var)',
+                background: !clubFilter ? 'var(--primary)' : 'var(--surface-var)',
                 color: !clubFilter ? '#fff' : 'var(--text-muted)',
               }}
             >
@@ -122,7 +122,7 @@ export function MatchStatsPage({ navigate }: Props) {
                 onClick={() => setClubFilter(c.id)}
                 style={{
                   fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 8,
-                  background: clubFilter === c.id ? '#1565C0' : 'var(--surface-var)',
+                  background: clubFilter === c.id ? 'var(--primary)' : 'var(--surface-var)',
                   color: clubFilter === c.id ? '#fff' : 'var(--text-muted)',
                 }}
               >
@@ -168,7 +168,7 @@ export function MatchStatsPage({ navigate }: Props) {
               {/* Form */}
               {teamStats.form.length > 0 && (
                 <div style={{
-                  background: 'var(--surface)', borderRadius: 12, padding: '10px 14px',
+                  background: 'var(--surface)', borderRadius: 14, padding: '10px 14px',
                   display: 'flex', alignItems: 'center', gap: 8,
                 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
@@ -199,7 +199,7 @@ export function MatchStatsPage({ navigate }: Props) {
                       onClick={() => setSortKey(key)}
                       style={{
                         fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6,
-                        background: sortKey === key ? '#1565C0' : 'var(--surface-var)',
+                        background: sortKey === key ? 'var(--primary)' : 'var(--surface-var)',
                         color: sortKey === key ? '#fff' : 'var(--text-muted)',
                       }}
                     >
@@ -210,7 +210,7 @@ export function MatchStatsPage({ navigate }: Props) {
               </div>
 
               {/* Table */}
-              <div style={{ overflowX: 'auto', borderRadius: 12, background: 'var(--surface)', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
+              <div style={{ overflowX: 'auto', borderRadius: 14, background: 'var(--surface)', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid var(--border)' }}>

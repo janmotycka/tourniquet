@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useConfirmStore } from '../store/confirm.store';
 import { useI18n } from '../i18n';
+import { Z } from '../utils/z-index';
 
 /**
  * Globální potvrzovací modální dialog.
@@ -37,9 +38,9 @@ export function ConfirmModal() {
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 10001,
+        position: 'fixed', inset: 0, zIndex: Z.confirm,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(0,0,0,.45)',
+        background: 'rgba(0,0,0,.5)',
         animation: 'fadeIn .15s ease-out',
       }}
       onClick={() => close(false)}
@@ -51,9 +52,9 @@ export function ConfirmModal() {
 
       <div
         style={{
-          background: 'var(--surface)', borderRadius: 16,
+          background: 'var(--surface)', borderRadius: 14,
           padding: 24, maxWidth: 380, width: '90%',
-          boxShadow: '0 8px 32px rgba(0,0,0,.2)',
+          boxShadow: '0 8px 32px rgba(0,0,0,.18)',
           animation: 'scaleIn .15s ease-out',
         }}
         onClick={(e) => e.stopPropagation()}

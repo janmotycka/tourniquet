@@ -1,5 +1,6 @@
 import type { Match, Team } from '../../types/tournament.types';
 import { textOnColor } from '../../utils/team-colors';
+import { useI18n } from '../../i18n';
 
 export function InlineGoalPanel({ match, teams, teamId, onGoal, onClose }: {
   match: Match;
@@ -8,7 +9,8 @@ export function InlineGoalPanel({ match, teams, teamId, onGoal, onClose }: {
   onGoal: (matchId: string, teamId: string, playerId: string | null) => void;
   onClose: () => void;
 }) {
-  const team = teams.find(t => t.id === teamId);
+  const { t } = useI18n();
+  const team = teams.find(tm => tm.id === teamId);
   const teamColor = team?.color ?? '#666';
 
   return (
@@ -45,7 +47,7 @@ export function InlineGoalPanel({ match, teams, teamId, onGoal, onClose }: {
             border: '1.5px dashed var(--border)',
           }}
         >
-          — Bez střelce
+          {t('tournament.detail.noScorer')}
         </button>
 
         {(team?.players ?? [])

@@ -10,7 +10,7 @@ import type { Page } from '../../App';
 import type { Tournament, Team, RosterSubmission } from '../../types/tournament.types';
 import { subscribeToPublicTournament } from '../../services/tournament.firebase';
 import { submitRoster, loadRoster } from '../../services/roster.firebase';
-import { useI18n } from '../../i18n';
+import { useI18n, getDateLocale } from '../../i18n';
 import { generateId } from '../../utils/id';
 import { logger } from '../../utils/logger';
 import { colorSwatch } from '../../utils/team-colors';
@@ -41,7 +41,7 @@ const inputStyle: React.CSSProperties = {
   padding: '12px 14px',
   borderRadius: 12,
   border: '1.5px solid var(--border)',
-  fontSize: 15,
+  fontSize: 16,
   background: 'var(--bg)',
   color: 'var(--text)',
   boxSizing: 'border-box',
@@ -51,14 +51,14 @@ const inputStyle: React.CSSProperties = {
 const smallInputStyle: React.CSSProperties = {
   ...inputStyle,
   padding: '10px 10px',
-  fontSize: 14,
+  fontSize: 16,
   textAlign: 'center' as const,
 };
 
 const btnPrimary: React.CSSProperties = {
   width: '100%',
   padding: '14px',
-  borderRadius: 14,
+  borderRadius: 12,
   border: 'none',
   background: 'var(--primary)',
   color: '#fff',
@@ -83,7 +83,7 @@ export function RosterFormPage(props: Props) {
 // ─── Inner component ────────────────────────────────────────────────────────
 
 function RosterFormPageInner({ tournamentId, teamToken }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   // ── Tournament + team loading ─────────────────────────────────────────────
   const [tournament, setTournament] = useState<Tournament | null>(null);
@@ -109,6 +109,11 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  // ── Info / rules toggle + PDF ───────────────────────────────────────────
+  const [showInfo, setShowInfo] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
+
   // ── Load tournament via real-time subscription ────────────────────────────
   useEffect(() => {
     setLoading(true);
@@ -125,7 +130,7 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
         setTournament(data);
 
         // Match team by rosterToken
-        const matched = data.teams.find(tm => tm.rosterToken === teamToken);
+        const matched = (data.teams ?? []).find(tm => tm.rosterToken === teamToken);
         if (!matched) {
           setError(t('roster.invalidToken'));
           setLoading(false);
@@ -231,8 +236,21 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
       return t('roster.errorDuplicateJersey');
     }
 
+    // Check birth year against tournament maxBirthYear (blocking)
+    const maxBirthYear = tournament?.settings.maxBirthYear;
+    if (maxBirthYear) {
+      for (const p of validPlayers) {
+        if (p.birthYear.trim()) {
+          const birth = parseInt(p.birthYear);
+          if (!isNaN(birth) && birth < maxBirthYear) {
+            return t('roster.errorBirthYearTooOld', { name: p.name, year: p.birthYear, limit: String(maxBirthYear) });
+          }
+        }
+      }
+    }
+
     return null;
-  }, [coachName, coachPhone, players, t]);
+  }, [coachName, coachPhone, players, t, tournament]);
 
   // ── Submit ────────────────────────────────────────────────────────────────
 
@@ -400,6 +418,31 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
 
         <Header tournament={tournament} team={team} />
 
+        {/* Tournament info card — collapsed by default */}
+        <TournamentInfoCard
+          tournament={tournament}
+          showInfo={showInfo}
+          setShowInfo={setShowInfo}
+          showRules={showRules}
+          setShowRules={setShowRules}
+          pdfExporting={pdfExporting}
+          setPdfExporting={setPdfExporting}
+          t={t}
+          locale={locale}
+        />
+
+        {/* Birth year requirement info */}
+        {tournament.settings.maxBirthYear && (
+          <div style={{ background: '#FFF3E0', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#E65100', lineHeight: 1.5 }}>
+            🎂 {t('roster.birthYearRequirement', { year: String(tournament.settings.maxBirthYear) })}
+          </div>
+        )}
+
+        {/* Jersey info — moved from WhatsApp message */}
+        <div style={{ background: '#E3F2FD', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#1565C0', lineHeight: 1.5 }}>
+          ℹ️ {t('roster.jerseyInfo')}
+        </div>
+
         {existingRoster && (
           <div style={{ background: '#E8F5E9', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#2E7D32' }}>
             ✅ {t('roster.alreadySubmitted')}
@@ -468,7 +511,7 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
         <div style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>
-              ⚽ {t('roster.players')} ({players.filter(p => p.name.trim()).length})
+              ⚽ {t('roster.players')} ({players.filter(p => p.name.trim()).length}{tournament.settings.maxPlayersPerRoster ? `/${tournament.settings.maxPlayersPerRoster}` : ''})
             </h3>
             {!isReadOnly && (
               <button
@@ -512,7 +555,7 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
                 value={player.name}
                 onChange={e => updatePlayer(player.id, 'name', e.target.value)}
                 placeholder={`${t('tournament.create.playerName')}…`}
-                style={{ ...inputStyle, padding: '10px 10px', fontSize: 14 }}
+                style={{ ...inputStyle, padding: '10px 10px', fontSize: 16 }}
                 disabled={isReadOnly}
               />
               <input
@@ -547,6 +590,20 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
           )}
         </div>
 
+        {/* Player count warning (non-blocking) */}
+        {(() => {
+          const maxPlayers = tournament.settings.maxPlayersPerRoster;
+          const validCount = players.filter(p => p.name.trim()).length;
+          if (maxPlayers && maxPlayers > 0 && validCount > maxPlayers) {
+            return (
+              <div style={{ background: '#FFF3E0', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#E65100' }}>
+                ⚠️ {t('roster.warnTooManyPlayers', { count: validCount, max: maxPlayers })}
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {/* Error */}
         {submitError && (
           <div style={{ background: '#FFEBEE', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#C62828' }}>
@@ -570,6 +627,164 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
           TORQ ⚽ torq.cz
         </p>
       </div>
+    </div>
+  );
+}
+
+// ─── Tournament info card ─────────────────────────────────────────────────────
+
+const infoRowStyle: React.CSSProperties = {
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+  padding: '6px 0', fontSize: 14,
+};
+const infoLabelStyle: React.CSSProperties = { color: 'var(--text-muted)', fontWeight: 500 };
+const infoValueStyle: React.CSSProperties = { fontWeight: 600, color: 'var(--text)', textAlign: 'right' };
+
+function TournamentInfoCard({ tournament, showInfo, setShowInfo, showRules, setShowRules, pdfExporting, setPdfExporting, t, locale }: {
+  tournament: Tournament;
+  showInfo: boolean;
+  setShowInfo: (v: boolean) => void;
+  showRules: boolean;
+  setShowRules: (v: boolean) => void;
+  pdfExporting: boolean;
+  setPdfExporting: (v: boolean) => void;
+  t: (key: string, params?: Record<string, string | number>) => string;
+  locale: string;
+}) {
+  const s = tournament.settings;
+
+  // Date formatting
+  const dateStr = s.startDate
+    ? new Date(s.startDate + 'T00:00:00').toLocaleDateString(getDateLocale(locale as 'cs' | 'en' | 'de'), {
+        weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
+      })
+    : '—';
+
+  // Format label
+  const formatLabel = s.format === 'groups-knockout'
+    ? t('knockout.groupsKnockout')
+    : s.format === 'knockout'
+      ? t('knockout.pureKnockout')
+      : t('knockout.roundRobin');
+
+  // PDF download handler
+  const handlePdfDownload = async () => {
+    setPdfExporting(true);
+    try {
+      const { exportTournamentPdf } = await import('../../utils/tournament-pdf');
+      await exportTournamentPdf(tournament, t, locale as 'cs' | 'en' | 'de');
+    } catch (err) {
+      logger.error('[RosterForm] PDF export failed:', err);
+    } finally {
+      setPdfExporting(false);
+    }
+  };
+
+  const hasRules = !!s.rules?.trim();
+
+  return (
+    <div style={cardStyle}>
+      {/* Collapsible header */}
+      <button
+        onClick={() => setShowInfo(!showInfo)}
+        style={{
+          width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)',
+        }}
+      >
+        <span>📋 {t('roster.tournamentInfoTitle')}</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{showInfo ? '▲' : '▼'}</span>
+      </button>
+
+      {showInfo && (
+        <div style={{ marginTop: 12 }}>
+          {/* Structured info rows */}
+          <div style={{ borderTop: '1px solid var(--border)', borderBottom: hasRules ? '1px solid var(--border)' : 'none' }}>
+            {s.startDate && (
+              <div style={infoRowStyle}>
+                <span style={infoLabelStyle}>📅 {t('roster.infoDate')}</span>
+                <span style={infoValueStyle}>{dateStr}</span>
+              </div>
+            )}
+            {s.startTime && (
+              <div style={infoRowStyle}>
+                <span style={infoLabelStyle}>🕐 {t('roster.infoTime')}</span>
+                <span style={infoValueStyle}>{s.startTime}</span>
+              </div>
+            )}
+            <div style={infoRowStyle}>
+              <span style={infoLabelStyle}>⏱️ {t('roster.infoMatchDuration')}</span>
+              <span style={infoValueStyle}>{t('roster.minutes', { min: s.matchDurationMinutes })}</span>
+            </div>
+            {s.breakBetweenMatchesMinutes > 0 && (
+              <div style={infoRowStyle}>
+                <span style={infoLabelStyle}>⏸️ {t('roster.infoBreak')}</span>
+                <span style={infoValueStyle}>{t('roster.minutes', { min: s.breakBetweenMatchesMinutes })}</span>
+              </div>
+            )}
+            {(s.numberOfPitches ?? 1) > 1 && (
+              <div style={infoRowStyle}>
+                <span style={infoLabelStyle}>🏟️ {t('roster.infoPitches')}</span>
+                <span style={infoValueStyle}>{s.numberOfPitches}</span>
+              </div>
+            )}
+            <div style={infoRowStyle}>
+              <span style={infoLabelStyle}>🏆 {t('roster.infoFormat')}</span>
+              <span style={infoValueStyle}>{formatLabel}</span>
+            </div>
+            <div style={infoRowStyle}>
+              <span style={infoLabelStyle}>👕 {t('roster.infoTeams')}</span>
+              <span style={infoValueStyle}>{(tournament.teams ?? []).length}</span>
+            </div>
+            <div style={infoRowStyle}>
+              <span style={infoLabelStyle}>⚽ {t('roster.infoScoring')}</span>
+              <span style={infoValueStyle}>{t('pdf.scoringValue')}</span>
+            </div>
+          </div>
+
+          {/* Collapsible rules text */}
+          {hasRules && (
+            <div style={{ marginTop: 8 }}>
+              <button
+                onClick={() => setShowRules(!showRules)}
+                style={{
+                  width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '6px 0', fontWeight: 600, fontSize: 14, color: 'var(--text)',
+                }}
+              >
+                <span>📝 {t('roster.rulesDetail')}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{showRules ? '▲' : '▼'}</span>
+              </button>
+              {showRules && (
+                <pre style={{
+                  fontFamily: 'inherit', fontSize: 13, lineHeight: 1.7,
+                  color: 'var(--text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                  margin: '4px 0 0', padding: '8px 0 0',
+                  borderTop: '1px solid var(--border)',
+                }}>
+                  {s.rules}
+                </pre>
+              )}
+            </div>
+          )}
+
+          {/* PDF download button */}
+          <button
+            onClick={handlePdfDownload}
+            disabled={pdfExporting}
+            style={{
+              width: '100%', marginTop: 12, padding: '10px 14px', borderRadius: 10,
+              border: '1.5px solid var(--border)', background: 'var(--bg)',
+              color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: 'pointer',
+              opacity: pdfExporting ? 0.7 : 1,
+            }}
+          >
+            {pdfExporting ? `⏳ ${t('roster.generatingPdf')}` : `📄 ${t('roster.downloadPdf')}`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,22 +1,28 @@
 import { useState, useEffect } from 'react';
 import type { Page } from '../../App';
-import type { Tournament, TiebreakerCriterion, RosterSubmission } from '../../types/tournament.types';
+import type { Tournament, TiebreakerCriterion, RosterSubmission, RegistrationSubmission } from '../../types/tournament.types';
 import { DEFAULT_TIEBREAKER_ORDER } from '../../types/tournament.types';
 import type { TournamentTemplate } from '../../types/tournament.types';
-import { useI18n } from '../../i18n';
+import { useI18n, getDateLocale } from '../../i18n';
 import { useConfirmStore } from '../../store/confirm.store';
 import { useTournamentStore } from '../../store/tournament.store';
 import { useContactsStore } from '../../store/contacts.store';
 import { useTemplatesStore } from '../../store/templates.store';
 import { useToastStore } from '../../store/toast.store';
-import { getTournamentPublicUrl, getAdminInviteUrl, generateQRCodeDataUrl, getRosterFormUrl } from '../../utils/qr-code';
+import { getTournamentPublicUrl, getAdminInviteUrl, generateQRCodeDataUrl, getRosterFormUrl, getRegistrationUrl } from '../../utils/qr-code';
 import { subscribeToRosters } from '../../services/roster.firebase';
+import { subscribeToRegistrations } from '../../services/registration.firebase';
+import { sendWelcomeChatMessage } from '../../services/tournament.firebase';
+import { MvpResults } from './MvpResults';
 import { exportTournamentPdf } from '../../utils/tournament-pdf';
+import { hashPin, generatePinSalt } from '../../utils/pin-hash';
 import { exportTournamentStandingsCSV, exportTournamentMatchesCSV, exportTournamentScorersCSV } from '../../utils/export-csv';
 import { logger } from '../../utils/logger';
+import { copyToClipboard } from '../../utils/training-share';
 import { generateId } from '../../utils/id';
 import { TeamBadge } from './TeamBadge';
 import { AdminRosterSheet } from './AdminRosterSheet';
+import { Dropdown, ColorDot } from '../ui/Dropdown';
 
 export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: { tournament: Tournament; navigate: (p: Page) => void; isOwner: boolean; leaveTournament: (tournamentId: string) => Promise<void> }) {
   const { t, locale } = useI18n();
@@ -46,6 +52,25 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
   // Team removal
   const [teamRemoved, setTeamRemoved] = useState(false);
 
+  // PIN change
+  const [pinChangeOpen, setPinChangeOpen] = useState(false);
+  const [newPin, setNewPin] = useState('');
+  const [pinChanged, setPinChanged] = useState(false);
+
+  // Collapsible sections
+  const [teamMgmtOpen, setTeamMgmtOpen] = useState(false);
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+  const [rostersOpen, setRostersOpen] = useState(false);
+  const [regenOpen, setRegenOpen] = useState(false);
+  const [tiebreakerOpen, setTiebreakerOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  // awardsOpen removed — awards are always visible
+
+  // Roster settings
+  const [maxBirthYearEdit, setMaxBirthYearEdit] = useState(tournament.settings.maxBirthYear ? String(tournament.settings.maxBirthYear) : '');
+  const [maxPlayersEdit, setMaxPlayersEdit] = useState(tournament.settings.maxPlayersPerRoster ? String(tournament.settings.maxPlayersPerRoster) : '');
+  const [rosterSettingsSaved, setRosterSettingsSaved] = useState(false);
+
   // Roster management
   const [rosterMap, setRosterMap] = useState<Record<string, RosterSubmission>>({});
   const [rosterLinkCopied, setRosterLinkCopied] = useState<string | null>(null);
@@ -67,6 +92,22 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
     return unsubscribe;
   }, [tournament.id, tournament.teams]);
 
+  // Registration management
+  const [registrationMap, setRegistrationMap] = useState<Record<string, RegistrationSubmission>>({});
+  const [regLinkCopied, setRegLinkCopied] = useState(false);
+  const [regApproved, setRegApproved] = useState<string | null>(null);
+  const approveRegistration = useTournamentStore(s => s.approveRegistration);
+  const rejectRegistration = useTournamentStore(s => s.rejectRegistration);
+
+  // Subscribe to registration submissions in real-time
+  useEffect(() => {
+    if (!tournament.settings.registrationEnabled) return;
+    const unsubscribe = subscribeToRegistrations(tournament.id, (regs) => {
+      setRegistrationMap(regs);
+    });
+    return unsubscribe;
+  }, [tournament.id, tournament.settings.registrationEnabled]);
+
   const deleteTournament = useTournamentStore(s => s.deleteTournament);
   const updateTournament = useTournamentStore(s => s.updateTournament);
   const regenerateSchedule = useTournamentStore(s => s.regenerateSchedule);
@@ -81,14 +122,14 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
   const publicUrl = getTournamentPublicUrl(tournament.id);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(publicUrl);
+    await copyToClipboard(publicUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleCopyAdminLink = async () => {
     const adminUrl = getAdminInviteUrl(tournament.id);
-    await navigator.clipboard.writeText(adminUrl);
+    await copyToClipboard(adminUrl);
     setAdminCopied(true);
     setTimeout(() => setAdminCopied(false), 2000);
   };
@@ -139,7 +180,7 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
       await exportTournamentPdf(tournament, t, locale);
     } catch (err) {
       logger.error('[PDF] Export failed:', err);
-      alert(t('pdf.exportFailed'));
+      useToastStore.getState().show(t('pdf.exportFailed'), 'error');
     } finally {
       setPdfExporting(false);
     }
@@ -195,54 +236,413 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
   return (
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* QR kód */}
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15, alignSelf: 'flex-start' }}>📱 QR kód pro hosty</h3>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        <h3 style={{ fontWeight: 700, fontSize: 15, alignSelf: 'flex-start' }}>📱 {t('tournament.settings.qrTitle')}</h3>
         {qrUrl
-          ? <img src={qrUrl} alt="QR kód turnaje" style={{ width: 200, height: 200, borderRadius: 12 }} />
+          ? <img src={qrUrl} alt={t('tournament.settings.qrAlt')} style={{ width: 200, height: 200, borderRadius: 12 }} />
           : <div style={{ width: 200, height: 200, borderRadius: 12, background: 'var(--surface-var)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--text-muted)' }}>{t('tournament.detail.loadingQr')}</div>
         }
         <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.4 }}>
-          Naskenováním QR kódu si hosté zobrazí živou tabulku a výsledky.
+          {t('tournament.settings.qrDesc')}
         </p>
         <div style={{ display: 'flex', gap: 8, width: '100%' }}>
           <button onClick={handleCopy} style={{
             flex: 1, background: copied ? '#2E7D32' : 'var(--primary)', color: '#fff', fontWeight: 700,
-            fontSize: 14, padding: '10px 12px', borderRadius: 10, transition: 'background .2s',
+            fontSize: 14, padding: '10px 12px', borderRadius: 12, transition: 'background .2s',
           }}>
-            {copied ? '✅ Zkopírováno!' : '🔗 Kopírovat odkaz'}
+            {copied ? `✅ ${t('common.copied')}` : `🔗 ${t('common.copyLink')}`}
           </button>
           <button onClick={handlePublicView} style={{
             flex: 1, background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600,
             fontSize: 14, padding: '10px 12px', borderRadius: 10,
           }}>
-            👁 Zobrazit jako host
+            👁 {t('tournament.settings.viewAsGuest')}
           </button>
         </div>
       </div>
 
       {/* Admin invite link — jen pro ownery */}
       {isOwner && (
-        <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <h3 style={{ fontWeight: 700, fontSize: 15 }}>🔑 Odkaz pro rozhodčí</h3>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <h3 style={{ fontWeight: 700, fontSize: 15 }}>🔑 {t('tournament.settings.refereeLinkTitle')}</h3>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
-            Pošlete tento odkaz rozhodčím nebo spolupořadatelům. Po otevření budou vyzváni k zadání PINu a získají admin přístup k turnaji.
+            {t('tournament.settings.refereeLinkDesc')}
           </p>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0, fontStyle: 'italic' }}>
-            💡 Diváci a rodiče tento odkaz nepotřebují — stačí jim veřejný QR kód výše.
+            💡 {t('tournament.settings.refereeLinkHint')}
           </p>
-          <button onClick={handleCopyAdminLink} style={{
-            background: adminCopied ? '#2E7D32' : '#E65100', color: '#fff', fontWeight: 700,
-            fontSize: 14, padding: '10px 20px', borderRadius: 10, transition: 'background .2s',
-          }}>
-            {adminCopied ? '✅ Zkopírováno!' : '🔑 Kopírovat odkaz pro rozhodčí'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={handleCopyAdminLink} style={{
+              flex: 1, background: adminCopied ? '#2E7D32' : '#E65100', color: '#fff', fontWeight: 700,
+              fontSize: 13, padding: '10px 14px', borderRadius: 10, transition: 'background .2s',
+              minWidth: 0,
+            }}>
+              {adminCopied ? `✅ ${t('common.copied')}` : `🔗 ${t('tournament.settings.copyRefereeLink')}`}
+            </button>
+            <a
+              href={(() => {
+                const url = getAdminInviteUrl(tournament.id);
+                const msg = t('tournament.settings.refereeWhatsapp', { tournament: tournament.name, url });
+                return `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+              })()}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                background: '#E8F5E9', color: '#2E7D32',
+                border: 'none', cursor: 'pointer', textDecoration: 'none',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              💬 WhatsApp
+            </a>
+            <a
+              href={(() => {
+                const url = getAdminInviteUrl(tournament.id);
+                const subject = t('tournament.settings.refereeEmailSubject', { tournament: tournament.name });
+                const body = t('tournament.settings.refereeEmailBody', { tournament: tournament.name, url });
+                return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+              })()}
+              style={{
+                padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                background: 'var(--primary-light)', color: 'var(--primary)',
+                border: 'none', cursor: 'pointer', textDecoration: 'none',
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+              }}
+            >
+              📧 E-mail
+            </a>
+          </div>
         </div>
       )}
 
-      {/* Soupisky — roster management */}
+      {/* ═══════════════ NASTAVENÍ TURNAJE ═══════════════ */}
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 4 }}>
+        ⚙️ {t('settings.sectionTournament')}
+      </div>
+
+      {/* Viditelnost střelců + Chat — toggley */}
       {isOwner && (
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('roster.adminTitle')}</h3>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Scorer visibility */}
+        <div>
+          <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>⚽ {t('tournament.scorers.visibilityTitle')}</h3>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{t('tournament.scorers.visibilityDesc')}</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[true, false].map(val => (
+              <button
+                key={String(val)}
+                onClick={async () => {
+                  await updateTournament(tournament.id, {
+                    settings: { ...tournament.settings, scorersVisible: val },
+                  });
+                }}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 13,
+                  background: (tournament.settings.scorersVisible ?? true) === val ? 'var(--primary)' : 'var(--surface-var)',
+                  color: (tournament.settings.scorersVisible ?? true) === val ? '#fff' : 'var(--text)',
+                  transition: 'background .15s',
+                }}
+              >
+                {val ? `👁 ${t('tournament.scorers.visible')}` : `🔒 ${t('tournament.scorers.hidden')}`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ height: 1, background: 'var(--border)' }} />
+
+        {/* Chat toggle */}
+        <div>
+          <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>💬 {t('tournament.chat.enableTitle')}</h3>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{t('tournament.chat.enableDesc')}</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[true, false].map(val => (
+              <button
+                key={String(val)}
+                onClick={async () => {
+                  await updateTournament(tournament.id, {
+                    settings: { ...tournament.settings, chatEnabled: val },
+                  });
+                  // Při zapnutí chatu odešle uvítací zprávu (pokud je chat prázdný)
+                  if (val) {
+                    sendWelcomeChatMessage(
+                      tournament.id,
+                      tournament.name,
+                      t('tournament.chat.welcome', { tournament: tournament.name }),
+                    ).catch(() => {});
+                  }
+                }}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 13,
+                  background: (tournament.settings.chatEnabled ?? false) === val ? 'var(--primary)' : 'var(--surface-var)',
+                  color: (tournament.settings.chatEnabled ?? false) === val ? '#fff' : 'var(--text)',
+                  transition: 'background .15s',
+                }}
+              >
+                {val ? `✅ ${t('tournament.chat.enabled')}` : `❌ ${t('tournament.chat.disabled')}`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ height: 1, background: 'var(--border)' }} />
+
+        {/* MVP voting toggle */}
+        <div>
+          <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>⭐ {t('tournament.mvp.enableTitle')}</h3>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{t('tournament.mvp.enableDesc')}</p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[true, false].map(val => (
+              <button
+                key={String(val)}
+                onClick={async () => {
+                  await updateTournament(tournament.id, {
+                    settings: { ...tournament.settings, mvpVotingEnabled: val },
+                  });
+                }}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 13,
+                  background: (tournament.settings.mvpVotingEnabled ?? false) === val ? 'var(--primary)' : 'var(--surface-var)',
+                  color: (tournament.settings.mvpVotingEnabled ?? false) === val ? '#fff' : 'var(--text)',
+                  transition: 'background .15s',
+                }}
+              >
+                {val ? `✅ ${t('tournament.mvp.enabled')}` : `❌ ${t('tournament.mvp.disabled')}`}
+              </button>
+            ))}
+          </div>
+
+          {/* MVP results — inline under toggle */}
+          <MvpResults tournamentId={tournament.id} teams={tournament.teams} />
+        </div>
+      </div>
+      )}
+
+      {/* Awards — ocenění turnaje */}
+      {isOwner && (
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>🏅 {t('tournament.awards.title')}</h3>
+        <AwardsEditor tournament={tournament} />
+      </div>
+      )}
+
+      {/* PDF + CSV export */}
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <h3 style={{ fontWeight: 700, fontSize: 15 }}>📤 {t('settings.sectionExport')}</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
+          {t('pdf.downloadDesc')}
+        </p>
+        <button onClick={handlePdfExport} disabled={pdfExporting} style={{
+          background: pdfExporting ? 'var(--border)' : 'var(--primary)', color: pdfExporting ? 'var(--text-muted)' : '#fff',
+          fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 12,
+          cursor: pdfExporting ? 'wait' : 'pointer', transition: 'background .2s',
+        }}>
+          {pdfExporting ? `⏳ ${t('pdf.generating')}` : `📄 ${t('pdf.downloadPdf')}`}
+        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={() => exportTournamentStandingsCSV(tournament, t)} style={{
+            background: 'var(--surface-var)', fontWeight: 600, fontSize: 13, padding: '8px 14px',
+            borderRadius: 8, color: 'var(--text)',
+          }}>
+            📊 {t('csv.exportStandings')}
+          </button>
+          <button onClick={() => exportTournamentMatchesCSV(tournament, t)} style={{
+            background: 'var(--surface-var)', fontWeight: 600, fontSize: 13, padding: '8px 14px',
+            borderRadius: 8, color: 'var(--text)',
+          }}>
+            📋 {t('csv.exportMatches')}
+          </button>
+          <button onClick={() => exportTournamentScorersCSV(tournament, t)} style={{
+            background: 'var(--surface-var)', fontWeight: 600, fontSize: 13, padding: '8px 14px',
+            borderRadius: 8, color: 'var(--text)',
+          }}>
+            ⚽ {t('csv.exportScorers')}
+          </button>
+        </div>
+      </div>
+
+      {/* ═══════════════ ORGANIZACE TURNAJE ═══════════════ */}
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 4 }}>
+        🏆 {t('settings.sectionOrganization')}
+      </div>
+
+      {/* Registration — team sign-up management (collapsible) */}
+      {isOwner && (
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div
+          onClick={() => setRegistrationOpen(!registrationOpen)}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
+        >
+          <h3 style={{ fontWeight: 700, fontSize: 15, flex: 1, margin: 0 }}>📝 {t('registration.adminTitle')}</h3>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+            {tournament.settings.registrationEnabled ? `✅ ${t('registration.enabled')}` : `❌ ${t('registration.disabled')}`}
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .2s', transform: registrationOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        </div>
+
+        {registrationOpen && <>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+          {t('registration.adminDesc')}
+        </p>
+
+        {/* Enable/disable toggle */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[true, false].map(val => (
+            <button
+              key={String(val)}
+              onClick={() => updateTournament(tournament.id, { settings: { ...tournament.settings, registrationEnabled: val } })}
+              style={{
+                flex: 1, padding: '8px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                background: tournament.settings.registrationEnabled === val ? 'var(--primary)' : 'var(--surface-var)',
+                color: tournament.settings.registrationEnabled === val ? '#fff' : 'var(--text-muted)',
+                border: 'none',
+              }}
+            >
+              {val ? `✅ ${t('registration.enabled')}` : `❌ ${t('registration.disabled')}`}
+            </button>
+          ))}
+        </div>
+
+        {tournament.settings.registrationEnabled && (
+          <>
+            {/* Copy registration link + WhatsApp */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={async () => {
+                  try {
+                    await copyToClipboard(getRegistrationUrl(tournament.id));
+                    setRegLinkCopied(true);
+                    setTimeout(() => setRegLinkCopied(false), 2000);
+                  } catch { /* clipboard not available */ }
+                }}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  background: regLinkCopied ? '#E8F5E9' : 'var(--primary-light)',
+                  color: regLinkCopied ? '#2E7D32' : 'var(--primary)',
+                  border: 'none',
+                }}
+              >
+                {regLinkCopied ? `✅ ${t('registration.linkCopied')}` : `🔗 ${t('registration.copyLink')}`}
+              </button>
+              <a
+                href={(() => {
+                  const url = getRegistrationUrl(tournament.id);
+                  const d = tournament.settings.startDate;
+                  const dateStr = d ? new Date(d + 'T00:00:00').toLocaleDateString(getDateLocale(locale), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+                  const timeStr = tournament.settings.startTime || '';
+                  const msg = t('registration.whatsappMessage', { tournament: tournament.name, url, date: dateStr, time: timeStr });
+                  return `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+                })()}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                  background: '#E8F5E9', color: '#2E7D32',
+                  border: 'none', cursor: 'pointer', textDecoration: 'none',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                💬 WhatsApp
+              </a>
+            </div>
+
+            {/* Pending registrations */}
+            {(() => {
+              const pending = Object.entries(registrationMap);
+              if (pending.length === 0) {
+                return (
+                  <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, fontStyle: 'italic' }}>
+                    {t('registration.noPending')}
+                  </p>
+                );
+              }
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {pending.map(([regId, reg]) => (
+                    <div key={regId} style={{
+                      padding: '10px 12px', background: 'var(--surface-var)', borderRadius: 12,
+                      display: 'flex', flexDirection: 'column', gap: 6,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>👕 {reg.teamName}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('registration.pending')}</span>
+                      </div>
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                        👤 {reg.coachName} · 📞 {reg.coachPhone}{reg.coachEmail ? ` · ${reg.coachEmail}` : ''}
+                      </p>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await approveRegistration(tournament.id, regId, reg);
+                              if (firebaseUid && reg.coachPhone) {
+                                createOrUpdateContact(firebaseUid, {
+                                  name: reg.coachName,
+                                  phone: reg.coachPhone,
+                                  email: reg.coachEmail || undefined,
+                                  clubId: null,
+                                  clubName: reg.teamName,
+                                }).catch(() => {});
+                              }
+                              setRegApproved(regId);
+                              setTimeout(() => setRegApproved(null), 2500);
+                            } catch {
+                              showToast(t('common.error'), 'error');
+                            }
+                          }}
+                          style={{
+                            padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                            background: regApproved === regId ? '#E8F5E9' : '#E8F5E9',
+                            color: '#2E7D32', border: '1px solid #C8E6C9', cursor: 'pointer',
+                          }}
+                        >
+                          ✅ {regApproved === regId ? t('registration.approved') : t('registration.approve')}
+                        </button>
+                        <button
+                          onClick={() => rejectRegistration(tournament.id, regId).catch(() => showToast(t('common.error'), 'error'))}
+                          style={{
+                            padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                            background: 'var(--surface)', color: '#C62828',
+                            border: '1px solid var(--border)', cursor: 'pointer',
+                          }}
+                        >
+                          ✕ {t('registration.reject')}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </>
+        )}
+        </>}
+      </div>
+      )}
+
+      {/* Soupisky — roster management (collapsible) */}
+      {isOwner && (
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div
+          onClick={() => setRostersOpen(!rostersOpen)}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
+        >
+          <h3 style={{ fontWeight: 700, fontSize: 15, flex: 1, margin: 0 }}>{t('roster.adminTitle')}</h3>
+          {(() => {
+            const submitted = Object.keys(rosterMap).length;
+            const total = tournament.teams.length;
+            const hasTokens = tournament.teams.some(tm => tm.rosterToken);
+            return hasTokens ? (
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+                {submitted}/{total}
+              </span>
+            ) : null;
+          })()}
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .2s', transform: rostersOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        </div>
+
+        {rostersOpen && <>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
           {t('roster.adminDesc')}
         </p>
@@ -253,7 +653,7 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
             onClick={() => generateRosterTokens(tournament.id)}
             style={{
               background: 'var(--primary)', color: '#fff', fontWeight: 700,
-              fontSize: 14, padding: '12px 20px', borderRadius: 10,
+              fontSize: 14, padding: '12px 20px', borderRadius: 12,
             }}
           >
             🔗 {t('roster.generateLinks')}
@@ -305,7 +705,7 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
                       <button
                         onClick={async () => {
                           const url = getRosterFormUrl(tournament.id, team.rosterToken!);
-                          await navigator.clipboard.writeText(url);
+                          await copyToClipboard(url);
                           setRosterLinkCopied(team.id);
                           setTimeout(() => setRosterLinkCopied(null), 2000);
                         }}
@@ -326,7 +726,7 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
                         href={(() => {
                           const url = getRosterFormUrl(tournament.id, team.rosterToken!);
                           const d = tournament.settings.startDate;
-                          const dateStr = d ? new Date(d + 'T00:00:00').toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+                          const dateStr = d ? new Date(d + 'T00:00:00').toLocaleDateString(getDateLocale(locale), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
                           const timeStr = tournament.settings.startTime || '';
                           const msg = t('roster.whatsappMessage', { tournament: tournament.name, team: team.name, url, date: dateStr, time: timeStr });
                           return `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
@@ -391,76 +791,25 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
             })}
           </div>
         )}
+        </>}
       </div>
       )}
 
-      {/* Roster preview modal */}
-      {rosterPreview && (
+      {/* Propozice — collapsible */}
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-          onClick={() => setRosterPreview(null)}
+          onClick={() => setRulesOpen(!rulesOpen)}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
         >
-          <div
-            style={{ background: 'var(--surface)', borderRadius: 20, padding: '24px', width: '100%', maxWidth: 400, maxHeight: '80vh', overflow: 'auto' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h3 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>{t('roster.previewTitle')}</h3>
-              <button onClick={() => setRosterPreview(null)} aria-label="Close" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>{t('roster.coach')}</div>
-              <p style={{ fontSize: 15, fontWeight: 600, margin: '2px 0' }}>{rosterPreview.coach.name}</p>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0' }}>📞 {rosterPreview.coach.phone}</p>
-              {rosterPreview.coach.email && (
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0' }}>📧 {rosterPreview.coach.email}</p>
-              )}
-            </div>
-
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
-              {t('roster.players')} ({rosterPreview.players.length})
-            </div>
-            {rosterPreview.players.map((p, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: i < rosterPreview.players.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', width: 28, textAlign: 'center' }}>
-                  {p.jerseyNumber || '–'}
-                </span>
-                <span style={{ flex: 1, fontSize: 14 }}>{p.name}</span>
-                {p.birthYear && (
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.birthYear}</span>
-                )}
-              </div>
-            ))}
-
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12 }}>
-              {t('roster.statusSubmitted')} · {new Date(rosterPreview.submittedAt).toLocaleString()}
-            </p>
-          </div>
+          <h3 style={{ fontWeight: 700, fontSize: 15, flex: 1, margin: 0 }}>📋 {t('tournament.settings.rulesTitle')}</h3>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .2s', transform: rulesOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </div>
-      )}
 
-      {/* Admin roster fill sheet */}
-      {adminRosterTeamId && (() => {
-        const rosterTeam = tournament.teams.find(tm => tm.id === adminRosterTeamId);
-        if (!rosterTeam) return null;
-        return (
-          <AdminRosterSheet
-            tournament={tournament}
-            team={rosterTeam}
-            rosterMap={rosterMap}
-            onClose={() => setAdminRosterTeamId(null)}
-          />
-        );
-      })()}
-
-      {/* Propozice */}
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15 }}>📋 Pravidla / propozice</h3>
+        {rulesOpen && <>
         <textarea
           value={rulesEdit}
           onChange={e => { setRulesEdit(e.target.value); setRulesSaved(false); }}
-          placeholder="Popis pravidel, délka poločasů, penalty, formát skupin..."
+          placeholder={t('tournament.settings.rulesPlaceholder')}
           rows={5}
           style={{
             width: '100%', padding: '10px', borderRadius: 10, border: '1.5px solid var(--border)',
@@ -470,132 +819,27 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
         />
         <button onClick={handleSaveRules} style={{
           background: rulesSaved ? '#2E7D32' : 'var(--primary)', color: '#fff',
-          fontWeight: 700, fontSize: 14, padding: '10px 20px', borderRadius: 10,
+          fontWeight: 700, fontSize: 14, padding: '10px 20px', borderRadius: 12,
           alignSelf: 'flex-start', transition: 'background .2s',
         }}>
-          {rulesSaved ? '✅ ' + t('tournament.detail.rulesSaved') : '💾 ' + t('tournament.detail.saveRules')}
+          {rulesSaved ? '✅ ' + t('tournament.detail.rulesSaved') : t('tournament.detail.saveRules')}
         </button>
+        </>}
       </div>
 
-      {/* Přegenerování harmonogramu — only for owners */}
-      {isOwner && (
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15 }}>🔄 {t('tournament.detail.regenerateSchedule')}</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-          {t('tournament.detail.regenerateDesc')}
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{t('tournament.detail.dateLabel')}</label>
-              <input
-                type="date"
-                value={regenDate}
-                onChange={e => setRegenDate(e.target.value)}
-                style={{
-                  padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--border)',
-                  fontSize: 14, background: 'var(--bg)', color: 'var(--text)', width: '100%', boxSizing: 'border-box',
-                }}
-              />
-            </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Čas zahájení</label>
-              <input
-                type="time"
-                value={regenTime}
-                onChange={e => setRegenTime(e.target.value)}
-                style={{
-                  padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--border)',
-                  fontSize: 14, background: 'var(--bg)', color: 'var(--text)', width: '100%', boxSizing: 'border-box',
-                }}
-              />
-            </div>
-          </div>
-          <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
-          <SettingsStepper label={t('tournament.detail.matchDuration')} value={regenDuration} min={1} max={120} onChange={setRegenDuration} unit="min" />
-          <div style={{ height: 1, background: 'var(--border)' }} />
-          <SettingsStepper label={t('tournament.detail.breakDuration')} value={regenBreak} min={0} max={15} onChange={setRegenBreak} unit="min" />
-          <div style={{ height: 1, background: 'var(--border)' }} />
-          <SettingsStepper label={t('tournament.detail.pitchCountLabel')} value={regenPitches} min={1} max={8} onChange={setRegenPitches} unit={t('tournament.detail.pitchUnit')} />
-        </div>
-        <button
-          onClick={handleRegenerate}
-          disabled={!regenDate || !regenTime}
-          style={{
-            background: regenSaved ? '#2E7D32' : 'var(--primary)', color: '#fff',
-            fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 10,
-            transition: 'background .2s', opacity: (!regenDate || !regenTime) ? 0.5 : 1,
-          }}
+      {/* Kritéria pro umístění v tabulce — collapsible */}
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div
+          onClick={() => setTiebreakerOpen(!tiebreakerOpen)}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
         >
-          {regenSaved ? '✅ ' + t('tournament.detail.scheduleRegenerated') : '🔄 ' + t('tournament.detail.regenerateSchedule')}
-        </button>
-      </div>
-      )}
-
-      {/* Viditelnost střelců + Chat — toggley */}
-      {isOwner && (
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {/* Scorer visibility */}
-        <div>
-          <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>⚽ {t('tournament.scorers.visibilityTitle')}</h3>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{t('tournament.scorers.visibilityDesc')}</p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {[true, false].map(val => (
-              <button
-                key={String(val)}
-                onClick={async () => {
-                  await updateTournament(tournament.id, {
-                    settings: { ...tournament.settings, scorersVisible: val },
-                  });
-                }}
-                style={{
-                  flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 13,
-                  background: (tournament.settings.scorersVisible ?? true) === val ? 'var(--primary)' : 'var(--surface-var)',
-                  color: (tournament.settings.scorersVisible ?? true) === val ? '#fff' : 'var(--text)',
-                  transition: 'background .15s',
-                }}
-              >
-                {val ? `👁 ${t('tournament.scorers.visible')}` : `🔒 ${t('tournament.scorers.hidden')}`}
-              </button>
-            ))}
-          </div>
+          <h3 style={{ fontWeight: 700, fontSize: 15, flex: 1, margin: 0 }}>🏅 {t('tournament.tiebreaker.title')}</h3>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .2s', transform: tiebreakerOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </div>
 
-        <div style={{ height: 1, background: 'var(--border)' }} />
-
-        {/* Chat toggle */}
-        <div>
-          <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>💬 {t('tournament.chat.enableTitle')}</h3>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{t('tournament.chat.enableDesc')}</p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {[true, false].map(val => (
-              <button
-                key={String(val)}
-                onClick={async () => {
-                  await updateTournament(tournament.id, {
-                    settings: { ...tournament.settings, chatEnabled: val },
-                  });
-                }}
-                style={{
-                  flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 13,
-                  background: (tournament.settings.chatEnabled ?? false) === val ? 'var(--primary)' : 'var(--surface-var)',
-                  color: (tournament.settings.chatEnabled ?? false) === val ? '#fff' : 'var(--text)',
-                  transition: 'background .15s',
-                }}
-              >
-                {val ? `✅ ${t('tournament.chat.enabled')}` : `❌ ${t('tournament.chat.disabled')}`}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-      )}
-
-      {/* Kritéria pro umístění v tabulce — drag & drop */}
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>🏅 {t('tournament.tiebreaker.title')}</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
-          {isOwner ? t('tournament.tiebreaker.desc') : 'V případě shody bodů rozhodují tato kritéria postupně:'}
+        {tiebreakerOpen && <>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4, lineHeight: 1.5 }}>
+          {isOwner ? t('tournament.tiebreaker.desc') : t('tournament.tiebreaker.descReadonly')}
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -685,130 +929,265 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
               setTimeout(() => setTbSaved(false), 2000);
             }}
             style={{
-              marginTop: 12, width: '100%',
+              marginTop: 4, width: '100%',
               background: tbSaved ? '#2E7D32' : 'var(--primary)', color: '#fff',
-              fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 10,
+              fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 12,
               transition: 'background .2s',
             }}
           >
             {tbSaved ? `✅ ${t('tournament.tiebreaker.saved')}` : `💾 ${t('tournament.tiebreaker.title')}`}
           </button>
         )}
+        </>}
       </div>
 
-      {/* Správa týmů — odebrání nepřijízdivších */}
+      {/* ── Správa týmů — collapsible, default closed ── */}
       {isOwner && (
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>👥 {t('tournament.teams.title')}</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
-          Pokud tým nepřijel, odeberte ho. Zápasy se přepočítají.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {tournament.teams.map(team => {
-            const matchCount = tournament.matches.filter(
-              m => m.homeTeamId === team.id || m.awayTeamId === team.id,
-            ).length;
-            return (
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div
+          onClick={() => setTeamMgmtOpen(!teamMgmtOpen)}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
+        >
+          <h3 style={{ fontWeight: 700, fontSize: 15, flex: 1, margin: 0 }}>👥 {t('settings.teamManagement')}</h3>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+            {tournament.teams.length} {t('settings.teamsCount')}
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .2s', transform: teamMgmtOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+        </div>
+        {!teamMgmtOpen && (
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+            {t('settings.teamManagementHint')}
+          </p>
+        )}
+        {teamMgmtOpen && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {tournament.teams.map(team => (
               <div key={team.id} style={{
-                display: 'flex', alignItems: 'center', gap: 10,
+                display: 'flex', alignItems: 'center', gap: 8,
                 padding: '8px 10px', background: 'var(--surface-var)', borderRadius: 10,
               }}>
                 <TeamBadge team={team} size={14} />
-                <span style={{ flex: 1, fontWeight: 600, fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ flex: 1, fontWeight: 600, fontSize: 13, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {team.name}
-                </span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
-                  {matchCount} {matchCount === 1 ? 'zápas' : matchCount < 5 ? 'zápasy' : 'zápasů'}
                 </span>
                 <button
                   onClick={async () => {
-                    if (tournament.teams.length <= 2) {
-                      alert(t('tournament.teams.minTeams'));
-                      return;
+                    const ok = await ask({
+                      title: t('settings.removeTeamTitle'),
+                      message: t('settings.removeTeamMsg', { team: team.name }),
+                    });
+                    if (ok) {
+                      await removeTeam(tournament.id, team.id);
+                      setTeamRemoved(true);
+                      setTimeout(() => setTeamRemoved(false), 2000);
                     }
-                    const msg = t('tournament.teams.noShowConfirm').replace('{name}', team.name);
-                    const ok = await ask({ title: t('common.remove'), message: msg, destructive: true });
-                    if (!ok) return;
-                    await removeTeam(tournament.id, team.id);
-                    setTeamRemoved(true);
-                    setTimeout(() => setTeamRemoved(false), 2500);
                   }}
                   style={{
-                    padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                    background: '#FFEBEE', color: '#C62828', border: '1px solid #FFCDD2',
-                    flexShrink: 0,
+                    padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    background: '#FFEBEE', color: '#C62828',
+                    border: '1px solid #FFCDD2', cursor: 'pointer', flexShrink: 0,
                   }}
                 >
-                  🚫 {t('tournament.teams.noShow')}
+                  ✕ {t('common.remove')}
                 </button>
               </div>
-            );
-          })}
-        </div>
-        {teamRemoved && (
-          <div style={{
-            marginTop: 10, padding: '10px 14px', background: '#E8F5E9', borderRadius: 10,
-            fontSize: 13, fontWeight: 700, color: '#2E7D32', textAlign: 'center',
-          }}>
-            ✅ {t('tournament.teams.removed')}
+            ))}
+            {teamRemoved && (
+              <p style={{ fontSize: 12, color: '#2E7D32', fontWeight: 600, margin: 0 }}>
+                ✅ {t('settings.teamRemoved')}
+              </p>
+            )}
           </div>
         )}
       </div>
       )}
 
-      {/* Informace */}
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>ℹ️ Informace</h3>
-        {[
-          { label: t('tournament.detail.matchDuration'), value: `${tournament.settings.matchDurationMinutes} min` },
-          { label: t('tournament.detail.breakDuration'), value: `${tournament.settings.breakBetweenMatchesMinutes} min` },
-          { label: t('tournament.detail.teamCount'), value: String(tournament.teams.length) },
-          { label: t('tournament.detail.totalMatches'), value: String(tournament.matches.length) },
-        ].map(({ label, value }) => (
-          <div key={label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
-            <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-            <span style={{ fontWeight: 600 }}>{value}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* PDF & CSV export */}
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('pdf.downloadPdf')}</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.4, margin: 0 }}>
-          {t('pdf.downloadDesc')}
-        </p>
-        <button onClick={handlePdfExport} disabled={pdfExporting} style={{
-          background: pdfExporting ? 'var(--border)' : 'var(--primary)', color: pdfExporting ? 'var(--text-muted)' : '#fff',
-          fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 10,
-          cursor: pdfExporting ? 'wait' : 'pointer', transition: 'background .2s',
-        }}>
-          {pdfExporting ? `⏳ ${t('pdf.generating')}` : `📄 ${t('pdf.downloadPdf')}`}
-        </button>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={() => exportTournamentStandingsCSV(tournament, t)} style={{
-            background: 'var(--surface-var)', fontWeight: 600, fontSize: 13, padding: '8px 14px',
-            borderRadius: 8, color: 'var(--text)',
-          }}>
-            📊 {t('csv.exportStandings')}
-          </button>
-          <button onClick={() => exportTournamentMatchesCSV(tournament, t)} style={{
-            background: 'var(--surface-var)', fontWeight: 600, fontSize: 13, padding: '8px 14px',
-            borderRadius: 8, color: 'var(--text)',
-          }}>
-            📋 {t('csv.exportMatches')}
-          </button>
-          <button onClick={() => exportTournamentScorersCSV(tournament, t)} style={{
-            background: 'var(--surface-var)', fontWeight: 600, fontSize: 13, padding: '8px 14px',
-            borderRadius: 8, color: 'var(--text)',
-          }}>
-            ⚽ {t('csv.exportScorers')}
-          </button>
+      {/* Přegenerování harmonogramu — collapsible */}
+      {isOwner && (
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div
+          onClick={() => setRegenOpen(!regenOpen)}
+          style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
+        >
+          <h3 style={{ fontWeight: 700, fontSize: 15, flex: 1, margin: 0 }}>🔄 {t('tournament.detail.regenerateSchedule')}</h3>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .2s', transform: regenOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </div>
-      </div>
 
-      {/* Uložit jako šablonu (pro ukončené turnaje) */}
-      {isOwner && tournament.status === 'finished' && (
+        {regenOpen && <>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+          {t('tournament.detail.regenerateDesc')}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{t('tournament.detail.dateLabel')}</label>
+              <input
+                type="date"
+                value={regenDate}
+                onChange={e => setRegenDate(e.target.value)}
+                style={{
+                  padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--border)',
+                  fontSize: 14, background: 'var(--bg)', color: 'var(--text)', width: '100%', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>{t('tournament.settings.startTimeLabel')}</label>
+              <input
+                type="time"
+                value={regenTime}
+                onChange={e => setRegenTime(e.target.value)}
+                style={{
+                  padding: '8px 10px', borderRadius: 10, border: '1.5px solid var(--border)',
+                  fontSize: 14, background: 'var(--bg)', color: 'var(--text)', width: '100%', boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          </div>
+          <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+          <SettingsStepper label={t('tournament.detail.matchDuration')} value={regenDuration} min={1} max={120} onChange={setRegenDuration} unit="min" />
+          <div style={{ height: 1, background: 'var(--border)' }} />
+          <SettingsStepper label={t('tournament.detail.breakDuration')} value={regenBreak} min={0} max={15} onChange={setRegenBreak} unit="min" />
+          <div style={{ height: 1, background: 'var(--border)' }} />
+          <SettingsStepper label={t('tournament.detail.pitchCountLabel')} value={regenPitches} min={1} max={8} onChange={setRegenPitches} unit={t('tournament.detail.pitchUnit')} />
+        </div>
+        <button
+          onClick={handleRegenerate}
+          disabled={!regenDate || !regenTime}
+          style={{
+            background: regenSaved ? '#2E7D32' : 'var(--primary)', color: '#fff',
+            fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 12,
+            transition: 'background .2s', opacity: (!regenDate || !regenTime) ? 0.5 : 1,
+          }}
+        >
+          {regenSaved ? '✅ ' + t('tournament.detail.scheduleRegenerated') : '🔄 ' + t('tournament.detail.regenerateSchedule')}
+        </button>
+        </>}
+      </div>
+      )}
+
+      {/* Roster preview modal */}
+      {rosterPreview && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+          onClick={() => setRosterPreview(null)}
+        >
+          <div
+            style={{ background: 'var(--surface)', borderRadius: 20, padding: '24px', width: '100%', maxWidth: 400, maxHeight: '80vh', overflow: 'auto' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>{t('roster.previewTitle')}</h3>
+              <button onClick={() => setRosterPreview(null)} aria-label="Close" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>{t('roster.coach')}</div>
+              <p style={{ fontSize: 15, fontWeight: 600, margin: '2px 0' }}>{rosterPreview.coach.name}</p>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0' }}>📞 {rosterPreview.coach.phone}</p>
+              {rosterPreview.coach.email && (
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '2px 0' }}>📧 {rosterPreview.coach.email}</p>
+              )}
+            </div>
+
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
+              {t('roster.players')} ({rosterPreview.players.length})
+            </div>
+            {rosterPreview.players.map((p, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 0', borderBottom: i < rosterPreview.players.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', width: 28, textAlign: 'center' }}>
+                  {p.jerseyNumber || '–'}
+                </span>
+                <span style={{ flex: 1, fontSize: 14 }}>{p.name}</span>
+                {p.birthYear && (
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.birthYear}</span>
+                )}
+              </div>
+            ))}
+
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12 }}>
+              {t('roster.statusSubmitted')} · {new Date(rosterPreview.submittedAt).toLocaleString(getDateLocale(locale))}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Admin roster fill sheet */}
+      {adminRosterTeamId && (() => {
+        const rosterTeam = tournament.teams.find(tm => tm.id === adminRosterTeamId);
+        if (!rosterTeam) return null;
+        return (
+          <AdminRosterSheet
+            tournament={tournament}
+            team={rosterTeam}
+            rosterMap={rosterMap}
+            onClose={() => setAdminRosterTeamId(null)}
+          />
+        );
+      })()}
+
+      {/* Změna PINu */}
+      {isOwner && (
+        <div style={{
+          background: 'var(--surface)', borderRadius: 14,
+          border: '1.5px solid var(--border)', overflow: 'hidden',
+        }}>
+          <div
+            onClick={() => setPinChangeOpen(!pinChangeOpen)}
+            style={{
+              padding: '14px 16px',
+              display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8,
+            }}
+          >
+            <h3 style={{ fontWeight: 700, fontSize: 15, flex: 1, margin: 0 }}>🔐 {t('tournament.settings.changePin')}</h3>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .2s', transform: pinChangeOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+          </div>
+          {pinChangeOpen && (
+            <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+                {t('tournament.settings.changePinDesc')}
+              </p>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                value={newPin}
+                onChange={e => { setNewPin(e.target.value.replace(/\D/g, '')); setPinChanged(false); }}
+                placeholder="••••"
+                style={{
+                  width: '100%', padding: '12px', borderRadius: 12, fontSize: 20,
+                  border: '2px solid var(--border)', background: 'var(--bg)',
+                  color: 'var(--text)', letterSpacing: 8, textAlign: 'center',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <button
+                disabled={newPin.length < 4}
+                onClick={async () => {
+                  const salt = generatePinSalt();
+                  const hash = await hashPin(newPin, salt);
+                  await updateTournament(tournament.id, { pinHash: hash, pinSalt: salt });
+                  setPinChanged(true);
+                  setNewPin('');
+                  setTimeout(() => setPinChanged(false), 3000);
+                }}
+                style={{
+                  background: newPin.length < 4 ? 'var(--border)' : 'var(--primary)',
+                  color: newPin.length < 4 ? 'var(--text-muted)' : '#fff',
+                  fontWeight: 700, fontSize: 14, padding: '12px', borderRadius: 12,
+                }}
+              >
+                {pinChanged ? '✅ ' + t('tournament.settings.pinChanged') : t('tournament.settings.changePinBtn')}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MVP výsledky — removed, now shown inline under toggle */}
+
+      {/* Uložit jako šablonu */}
+      {isOwner && (
         <button onClick={handleSaveAsTemplate} style={{
           background: '#E8F5E9', color: '#2E7D32', fontWeight: 700, fontSize: 14,
           padding: '14px', borderRadius: 14, border: '1.5px solid #C8E6C9',
@@ -823,7 +1202,7 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
           background: '#FFEBEE', color: '#C62828', fontWeight: 700, fontSize: 14,
           padding: '14px', borderRadius: 14, border: '1.5px solid #FFCDD2',
         }}>
-          🗑 Smazat turnaj
+          🗑 {t('tournament.settings.deleteTournament')}
         </button>
       ) : (
         <button onClick={async () => {
@@ -836,8 +1215,254 @@ export function SettingsTab({ tournament, navigate, isOwner, leaveTournament }: 
           background: '#FFF3E0', color: '#E65100', fontWeight: 700, fontSize: 14,
           padding: '14px', borderRadius: 14, border: '1.5px solid #FFE0B2',
         }}>
-          🚪 Opustit turnaj
+          🚪 {t('tournament.settings.leaveTournament')}
         </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Awards Editor ──────────────────────────────────────────────────────────
+/** i18n klíče pro výchozí ocenění — ukládáme klíč, zobrazujeme překlad */
+const AWARD_TITLE_KEYS = [
+  'tournament.awards.bestPlayer',
+  'tournament.awards.bestGoalkeeper',
+] as const;
+
+/** Všechny klíče pro překlad (včetně bestScorer pro zpětnou kompatibilitu) */
+const ALL_AWARD_KEYS = [...AWARD_TITLE_KEYS, 'tournament.awards.bestScorer', 'tournament.awards.fanFavorite'] as const;
+
+/** Pokud title je i18n klíč, vrátí překlad; jinak vrátí title as-is */
+export function translateAwardTitle(title: string, t: (key: string) => string): string {
+  if ((ALL_AWARD_KEYS as readonly string[]).includes(title)) return t(title);
+  return title;
+}
+
+function AwardsEditor({ tournament }: { tournament: Tournament }) {
+  const { t } = useI18n();
+  const updateTournament = useTournamentStore(s => s.updateTournament);
+  const awards = tournament.settings.awards ?? [];
+
+  const saveAward = async (titleKey: string, playerName: string, teamId?: string) => {
+    const existing = awards.findIndex(a => a.title === titleKey);
+    let updated: typeof awards;
+    if (existing >= 0) {
+      updated = awards.map((a, i) => i === existing ? { ...a, playerName, teamId } : a);
+    } else {
+      updated = [...awards, { title: titleKey, playerName, teamId }];
+    }
+    await updateTournament(tournament.id, {
+      settings: { ...tournament.settings, awards: updated },
+    });
+  };
+
+  const clearAward = async (titleKey: string) => {
+    const updated = awards.filter(a => a.title !== titleKey);
+    await updateTournament(tournament.id, {
+      settings: { ...tournament.settings, awards: updated },
+    });
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {AWARD_TITLE_KEYS.map(key => {
+        const award = awards.find(a => a.title === key);
+        return (
+          <AwardRow
+            key={key}
+            titleKey={key}
+            label={t(key)}
+            tournament={tournament}
+            currentPlayerName={award?.playerName}
+            currentTeamId={award?.teamId}
+            onSave={(playerName, teamId) => saveAward(key, playerName, teamId)}
+            onClear={() => clearAward(key)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/** Jeden řádek ocenění — kompaktní výběr hráče */
+function AwardRow({ titleKey, label, tournament, currentPlayerName, currentTeamId, onSave, onClear }: {
+  titleKey: string;
+  label: string;
+  tournament: Tournament;
+  currentPlayerName?: string;
+  currentTeamId?: string;
+  onSave: (playerName: string, teamId?: string) => Promise<void>;
+  onClear: () => Promise<void>;
+}) {
+  const { t } = useI18n();
+  const [editing, setEditing] = useState(false);
+  const [teamId, setTeamId] = useState(currentTeamId ?? '');
+  const [playerId, setPlayerId] = useState('');
+  const [playerName, setPlayerName] = useState(currentPlayerName ?? '');
+
+  const team = teamId ? tournament.teams.find(tm => tm.id === teamId) : null;
+  const players = team?.players ?? [];
+  const currentTeam = currentTeamId ? tournament.teams.find(tm => tm.id === currentTeamId) : null;
+
+  const icons: Record<string, string> = {
+    'tournament.awards.bestPlayer': '⭐',
+    'tournament.awards.bestGoalkeeper': '🧤',
+  };
+
+  const handleTeamSelect = (tid: string) => {
+    setTeamId(tid);
+    setPlayerId('');
+    setPlayerName('');
+  };
+
+  const handlePlayerSelect = (pid: string, pName: string) => {
+    setPlayerId(pid);
+    setPlayerName(pName);
+  };
+
+  const handleSave = async () => {
+    if (!playerName.trim()) return;
+    await onSave(playerName.trim(), teamId || undefined);
+    setEditing(false);
+  };
+
+  if (currentPlayerName && !editing) {
+    // Uložené ocenění — zobrazení
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '10px 12px', borderRadius: 14, background: 'var(--surface-var)',
+      }}>
+        <span style={{ fontSize: 18, flexShrink: 0 }}>{icons[titleKey] ?? '🏆'}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>{label}</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 1 }}>
+            {currentPlayerName}{currentTeam ? ` · ${currentTeam.name}` : ''}
+          </div>
+        </div>
+        <button
+          onClick={() => { setEditing(true); setTeamId(currentTeamId ?? ''); setPlayerName(currentPlayerName ?? ''); }}
+          style={{
+            padding: '4px 8px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+            background: 'var(--surface)', color: 'var(--text-muted)',
+            border: '1px solid var(--border)', cursor: 'pointer', flexShrink: 0,
+          }}
+        >✏️</button>
+        <button
+          onClick={onClear}
+          style={{
+            padding: '4px 8px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+            background: '#FFEBEE', color: '#C62828',
+            border: '1px solid #FFCDD2', cursor: 'pointer', flexShrink: 0,
+          }}
+        >✕</button>
+      </div>
+    );
+  }
+
+  // Needitované nebo editing — výběr hráče
+  return (
+    <div style={{
+      padding: '10px 12px', borderRadius: 14, background: 'var(--surface-var)',
+      display: 'flex', flexDirection: 'column', gap: 6,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ fontSize: 18, flexShrink: 0 }}>{icons[titleKey] ?? '🏆'}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, flex: 1 }}>{label}</span>
+        {editing && (
+          <button
+            onClick={() => setEditing(false)}
+            style={{
+              padding: '2px 8px', borderRadius: 8, fontSize: 11,
+              background: 'var(--surface)', color: 'var(--text-muted)',
+              border: '1px solid var(--border)', cursor: 'pointer',
+            }}
+          >{t('common.cancel')}</button>
+        )}
+      </div>
+
+      {/* Team select — custom dropdown */}
+      <Dropdown
+        trigger={
+          <div style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            {team ? (
+              <ColorDot color={team.color ?? 'var(--primary)'} />
+            ) : (
+              <span style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}>👕</span>
+            )}
+            <span style={{
+              flex: 1, fontSize: 14, fontWeight: 600, textAlign: 'left',
+              color: team ? 'var(--text)' : 'var(--text-muted)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
+              {team ? team.name : t('tournament.awards.selectTeam')}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>▾</span>
+          </div>
+        }
+        triggerStyle={{
+          width: '100%', padding: '10px 12px', borderRadius: 12,
+          background: 'var(--bg)', border: '1.5px solid var(--border)',
+        }}
+        items={tournament.teams.map(tm => ({
+          id: tm.id,
+          label: tm.name,
+          icon: <ColorDot color={tm.color ?? 'var(--primary)'} />,
+          active: teamId === tm.id,
+          accentColor: teamId === tm.id ? (tm.color ?? 'var(--primary)') : undefined,
+          right: teamId === tm.id ? <span style={{ color: tm.color ?? 'var(--primary)' }}>✓</span> : undefined,
+          onClick: () => handleTeamSelect(tm.id),
+        }))}
+        align="left"
+        width="100%"
+      />
+
+      {/* Player select — custom dropdown */}
+      {team && players.length > 0 && (
+        <Dropdown
+          trigger={
+            <div style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <span style={{ fontSize: 14, lineHeight: 1, flexShrink: 0 }}>👤</span>
+              <span style={{
+                flex: 1, fontSize: 14, fontWeight: 600, textAlign: 'left',
+                color: playerId ? 'var(--text)' : 'var(--text-muted)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {playerId ? playerName : t('tournament.awards.selectPlayer')}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>▾</span>
+            </div>
+          }
+          triggerStyle={{
+            width: '100%', padding: '10px 12px', borderRadius: 12,
+            background: 'var(--bg)', border: '1.5px solid var(--border)',
+          }}
+          items={[...players].sort((a, b) => a.jerseyNumber - b.jerseyNumber).map(p => ({
+            id: p.id,
+            label: `#${p.jerseyNumber} ${p.name}`,
+            active: playerId === p.id,
+            right: playerId === p.id ? <span style={{ color: 'var(--primary)' }}>✓</span> : undefined,
+            onClick: () => handlePlayerSelect(p.id, p.name),
+          }))}
+          align="left"
+          width="100%"
+        />
+      )}
+
+      {/* Save button */}
+      {playerName.trim() && (
+        <button
+          onClick={handleSave}
+          style={{
+            padding: '8px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+            background: 'var(--primary)', color: '#fff',
+            border: 'none', cursor: 'pointer',
+          }}
+        >{t('tournament.awards.confirm')}</button>
       )}
     </div>
   );

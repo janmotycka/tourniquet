@@ -35,7 +35,7 @@ export function PinAndScheduleStep({
   settings,
   onResetMatchOrder,
 }: PinAndScheduleStepProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   // -- Schedule validation --
   const [scheduleWarnings, setScheduleWarnings] = useState<string[]>([]);
@@ -146,13 +146,13 @@ export function PinAndScheduleStep({
     const slotIndex = Math.floor(index / numberOfPitches);
     const offsetMs = slotIndex * (matchDuration + breakDuration) * 60 * 1000;
     const dt = new Date(startDt.getTime() + offsetMs);
-    return formatMatchTime(dt.toISOString());
+    return formatMatchTime(dt.toISOString(), locale);
   };
 
   return (
     <>
       {/* PIN */}
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.pinOrg')}</h3>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
           {t('tournament.create.pinDesc')}
@@ -193,7 +193,7 @@ export function PinAndScheduleStep({
       </div>
 
       {/* Poradi zapasu -- interaktivni seznam */}
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.scheduleOrder')}</h3>
           <button onClick={handleResetMatchOrder} style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}>

@@ -68,7 +68,7 @@ export function TeamsStep({
 
       {/* Tymy */}
       {teams.map((team, tIdx) => (
-        <div key={tIdx} style={{ background: 'var(--surface)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+        <div key={tIdx} style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
           {/* Zahlavi tymu */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px' }}>
             {/* Logo nebo barevne kolecko */}

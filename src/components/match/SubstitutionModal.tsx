@@ -29,13 +29,13 @@ export function SubstitutionModal({ match, onAdd, onClose, suggestedIn, suggeste
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)',
-      display: 'flex', alignItems: 'flex-end', zIndex: 100,
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 100,
     }} onClick={onClose}>
       <div
         style={{
           background: 'var(--surface)', borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
-          width: '100%', maxHeight: '85dvh', overflowY: 'auto',
+          width: '100%', maxWidth: 480, maxHeight: '85dvh', overflowY: 'auto',
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -50,7 +50,7 @@ export function SubstitutionModal({ match, onAdd, onClose, suggestedIn, suggeste
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button onClick={() => setMinute(m => Math.max(1, m - 1))}
               style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontSize: 20, fontWeight: 700 }}>−</button>
-            <span style={{ fontWeight: 800, fontSize: 22, minWidth: 40, textAlign: 'center', color: '#1565C0' }}>{minute}'</span>
+            <span style={{ fontWeight: 800, fontSize: 22, minWidth: 40, textAlign: 'center', color: 'var(--primary)' }}>{minute}'</span>
             <button onClick={() => setMinute(m => m + 1)}
               style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontSize: 20, fontWeight: 700 }}>+</button>
           </div>
@@ -128,7 +128,7 @@ export function SubstitutionModal({ match, onAdd, onClose, suggestedIn, suggeste
           disabled={!playerOutId || !playerInId}
           style={{
             width: '100%', padding: '14px', borderRadius: 14, fontWeight: 800, fontSize: 16,
-            background: (playerOutId && playerInId) ? '#1565C0' : 'var(--border)',
+            background: (playerOutId && playerInId) ? 'var(--primary)' : 'var(--border)',
             color: (playerOutId && playerInId) ? '#fff' : 'var(--text-muted)',
           }}
         >

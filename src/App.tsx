@@ -3,9 +3,12 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { I18nProvider, useI18n } from './i18n';
 import { ThemeProvider } from './theme/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
+import { LandingPage } from './pages/LandingPage';
 import { HomePage } from './pages/HomePage';
 import { TournamentPublicView } from './pages/tournament/TournamentPublicView';
 import { RosterFormPage } from './pages/tournament/RosterFormPage';
+import { RegistrationFormPage } from './pages/tournament/RegistrationFormPage';
+import { MatchPublicView } from './pages/match/MatchPublicView';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ToastContainer } from './components/ToastContainer';
 import { CookieConsent } from './components/CookieConsent';
@@ -20,6 +23,7 @@ import { useContactsStore } from './store/contacts.store';
 import { useMatchesStore } from './store/matches.store';
 import { useTemplatesStore } from './store/templates.store';
 import { useClubsStore } from './store/clubs.store';
+import { useTrainingsStore } from './store/trainings.store';
 import type { TrainingUnit } from './types/training.types';
 
 // ─── Lazy-loaded stránky (sekundární, ne na kritické cestě) ─────────────────
@@ -44,6 +48,7 @@ const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage').then(
 
 export type Page =
   | { name: 'home' }
+  | { name: 'login' }
   | { name: 'training-home' }
   | { name: 'generator' }
   | { name: 'training'; training: TrainingUnit }
@@ -56,10 +61,12 @@ export type Page =
   | { name: 'tournament-detail'; tournamentId: string }
   | { name: 'tournament-public'; tournamentId: string }
   | { name: 'roster-form'; tournamentId: string; teamToken: string }
+  | { name: 'registration-form'; tournamentId: string }
   | { name: 'clubs' }
   | { name: 'match-list' }
   | { name: 'match-create' }
   | { name: 'match-detail'; matchId: string }
+  | { name: 'match-public'; matchId: string }
   | { name: 'match-stats' }
   | { name: 'settings' }
   | { name: 'privacy-policy' }
@@ -93,13 +100,17 @@ function AppRouter() {
   const loadTemplates = useTemplatesStore(s => s.loadFromFirebase);
   const loadClubs = useClubsStore(s => s.loadFromFirebase);
   const setClubsFirebaseUid = useClubsStore(s => s.setFirebaseUid);
+  const loadTrainings = useTrainingsStore(s => s.loadFromFirebase);
+  const setTrainingsFirebaseUid = useTrainingsStore(s => s.setFirebaseUid);
 
   const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin } = usePageStore();
 
   const navigate = (p: Page) => {
     if (p.name === 'tournament-public') {
       window.location.hash = `tournament=${p.tournamentId}`;
-    } else if (window.location.hash.startsWith('#tournament=')) {
+    } else if (p.name === 'match-public') {
+      window.location.hash = `match=${p.matchId}`;
+    } else if (window.location.hash.startsWith('#tournament=') || window.location.hash.startsWith('#match=')) {
       history.replaceState(null, '', window.location.pathname + window.location.search);
     }
     setPage(p);
@@ -113,14 +124,16 @@ function AppRouter() {
       loadMatches(user.uid);
       loadTemplates(user.uid);
       loadClubs(user.uid);
+      loadTrainings(user.uid);
       const unsubscribe = subscribeToStatus(user.uid);
       return () => unsubscribe();
     } else {
       setFirebaseUid(null);
       setMatchesFirebaseUid(null);
       setClubsFirebaseUid(null);
+      setTrainingsFirebaseUid(null);
     }
-  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, loadMatches, setMatchesFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid]);
+  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, loadMatches, setMatchesFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, loadTrainings, setTrainingsFirebaseUid]);
 
   // Po přihlášení + existuje joinIntent → přesměrovat zpět na public view
   useEffect(() => {
@@ -143,20 +156,15 @@ function AppRouter() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Načítání Firebase auth stavu
-  if (loading) {
-    return (
-      <div style={{
-        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        minHeight: '100dvh', flexDirection: 'column', gap: 16,
-      }}>
-        <div style={{ fontSize: 48 }}>⚽</div>
-        <p style={{ color: 'var(--text-muted)', fontSize: 15 }}>{t('app.loading')}</p>
-      </div>
-    );
-  }
+  // Po přihlášení z login stránky přesměruj na home
+  // (musí být PŘED early returns — React hooks nesmí měnit pořadí mezi rendery)
+  useEffect(() => {
+    if (user && page.name === 'login') {
+      setPage({ name: 'home' });
+    }
+  }, [user, page.name, setPage]);
 
-  // Roster form — trenér vyplní soupisku, nevyžaduje přihlášení
+  // Veřejné stránky — nevyžadují přihlášení, renderují se i během načítání auth
   if (page.name === 'roster-form') {
     return (
       <RosterFormPage
@@ -167,7 +175,15 @@ function AppRouter() {
     );
   }
 
-  // Public view nevyžaduje přihlášení — diváci a rodiče
+  if (page.name === 'registration-form') {
+    return (
+      <RegistrationFormPage
+        tournamentId={page.tournamentId}
+        navigate={navigate}
+      />
+    );
+  }
+
   if (page.name === 'tournament-public') {
     return (
       <TournamentPublicView
@@ -182,9 +198,29 @@ function AppRouter() {
     );
   }
 
+  if (page.name === 'match-public') {
+    return <MatchPublicView matchId={page.matchId} />;
+  }
+
+  // Načítání Firebase auth stavu — jen pro autentizované stránky
+  if (loading) {
+    return (
+      <div style={{
+        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100dvh', flexDirection: 'column', gap: 16,
+      }}>
+        <div style={{ fontSize: 48 }}>⚽</div>
+        <p style={{ color: 'var(--text-muted)', fontSize: 15 }}>{t('app.loading')}</p>
+      </div>
+    );
+  }
+
   // Ostatní stránky vyžadují přihlášení
   if (!user) {
-    return <LoginPage />;
+    if (page.name === 'home') {
+      return <LandingPage navigate={navigate} onLogin={() => setPage({ name: 'login' })} />;
+    }
+    return <LoginPage onBack={() => setPage({ name: 'home' })} />;
   }
 
   return (
@@ -192,7 +228,7 @@ function AppRouter() {
       <OnboardingModal navigate={navigate} />
 
       <Suspense fallback={<PageSpinner />}>
-        {page.name === 'home' && <HomePage navigate={navigate} />}
+        {(page.name === 'home' || page.name === 'login') && <HomePage navigate={navigate} />}
         {page.name === 'training-home' && <TrainingHomePage navigate={navigate} />}
         {page.name === 'generator' && <GeneratorPage navigate={navigate} />}
         {page.name === 'training' && (

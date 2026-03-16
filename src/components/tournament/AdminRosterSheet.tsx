@@ -74,8 +74,20 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
     }
     const jerseys = valid.filter(p => p.jerseyNumber.trim()).map(p => parseInt(p.jerseyNumber));
     if (new Set(jerseys).size !== jerseys.length) return t('roster.errorDuplicateJersey');
+    // Birth year age limit
+    const maxBirthYear = tournament.settings.maxBirthYear;
+    if (maxBirthYear) {
+      for (const p of valid) {
+        if (p.birthYear.trim()) {
+          const b = parseInt(p.birthYear);
+          if (!isNaN(b) && b < maxBirthYear) {
+            return t('roster.errorBirthYearTooOld', { name: p.name, year: p.birthYear, limit: String(maxBirthYear) });
+          }
+        }
+      }
+    }
     return null;
-  }, [coachName, coachPhone, players, t]);
+  }, [coachName, coachPhone, players, t, tournament]);
 
   const handleSave = async () => {
     const err = validate();
@@ -114,13 +126,13 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
 
   const inp: React.CSSProperties = {
     width: '100%', padding: '12px 14px', borderRadius: 12, border: '1.5px solid var(--border)',
-    fontSize: 15, background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none',
+    fontSize: 16, background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none',
   };
-  const sml: React.CSSProperties = { ...inp, padding: '10px 10px', fontSize: 14, textAlign: 'center' as const };
+  const sml: React.CSSProperties = { ...inp, padding: '10px 10px', fontSize: 16, textAlign: 'center' as const };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, padding: '0 0 32px', maxHeight: '90dvh', overflowY: 'auto' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 480, padding: '0 0 32px', maxHeight: '90dvh', overflowY: 'auto' }}>
         {/* Drag handle */}
         <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
           <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
@@ -170,7 +182,7 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
             {players.map(player => (
               <div key={player.id} style={{ display: 'grid', gridTemplateColumns: '48px 1fr 64px 28px', gap: 6, marginBottom: 6, alignItems: 'center' }}>
                 <input type="number" inputMode="numeric" value={player.jerseyNumber} onChange={e => updatePlayer(player.id, 'jerseyNumber', e.target.value)} placeholder="#" style={{ ...sml, width: '100%' }} min={1} max={99} />
-                <input type="text" value={player.name} onChange={e => updatePlayer(player.id, 'name', e.target.value)} placeholder={`${t('tournament.create.playerName')}…`} style={{ ...inp, padding: '10px 10px', fontSize: 14 }} />
+                <input type="text" value={player.name} onChange={e => updatePlayer(player.id, 'name', e.target.value)} placeholder={`${t('tournament.create.playerName')}…`} style={{ ...inp, padding: '10px 10px', fontSize: 16 }} />
                 <input type="number" inputMode="numeric" value={player.birthYear} onChange={e => updatePlayer(player.id, 'birthYear', e.target.value)} placeholder={String(new Date().getFullYear() - 10)} style={{ ...sml, width: '100%' }} />
                 {players.length > 1 ? (
                   <button onClick={() => removePlayer(player.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#999', padding: 0, lineHeight: 1 }} title={t('common.remove')}>✕</button>
@@ -182,6 +194,20 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
               + {t('roster.addPlayer')}
             </button>
           </div>
+
+          {/* Player count warning */}
+          {(() => {
+            const maxPlayers = tournament.settings.maxPlayersPerRoster;
+            const validCount = players.filter(p => p.name.trim()).length;
+            if (maxPlayers && maxPlayers > 0 && validCount > maxPlayers) {
+              return (
+                <div style={{ background: '#FFF3E0', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#E65100' }}>
+                  ⚠️ {t('roster.warnTooManyPlayers', { count: validCount, max: maxPlayers })}
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           {/* Error */}
           {error && (

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Page } from '../../App';
 import { useTournamentStore } from '../../store/tournament.store';
+import { subscribeToChatMessages } from '../../services/tournament.firebase';
 import { isPinVerified } from '../../utils/pin-hash';
 import { computeCurrentMinute } from '../../utils/tournament-schedule';
 import type { Match } from '../../types/tournament.types';
@@ -10,13 +11,15 @@ import { StandingsTab } from '../../components/tournament/StandingsTab';
 import { MatchesTab } from '../../components/tournament/MatchesTab';
 import { ScorersTab } from '../../components/tournament/ScorersTab';
 import { SettingsTab } from '../../components/tournament/SettingsTab';
+import { PublicChat } from '../../components/tournament/public';
 import { ScoreModal } from '../../components/tournament/ScoreModal';
 import { RosterModal } from '../../components/tournament/RosterModal';
 import { PinGate } from '../../components/tournament/PinGate';
+import { MvpAdminBanner } from '../../components/tournament/MvpAdminBanner';
 
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
-type Tab = 'standings' | 'matches' | 'scorers' | 'settings';
+type Tab = 'standings' | 'matches' | 'scorers' | 'chat' | 'settings';
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function TournamentDetailPage({ tournamentId, navigate }: Props) {
@@ -53,8 +56,8 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
         <div style={{ fontSize: 40 }}>😕</div>
-        <p>Turnaj nenalezen</p>
-        <button onClick={() => navigate({ name: 'tournament-list' })} style={{ color: 'var(--primary)', fontWeight: 700 }}>← Zpět</button>
+        <p>{t('tournament.detail.notFound')}</p>
+        <button onClick={() => navigate({ name: 'tournament-list' })} style={{ color: 'var(--primary)', fontWeight: 700 }}>{t('common.back')}</button>
       </div>
     );
   }
@@ -98,14 +101,56 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
   };
 
   const STATUS_LABELS: Record<string, string> = {
-    draft: 'Příprava', active: 'Probíhá', finished: 'Ukončen',
+    draft: t('tournament.detail.statusDraft'), active: t('tournament.detail.statusActive'), finished: t('tournament.detail.statusFinished'),
   };
 
-  const TABS: { id: Tab; label: string }[] = [
-    { id: 'matches', label: '⚽ Zápasy' },
-    { id: 'standings', label: '🏅 Tabulka' },
-    { id: 'scorers', label: '🥇 Střelci' },
-    { id: 'settings', label: '⚙️ Nastavení' },
+  const chatEnabled = tournament.settings.chatEnabled ?? false;
+
+  // ── Unread chat messages ───────────────────────────────────────────────────
+  const [unreadCount, setUnreadCount] = useState(0);
+  const lastReadRef = useRef<string>('');
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+
+  useEffect(() => {
+    if (tab === 'chat') {
+      setUnreadCount(0);
+      const now = new Date().toISOString();
+      lastReadRef.current = now;
+      try { localStorage.setItem(`torq_chat_read_${tournamentId}`, now); } catch { /* */ }
+    }
+  }, [tab, tournamentId]);
+
+  useEffect(() => {
+    if (!chatEnabled) return;
+    try {
+      lastReadRef.current = localStorage.getItem(`torq_chat_read_${tournamentId}`) ?? '';
+    } catch { /* */ }
+
+    const unsub = subscribeToChatMessages(tournamentId, (msgs) => {
+      if (tabRef.current !== 'chat' && msgs.length > 0) {
+        const lr = lastReadRef.current;
+        if (lr) {
+          setUnreadCount(msgs.filter(m => m.createdAt > lr).length);
+        } else {
+          setUnreadCount(msgs.length);
+        }
+      }
+    });
+    return unsub;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournamentId, chatEnabled]);
+
+  const chatLabel = unreadCount > 0
+    ? `💬 ${t('tournament.chat.title')} (${unreadCount > 99 ? '99+' : unreadCount})`
+    : `💬 ${t('tournament.chat.title')}`;
+
+  const TABS: { id: Tab; label: string; highlight?: boolean }[] = [
+    { id: 'matches', label: `⚽ ${t('tournament.detail.tabMatches')}` },
+    { id: 'standings', label: `🏅 ${t('tournament.detail.tabStandings')}` },
+    { id: 'scorers', label: `🥇 ${t('tournament.detail.tabScorers')}` },
+    ...(chatEnabled ? [{ id: 'chat' as Tab, label: chatLabel, highlight: unreadCount > 0 }] : []),
+    { id: 'settings', label: `⚙️ ${t('tournament.detail.tabSettings')}` },
   ];
 
   return (
@@ -125,7 +170,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
               🏆 {tournament.name}
             </h1>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-              {STATUS_LABELS[tournament.status]} · {tournament.teams.length} týmů
+              {STATUS_LABELS[tournament.status]} · {tournament.teams.length} {t('tournament.detail.teamsCount')}
             </div>
           </div>
           {!pinVerified && (
@@ -148,8 +193,8 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
                       navigate({ name: 'tournament-list' });
                     }
                   }}
-                  title="Opustit turnaj"
-                  aria-label="Opustit turnaj"
+                  title={t('tournament.detail.leaveTournamentTitle')}
+                  aria-label={t('tournament.detail.leaveTournamentTitle')}
                   style={{
                     width: 32, height: 32, borderRadius: 8,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -169,24 +214,35 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
           <div style={{
             background: '#C62828', color: '#fff', padding: '6px 16px',
             display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600,
+            overflow: 'hidden', minWidth: 0,
           }}>
-            <div style={{ width: 8, height: 8, borderRadius: 4, background: '#fff' }} />
-            ŽIVĚ: {tournament.teams.find(t => t.id === liveMatch.homeTeamId)?.name} {liveMatch.homeScore}:{liveMatch.awayScore} {tournament.teams.find(t => t.id === liveMatch.awayTeamId)?.name}
+            <div style={{ width: 8, height: 8, borderRadius: 4, background: '#fff', flexShrink: 0 }} />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+              {t('tournament.detail.livePrefix')}: {tournament.teams.find(t => t.id === liveMatch.homeTeamId)?.name} {liveMatch.homeScore}:{liveMatch.awayScore} {tournament.teams.find(t => t.id === liveMatch.awayTeamId)?.name}
+            </span>
           </div>
         )}
 
         {/* Tab bar */}
         <div style={{ display: 'flex', padding: '0 16px', gap: 0 }}>
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{
+          {TABS.map(ti => (
+            <button key={ti.id} onClick={() => setTab(ti.id)} style={{
               flex: 1, padding: '10px 6px', fontWeight: 600, fontSize: 13,
-              color: tab === t.id ? 'var(--primary)' : 'var(--text-muted)',
-              borderBottom: tab === t.id ? '2.5px solid var(--primary)' : '2.5px solid transparent',
+              color: tab === ti.id ? 'var(--primary)' : ti.highlight ? '#E53935' : 'var(--text-muted)',
+              borderBottom: tab === ti.id ? '2.5px solid var(--primary)' : '2.5px solid transparent',
               transition: 'all .15s',
-            }}>{t.label}</button>
+            }}>{ti.label}</button>
           ))}
         </div>
       </div>
+
+      {/* MVP admin banner — live results + stop button */}
+      <MvpAdminBanner
+        tournamentId={tournament.id}
+        teams={tournament.teams}
+        mvpVotingEnabled={tournament.settings.mvpVotingEnabled ?? false}
+        settings={tournament.settings as unknown as Record<string, unknown>}
+      />
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -206,6 +262,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
           />
         )}
         {tab === 'scorers' && <ScorersTab tournament={tournament} />}
+        {tab === 'chat' && chatEnabled && <PublicChat tournamentId={tournament.id} teams={tournament.teams} isAdmin />}
         {tab === 'settings' && <SettingsTab tournament={tournament} navigate={navigate} isOwner={isOwner} leaveTournament={leaveTournament} />}
       </div>
 

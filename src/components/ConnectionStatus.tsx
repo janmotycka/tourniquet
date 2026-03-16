@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useI18n } from '../i18n';
+import { Z } from '../utils/z-index';
 
 /**
  * Zobrazí banner na vrchu stránky pokud je uživatel offline.
@@ -26,7 +27,7 @@ export function ConnectionStatus() {
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10000,
+      position: 'fixed', top: 0, left: 0, right: 0, zIndex: Z.status,
       background: '#E65100', color: '#fff',
       padding: '8px 16px', textAlign: 'center',
       fontSize: 13, fontWeight: 600,

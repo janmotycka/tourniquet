@@ -18,7 +18,7 @@ export function LeaveConfirmModal({ onLeave, onCancel }: LeaveConfirmModalProps)
       <div style={{
         background: 'var(--surface)', borderRadius: 20, padding: '28px 24px',
         width: '100%', maxWidth: 340,
-        boxShadow: '0 12px 40px rgba(0,0,0,.25)',
+        boxShadow: '0 8px 32px rgba(0,0,0,.18)',
         display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'center',
       }}>
         <div style={{ fontSize: 36 }}>🚪</div>

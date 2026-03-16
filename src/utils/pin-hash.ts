@@ -33,13 +33,25 @@ export async function verifyPin(pin: string, hash: string, salt?: string): Promi
 const SESSION_KEY = (tournamentId: string) => `pin-verified-${tournamentId}`;
 
 export function markPinVerified(tournamentId: string): void {
-  sessionStorage.setItem(SESSION_KEY(tournamentId), '1');
+  try {
+    sessionStorage.setItem(SESSION_KEY(tournamentId), '1');
+  } catch {
+    // Private browsing or storage full — silently ignore
+  }
 }
 
 export function isPinVerified(tournamentId: string): boolean {
-  return sessionStorage.getItem(SESSION_KEY(tournamentId)) === '1';
+  try {
+    return sessionStorage.getItem(SESSION_KEY(tournamentId)) === '1';
+  } catch {
+    return false;
+  }
 }
 
 export function clearPinVerified(tournamentId: string): void {
-  sessionStorage.removeItem(SESSION_KEY(tournamentId));
+  try {
+    sessionStorage.removeItem(SESSION_KEY(tournamentId));
+  } catch {
+    // Silently ignore
+  }
 }

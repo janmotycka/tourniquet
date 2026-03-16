@@ -35,7 +35,7 @@ export function LineupTab({ match }: { match: SeasonMatch }) {
       }}>
         <div style={{
           width: 32, height: 32, borderRadius: 9, flexShrink: 0,
-          background: isBench ? 'var(--surface-var)' : '#1565C0',
+          background: isBench ? 'var(--surface-var)' : 'var(--primary)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 12, fontWeight: 800, color: isBench ? 'var(--text)' : '#fff',
         }}>
@@ -68,20 +68,20 @@ export function LineupTab({ match }: { match: SeasonMatch }) {
 
   return (
     <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '14px 16px' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
         <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>👕 Základní sestava ({starters.length})</h3>
         {starters.map(p => <PlayerRow key={p.playerId} p={p} />)}
       </div>
 
       {bench.length > 0 && (
-        <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
           <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>🪑 Náhradníci ({bench.length})</h3>
           {bench.map(p => <PlayerRow key={p.playerId} p={p} isBench />)}
         </div>
       )}
 
       {match.substitutions.length > 0 && (
-        <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '14px 16px' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
           <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>{t('match.detail.subsLog', { count: match.substitutions.length })}</h3>
           {match.substitutions.map(s => {
             const out = match.lineup.find(p => p.playerId === s.playerOutId);

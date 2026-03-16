@@ -3,7 +3,7 @@ import { useTournamentStore } from '../../store/tournament.store';
 import { useSubscriptionStore } from '../../store/subscription.store';
 import { computeStandings } from '../../utils/tournament-schedule';
 import { FeatureGate } from '../../components/FeatureGate';
-import { useI18n } from '../../i18n';
+import { useI18n, getDateLocale } from '../../i18n';
 import type { Page } from '../../App';
 import type { Tournament } from '../../types/tournament.types';
 import { colorSwatch } from '../../utils/team-colors';
@@ -21,9 +21,9 @@ function getStatusLabels(t: (key: string, params?: Record<string, string | numbe
 const PODIUM_EMOJI = ['🥇', '🥈', '🥉'];
 
 function TournamentCard({ t, onClick, isJoined, statusLabels }: { t: Tournament; onClick: () => void; isJoined?: boolean; statusLabels: Record<string, { label: string; color: string; bg: string }> }) {
-  const { t: tr } = useI18n();
+  const { t: tr, locale } = useI18n();
   const st = statusLabels[t.status];
-  const date = new Date(t.settings.startDate).toLocaleDateString('cs-CZ', {
+  const date = new Date(t.settings.startDate).toLocaleDateString(getDateLocale(locale), {
     day: 'numeric', month: 'long', year: 'numeric',
   });
   const finishedMatches = t.matches.filter(m => m.status === 'finished').length;
@@ -35,7 +35,7 @@ function TournamentCard({ t, onClick, isJoined, statusLabels }: { t: Tournament;
 
   return (
     <button onClick={onClick} style={{
-      background: 'var(--surface)', borderRadius: 16, padding: '16px',
+      background: 'var(--surface)', borderRadius: 14, padding: '16px',
       display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left',
       boxShadow: '0 1px 4px rgba(0,0,0,.06)', width: '100%', color: 'var(--text)',
     }}>
@@ -239,20 +239,20 @@ export function TournamentListPage({ navigate }: Props) {
           fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>←</button>
         <div style={{ flex: 1 }}>
-          <h1 style={{ fontWeight: 800, fontSize: 20 }}>🏆 Turnaje</h1>
+          <h1 style={{ fontWeight: 800, fontSize: 20 }}>🏆 {t('tournament.list.pageTitle')}</h1>
         </div>
         <button onClick={() => navigate({ name: 'clubs' })} style={{
           background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600, fontSize: 13,
           padding: '8px 12px', borderRadius: 10,
-        }}>🏟 Kluby</button>
+        }}>🏟 {t('tournament.list.clubsBtn')}</button>
         <button onClick={() => setShowJoinModal(true)} style={{
           background: '#E3F2FD', color: '#1565C0', fontWeight: 700, fontSize: 14,
           padding: '8px 14px', borderRadius: 10,
         }}>🔗 {t('tournament.list.joinBtn')}</button>
         <button onClick={() => navigate({ name: 'tournament-create' })} style={{
           background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 14,
-          padding: '8px 16px', borderRadius: 10,
-        }}>+ Nový</button>
+          padding: '8px 16px', borderRadius: 12,
+        }}>+ {t('common.new')}</button>
       </div>
 
       {/* Sync error banner */}
@@ -265,14 +265,14 @@ export function TournamentListPage({ navigate }: Props) {
           <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: 13, color: '#E65100' }}>
-              Synchronizace selhala
+              {t('tournament.list.syncFailed')}
             </div>
             <div style={{ fontSize: 12, color: '#BF360C', marginTop: 4, lineHeight: 1.4 }}>
               {syncError}
             </div>
             <div style={{ fontSize: 11, color: '#E65100', marginTop: 6, lineHeight: 1.4 }}>
-              Zkontrolujte Firebase pravidla v konzoli: Database → Rules.<br />
-              Cesta <code>/tournaments</code> a <code>/public</code> musí mít povolen zápis pro přihlášené uživatele.
+              {t('tournament.list.syncHint')}<br />
+              {t('tournament.list.syncHintPaths')}
             </div>
           </div>
           <button onClick={clearSyncError} style={{ fontSize: 16, color: '#E65100', padding: 4 }}>✕</button>
@@ -303,13 +303,13 @@ export function TournamentListPage({ navigate }: Props) {
             <div style={{ fontSize: 64 }}>🏆</div>
             <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center' }}>{t('tournament.list.noTournaments')}</h2>
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 15, lineHeight: 1.5 }}>
-              Vytvořte svůj první turnaj a začněte organizovat zápasy.
+              {t('tournament.list.emptyDesc')}
             </p>
             <button onClick={() => navigate({ name: 'tournament-create' })} style={{
               background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 16,
-              padding: '14px 32px', borderRadius: 14, marginTop: 8,
+              padding: '14px 32px', borderRadius: 12, marginTop: 8,
             }}>
-              ➕ Vytvořit turnaj
+              ➕ {t('tournament.list.createTournament')}
             </button>
           </div>
         ) : (
@@ -328,7 +328,7 @@ export function TournamentListPage({ navigate }: Props) {
             <FeatureGate
               currentCount={tournaments.length}
               maxAllowed={limits.maxTournaments}
-              featureLabel="turnajů"
+              featureLabel={t('tournament.list.featureLabelTournaments')}
               onUpgrade={() => navigate({ name: 'settings' })}
             >
               <button onClick={() => navigate({ name: 'tournament-create' })} style={{
@@ -336,7 +336,7 @@ export function TournamentListPage({ navigate }: Props) {
                 padding: '14px', borderRadius: 14, border: '2px dashed var(--primary)', opacity: 0.8,
                 marginTop: 4, width: '100%',
               }}>
-                ➕ Vytvořit nový turnaj
+                ➕ {t('tournament.list.createNew')}
               </button>
             </FeatureGate>
 
@@ -389,7 +389,7 @@ export function TournamentListPage({ navigate }: Props) {
           <div style={{
             background: 'var(--surface)', borderRadius: 20, padding: 24,
             width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', gap: 16,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            boxShadow: '0 8px 32px rgba(0,0,0,.18)',
           }} onClick={e => e.stopPropagation()}>
             <h2 style={{ fontWeight: 800, fontSize: 18, textAlign: 'center' }}>
               {t('tournament.list.joinTitle')}
@@ -397,7 +397,7 @@ export function TournamentListPage({ navigate }: Props) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
-                ID turnaje nebo odkaz
+                {t('tournament.list.joinIdLabel')}
               </label>
               <input
                 type="text"
@@ -414,7 +414,7 @@ export function TournamentListPage({ navigate }: Props) {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
-                PIN (6 číslic)
+                {t('tournament.list.joinPinLabel')}
               </label>
               <input
                 type="password"

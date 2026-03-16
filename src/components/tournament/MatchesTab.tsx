@@ -24,9 +24,10 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
   onCancelMatch?: (matchId: string) => void;
   onReorderMatches?: (reorderedScheduledIds: string[]) => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const ask = useConfirmStore(s => s.ask);
   const [openGoalPanel, setOpenGoalPanel] = useState<{ matchId: string; side: 'home' | 'away' } | null>(null);
+  const [reorderLocked, setReorderLocked] = useState(true);
   const getTeam = (id: string) => tournament.teams.find(tm => tm.id === id);
 
   const toggleGoal = (matchId: string, side: 'home' | 'away') => {
@@ -44,7 +45,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
     .filter(m => m.status === 'finished')
     .sort((a, b) => new Date(b.finishedAt ?? b.scheduledTime).getTime() - new Date(a.finishedAt ?? a.scheduledTime).getTime());
 
-  const canReorder = isVerified && !!onReorderMatches && scheduledMatches.length > 1;
+  const canReorder = isVerified && !!onReorderMatches && scheduledMatches.length > 1 && !reorderLocked;
 
   // DnD sensors — pointer (desktop) + touch (mobile) s aktivační vzdáleností
   const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 5 } });
@@ -117,10 +118,15 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                                 <div style={{ width: 5, height: 5, borderRadius: 3, background: isPaused ? '#E65100' : '#C62828' }} />
-                                <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: 0.5, color: isPaused ? '#E65100' : '#C62828' }}>
-                                  {isPaused ? 'PAUZA' : 'ŽIVĚ'}
+                                <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.5, color: isPaused ? '#E65100' : '#C62828' }}>
+                                  {isPaused ? t('tournament.detail.paused') : t('tournament.detail.live')}
                                 </span>
                               </div>
+                              {(tournament.settings.numberOfPitches ?? 1) > 1 && (
+                                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, lineHeight: 1 }}>
+                                  H{(match.pitchNumber ?? 1)}
+                                </span>
+                              )}
                             </div>
                             {/* Pravý tým */}
                             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, minWidth: 0 }}>
@@ -248,7 +254,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                                 <button
                                   onClick={() => onStartMatch(match.id)}
                                   style={{
-                                    width: 22, height: 22, borderRadius: 6,
+                                    width: 32, height: 32, borderRadius: 6,
                                     background: '#FFF3E0', color: '#E65100',
                                     fontWeight: 900, fontSize: 11,
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -260,12 +266,12 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                               : <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>·</span>
                             }
                             {!isFinished && (
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
-                                  {formatMatchTime(match.scheduledTime)}
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, textAlign: 'center', minWidth: 32 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, lineHeight: 1.3 }}>
+                                  {formatMatchTime(match.scheduledTime, locale)}
                                 </span>
                                 {(tournament.settings.numberOfPitches ?? 1) > 1 && (
-                                  <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                  <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, lineHeight: 1.2 }}>
                                     H{(match.pitchNumber ?? 1)}
                                   </span>
                                 )}
@@ -311,7 +317,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                             <button
                               onClick={() => onEditMatch(match)}
                               style={{
-                                flexShrink: 0, width: 30, height: 30, borderRadius: 8,
+                                flexShrink: 0, width: 34, height: 34, borderRadius: 8,
                                 background: 'var(--surface-var)', color: 'var(--text-muted)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 fontSize: 13, border: '1px solid var(--border)',
@@ -328,14 +334,14 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                                 }
                               }}
                               style={{
-                                flexShrink: 0, width: 30, height: 30, borderRadius: 8,
+                                flexShrink: 0, width: 34, height: 34, borderRadius: 8,
                                 background: '#FFEBEE', color: '#C62828',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 fontSize: 12, border: '1px solid #FFCDD2',
                               }}
                             >✕</button>
                           ) : (!isVerified || isScheduled) ? (
-                            <div style={{ width: 30, flexShrink: 0 }} />
+                            <div style={{ width: 34, flexShrink: 0 }} />
                           ) : null}
                         </div>
                       )}
@@ -380,7 +386,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
       {liveMatches.length > 0 && (
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#C62828', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-            🔴 Právě hrají
+            🔴 {t('tournament.detail.nowPlaying')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {liveMatches.map(m => <div key={m.id}>{renderMatchCard(m)}</div>)}
@@ -388,11 +394,27 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
         </div>
       )}
 
-      {/* 🕐 Scheduled — s DnD pokud je owner */}
+      {/* 🕐 Scheduled — s DnD pokud je owner a odemčeno */}
       {scheduledMatches.length > 0 && (
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-            🕐 Nadcházející
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              🕐 {t('tournament.detail.upcoming')}
+            </span>
+            {isVerified && !!onReorderMatches && scheduledMatches.length > 1 && (
+              <button
+                onClick={() => setReorderLocked(prev => !prev)}
+                style={{
+                  background: reorderLocked ? 'var(--surface-var)' : 'var(--primary-light)',
+                  border: reorderLocked ? '1px solid var(--border)' : '1.5px solid var(--primary)',
+                  borderRadius: 8, padding: '2px 8px', fontSize: 11, fontWeight: 600,
+                  color: reorderLocked ? 'var(--text-muted)' : 'var(--primary)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                {reorderLocked ? '🔒' : '🔓'} {reorderLocked ? t('tournament.detail.reorderLocked') : t('tournament.detail.reorderUnlocked')}
+              </button>
+            )}
           </div>
           {canReorder ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

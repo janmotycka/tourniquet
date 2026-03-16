@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Tournament, Match } from '../../../types/tournament.types';
 import { computeMatchElapsed, formatMatchTime } from '../../../utils/tournament-schedule';
 import { useI18n } from '../../../i18n';
@@ -28,15 +28,17 @@ function LiveRowTimer({ match: m }: { match: Match }) {
 }
 
 export function PublicResults({ tournament, selectedTeamId }: { tournament: Tournament; selectedTeamId: string | null }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   // Filtr: pokud vybrán tým, zobrazit jen zápasy kde tento tým hraje
-  const matchFilter = (m: Match) =>
-    selectedTeamId === null || m.homeTeamId === selectedTeamId || m.awayTeamId === selectedTeamId;
-
-  // Tři skupiny: živý → plánované → odehrané (nejnovější první)
-  const liveMatches = tournament.matches.filter(m => m.status === 'live' && matchFilter(m)).sort((a, b) => a.matchIndex - b.matchIndex);
-  const scheduledMatches = tournament.matches.filter(m => m.status === 'scheduled' && matchFilter(m)).sort((a, b) => a.matchIndex - b.matchIndex);
-  const finishedMatches = tournament.matches.filter(m => m.status === 'finished' && matchFilter(m)).sort((a, b) => b.matchIndex - a.matchIndex);
+  const { liveMatches, scheduledMatches, finishedMatches } = useMemo(() => {
+    const matchFilter = (m: Match) =>
+      selectedTeamId === null || m.homeTeamId === selectedTeamId || m.awayTeamId === selectedTeamId;
+    return {
+      liveMatches: tournament.matches.filter(m => m.status === 'live' && matchFilter(m)).sort((a, b) => a.matchIndex - b.matchIndex),
+      scheduledMatches: tournament.matches.filter(m => m.status === 'scheduled' && matchFilter(m)).sort((a, b) => a.matchIndex - b.matchIndex),
+      finishedMatches: tournament.matches.filter(m => m.status === 'finished' && matchFilter(m)).sort((a, b) => b.matchIndex - a.matchIndex),
+    };
+  }, [tournament.matches, selectedTeamId]);
   const getTeam = (id: string) => tournament.teams.find(tm => tm.id === id);
 
   function MatchRow({ match, isLive = false }: { match: Match; isLive?: boolean }) {
@@ -60,16 +62,16 @@ export function PublicResults({ tournament, selectedTeamId }: { tournament: Tour
       ? { background: '#E8F5E9', color: '#2E7D32', borderRadius: 8, padding: '4px 10px', fontWeight: 800, fontSize: 15, minWidth: 50, textAlign: 'center', flexShrink: 0 }
       : { color: 'var(--text-muted)', fontWeight: 600, fontSize: 14, minWidth: 50, textAlign: 'center', flexShrink: 0 };
 
-    // Ikonka stavu vlevo od času
+    // Ikonka stavu vlevo od času (jen live/finished, scheduled bez ikony kvůli centrování)
     const statusIcon = isLive
       ? <span style={{ fontSize: 9, color: '#C62828', flexShrink: 0 }}>●</span>
       : match.status === 'finished'
       ? <span style={{ fontSize: 11, color: '#2E7D32', flexShrink: 0 }}>✓</span>
-      : <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>·</span>;
+      : null;
 
     return (
       <div style={{
-        background: 'var(--surface)', borderRadius: 12,
+        background: 'var(--surface)', borderRadius: 14,
         border: isLive ? '2px solid #FFCDD2' : match.status === 'finished' ? '1.5px solid #C8E6C9' : '1.5px solid var(--border)',
         boxShadow: '0 1px 3px rgba(0,0,0,.05)',
         overflow: 'hidden',
@@ -90,8 +92,13 @@ export function PublicResults({ tournament, selectedTeamId }: { tournament: Tour
               <span style={scoreStyle}>{`${match.homeScore} : ${match.awayScore}`}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                 <div style={{ width: 5, height: 5, borderRadius: 3, background: '#C62828' }} />
-                <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: 0.5, color: '#C62828' }}>{t('tournament.public.liveLabel')}</span>
+                <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.5, color: '#C62828' }}>{t('tournament.public.liveLabel')}</span>
               </div>
+              {(tournament.settings.numberOfPitches ?? 1) > 1 && (
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>
+                  {t('tournament.public.pitch', { n: match.pitchNumber ?? 1 })}
+                </span>
+              )}
             </div>
 
             {/* Tým hosté — zarovnaný doprava, zalamuje se */}
@@ -121,7 +128,7 @@ export function PublicResults({ tournament, selectedTeamId }: { tournament: Tour
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                     {statusIcon}
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{formatMatchTime(match.scheduledTime)}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{formatMatchTime(match.scheduledTime, locale)}</span>
                   </div>
                   {(tournament.settings.numberOfPitches ?? 1) > 1 && (
                     <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>
@@ -234,7 +241,7 @@ export function PublicResults({ tournament, selectedTeamId }: { tournament: Tour
       {liveMatches.length > 0 && (
         <div>
           <h3 style={{ fontSize: 13, fontWeight: 700, color: '#C62828', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 8, color: '#C62828' }}>●</span> {t('tournament.public.nowPlaying')}
+            <span style={{ fontSize: 10, color: '#C62828' }}>●</span> {t('tournament.public.nowPlaying')}
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {liveMatches.map(m => <MatchRow key={m.id} match={m} isLive />)}

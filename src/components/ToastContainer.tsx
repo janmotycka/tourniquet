@@ -1,4 +1,5 @@
 import { useToastStore, type ToastEntry, type ToastType } from '../store/toast.store';
+import { Z } from '../utils/z-index';
 
 // ─── Barvy a ikony podle typu ─────────────────────────────────────────────────
 
@@ -61,7 +62,7 @@ export function ToastContainer() {
       `}</style>
       <div style={{
         position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
-        zIndex: 10000, display: 'flex', flexDirection: 'column', gap: 8,
+        zIndex: Z.toast, display: 'flex', flexDirection: 'column', gap: 8,
         alignItems: 'center', width: '100%', maxWidth: 400, padding: '0 16px',
         pointerEvents: 'none',
       }}>

@@ -22,6 +22,26 @@ window.addEventListener('error', (event) => {
   useToastStore.getState().show('error', `Error: ${event.message.slice(0, 120)}`, 6000);
 });
 
+// ─── Service Worker — force update on new version ───────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.ready.then((registration) => {
+    // Kontroluj novou verzi každých 60 sekund
+    setInterval(() => {
+      registration.update().catch(() => { /* ignore network errors */ });
+    }, 60_000);
+  });
+
+  // Když nový SW převezme kontrolu → reload stránky (s ochranou proti smyčce)
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      // Krátká prodleva aby SW stihl převzít kontrolu
+      setTimeout(() => window.location.reload(), 500);
+    }
+  });
+}
+
 // ─── Render ──────────────────────────────────────────────────────────────────
 
 createRoot(document.getElementById('root')!).render(

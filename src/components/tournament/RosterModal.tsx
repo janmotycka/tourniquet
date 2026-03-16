@@ -117,11 +117,11 @@ export function RosterModal({ tournament, teamId, onClose, readOnly = false, onA
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 200,
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 200,
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: 'var(--surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480,
+        background: 'var(--surface)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 480,
         padding: '0 0 32px', maxHeight: '90dvh', overflowY: 'auto', display: 'flex', flexDirection: 'column',
       }}>
         {/* Handle */}

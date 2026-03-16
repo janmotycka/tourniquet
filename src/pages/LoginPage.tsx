@@ -4,7 +4,7 @@ import { useI18n } from '../i18n';
 
 type Mode = 'login' | 'register' | 'reset';
 
-export function LoginPage() {
+export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, authError } = useAuth();
   const { t } = useI18n();
 
@@ -169,7 +169,7 @@ export function LoginPage() {
             onClick={handleSubmit}
             disabled={loading}
             style={{
-              padding: '13px', borderRadius: 14, fontWeight: 800, fontSize: 15,
+              padding: '13px', borderRadius: 12, fontWeight: 800, fontSize: 15,
               background: 'var(--primary)', color: '#fff',
               opacity: loading ? 0.7 : 1,
             }}
@@ -235,6 +235,18 @@ export function LoginPage() {
       <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
         {t('login.guestNote')}
       </p>
+
+      {onBack && (
+        <button
+          onClick={onBack}
+          style={{
+            fontSize: 13, color: 'var(--text-muted)', fontWeight: 600,
+            textAlign: 'center', cursor: 'pointer', background: 'none', border: 'none',
+          }}
+        >
+          ← {t('common.back')}
+        </button>
+      )}
     </div>
   );
 }

@@ -65,7 +65,7 @@ export function TrainingHomePage({ navigate }: Props) {
             { n: `${Math.round(totalMins / 60)}h`, label: t('trainingHome.totalPlanned') },
           ].map((s, i) => (
             <div key={i} style={{
-              flex: 1, background: 'var(--surface)', borderRadius: 16, padding: '14px 10px',
+              flex: 1, background: 'var(--surface)', borderRadius: 14, padding: '14px 10px',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               boxShadow: '0 1px 4px rgba(0,0,0,.05)'
             }}>
@@ -79,7 +79,7 @@ export function TrainingHomePage({ navigate }: Props) {
       {/* Quick access buttons – row 1 */}
       <div style={{ display: 'flex', gap: 10 }}>
         <button onClick={() => navigate({ name: 'saved' })} style={{
-          flex: 1, background: 'var(--surface)', borderRadius: 16, padding: '16px',
+          flex: 1, background: 'var(--surface)', borderRadius: 14, padding: '16px',
           display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
           boxShadow: '0 1px 4px rgba(0,0,0,.05)', color: 'var(--text)'
         }}>
@@ -94,7 +94,7 @@ export function TrainingHomePage({ navigate }: Props) {
         </button>
 
         <button onClick={() => navigate({ name: 'library' })} style={{
-          flex: 1, background: 'var(--surface)', borderRadius: 16, padding: '16px',
+          flex: 1, background: 'var(--surface)', borderRadius: 14, padding: '16px',
           display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
           boxShadow: '0 1px 4px rgba(0,0,0,.05)', color: 'var(--text)'
         }}>
@@ -110,7 +110,7 @@ export function TrainingHomePage({ navigate }: Props) {
       {/* Quick access buttons – row 2 */}
       <div style={{ display: 'flex', gap: 10 }}>
         <button onClick={() => navigate({ name: 'manual-builder' })} style={{
-          flex: 1, background: 'var(--surface)', borderRadius: 16, padding: '16px',
+          flex: 1, background: 'var(--surface)', borderRadius: 14, padding: '16px',
           display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
           boxShadow: '0 1px 4px rgba(0,0,0,.05)', color: 'var(--text)'
         }}>
@@ -123,7 +123,7 @@ export function TrainingHomePage({ navigate }: Props) {
         </button>
 
         <button onClick={() => navigate({ name: 'calendar' })} style={{
-          flex: 1, background: 'var(--surface)', borderRadius: 16, padding: '16px',
+          flex: 1, background: 'var(--surface)', borderRadius: 14, padding: '16px',
           display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
           boxShadow: '0 1px 4px rgba(0,0,0,.05)', color: 'var(--text)'
         }}>

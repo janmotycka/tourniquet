@@ -62,11 +62,11 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
   return (
     <>
       <div style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 100,
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 100,
         display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
       }} onClick={onClose}>
         <div onClick={e => e.stopPropagation()} style={{
-          background: 'var(--surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480,
+          background: 'var(--surface)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 480,
           padding: '0 0 32px', maxHeight: '92dvh', overflowY: 'auto',
         }}>
           <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
@@ -180,8 +180,8 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                       : g.teamId;
                     const isHomeGoal = beneficiaryId === match.homeTeamId;
                     const playerLabel = g.isOwnGoal
-                      ? `⚠️ VG (${team?.name ?? '?'})`
-                      : player ? `${player.jerseyNumber}. ${player.name}` : 'bez střelce';
+                      ? `⚠️ ${t('score.ownGoalPrefix')} (${team?.name ?? '?'})`
+                      : player ? `${player.jerseyNumber}. ${player.name}` : t('score.noScorerLabel');
                     const homeBeneficiary = tournament.teams.find(t => t.id === match.homeTeamId);
                     const awayBeneficiary = tournament.teams.find(t => t.id === match.awayTeamId);
                     const isEditing = editMode && editingGoalId === g.id;
@@ -257,7 +257,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                                   color: g.playerId === null ? '#fff' : 'var(--text-muted)',
                                   border: '1px dashed var(--border)',
                                 }}
-                              >— Bez střelce</button>
+                              >— {t('score.noScorer')}</button>
                               {scoringTeam.players.slice().sort((a, b) => a.jerseyNumber - b.jerseyNumber).map((p: Player) => (
                                 <button
                                   key={p.id}
@@ -280,7 +280,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                                 width: '100%', padding: '7px', borderRadius: 8,
                                 background: '#FFEBEE', color: '#C62828', fontWeight: 700, fontSize: 12,
                               }}
-                            >🗑 Smazat tento gól</button>
+                            >🗑 {t('score.deleteGoal')}</button>
                           </div>
                         )}
                       </div>
@@ -305,7 +305,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                   background: '#FFF3E0', color: '#E65100', fontWeight: 700, fontSize: 16,
                   padding: '14px', borderRadius: 14, border: '1.5px solid #FFB74D',
                 }}>
-                  ▶ Začít zápas
+                  ▶ {t('score.startMatch')}
                 </button>
               )}
               {match.status === 'live' && (
@@ -334,7 +334,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                       padding: '11px', borderRadius: 12, border: '1px solid #FFCDD2',
                     }}
                   >
-                    🔄 Reset zápasu
+                    🔄 {t('score.resetMatch')}
                   </button>
                 </div>
               )}

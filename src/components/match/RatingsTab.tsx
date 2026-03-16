@@ -49,7 +49,7 @@ export function RatingsTab({ match }: { match: SeasonMatch }) {
         </div>
       )}
 
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '14px 16px' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
         <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>⭐ Hodnocení hráčů</h3>
         {allPlayers.map(p => (
           <div key={p.playerId} style={{
@@ -58,7 +58,7 @@ export function RatingsTab({ match }: { match: SeasonMatch }) {
           }}>
             <div style={{
               width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-              background: p.isStarter ? '#1565C0' : 'var(--surface-var)',
+              background: p.isStarter ? 'var(--primary)' : 'var(--surface-var)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 11, fontWeight: 800, color: p.isStarter ? '#fff' : 'var(--text)',
             }}>
@@ -72,7 +72,7 @@ export function RatingsTab({ match }: { match: SeasonMatch }) {
         ))}
       </div>
 
-      <div style={{ background: 'var(--surface)', borderRadius: 16, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>📝 Trenérova poznámka</h3>
         <textarea
           value={note}
@@ -88,7 +88,7 @@ export function RatingsTab({ match }: { match: SeasonMatch }) {
         <button
           onClick={handleSave}
           style={{
-            background: saved ? '#2E7D32' : '#1565C0', color: '#fff',
+            background: saved ? '#2E7D32' : 'var(--primary)', color: '#fff',
             fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 10,
             alignSelf: 'flex-start', transition: 'background .2s',
           }}

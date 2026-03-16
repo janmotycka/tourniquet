@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Page } from '../App';
 import { useI18n } from '../i18n';
+import { Z } from '../utils/z-index';
 
 const STORAGE_KEY = 'torq_onboarded';
 
@@ -58,7 +59,9 @@ export function OnboardingModal({ navigate }: Props) {
 
   useEffect(() => {
     // Zobraz jen pokud uživatel ještě neprošel onboardingem
-    if (!localStorage.getItem(STORAGE_KEY)) {
+    let alreadyOnboarded = false;
+    try { alreadyOnboarded = !!localStorage.getItem(STORAGE_KEY); } catch { /* blocked */ }
+    if (!alreadyOnboarded) {
       // Krátké zpoždění aby se nejdřív načetla homepage
       const timer = setTimeout(() => setVisible(true), 600);
       return () => clearTimeout(timer);
@@ -66,13 +69,13 @@ export function OnboardingModal({ navigate }: Props) {
   }, []);
 
   const handleSelect = (card: ModuleCard) => {
-    localStorage.setItem(STORAGE_KEY, '1');
+    try { localStorage.setItem(STORAGE_KEY, '1'); } catch { /* blocked */ }
     setVisible(false);
     navigate(card.page);
   };
 
   const handleSkip = () => {
-    localStorage.setItem(STORAGE_KEY, '1');
+    try { localStorage.setItem(STORAGE_KEY, '1'); } catch { /* blocked */ }
     setVisible(false);
   };
 
@@ -80,8 +83,8 @@ export function OnboardingModal({ navigate }: Props) {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 5000,
-      background: 'rgba(0,0,0,.65)',
+      position: 'fixed', inset: 0, zIndex: Z.banner,
+      background: 'rgba(0,0,0,.5)',
       display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
       animation: 'fadeIn .25s ease',
     }}>
@@ -91,7 +94,7 @@ export function OnboardingModal({ navigate }: Props) {
       `}</style>
 
       <div style={{
-        background: 'var(--surface)', borderRadius: '28px 28px 0 0',
+        background: 'var(--surface)', borderRadius: '20px 20px 0 0',
         width: '100%', maxWidth: 480, padding: '28px 20px 40px',
         animation: 'slideUp .3s ease',
         maxHeight: '90dvh', overflowY: 'auto',

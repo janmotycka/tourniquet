@@ -10,7 +10,7 @@ import type {
 } from '../types/match.types';
 
 import { generateId } from '../utils/id';
-import { saveMatchToFirebase, deleteMatchFromFirebase, loadMatchesFromFirebase } from '../services/match.firebase';
+import { saveMatchToFirebase, deleteMatchFromFirebase, loadMatchesFromFirebase, deletePublicMatch } from '../services/match.firebase';
 import { logger } from '../utils/logger';
 import { useToastStore } from './toast.store';
 
@@ -65,6 +65,9 @@ interface MatchesState {
 
   // Hodnocení
   saveRatings: (matchId: string, ratings: PlayerRating[], note?: string) => void;
+
+  // Sdílení
+  togglePublicMatch: (matchId: string) => void;
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -79,8 +82,13 @@ export const useMatchesStore = create<MatchesState>()(
       // ── Firebase ──────────────────────────────────────────────────────────
 
       setFirebaseUid: (uid) => {
+        const prevUid = get().firebaseUid;
         if (!uid) {
-          set({ firebaseUid: null, syncError: null });
+          // Logout — clear cached matches to prevent data leaking to next user
+          set({ firebaseUid: null, matches: [], syncError: null });
+        } else if (prevUid && prevUid !== uid) {
+          // Different account — clear stale data
+          set({ firebaseUid: uid, matches: [], syncError: null });
         } else {
           set({ firebaseUid: uid });
         }
@@ -247,13 +255,19 @@ export const useMatchesStore = create<MatchesState>()(
             if (m.id !== matchId) return m;
             let homeScore = m.homeScore;
             let awayScore = m.awayScore;
+            // Determine which score field is "ours" vs "opponent's" based on isHome
+            const ourField = m.isHome ? 'home' : 'away';
+            const oppField = m.isHome ? 'away' : 'home';
+
             if (goal.isOpponentGoal) {
-              awayScore += 1;
-            } else if (!goal.isOwnGoal) {
-              homeScore += 1;
+              // Opponent scored
+              if (oppField === 'home') homeScore += 1; else awayScore += 1;
+            } else if (goal.isOwnGoal) {
+              // Own goal — counts for opponent
+              if (oppField === 'home') homeScore += 1; else awayScore += 1;
             } else {
-              // vlastní gól — přidá soupeři
-              awayScore += 1;
+              // Our team scored
+              if (ourField === 'home') homeScore += 1; else awayScore += 1;
             }
             return { ...m, goals: [...m.goals, newGoal], homeScore, awayScore, updatedAt: now() };
           }),
@@ -270,12 +284,16 @@ export const useMatchesStore = create<MatchesState>()(
             if (!goal) return m;
             let homeScore = m.homeScore;
             let awayScore = m.awayScore;
+            // Determine which score field is "ours" vs "opponent's" based on isHome
+            const ourField = m.isHome ? 'home' : 'away';
+            const oppField = m.isHome ? 'away' : 'home';
+
             if (goal.isOpponentGoal) {
-              awayScore = Math.max(0, awayScore - 1);
-            } else if (!goal.isOwnGoal) {
-              homeScore = Math.max(0, homeScore - 1);
+              if (oppField === 'home') homeScore = Math.max(0, homeScore - 1); else awayScore = Math.max(0, awayScore - 1);
+            } else if (goal.isOwnGoal) {
+              if (oppField === 'home') homeScore = Math.max(0, homeScore - 1); else awayScore = Math.max(0, awayScore - 1);
             } else {
-              awayScore = Math.max(0, awayScore - 1);
+              if (ourField === 'home') homeScore = Math.max(0, homeScore - 1); else awayScore = Math.max(0, awayScore - 1);
             }
             return { ...m, goals: m.goals.filter(g => g.id !== goalId), homeScore, awayScore, updatedAt: now() };
           }),
@@ -343,6 +361,25 @@ export const useMatchesStore = create<MatchesState>()(
         }));
         const m = get().matches.find(x => x.id === matchId);
         if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
+      },
+
+      togglePublicMatch: (matchId) => {
+        const match = get().matches.find(m => m.id === matchId);
+        if (!match) return;
+        const wasPublic = !!match.isPublic;
+        set(state => ({
+          matches: state.matches.map(m =>
+            m.id !== matchId ? m : { ...m, isPublic: !wasPublic, updatedAt: now() }
+          ),
+        }));
+        const updated = get().matches.find(m => m.id === matchId);
+        if (updated) {
+          syncMatch(get().firebaseUid, updated).then(err => { if (err) set({ syncError: err }); });
+        }
+        // Pokud vypínáme sdílení, smažeme public mirror
+        if (wasPublic) {
+          deletePublicMatch(matchId).catch(err => logger.error('[Firebase] Delete public match failed', err));
+        }
       },
     }),
     {

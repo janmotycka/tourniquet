@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { Tournament, Match } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
 import { TeamBadge } from './TeamBadge';
@@ -8,28 +8,27 @@ export function ScorersTab({ tournament }: { tournament: Tournament }) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   // Sestavíme tabulku střelců ze všech gólů
-  const scorerMap = new Map<string, { playerId: string; teamId: string; goals: number }>();
-
-  for (const match of tournament.matches) {
-    for (const goal of match.goals) {
-      if (goal.isOwnGoal || !goal.playerId) continue;
-      const key = `${goal.teamId}-${goal.playerId}`;
-      const existing = scorerMap.get(key);
-      if (existing) {
-        existing.goals += 1;
-      } else {
-        scorerMap.set(key, { playerId: goal.playerId, teamId: goal.teamId, goals: 1 });
+  const { scorers, unknownGoals, totalGoals } = useMemo(() => {
+    const scorerMap = new Map<string, { playerId: string; teamId: string; goals: number }>();
+    for (const match of tournament.matches) {
+      for (const goal of match.goals) {
+        if (goal.isOwnGoal || !goal.playerId) continue;
+        const key = `${goal.teamId}-${goal.playerId}`;
+        const existing = scorerMap.get(key);
+        if (existing) {
+          existing.goals += 1;
+        } else {
+          scorerMap.set(key, { playerId: goal.playerId, teamId: goal.teamId, goals: 1 });
+        }
       }
     }
-  }
-
-  const scorers = Array.from(scorerMap.values())
-    .filter(s => s.goals > 0)
-    .sort((a, b) => b.goals - a.goals);
-
-  const totalGoals = tournament.matches.reduce((sum, m) => sum + m.homeScore + m.awayScore, 0);
-  const knownGoals = scorers.reduce((sum, s) => sum + s.goals, 0);
-  const unknownGoals = totalGoals - knownGoals;
+    const sorted = Array.from(scorerMap.values())
+      .filter(s => s.goals > 0)
+      .sort((a, b) => b.goals - a.goals);
+    const totalGoals = tournament.matches.reduce((sum, m) => sum + m.homeScore + m.awayScore, 0);
+    const knownGoals = sorted.reduce((sum, s) => sum + s.goals, 0);
+    return { scorers: sorted, unknownGoals: totalGoals - knownGoals, totalGoals };
+  }, [tournament.matches]);
 
   // Vrátí zápasy, ve kterých hráč skóroval, s počtem gólů per zápas
   const getMatchBreakdown = (playerId: string, teamId: string) => {
@@ -65,7 +64,7 @@ export function ScorersTab({ tournament }: { tournament: Tournament }) {
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 18 }}>🥇</span>
           <span style={{ fontWeight: 800, fontSize: 15 }}>{t('tournament.detail.scorersTable')}</span>
-          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>{totalGoals} gólů celkem</span>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>{t('tournament.detail.totalGoals', { count: totalGoals })}</span>
         </div>
 
         {scorers.map((scorer, idx) => {
@@ -178,7 +177,7 @@ export function ScorersTab({ tournament }: { tournament: Tournament }) {
           <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 28, flexShrink: 0 }} />
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              + {unknownGoals} gól{unknownGoals === 1 ? '' : unknownGoals < 5 ? 'y' : 'ů'} bez přiřazeného střelce
+              + {t('tournament.detail.unknownGoals', { count: unknownGoals })}
             </span>
           </div>
         )}

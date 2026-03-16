@@ -6,7 +6,7 @@ import { useTournamentStore } from '../store/tournament.store';
 import { useMatchesStore } from '../store/matches.store';
 import { useClubsStore } from '../store/clubs.store';
 import { useToastStore } from '../store/toast.store';
-import { useI18n, getCurrencyForLocale } from '../i18n';
+import { useI18n, getCurrencyForLocale, getDateLocale } from '../i18n';
 import type { Locale } from '../i18n';
 import { useTheme } from '../theme/ThemeContext';
 import type { ThemePreference } from '../theme/ThemeContext';
@@ -29,6 +29,8 @@ export function SettingsPage({ navigate }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [dataOpen, setDataOpen] = useState(false);
+  const [featuresOpen, setFeaturesOpen] = useState(false);
 
   const handleSubscribe = async () => {
     setLoading(true);
@@ -73,10 +75,10 @@ export function SettingsPage({ navigate }: Props) {
   };
   const st = statusLabels[subscription.status] ?? statusLabels.free;
 
-  const dateLocale = locale === 'cs' ? 'cs-CZ' : 'en-US';
+  const dateLocale = getDateLocale(locale);
 
   const cardStyle = {
-    background: 'var(--surface)', borderRadius: 16, padding: 20,
+    background: 'var(--surface)', borderRadius: 14, padding: 20,
     boxShadow: '0 1px 4px rgba(0,0,0,.06)',
     display: 'flex' as const, flexDirection: 'column' as const, gap: 12,
   };
@@ -176,11 +178,31 @@ export function SettingsPage({ navigate }: Props) {
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#E65100', marginTop: 4 }}>
                   {t('settings.premiumOffer', { price: t('subscription.price') })}
                 </div>
-                <div style={{ fontSize: 12, color: '#BF360C', lineHeight: 1.5 }}>
-                  • {t('settings.premiumFeature1')}{'\n'}
-                  • {t('settings.premiumFeature2')}{'\n'}
-                  • {t('settings.premiumFeature3')}{'\n'}
-                  • {t('settings.premiumFeature4')}
+                <button
+                  onClick={() => setFeaturesOpen(o => !o)}
+                  style={{
+                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                    fontSize: 12, fontWeight: 600, color: '#BF360C', textAlign: 'left',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}
+                >
+                  <span style={{
+                    display: 'inline-block', transition: 'transform .2s',
+                    transform: featuresOpen ? 'rotate(90deg)' : 'none', fontSize: 10,
+                  }}>&#9658;</span>
+                  {featuresOpen ? t('settings.hideDetails') : t('settings.showDetails')}
+                </button>
+                <div style={{
+                  maxHeight: featuresOpen ? 200 : 0,
+                  overflow: 'hidden',
+                  transition: 'max-height .3s ease',
+                }}>
+                  <div style={{ fontSize: 12, color: '#BF360C', lineHeight: 1.5 }}>
+                    {'\u2022'} {t('settings.premiumFeature1')}{'\n'}
+                    {'\u2022'} {t('settings.premiumFeature2')}{'\n'}
+                    {'\u2022'} {t('settings.premiumFeature3')}{'\n'}
+                    {'\u2022'} {t('settings.premiumFeature4')}
+                  </div>
                 </div>
               </div>
               <button
@@ -217,7 +239,7 @@ export function SettingsPage({ navigate }: Props) {
           <div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{t('settings.language')}</div>
             <div style={{ display: 'flex', gap: 8 }}>
-              {([['cs', '🇨🇿 Čeština'], ['en', '🇬🇧 English']] as [Locale, string][]).map(([loc, label]) => (
+              {([['cs', '🇨🇿 Čeština'], ['en', '🇬🇧 English'], ['de', '🇩🇪 Deutsch']] as [Locale, string][]).map(([loc, label]) => (
                 <button
                   key={loc}
                   onClick={() => setLocale(loc)}
@@ -277,76 +299,97 @@ export function SettingsPage({ navigate }: Props) {
           </a>
         </div>
 
-        {/* 5. Data Management (GDPR) */}
+        {/* 5. Data Management (GDPR) — collapsible */}
         <div style={cardStyle}>
-          <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.dataManagement')}</h2>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-            {t('settings.dataManagementDesc')}
-          </p>
-
-          {/* Export dat */}
           <button
-            onClick={async () => {
-              setExporting(true);
-              try {
-                const data = {
-                  exportedAt: new Date().toISOString(),
-                  user: { email: user?.email, displayName: user?.displayName },
-                  tournaments,
-                  seasonMatches: matches,
-                  clubs,
-                };
-                const json = JSON.stringify(data, null, 2);
-                const blob = new Blob([json], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `torq-export-${new Date().toISOString().slice(0, 10)}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-                showToast('success', t('settings.exportDone'));
-              } catch {
-                showToast('error', 'Export failed');
-              } finally {
-                setExporting(false);
-              }
-            }}
-            disabled={exporting}
+            onClick={() => setDataOpen(o => !o)}
             style={{
-              background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600,
-              fontSize: 14, padding: '12px', borderRadius: 12,
-              border: '1.5px solid var(--border)', textAlign: 'center',
-              opacity: exporting ? 0.6 : 1,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              width: '100%', textAlign: 'left',
             }}
           >
-            📥 {exporting ? t('settings.exporting') : t('settings.exportData')}
+            <h2 style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{t('settings.dataManagement')}</h2>
+            <span style={{
+              fontSize: 14, color: 'var(--text-muted)', transition: 'transform .2s',
+              display: 'inline-block', transform: dataOpen ? 'rotate(90deg)' : 'none',
+            }}>&#9658;</span>
           </button>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-            {t('settings.exportDataDesc')}
-          </p>
-
-          {/* Smazání účtu */}
           <div style={{
-            background: '#FFF3E0', borderRadius: 12, padding: 14,
-            display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4,
+            maxHeight: dataOpen ? 500 : 0,
+            overflow: 'hidden',
+            transition: 'max-height .3s ease',
           }}>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#E65100' }}>
-              {t('settings.deleteAccount')}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: dataOpen ? 4 : 0 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+                {t('settings.dataManagementDesc')}
+              </p>
+
+              {/* Export dat */}
+              <button
+                onClick={async () => {
+                  setExporting(true);
+                  try {
+                    const data = {
+                      exportedAt: new Date().toISOString(),
+                      user: { email: user?.email, displayName: user?.displayName },
+                      tournaments,
+                      seasonMatches: matches,
+                      clubs,
+                    };
+                    const json = JSON.stringify(data, null, 2);
+                    const blob = new Blob([json], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `torq-export-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showToast('success', t('settings.exportDone'));
+                  } catch {
+                    showToast('error', t('settings.exportFailed'));
+                  } finally {
+                    setExporting(false);
+                  }
+                }}
+                disabled={exporting}
+                style={{
+                  background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600,
+                  fontSize: 14, padding: '12px', borderRadius: 12,
+                  border: '1.5px solid var(--border)', textAlign: 'center',
+                  opacity: exporting ? 0.6 : 1,
+                }}
+              >
+                {exporting ? t('settings.exporting') : t('settings.exportData')}
+              </button>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                {t('settings.exportDataDesc')}
+              </p>
+
+              {/* Smazani uctu */}
+              <div style={{
+                background: '#FFF3E0', borderRadius: 12, padding: 14,
+                display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4,
+              }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: '#E65100' }}>
+                  {t('settings.deleteAccount')}
+                </div>
+                <p style={{ fontSize: 12, color: '#BF360C', lineHeight: 1.5, margin: 0 }}>
+                  {t('settings.deleteAccountDesc')}
+                </p>
+                <a
+                  href={`mailto:privacy@torq.cz?subject=${encodeURIComponent(t('settings.deleteAccountSubject'))}`}
+                  style={{
+                    background: '#FFF', color: '#E65100', fontWeight: 600,
+                    fontSize: 13, padding: '10px', borderRadius: 10, textAlign: 'center',
+                    textDecoration: 'none', border: '1.5px solid #FFCC80',
+                    display: 'block',
+                  }}
+                >
+                  {t('settings.deleteAccountBtn')}
+                </a>
+              </div>
             </div>
-            <p style={{ fontSize: 12, color: '#BF360C', lineHeight: 1.5, margin: 0 }}>
-              {t('settings.deleteAccountDesc')}
-            </p>
-            <a
-              href="mailto:privacy@torq.cz?subject=Account%20Deletion%20Request"
-              style={{
-                background: '#FFF', color: '#E65100', fontWeight: 600,
-                fontSize: 13, padding: '10px', borderRadius: 10, textAlign: 'center',
-                textDecoration: 'none', border: '1.5px solid #FFCC80',
-                display: 'block',
-              }}
-            >
-              ✉️ {t('settings.deleteAccountBtn')}
-            </a>
           </div>
         </div>
 

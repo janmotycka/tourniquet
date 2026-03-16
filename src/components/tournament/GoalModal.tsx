@@ -98,7 +98,7 @@ export function GoalModal({ match, teams, onAdd, onClose }: {
                       color: playerId === null ? 'var(--primary)' : 'var(--text)',
                       border: playerId === null ? '1.5px solid var(--primary)' : '1.5px solid transparent',
                     }}>
-                      — Bez střelce
+                      {t('tournament.detail.noScorer')}
                     </button>
                     {scoringTeam.players.map((p: Player) => (
                       <button key={p.id} onClick={() => setPlayerId(p.id)} style={{
@@ -155,7 +155,7 @@ export function GoalModal({ match, teams, onAdd, onClose }: {
 
           <button onClick={handleAdd} style={{
             background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 16,
-            padding: '14px', borderRadius: 14, marginTop: 4,
+            padding: '14px', borderRadius: 12, marginTop: 4,
           }}>
             {t('match.detail.addGoal')}
           </button>
