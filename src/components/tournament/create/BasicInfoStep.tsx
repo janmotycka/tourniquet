@@ -26,6 +26,10 @@ interface BasicInfoStepProps {
   setAdvancePerGroup: (v: number) => void;
   thirdPlaceMatch: boolean;
   setThirdPlaceMatch: (v: boolean) => void;
+  friendlyMode: boolean;
+  setFriendlyMode: (v: boolean) => void;
+  registrationOnly: boolean;
+  setRegistrationOnly: (v: boolean) => void;
   templates: TournamentTemplate[];
   onOpenTemplatePicker: () => void;
 }
@@ -42,6 +46,8 @@ export function BasicInfoStep({
   groupCount, setGroupCount,
   advancePerGroup, setAdvancePerGroup,
   thirdPlaceMatch, setThirdPlaceMatch,
+  friendlyMode, setFriendlyMode,
+  registrationOnly, setRegistrationOnly,
   templates, onOpenTemplatePicker,
 }: BasicInfoStepProps) {
   const { t } = useI18n();
@@ -184,6 +190,55 @@ export function BasicInfoStep({
             </button>
           </div>
         )}
+      </div>
+
+      {/* Speciální režimy */}
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+        {/* Friendly mode (školičky) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>⚽ {t('tournament.create.friendlyMode')}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t('tournament.create.friendlyModeDesc')}</div>
+          </div>
+          <button
+            onClick={() => setFriendlyMode(!friendlyMode)}
+            style={{
+              width: 44, height: 26, borderRadius: 13,
+              background: friendlyMode ? 'var(--primary)' : 'var(--border)',
+              position: 'relative', transition: 'background .2s', border: 'none', cursor: 'pointer',
+            }}
+          >
+            <div style={{
+              width: 20, height: 20, borderRadius: 10, background: '#fff',
+              position: 'absolute', top: 3,
+              left: friendlyMode ? 21 : 3, transition: 'left .2s',
+            }} />
+          </button>
+        </div>
+
+        <div style={{ height: 1, background: 'var(--border)' }} />
+
+        {/* Registration-only (bez týmů na začátku) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>📝 {t('tournament.create.registrationOnly')}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t('tournament.create.registrationOnlyDesc')}</div>
+          </div>
+          <button
+            onClick={() => setRegistrationOnly(!registrationOnly)}
+            style={{
+              width: 44, height: 26, borderRadius: 13,
+              background: registrationOnly ? 'var(--primary)' : 'var(--border)',
+              position: 'relative', transition: 'background .2s', border: 'none', cursor: 'pointer',
+            }}
+          >
+            <div style={{
+              width: 20, height: 20, borderRadius: 10, background: '#fff',
+              position: 'absolute', top: 3,
+              left: registrationOnly ? 21 : 3, transition: 'left .2s',
+            }} />
+          </button>
+        </div>
       </div>
 
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>

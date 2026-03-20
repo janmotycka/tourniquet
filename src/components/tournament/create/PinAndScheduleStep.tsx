@@ -22,6 +22,7 @@ interface PinAndScheduleStepProps {
   numberOfPitches: number;
   settings: TournamentSettings;
   onResetMatchOrder: () => void;
+  hidePinSection?: boolean;
 }
 
 export function PinAndScheduleStep({
@@ -34,6 +35,7 @@ export function PinAndScheduleStep({
   matchDuration, breakDuration, numberOfPitches,
   settings,
   onResetMatchOrder,
+  hidePinSection,
 }: PinAndScheduleStepProps) {
   const { t, locale } = useI18n();
 
@@ -152,6 +154,7 @@ export function PinAndScheduleStep({
   return (
     <>
       {/* PIN */}
+      {!hidePinSection && (
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.pinOrg')}</h3>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
@@ -191,6 +194,7 @@ export function PinAndScheduleStep({
         </div>
         {pinError && <div style={{ color: '#C62828', fontSize: 13 }}>⚠️ {pinError}</div>}
       </div>
+      )}
 
       {/* Poradi zapasu -- interaktivni seznam */}
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>

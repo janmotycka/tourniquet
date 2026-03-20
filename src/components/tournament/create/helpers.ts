@@ -1,14 +1,26 @@
 import { TEAM_COLORS } from '../../../utils/team-colors';
 import type { TeamDraft } from './types';
+import type { Club } from '../../../types/club.types';
 
 export function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function defaultTeams(t: (key: string, params?: Record<string, string | number>) => string): TeamDraft[] {
+export function defaultTeams(t: (key: string, params?: Record<string, string | number>) => string, homeClub?: Club | null): TeamDraft[] {
+  if (homeClub) {
+    return [
+      {
+        name: homeClub.name,
+        color: homeClub.color,
+        players: (homeClub.defaultPlayers ?? []).map(p => ({ ...p })),
+        expanded: false,
+        clubId: homeClub.id,
+        logoBase64: homeClub.logoBase64,
+      },
+    ];
+  }
   return [
-    { name: t('tournament.teamA'), color: TEAM_COLORS[0], players: [], expanded: false, clubId: null, logoBase64: null },
-    { name: t('tournament.teamB'), color: TEAM_COLORS[1], players: [], expanded: false, clubId: null, logoBase64: null },
+    { name: t('tournament.create.homeTeam'), color: TEAM_COLORS[0], players: [], expanded: false, clubId: null, logoBase64: null },
   ];
 }
 
