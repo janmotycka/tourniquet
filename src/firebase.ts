@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getDatabase } from 'firebase/database';
+import { getDatabase, goOffline, goOnline } from 'firebase/database';
 import { getFunctions } from 'firebase/functions';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { logger } from './utils/logger';
@@ -50,4 +50,41 @@ if (recaptchaSiteKey) {
   }
 } else {
   logger.debug('[AppCheck] Skipped — VITE_RECAPTCHA_SITE_KEY not configured');
+}
+
+// ─── Connection monitoring & keepalive ───────────────────────────────────────
+// Mobilní prohlížeče uspí WebSocket když je tab na pozadí.
+// Monitorujeme stav spojení a vynucujeme reconnect při návratu.
+
+import { ref as dbRef, onValue } from 'firebase/database';
+
+/** Observable connection state — true = connected to Firebase */
+export let firebaseConnected = false;
+
+// Monitor .info/connected
+const connectedRef = dbRef(db, '.info/connected');
+onValue(connectedRef, (snap) => {
+  firebaseConnected = snap.val() === true;
+  logger.debug('[Firebase] Connection state:', firebaseConnected ? 'CONNECTED' : 'DISCONNECTED');
+});
+
+if (typeof document !== 'undefined') {
+  // Při návratu z pozadí vynutíme reconnect
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      logger.debug('[Firebase] Tab visible — forcing reconnect');
+      goOffline(db);
+      // Malý delay aby disconnect proběhl
+      setTimeout(() => goOnline(db), 100);
+    }
+  });
+
+  // Keepalive — pokud je tab viditelný ale Firebase se odpojilo, reconnect
+  setInterval(() => {
+    if (document.visibilityState === 'visible' && !firebaseConnected) {
+      logger.debug('[Firebase] Keepalive — reconnecting stale connection');
+      goOffline(db);
+      setTimeout(() => goOnline(db), 100);
+    }
+  }, 15_000);
 }

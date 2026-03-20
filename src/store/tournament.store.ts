@@ -60,12 +60,14 @@ interface TournamentState {
   clearSyncError: () => void;
 
   // Sdílený přístup
-  joinTournament: (tournamentId: string, pin: string) => Promise<{ success: boolean; error?: string }>;
+  joinTournament: (tournamentId: string, pin: string, role?: 'admin') => Promise<{ success: boolean; error?: string }>;
   leaveTournament: (tournamentId: string) => Promise<void>;
 
   // Helper: najde turnaj v obou polích
   findTournament: (id: string) => Tournament | undefined;
   isOwner: (tournamentId: string) => boolean;
+  /** Vrátí true pokud je uživatel owner NEBO co-owner (admin v joinedUsers) */
+  hasAdminAccess: (tournamentId: string) => boolean;
 
   // CRUD
   createTournament: (input: CreateTournamentInput) => Promise<Tournament>;
@@ -92,6 +94,7 @@ interface TournamentState {
 
   // Týmy
   updateTeamName: (tournamentId: string, teamId: string, name: string) => Promise<void>;
+  toggleTeamPaid: (tournamentId: string, teamId: string) => Promise<void>;
 
   // Správa týmů & zápasů
   removeTeam: (tournamentId: string, teamId: string) => Promise<void>;
@@ -102,12 +105,18 @@ interface TournamentState {
   generateRosterTokens: (tournamentId: string) => Promise<void>;
   acceptRoster: (tournamentId: string, teamId: string, submission: RosterSubmission) => Promise<void>;
 
+  // Ruční přidání týmu (domácí tým / bez registrace)
+  addManualTeam: (tournamentId: string, team: { name: string; color: string; players: import('../types/tournament.types').Player[]; clubId?: string | null; logoBase64?: string | null }) => Promise<void>;
+
   // Registrace týmů
   approveRegistration: (tournamentId: string, registrationId: string, registration: import('../types/tournament.types').RegistrationSubmission) => Promise<void>;
   rejectRegistration: (tournamentId: string, registrationId: string) => Promise<void>;
 
   // Přegenerování harmonogramu
   regenerateSchedule: (tournamentId: string, newSettings: TournamentSettings) => Promise<void>;
+
+  /** Vygeneruje rozpis pro turnaj bez zápasů (registrační flow) */
+  generateInitialSchedule: (tournamentId: string) => Promise<void>;
 
   // Firebase sync helpers (internal)
   markSynced: (tournamentId: string) => void;
@@ -151,17 +160,29 @@ function mutateBothArrays(
   return { joinedTournaments: state.joinedTournaments.map(t => t.id === tournamentId ? mapper(t) : t) };
 }
 
-/** Re-fetch tournament from state and sync to Firebase. Call after local mutations. */
+/** Serialized write queue per tournament — prevents concurrent writes
+ *  from overwriting each other with stale data. */
+const syncQueues = new Map<string, Promise<void>>();
+
+/** Re-fetch tournament from state and sync to Firebase. Call after local mutations.
+ *  Writes are serialized per tournament — each write waits for the previous one
+ *  and always reads the LATEST state before writing. */
 async function syncById(
   get: () => TournamentState,
   set: (partial: Partial<TournamentState>) => void,
   tournamentId: string,
 ) {
-  const updated = get().getTournamentById(tournamentId);
-  if (updated) {
-    const err = await syncToFirebase(get().firebaseUid, updated);
-    if (err) set({ syncError: err });
-  }
+  const prevQueue = syncQueues.get(tournamentId) ?? Promise.resolve();
+  const currentSync = prevQueue.then(async () => {
+    // Always read the LATEST state right before writing
+    const updated = get().getTournamentById(tournamentId);
+    if (updated) {
+      const err = await syncToFirebase(get().firebaseUid, updated);
+      if (err) set({ syncError: err });
+    }
+  });
+  syncQueues.set(tournamentId, currentSync.catch(() => { /* prevent queue stall */ }));
+  await currentSync;
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -302,7 +323,7 @@ export const useTournamentStore = create<TournamentState>()(
 
       // ── Sdílený přístup ─────────────────────────────────────────────────
 
-      joinTournament: async (tournamentId, pin) => {
+      joinTournament: async (tournamentId, pin, role?) => {
         const uid = get().firebaseUid;
         if (!uid) return { success: false, error: 'Nejste přihlášen.' };
 
@@ -332,7 +353,16 @@ export const useTournamentStore = create<TournamentState>()(
         await addJoinedTournament(uid, tournamentId, tournament.ownerUid ?? '', tournament.name);
 
         // Zapiš joinedUsers/{uid} do public mirror (potřebné pro Firebase security rules)
-        await writeJoinedUser(tournamentId, uid);
+        try {
+          await writeJoinedUser(tournamentId, uid, role);
+        } catch (err) {
+          logger.error('[Firebase] writeJoinedUser failed:', err);
+          // Rollback joinedTournaments — bez joinedUsers zápis nebude fungovat
+          set(state => ({
+            joinedTournaments: state.joinedTournaments.filter(jt => jt.id !== tournamentId),
+          }));
+          return { success: false, error: 'Nepodařilo se připojit — zkuste to znovu.' };
+        }
 
         // Subscribe na real-time updates
         subscribeToJoined(tournamentId, (updated) => {
@@ -375,6 +405,16 @@ export const useTournamentStore = create<TournamentState>()(
         return get().tournaments.some(t => t.id === tournamentId);
       },
 
+      hasAdminAccess: (tournamentId) => {
+        // Owner = vždy admin
+        if (get().tournaments.some(t => t.id === tournamentId)) return true;
+        // Co-owner = admin v joinedUsers
+        const uid = get().firebaseUid;
+        if (!uid) return false;
+        const joined = get().joinedTournaments.find(t => t.id === tournamentId);
+        return joined?.joinedUsers?.[uid] === 'admin';
+      },
+
       // ── CRUD ──────────────────────────────────────────────────────────────
 
       createTournament: async (rawInput) => {
@@ -399,7 +439,10 @@ export const useTournamentStore = create<TournamentState>()(
         let matches: Match[];
         const tournamentFormat = input.settings.format ?? 'round-robin';
 
-        if (tournamentFormat === 'groups-knockout' && input.settings.groups) {
+        // 0 týmů = registrační turnaj, rozpis se vygeneruje později
+        if (teams.length < 2) {
+          matches = [];
+        } else if (tournamentFormat === 'groups-knockout' && input.settings.groups) {
           // Skupiny + knockout: vyplň skupiny reálnými teamIds
           const settingsWithRealGroups = {
             ...input.settings,
@@ -813,6 +856,20 @@ export const useTournamentStore = create<TournamentState>()(
         await syncById(get, set, tournamentId);
       },
 
+      toggleTeamPaid: async (tournamentId, teamId) => {
+        set(state => mutateBothArrays(state, tournamentId, t => ({
+          ...t,
+          updatedAt: new Date().toISOString(),
+          teams: t.teams.map(team =>
+            team.id !== teamId ? team : {
+              ...team,
+              paidAt: team.paidAt ? null : new Date().toISOString(),
+            }
+          ),
+        })));
+        await syncById(get, set, tournamentId);
+      },
+
       // ── Přegenerování harmonogramu ────────────────────────────────────────
 
       removeTeam: async (tournamentId, teamId) => {
@@ -896,11 +953,29 @@ export const useTournamentStore = create<TournamentState>()(
                 id: generateId(),
                 name: p.name,
                 jerseyNumber: p.jerseyNumber,
-                birthYear: p.birthYear,
+                birthYear: p.birthYear ?? null,
               })),
               rosterSubmittedAt: submission.submittedAt,
             };
           }),
+        })));
+        await syncById(get, set, tournamentId);
+      },
+
+      addManualTeam: async (tournamentId, team) => {
+        const rosterToken = generateId();
+        set(state => mutateBothArrays(state, tournamentId, t => ({
+          ...t,
+          updatedAt: new Date().toISOString(),
+          teams: [...t.teams, {
+            id: generateId(),
+            name: team.name,
+            color: team.color,
+            players: team.players,
+            clubId: team.clubId ?? null,
+            logoBase64: team.logoBase64 ?? null,
+            rosterToken,
+          }],
         })));
         await syncById(get, set, tournamentId);
       },
@@ -971,6 +1046,21 @@ export const useTournamentStore = create<TournamentState>()(
               pitchNumber,
             };
           }),
+        })));
+        await syncById(get, set, tournamentId);
+      },
+
+      generateInitialSchedule: async (tournamentId) => {
+        const tournament = get().getTournamentById(tournamentId);
+        if (!tournament || tournament.teams.length < 2) return;
+        if (tournament.matches.length > 0) return; // už má rozpis
+
+        const matches = generateRoundRobinSchedule(tournament.teams, tournament.settings);
+
+        set(state => mutateBothArrays(state, tournamentId, t => ({
+          ...t,
+          updatedAt: new Date().toISOString(),
+          matches,
         })));
         await syncById(get, set, tournamentId);
       },

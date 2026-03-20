@@ -120,6 +120,8 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       // ── Computed ────────────────────────────────────────────────────────
       isPremium: () => {
+        // DEV override — odstraň před produkčním deployem
+        if (import.meta.env.DEV) return true;
         const { status } = get().subscription;
         return status === 'active' || status === 'past_due';
       },

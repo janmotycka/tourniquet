@@ -22,6 +22,18 @@ window.addEventListener('error', (event) => {
   useToastStore.getState().show('error', `Error: ${event.message.slice(0, 120)}`, 6000);
 });
 
+// ─── Clear stale Firebase flags ──────────────────────────────────────────────
+// Pokud Firebase SDK dříve selhalo na WebSocket, nastaví flag který vynutí
+// pomalý long-polling. Toto vyčistíme při každém startu.
+try {
+  for (let i = localStorage.length - 1; i >= 0; i--) {
+    const key = localStorage.key(i);
+    if (key && key.includes('previous_websocket_failure')) {
+      localStorage.removeItem(key);
+    }
+  }
+} catch { /* localStorage může být nedostupný */ }
+
 // ─── Service Worker — force update on new version ───────────────────────────
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.ready.then((registration) => {

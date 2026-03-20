@@ -7,7 +7,7 @@
  *   /catalog/{tournamentId}            → odlehčený index pro veřejný katalog
  */
 
-import { ref, set, get, remove, push, onValue, off, update, DataSnapshot, query, orderByChild, limitToLast } from 'firebase/database';
+import { ref, set, get, remove, push, onValue, off, update, DataSnapshot, query, orderByChild, limitToLast, runTransaction } from 'firebase/database';
 import { db } from '../firebase';
 import type { Tournament, ChatMessage } from '../types/tournament.types';
 import { logger } from '../utils/logger';
@@ -37,10 +37,8 @@ function toPublicFirebase(t: Tournament): object {
   const sanitized = {
     ...t,
     teams: t.teams.map(team => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { rosterToken: _strip, ...teamWithoutToken } = team;
       return {
-        ...teamWithoutToken,
+        ...team,
         players: team.players.map(p => ({
           id: p.id,
           name: p.name,
@@ -86,7 +84,13 @@ function fromFirebase(data: unknown): Tournament {
   // Normalizuj teams → vždy array, každý tým má players: array
   const teams = normalizeArray(raw.teams).map((t: unknown) => {
     const team = t as RawTeam;
-    return { ...team, players: normalizeArray(team?.players) };
+    return {
+      ...team,
+      players: normalizeArray(team?.players).map((p: Record<string, unknown>) => ({
+        ...p,
+        birthYear: (p as { birthYear?: number }).birthYear ?? null,
+      })),
+    };
   });
 
   // Normalizuj matches → vždy array, každý match má goals: array a defaulty pro chybějící fieldy
@@ -143,17 +147,37 @@ export async function saveTournamentToFirebase(uid: string, tournament: Tourname
   ]);
 }
 
-/** Zapíše turnaj POUZE do public mirror (pro non-owner kolaboranty) */
+/** Zapíše turnaj POUZE do public mirror (pro non-owner kolaboranty).
+ *  Zachová rosterToken — non-owner ho nemá ve svém stavu (načetl z public path). */
 export async function savePublicTournament(tournament: Tournament): Promise<void> {
-  const publicData = toPublicFirebase(tournament);
+  const publicData = toPublicFirebase(tournament) as Record<string, unknown>;
+
+  // Přečti stávající tokeny z DB — non-owner je nemá ve svém stavu
+  const snapshot = await get(publicRef(tournament.id));
+  if (snapshot.exists()) {
+    const existing = snapshot.val();
+    const existingTeams = Array.isArray(existing.teams)
+      ? existing.teams
+      : (existing.teams && typeof existing.teams === 'object' ? Object.values(existing.teams) : []);
+    const newTeams = publicData.teams as Record<string, unknown>[];
+    if (Array.isArray(newTeams) && existingTeams.length > 0) {
+      for (let i = 0; i < newTeams.length && i < existingTeams.length; i++) {
+        const existingToken = (existingTeams[i] as Record<string, unknown>)?.rosterToken;
+        if (existingToken && !newTeams[i].rosterToken) {
+          newTeams[i].rosterToken = existingToken;
+        }
+      }
+    }
+  }
+
   // update() místo set() — zachová joinedUsers zapsané připojenými rozhodčími
-  await update(publicRef(tournament.id), publicData as Record<string, unknown>);
+  await update(publicRef(tournament.id), publicData);
 }
 
-/** Zapíše joinedUsers/{uid}: true do public mirror (pro Firebase security rules) */
-export async function writeJoinedUser(tournamentId: string, uid: string): Promise<void> {
+/** Zapíše joinedUsers/{uid}: true|'admin' do public mirror (pro Firebase security rules) */
+export async function writeJoinedUser(tournamentId: string, uid: string, role?: 'admin'): Promise<void> {
   const joinedUserRef = ref(db, `public/${tournamentId}/joinedUsers/${uid}`);
-  await set(joinedUserRef, true);
+  await set(joinedUserRef, role ?? true);
 }
 
 /** Smaže turnaj z DB (včetně katalogu) */
@@ -284,6 +308,41 @@ export function subscribeFanPoll(
 /** Smaže všechny hlasy fan ankety (admin reset) */
 export async function resetFanPoll(tournamentId: string): Promise<void> {
   await set(ref(db, `polls/${tournamentId}`), null);
+}
+
+// ─── Live reakce na zápas ─────────────────────────────────────────────────────
+
+export const REACTION_EMOJIS = ['👏', '⚽'] as const;
+export type ReactionEmoji = typeof REACTION_EMOJIS[number];
+
+/** Odešle reakci pro konkrétní tým v zápasu — atomický increment */
+export async function sendReaction(tournamentId: string, matchId: string, teamId: string, emoji: ReactionEmoji): Promise<void> {
+  const emojiRef = ref(db, `reactions/${tournamentId}/${matchId}/${teamId}/${emoji}`);
+  await runTransaction(emojiRef, (current: number | null) => (current ?? 0) + 1);
+}
+
+/** Subscribuje na reakce jednoho zápasu — vrací mapu teamId → { emoji → count } */
+export function subscribeReactions(
+  tournamentId: string,
+  matchId: string,
+  callback: (reactions: Record<string, Record<string, number>>) => void,
+): () => void {
+  const reactRef = ref(db, `reactions/${tournamentId}/${matchId}`);
+  const handler = (snapshot: DataSnapshot) => {
+    if (snapshot.exists()) {
+      const val = snapshot.val() as Record<string, Record<string, number>>;
+      callback(val);
+    } else {
+      callback({});
+    }
+  };
+  onValue(reactRef, handler, () => callback({}));
+  return () => off(reactRef, 'value', handler);
+}
+
+/** Smaže reakce pro zápas (volá se automaticky po ukončení zápasu) */
+export async function clearReactions(tournamentId: string, matchId: string): Promise<void> {
+  await set(ref(db, `reactions/${tournamentId}/${matchId}`), null);
 }
 
 // ─── MVP hlasování ────────────────────────────────────────────────────────────

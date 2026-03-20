@@ -30,6 +30,17 @@ export interface Team {
   rosterToken?: string;              // unikátní token pro odkaz na soupisku
   rosterSubmittedAt?: string | null; // ISO timestamp odeslaní soupisky trenérem
   coach?: TeamCoach | null;          // kontakt trenéra (vyplněno přes roster form)
+  paidAt?: string | null;            // ISO timestamp zaplacení startovného
+}
+
+/** Fakturační údaje odběratele (klub trenéra) — volitelné */
+export interface CustomerBilling {
+  companyName: string;       // název klubu / organizace
+  ico: string;               // IČO
+  dic?: string;              // DIČ (nepovinné)
+  address: string;           // ulice + č.p.
+  city: string;
+  zip: string;
 }
 
 export interface RosterSubmission {
@@ -38,6 +49,7 @@ export interface RosterSubmission {
   submittedAt: string;  // ISO timestamp
   teamId: string;
   teamName: string;
+  customerBilling?: CustomerBilling;  // fakturační údaje odběratele
 }
 
 export interface RegistrationSubmission {
@@ -128,6 +140,45 @@ export interface GroupDefinition {
   teamIds: string[];    // IDs týmů ve skupině
 }
 
+// ─── Billing / Invoice ────────────────────────────────────────────────────────
+
+/** Fakturační profil organizátora (uložen per user v /users/{uid}/billingProfile) */
+export interface BillingProfile {
+  companyName: string;       // název organizace / pořadatele
+  ico: string;               // IČO
+  dic?: string;              // DIČ (nepovinné — neplátci DPH)
+  address: string;           // ulice + č.p.
+  city: string;
+  zip: string;
+  bankAccount: string;       // české formát: 123456789/0100
+  iban?: string;             // IBAN (volitelné — pro QR Platba)
+  bic?: string;              // BIC/SWIFT (volitelné)
+  bankName?: string;         // název banky
+  email?: string;            // kontaktní email na faktuře
+  phone?: string;            // kontaktní telefon
+}
+
+/** Data pro vygenerování konkrétní faktury */
+export interface InvoiceData {
+  invoiceNumber: string;       // číslo faktury, e.g. "2026001"
+  variableSymbol: string;     // variabilní symbol pro platbu
+  issueDate: string;           // datum vystavení (ISO)
+  dueDate: string;             // datum splatnosti (ISO)
+  amount: number;              // částka v CZK
+  currency: string;            // "CZK"
+  description: string;         // "Startovné — Zimní turnaj 2026"
+  customerName: string;        // jméno trenéra / týmu
+  customerEmail?: string;
+  customerPhone?: string;
+  // Strukturované fakturační údaje odběratele (pokud je trenér vyplnil)
+  customerCompanyName?: string;
+  customerIco?: string;
+  customerDic?: string;
+  customerAddress?: string;
+  customerCity?: string;
+  customerZip?: string;
+}
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export interface TournamentSettings {
@@ -142,6 +193,7 @@ export interface TournamentSettings {
   scorersVisible?: boolean;                 // tabulka střelců viditelná pro hosty; default true
   chatEnabled?: boolean;                    // diskuze hostů; default false
   mvpVotingEnabled?: boolean;               // MVP hlasování diváků; default false
+  reactionsEnabled?: boolean;               // live reakce fanoušků na zápas; default false
 
   // ── Knockout / Groups extension (optional — backward compatible) ──────
   format?: TournamentFormat;               // default 'round-robin' pokud chybí
@@ -155,10 +207,24 @@ export interface TournamentSettings {
 
   // ── Registration ────────────────────────────────────────────────────
   registrationEnabled?: boolean;           // povolena veřejná registrace týmů
+  registrationClosed?: boolean;            // uzavřeno přihlašování (admin toggle)
   maxTeams?: number;                       // maximální počet týmů v turnaji
+  endTime?: string;                        // "HH:MM" — plánovaný konec turnaje
+  entryFee?: number;                       // startovné za tým (v CZK)
+  entryFeeNote?: string;                   // poznámka ke startovnému
+  billingProfile?: BillingProfile;         // fakturační údaje pro faktury
+
+  // ── Friendly mode (školičky — bez pořadí) ─────────────────────────
+  friendlyMode?: boolean;                  // true = žádná tabulka, žádní střelci, jen zápasy
+
+  // ── Venue (místo konání) ──────────────────────────────────────────
+  venueName?: string;                     // název hřiště / areálu
+  venueAddress?: string;                  // adresa místa konání
+  venueNote?: string;                     // doplňující info (parkování, vstup…)
 
   // ── Awards (ocenění trenérů) ──────────────────────────────────────
   awards?: TournamentAward[];             // ocenění udělená trenéry/poradatelem
+  awardsVisible?: boolean;                // zobrazit ocenění hostům; default false
 }
 
 export interface TournamentAward {
@@ -192,7 +258,7 @@ export interface Tournament {
   pinSalt?: string;        // salt pro rainbow-table ochranu (chybí u starých turnajů)
   firebaseSynced: boolean;
   lastSyncedAt: string | null;
-  joinedUsers?: Record<string, true>;  // {uid: true} — uživatelé připojení přes PIN (pro Firebase rules)
+  joinedUsers?: Record<string, true | 'admin'>;  // {uid: true} = rozhodčí, {uid: 'admin'} = co-owner
 }
 
 // ─── Store input ──────────────────────────────────────────────────────────────

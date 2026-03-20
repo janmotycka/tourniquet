@@ -27,11 +27,14 @@ interface PageState {
   page: Page;
   setPage: (p: Page) => void;
 
-  joinIntent: { tournamentId: string } | null;
-  setJoinIntent: (intent: { tournamentId: string } | null) => void;
+  joinIntent: { tournamentId: string; role?: 'admin' } | null;
+  setJoinIntent: (intent: { tournamentId: string; role?: 'admin' } | null) => void;
 
   adminJoin: boolean;
   setAdminJoin: (v: boolean) => void;
+
+  adminJoinRole: 'admin' | undefined;
+  setAdminJoinRole: (v: 'admin' | undefined) => void;
 }
 
 export const usePageStore = create<PageState>(() => ({
@@ -46,4 +49,10 @@ export const usePageStore = create<PageState>(() => ({
     return params.get('join') === '1';
   })(),
   setAdminJoin: (v) => usePageStore.setState({ adminJoin: v }),
+
+  adminJoinRole: (() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('role') === 'admin' ? 'admin' as const : undefined;
+  })(),
+  setAdminJoinRole: (v) => usePageStore.setState({ adminJoinRole: v }),
 }));

@@ -103,7 +103,7 @@ function AppRouter() {
   const loadTrainings = useTrainingsStore(s => s.loadFromFirebase);
   const setTrainingsFirebaseUid = useTrainingsStore(s => s.setFirebaseUid);
 
-  const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin } = usePageStore();
+  const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin, adminJoinRole, setAdminJoinRole } = usePageStore();
 
   const navigate = (p: Page) => {
     if (p.name === 'tournament-public') {
@@ -189,11 +189,13 @@ function AppRouter() {
       <TournamentPublicView
         tournamentId={page.tournamentId}
         navigate={navigate}
-        onJoinIntent={(tid) => setJoinIntent({ tournamentId: tid })}
+        onJoinIntent={(tid, role) => setJoinIntent({ tournamentId: tid, role })}
         joinIntent={joinIntent?.tournamentId === page.tournamentId}
-        clearJoinIntent={() => setJoinIntent(null)}
+        joinIntentRole={joinIntent?.role}
+        clearJoinIntent={() => { setJoinIntent(null); setAdminJoinRole(undefined); }}
         adminJoin={adminJoin}
-        clearAdminJoin={() => setAdminJoin(false)}
+        adminJoinRole={adminJoinRole}
+        clearAdminJoin={() => { setAdminJoin(false); setAdminJoinRole(undefined); }}
       />
     );
   }
