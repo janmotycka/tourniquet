@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Page } from '../../App';
 import { useTournamentStore } from '../../store/tournament.store';
 import { subscribeToChatMessages } from '../../services/tournament.firebase';
+import { subscribeToRegistrations } from '../../services/registration.firebase';
 import { isPinVerified } from '../../utils/pin-hash';
 import { computeCurrentMinute } from '../../utils/tournament-schedule';
 import type { Match } from '../../types/tournament.types';
@@ -14,16 +15,32 @@ import { SettingsTab } from '../../components/tournament/SettingsTab';
 import { PublicChat } from '../../components/tournament/public';
 import { ScoreModal } from '../../components/tournament/ScoreModal';
 import { RosterModal } from '../../components/tournament/RosterModal';
+import { AdminRosterSheet } from '../../components/tournament/AdminRosterSheet';
 import { PinGate } from '../../components/tournament/PinGate';
 import { MvpAdminBanner } from '../../components/tournament/MvpAdminBanner';
+import { DashboardTab } from '../../components/tournament/DashboardTab';
 
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
-type Tab = 'standings' | 'matches' | 'scorers' | 'chat' | 'settings';
+type Tab = 'dashboard' | 'standings' | 'matches' | 'scorers' | 'chat' | 'settings';
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function TournamentDetailPage({ tournamentId, navigate }: Props) {
-  const [tab, setTab] = useState<Tab>('matches');
+  // Check if tournament was just created — auto-dismiss after 8s
+  const [justCreated, setJustCreated] = useState(() => {
+    try {
+      const key = `torq_just_created_${tournamentId}`;
+      const val = sessionStorage.getItem(key);
+      if (val) { sessionStorage.removeItem(key); return true; }
+    } catch { /* */ }
+    return false;
+  });
+  useEffect(() => {
+    if (!justCreated) return;
+    const timer = setTimeout(() => setJustCreated(false), 8000);
+    return () => clearTimeout(timer);
+  }, [justCreated]);
+  const [tab, setTab] = useState<Tab>('dashboard');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [showPinGate, setShowPinGate] = useState(false);
   const { t } = useI18n();
@@ -31,6 +48,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
 
   const tournament = useTournamentStore(s => s.getTournamentById(tournamentId));
   const isOwner = useTournamentStore(s => s.isOwner(tournamentId));
+  const isAdmin = useTournamentStore(s => s.hasAdminAccess(tournamentId));
   const leaveTournament = useTournamentStore(s => s.leaveTournament);
 
   const [pinVerified, setPinVerified] = useState(() => isPinVerified(tournamentId) || !isOwner);
@@ -145,12 +163,35 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
     ? `💬 ${t('tournament.chat.title')} (${unreadCount > 99 ? '99+' : unreadCount})`
     : `💬 ${t('tournament.chat.title')}`;
 
+  // ── Pending registrations badge ────────────────────────────────────────────
+  const [pendingRegCount, setPendingRegCount] = useState(0);
+  useEffect(() => {
+    if (!tournament.settings.registrationEnabled || !isAdmin) return;
+    const unsub = subscribeToRegistrations(tournamentId, (regs) => {
+      setPendingRegCount(Object.keys(regs).length);
+    });
+    return unsub;
+  }, [tournamentId, tournament.settings.registrationEnabled, isAdmin]);
+
+  const settingsLabel = pendingRegCount > 0
+    ? `⚙️ ${t('tournament.detail.tabSettings')} (${pendingRegCount})`
+    : `⚙️ ${t('tournament.detail.tabSettings')}`;
+
+  const isFriendly = tournament.settings.friendlyMode ?? false;
+  const generateInitialSchedule = useTournamentStore(s => s.generateInitialSchedule);
+  const needsSchedule = tournament.matches.length === 0 && tournament.teams.length >= 2;
+
+  const dashboardLabel = pendingRegCount > 0
+    ? `📊 ${t('dashboard.tab')} (${pendingRegCount})`
+    : `📊 ${t('dashboard.tab')}`;
+
   const TABS: { id: Tab; label: string; highlight?: boolean }[] = [
+    { id: 'dashboard', label: dashboardLabel, highlight: pendingRegCount > 0 },
     { id: 'matches', label: `⚽ ${t('tournament.detail.tabMatches')}` },
-    { id: 'standings', label: `🏅 ${t('tournament.detail.tabStandings')}` },
-    { id: 'scorers', label: `🥇 ${t('tournament.detail.tabScorers')}` },
+    ...(!isFriendly ? [{ id: 'standings' as Tab, label: `🏅 ${t('tournament.detail.tabStandings')}` }] : []),
+    ...(!isFriendly ? [{ id: 'scorers' as Tab, label: `🥇 ${t('tournament.detail.tabScorers')}` }] : []),
     ...(chatEnabled ? [{ id: 'chat' as Tab, label: chatLabel, highlight: unreadCount > 0 }] : []),
-    { id: 'settings', label: `⚙️ ${t('tournament.detail.tabSettings')}` },
+    { id: 'settings', label: settingsLabel, highlight: needsSchedule },
   ];
 
   return (
@@ -182,7 +223,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
           {pinVerified && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               <span style={{ fontSize: 11, color: '#2E7D32', fontWeight: 600, padding: '4px 8px', background: '#E8F5E9', borderRadius: 8 }}>
-                ✅ Admin
+                {isAdmin ? '👑 Admin' : '✅ Rozhodčí'}
               </span>
               {!isOwner && (
                 <button
@@ -246,24 +287,64 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        {tab === 'standings' && <StandingsTab tournament={tournament} onTeamClick={setRosterTeamId} isOwner={isOwner} />}
-        {tab === 'matches' && (
-          <MatchesTab
+        {tab === 'dashboard' && (
+          <DashboardTab
             tournament={tournament}
-            isVerified={pinVerified}
-            onQuickGoal={handleQuickGoal}
-            onStartMatch={handleStartMatchInline}
-            onFinishMatchConfirm={handleFinishMatchConfirm}
-            onPauseMatch={handlePauseMatch}
-            onResumeMatch={handleResumeMatch}
-            onEditMatch={setSelectedMatch}
-            onCancelMatch={isOwner ? (matchId) => cancelMatchStore(tournamentId, matchId) : undefined}
-            onReorderMatches={isOwner ? (ids) => reorderMatchesStore(tournamentId, ids) : undefined}
+            navigate={navigate}
+            isAdmin={isAdmin}
+            justCreated={justCreated}
+            onDismissCreated={() => setJustCreated(false)}
           />
+        )}
+        {tab === 'standings' && <StandingsTab tournament={tournament} onTeamClick={setRosterTeamId} isOwner={isAdmin} />}
+        {tab === 'matches' && (
+          <>
+            {needsSchedule && isAdmin && (
+              <div style={{
+                margin: '12px 16px', padding: '16px', background: '#E3F2FD', borderRadius: 14,
+                display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center',
+              }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#1565C0', margin: 0, textAlign: 'center' }}>
+                  📋 {t('tournament.detail.noMatchesYet', { count: tournament.teams.length })}
+                </p>
+                <button
+                  onClick={() => generateInitialSchedule(tournamentId)}
+                  style={{
+                    padding: '10px 24px', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                    background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  ⚡ {t('tournament.detail.generateSchedule')}
+                </button>
+              </div>
+            )}
+            {tournament.matches.length === 0 && tournament.teams.length < 2 && (
+              <div style={{
+                margin: '12px 16px', padding: '16px', background: 'var(--surface)', borderRadius: 14,
+                textAlign: 'center',
+              }}>
+                <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
+                  📝 {t('tournament.detail.waitingForRegistrations')}
+                </p>
+              </div>
+            )}
+            <MatchesTab
+              tournament={tournament}
+              isVerified={pinVerified}
+              onQuickGoal={handleQuickGoal}
+              onStartMatch={handleStartMatchInline}
+              onFinishMatchConfirm={handleFinishMatchConfirm}
+              onPauseMatch={handlePauseMatch}
+              onResumeMatch={handleResumeMatch}
+              onEditMatch={setSelectedMatch}
+              onCancelMatch={isAdmin ? (matchId) => cancelMatchStore(tournamentId, matchId) : undefined}
+              onReorderMatches={isAdmin ? (ids) => reorderMatchesStore(tournamentId, ids) : undefined}
+            />
+          </>
         )}
         {tab === 'scorers' && <ScorersTab tournament={tournament} />}
         {tab === 'chat' && chatEnabled && <PublicChat tournamentId={tournament.id} teams={tournament.teams} isAdmin />}
-        {tab === 'settings' && <SettingsTab tournament={tournament} navigate={navigate} isOwner={isOwner} leaveTournament={leaveTournament} />}
+        {tab === 'settings' && <SettingsTab tournament={tournament} navigate={navigate} isOwner={isOwner} isAdmin={isAdmin} leaveTournament={leaveTournament} />}
       </div>
 
       {/* PIN gate */}
@@ -325,18 +406,19 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
         />
       )}
 
-      {/* Roster modal */}
-      {rosterTeamId && tournament && pinVerified && (
-        <RosterModal
-          tournament={tournament}
-          teamId={rosterTeamId}
-          onClose={() => setRosterTeamId(null)}
-          onAddPlayer={(teamId, p) => addPlayer(tournamentId, teamId, p)}
-          onRemovePlayer={(teamId, playerId) => removePlayer(tournamentId, teamId, playerId)}
-          onUpdatePlayer={(teamId, playerId, updates) => updatePlayer(tournamentId, teamId, playerId, updates)}
-          onUpdateTeamName={(teamId, name) => updateTeamName(tournamentId, teamId, name)}
-        />
-      )}
+      {/* Roster modal — admin uses AdminRosterSheet */}
+      {rosterTeamId && tournament && pinVerified && (() => {
+        const rosterTeam = tournament.teams.find(tm => tm.id === rosterTeamId);
+        if (!rosterTeam) return null;
+        return (
+          <AdminRosterSheet
+            tournament={tournament}
+            team={rosterTeam}
+            rosterMap={{}}
+            onClose={() => setRosterTeamId(null)}
+          />
+        );
+      })()}
       {/* Roster modal pro hosta (jen čtení) */}
       {rosterTeamId && tournament && !pinVerified && (
         <RosterModal

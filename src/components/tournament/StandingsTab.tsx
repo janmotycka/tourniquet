@@ -6,6 +6,7 @@ import { useTournamentStore } from '../../store/tournament.store';
 import { computeStandings } from '../../utils/tournament-schedule';
 import { BracketView } from '../../components/BracketView';
 import { TeamBadge } from './TeamBadge';
+import { StandingsCriteriaBox } from './public/StandingsCriteriaBox';
 
 export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament: Tournament; onTeamClick?: (teamId: string) => void; isOwner?: boolean }) {
   const { t } = useI18n();
@@ -14,6 +15,8 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
   const [penaltyA, setPenaltyA] = useState(0);
   const [penaltyB, setPenaltyB] = useState(0);
   const [penaltySaved, setPenaltySaved] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [criteriaOpen, setCriteriaOpen] = useState(false);
 
   const hasLiveMatch = tournament.matches.some(m => m.status === 'live');
 
@@ -144,7 +147,7 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                 {group.name}
               </h3>
               <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '24px minmax(0,1fr) 26px 26px 26px 38px 32px', gap: 4, padding: '8px 12px', background: 'var(--surface-var)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 22px 22px 22px 36px 30px', gap: 4, padding: '7px 10px', background: 'var(--surface-var)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
                   <span>#</span><span>{t('tournament.teamA').replace(/ A$/, '')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.played')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.won')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.lost')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.goalsFor')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.points')}</span>
                 </div>
                 {groupStandings.map((s, idx) => {
@@ -168,7 +171,7 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                       }}
                     >
                       <span style={{
-                        fontWeight: 700, fontSize: 13, textAlign: 'center',
+                        fontWeight: 700, fontSize: 12, textAlign: 'center',
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0,
                         color: gPosChange > 0 ? '#2E7D32' : gPosChange < 0 ? '#C62828' : isAdvancing ? 'var(--primary)' : 'var(--text-muted)',
                       }}>
@@ -211,7 +214,7 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
         {/* Header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '24px minmax(0,1fr) 26px 26px 26px 38px 32px', gap: 4, padding: '8px 12px', background: 'var(--surface-var)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 22px 22px 22px 36px 30px', gap: 4, padding: '7px 10px', background: 'var(--surface-var)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
           <span>#</span><span>{t('tournament.teamA').replace(/ A$/, '')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.played')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.won')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.lost')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.goalsFor')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.points')}</span>
         </div>
         {displayStandings.map((s, idx) => {
@@ -227,15 +230,15 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
               key={s.teamId}
               onClick={() => onTeamClick?.(s.teamId)}
               style={{
-                display: 'grid', gridTemplateColumns: '24px minmax(0,1fr) 26px 26px 26px 38px 32px', gap: 4,
-                padding: '10px 12px', alignItems: 'center',
+                display: 'grid', gridTemplateColumns: '22px 1fr 22px 22px 22px 36px 30px', gap: 4,
+                padding: '8px 10px', alignItems: 'center',
                 borderTop: idx > 0 ? '1px solid var(--border)' : 'none',
                 background: isFirst ? 'var(--primary-light)' : inLive ? 'rgba(183,28,28,.04)' : 'transparent',
                 cursor: onTeamClick ? 'pointer' : 'default',
               }}
             >
               <span style={{
-                fontWeight: 700, fontSize: 13, textAlign: 'center',
+                fontWeight: 700, fontSize: 12, textAlign: 'center',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0,
                 color: posChange > 0 ? '#2E7D32' : posChange < 0 ? '#C62828' : isFirst ? 'var(--primary)' : 'var(--text-muted)',
               }}>
@@ -246,20 +249,15 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                   </span>
                 )}
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                <TeamBadge team={team} size={12} />
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontWeight: isFirst ? 800 : 600, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team?.name ?? '?'}</div>
-                  {onTeamClick && (
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{team?.players.length ?? 0} {t('common.players')}</div>
-                  )}
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                <TeamBadge team={team} size={14} />
+                <span style={{ fontWeight: isFirst ? 800 : 600, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team?.name ?? '?'}</span>
               </div>
-              <span style={{ textAlign: 'center', fontSize: 13 }}>{s.played}</span>
-              <span style={{ textAlign: 'center', fontSize: 13, color: '#2E7D32', fontWeight: 600 }}>{s.won}</span>
-              <span style={{ textAlign: 'center', fontSize: 13, color: '#C62828', fontWeight: 600 }}>{s.lost}</span>
-              <span style={{ textAlign: 'center', fontSize: 12 }}>{s.goalsFor}:{s.goalsAgainst}</span>
-              <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 15, color: isFirst ? 'var(--primary)' : 'var(--text)' }}>{s.points}</span>
+              <span style={{ textAlign: 'center', fontSize: 12 }}>{s.played}</span>
+              <span style={{ textAlign: 'center', fontSize: 12, color: '#2E7D32', fontWeight: 600 }}>{s.won}</span>
+              <span style={{ textAlign: 'center', fontSize: 12, color: '#C62828', fontWeight: 600 }}>{s.lost}</span>
+              <span style={{ textAlign: 'center', fontSize: 11 }}>{s.goalsFor}:{s.goalsAgainst}</span>
+              <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 14, color: isFirst ? 'var(--primary)' : 'var(--text)' }}>{s.points}</span>
             </div>
           );
         })}

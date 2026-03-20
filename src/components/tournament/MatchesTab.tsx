@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import type { Tournament, Match } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
 import { useConfirmStore } from '../../store/confirm.store';
@@ -8,9 +8,76 @@ import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSe
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { LiveReactions } from './public/LiveReactions';
 import { TeamBadge } from './TeamBadge';
 import { MatchCardTimer } from './MatchCardTimer';
 import { InlineGoalPanel } from './InlineGoalPanel';
+
+/** Malá komponenta pro gólový flash v admin view */
+function AdminGoalFlash({ homeScore, awayScore }: { homeScore: number; awayScore: number }) {
+  const [flash, setFlash] = useState(false);
+  const prev = useRef({ home: homeScore, away: awayScore });
+  useEffect(() => {
+    const scored = homeScore > prev.current.home || awayScore > prev.current.away;
+    prev.current = { home: homeScore, away: awayScore };
+    if (scored) {
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [homeScore, awayScore]);
+  if (!flash) return null;
+  return (
+    <div style={{
+      textAlign: 'center', padding: '4px 0',
+      background: 'linear-gradient(90deg, transparent 0%, rgba(255,213,79,.3) 50%, transparent 100%)',
+      fontSize: 12, fontWeight: 900, color: '#F57F17', letterSpacing: 1.5,
+    }}>
+      ⚽ GÓÓL!
+    </div>
+  );
+}
+
+/** Komponenta pro flash při ukončení zápasu v admin view */
+function AdminFinishFlash({ status }: { status: string }) {
+  const { t } = useI18n();
+  const [flash, setFlash] = useState(false);
+  const prev = useRef(status);
+  useEffect(() => {
+    if (prev.current === 'live' && status === 'finished') {
+      setFlash(true);
+      const t = setTimeout(() => setFlash(false), 2500);
+      return () => clearTimeout(t);
+    }
+    prev.current = status;
+  }, [status]);
+  if (!flash) return null;
+  return (
+    <div style={{
+      textAlign: 'center', padding: '5px 0',
+      background: 'linear-gradient(90deg, transparent 0%, rgba(102,187,106,.25) 50%, transparent 100%)',
+      fontSize: 12, fontWeight: 900, color: '#2E7D32', letterSpacing: 1.5,
+    }}>
+      🏁 {t('tournament.public.matchFinished').toUpperCase()}
+    </div>
+  );
+}
+
+/** Sortable wrapper — stabilní top-level komponenta (nedefinovat uvnitř MatchesTab!) */
+function SortableMatchCardWrapper({ matchId, children }: { matchId: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: matchId });
+  return (
+    <div ref={setNodeRef} style={{
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      zIndex: isDragging ? 10 : undefined,
+      position: 'relative',
+    }} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
+}
 
 export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinishMatchConfirm, onPauseMatch, onResumeMatch, onEditMatch, onCancelMatch, onReorderMatches }: {
   tournament: Tournament;
@@ -85,6 +152,8 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
 
                 return (
                   <div>
+                    {/* AdminGoalFlash removed — not needed in admin view */}
+                    <AdminFinishFlash status={match.status} />
                     <div style={{
                       background: 'var(--surface)',
                       borderRadius: panelOpen ? '14px 14px 0 0' : 14,
@@ -229,6 +298,18 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                               >✏️</button>
                             </div>
                           )}
+                          {/* Admin read-only live reactions */}
+                          {(tournament.settings.reactionsEnabled ?? false) && homeT && awayT && (
+                            <div style={{ borderTop: '1px solid var(--border)' }}>
+                              <LiveReactions
+                                tournamentId={tournament.id}
+                                matchId={match.id}
+                                homeTeam={{ id: homeT.id, name: homeT.name, color: homeT.color }}
+                                awayTeam={{ id: awayT.id, name: awayT.name, color: awayT.color }}
+                                readOnly
+                              />
+                            </div>
+                          )}
                         </>
                       )}
 
@@ -324,8 +405,8 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                               }}
                             >✏️</button>
                           )}
-                          {/* Cancel scheduled / placeholder */}
-                          {isVerified && isScheduled && onCancelMatch ? (
+                          {/* Cancel scheduled — only when order is unlocked */}
+                          {isVerified && isScheduled && onCancelMatch && !reorderLocked && (
                             <button
                               onClick={async () => {
                                 const ok = await ask({ title: t('common.delete'), message: t('tournament.match.cancelConfirm'), destructive: true });
@@ -340,9 +421,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                                 fontSize: 12, border: '1px solid #FFCDD2',
                               }}
                             >✕</button>
-                          ) : (!isVerified || isScheduled) ? (
-                            <div style={{ width: 34, flexShrink: 0 }} />
-                          ) : null}
+                          )}
                         </div>
                       )}
                     </div>
@@ -364,21 +443,6 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                 );
   };
 
-  // Sortable wrapper pro scheduled match
-  const SortableMatchCard = ({ match }: { match: Match }) => {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: match.id });
-    return (
-      <div ref={setNodeRef} style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 10 : undefined,
-        position: 'relative',
-      }} {...attributes} {...listeners}>
-        {renderMatchCard(match, { showDragHandle: canReorder })}
-      </div>
-    );
-  };
 
   return (
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -420,7 +484,11 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={scheduledMatches.map(m => m.id)} strategy={verticalListSortingStrategy}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {scheduledMatches.map(m => <SortableMatchCard key={m.id} match={m} />)}
+                  {scheduledMatches.map(m => (
+                    <SortableMatchCardWrapper key={m.id} matchId={m.id}>
+                      {renderMatchCard(m, { showDragHandle: canReorder })}
+                    </SortableMatchCardWrapper>
+                  ))}
                 </div>
               </SortableContext>
             </DndContext>
