@@ -82,7 +82,44 @@ export function generateRoundRobinSchedule(
     }
   }
 
-  return matches;
+  // Prioritizace domácích týmů — organizátorovy týmy jsou typicky na začátku seznamu.
+  // Zápasy, kde hraje tým s nižším indexem, se přesunou na dřívější čas,
+  // aby hostující týmy mohly přijet později.
+  return prioritizeHomeTeams(matches, teams, settings);
+}
+
+/**
+ * Přeřadí zápasy tak, aby domácí týmy (nízký index v poli teams) hrály co nejdříve.
+ * Zachovává multi-pitch logiku a přepočítá časy.
+ */
+function prioritizeHomeTeams(matches: Match[], teams: Team[], settings: TournamentSettings): Match[] {
+  if (matches.length === 0) return matches;
+
+  const teamIndexMap = new Map(teams.map((t, i) => [t.id, i]));
+  const numberOfPitches = settings.numberOfPitches ?? 1;
+  const startDateTime = parseStartDateTime(settings);
+
+  // Skóre = nejnižší index týmu v zápase (čím nižší, tím dříve hraje)
+  const sorted = [...matches].sort((a, b) => {
+    const aMin = Math.min(teamIndexMap.get(a.homeTeamId) ?? 999, teamIndexMap.get(a.awayTeamId) ?? 999);
+    const bMin = Math.min(teamIndexMap.get(b.homeTeamId) ?? 999, teamIndexMap.get(b.awayTeamId) ?? 999);
+    if (aMin !== bMin) return aMin - bMin;
+    // Sekundární: vyšší index druhého týmu = "lehčí" zápas pro schedule
+    const aMax = Math.max(teamIndexMap.get(a.homeTeamId) ?? 0, teamIndexMap.get(a.awayTeamId) ?? 0);
+    const bMax = Math.max(teamIndexMap.get(b.homeTeamId) ?? 0, teamIndexMap.get(b.awayTeamId) ?? 0);
+    return aMax - bMax;
+  });
+
+  // Přepočítat matchIndex, slotIndex, pitchNumber a scheduledTime
+  return sorted.map((m, idx) => {
+    const slotIndex = Math.floor(idx / numberOfPitches);
+    const pitchNumber = (idx % numberOfPitches) + 1;
+    const scheduledTime = computeMatchStartTime(
+      startDateTime, slotIndex,
+      settings.matchDurationMinutes, settings.breakBetweenMatchesMinutes,
+    );
+    return { ...m, matchIndex: idx, pitchNumber, scheduledTime: scheduledTime.toISOString(), roundIndex: slotIndex };
+  });
 }
 
 /** Rotuje pole doprava o `n` pozic */
