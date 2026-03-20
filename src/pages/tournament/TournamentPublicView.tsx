@@ -28,10 +28,12 @@ import { translateAwardTitle } from '../../components/tournament/SettingsTab';
 interface Props {
   tournamentId: string;
   navigate: (p: Page) => void;
-  onJoinIntent?: (tournamentId: string) => void;
+  onJoinIntent?: (tournamentId: string, role?: 'admin') => void;
   joinIntent?: boolean;
+  joinIntentRole?: 'admin';
   clearJoinIntent?: () => void;
   adminJoin?: boolean;
+  adminJoinRole?: 'admin';
   clearAdminJoin?: () => void;
 }
 
@@ -46,7 +48,7 @@ export function TournamentPublicView(props: Props) {
   );
 }
 
-function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinIntent, clearJoinIntent, adminJoin, clearAdminJoin }: Props) {
+function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinIntent, joinIntentRole, clearJoinIntent, adminJoin, adminJoinRole, clearAdminJoin }: Props) {
   const { t } = useI18n();
   const [tab, setTab] = useState<Tab>('results');
   const [lastRefresh, setLastRefresh] = useState(new Date());
@@ -113,11 +115,12 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
   }, [user, joinIntent]);
 
   useEffect(() => {
-    // Vždy vyčistit ?join=1 z URL — i pro ownera, aby nedošlo k náhodnému
+    // Vždy vyčistit ?join=1&role=admin z URL — i pro ownera, aby nedošlo k náhodnému
     // sdílení admin odkazu místo veřejného odkazu pro hosty
     const url = new URL(window.location.href);
     if (url.searchParams.has('join')) {
       url.searchParams.delete('join');
+      url.searchParams.delete('role');
       history.replaceState(null, '', url.pathname + url.search + url.hash);
     }
 
@@ -127,7 +130,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
         setShowJoinModal(true);
       } else {
         // Nepřihlášený → uložit intent a přesměrovat na login
-        onJoinIntent?.(tournamentId);
+        onJoinIntent?.(tournamentId, adminJoinRole);
         navigate({ name: 'home' });
       }
     }
@@ -148,7 +151,9 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
     setJoining(true);
     setJoinError('');
     try {
-      const result = await joinTournament(tournamentId, joinPin);
+      // Determine role: from URL param or from join intent
+      const joinRole = adminJoinRole ?? joinIntentRole;
+      const result = await joinTournament(tournamentId, joinPin, joinRole);
       if (result.success) {
         markPinVerified(tournamentId);
         clearJoinIntent?.();
@@ -354,12 +359,25 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
 
           const isAdmin = isTournamentOwner || hasJoined;
           const isFinished = tournament.status === 'finished';
-          // Auto-awards (střelec, fan favorite) se hostům zobrazí jen po skončení turnaje
-          const showAutoAwards = isFinished || isAdmin;
-          const visibleTopScorers = showAutoAwards ? topScorers : [];
+          const awardsVisible = tournament.settings.awardsVisible ?? false;
+          // Hosté vidí ocenění jen když je toggle zapnutý; admin vidí vždy
+          if (!awardsVisible && !isAdmin) return null;
+          // Auto-awards (střelec, fan favorite) se zobrazí až po skončení turnaje — nikdy během hry
+          const showAutoAwards = isFinished;
+
+          // Pokud admin vybral konkrétního střelce, zobrazit jen jeho; jinak auto top scorers
+          const selectedScorer = manualAwards.find(a => a.title === 'tournament.awards.bestScorer');
+          const visibleTopScorers = showAutoAwards
+            ? (selectedScorer
+                ? topScorers.filter(s => s.name === selectedScorer.playerName && s.teamId === selectedScorer.teamId)
+                : topScorers)
+            : [];
           const visibleFanFavorite = showAutoAwards ? fanFavorite : null;
 
-          const hasContent = manualAwards.length > 0 || visibleTopScorers.length > 0 || visibleFanFavorite;
+          // Filtruj bestScorer z manual awards (zobrazí se v auto sekci)
+          const filteredManualAwards = manualAwards.filter(a => a.title !== 'tournament.awards.bestScorer');
+
+          const hasContent = filteredManualAwards.length > 0 || visibleTopScorers.length > 0 || visibleFanFavorite;
           if (!hasContent) return null;
 
           return (
@@ -374,7 +392,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
                   <span style={{ fontWeight: 800, fontSize: 14, color: '#F57F17' }}>{t('tournament.awards.title')}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {manualAwards.map((award, i) => {
+                  {filteredManualAwards.map((award, i) => {
                     const team = award.teamId ? tournament.teams.find(tm => tm.id === award.teamId) : null;
                     return (
                       <div key={i} style={{

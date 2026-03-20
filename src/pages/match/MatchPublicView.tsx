@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { PublicSeasonMatch, MatchGoal, MatchCard, MatchSubstitution, MatchLineupPlayer } from '../../types/match.types';
 import { subscribeToPublicMatch } from '../../services/match.firebase';
 import { useI18n } from '../../i18n';
 
-// ─── Timer helper (same logic as match-utils but for PublicSeasonMatch) ──────
+// ─── Timer helper ──────────────────────────────────────────────────────────
 
 function computeElapsed(m: PublicSeasonMatch): number {
   if (!m.startedAt) return 0;
@@ -23,6 +23,75 @@ function formatDate(dateStr: string): string {
   return `${d}.${mo}.${y}`;
 }
 
+// ─── Celebration durations ─────────────────────────────────────────────────
+
+const GOAL_CELEBRATION_DURATION = 5000;
+const FINISH_CELEBRATION_DURATION = 8000;
+
+// ─── Goal celebration overlay ──────────────────────────────────────────────
+
+function GoalCelebration({ isOurGoal, scorerName, minute, ts }: {
+  isOurGoal: boolean; scorerName: string | null; minute: number; ts: number;
+}) {
+  return (
+    <div key={ts} style={{
+      position: 'fixed', inset: 0, zIndex: 200,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
+      background: isOurGoal
+        ? 'linear-gradient(135deg, rgba(46,125,50,.92) 0%, rgba(27,94,32,.92) 100%)'
+        : 'linear-gradient(135deg, rgba(198,40,40,.85) 0%, rgba(183,28,28,.85) 100%)',
+      animation: `matchGoalCelebration ${GOAL_CELEBRATION_DURATION}ms ease-out forwards`,
+      pointerEvents: 'none',
+    }}>
+      <div style={{ fontSize: 56, animation: 'matchGoalPop .5s ease-out' }}>⚽</div>
+      <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: 3, textTransform: 'uppercase' }}>
+        GÓÓL!
+      </div>
+      {scorerName && (
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,.9)', marginTop: 4 }}>
+          {scorerName}
+        </div>
+      )}
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>
+        {minute}'
+      </div>
+    </div>
+  );
+}
+
+// ─── Full time celebration overlay ─────────────────────────────────────────
+
+function FullTimeCelebration({ match, ts }: { match: PublicSeasonMatch; ts: number }) {
+  const { t } = useI18n();
+  return (
+    <div key={ts} style={{
+      position: 'fixed', inset: 0, zIndex: 200,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+      background: 'linear-gradient(135deg, rgba(27,94,32,.94) 0%, rgba(46,125,50,.94) 100%)',
+      animation: `matchFinishCelebration ${FINISH_CELEBRATION_DURATION}ms ease-out forwards`,
+      pointerEvents: 'none',
+    }}>
+      <div style={{ fontSize: 14, fontWeight: 800, color: '#A5D6A7', letterSpacing: 3, textTransform: 'uppercase' }}>
+        🏁 {t('matchPublic.finished')}
+      </div>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 16, fontSize: 56, fontWeight: 900, color: '#fff',
+        letterSpacing: 3,
+      }}>
+        <span>{match.homeScore}</span>
+        <span style={{ fontSize: 32, opacity: 0.5 }}>:</span>
+        <span>{match.awayScore}</span>
+      </div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,.85)' }}>
+        {match.isHome ? t('matchPublic.us') : match.opponent} vs {match.isHome ? match.opponent : t('matchPublic.us')}
+      </div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#81C784', letterSpacing: 2, marginTop: 4 }}>
+        ✓ FULL TIME
+      </div>
+    </div>
+  );
+}
+
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function MatchPublicView({ matchId }: { matchId: string }) {
@@ -30,6 +99,17 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
   const [match, setMatch] = useState<PublicSeasonMatch | null>(null);
   const [loading, setLoading] = useState(true);
   const [elapsed, setElapsed] = useState(0);
+
+  // ── Celebrations ──
+  const [goalCelebration, setGoalCelebration] = useState<{
+    isOurGoal: boolean; scorerName: string | null; minute: number; ts: number;
+  } | null>(null);
+  const [finishCelebration, setFinishCelebration] = useState<{ ts: number } | null>(null);
+  const prevScoresRef = useRef<{ home: number; away: number } | null>(null);
+  const prevStatusRef = useRef<string | null>(null);
+  const goalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const alreadyShownFinish = useRef(false);
 
   // Subscribe to public match data
   useEffect(() => {
@@ -54,6 +134,70 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
       setElapsed(computeElapsed(match));
     }
   }, [match]);
+
+  // ── Detect goal / finish transitions for celebrations ──
+  useEffect(() => {
+    if (!match) return;
+
+    const prevScores = prevScoresRef.current;
+    const prevStatus = prevStatusRef.current;
+    prevScoresRef.current = { home: match.homeScore, away: match.awayScore };
+    prevStatusRef.current = match.status;
+
+    // Goal detection
+    if (prevScores) {
+      const homeScored = match.homeScore > prevScores.home;
+      const awayScored = match.awayScore > prevScores.away;
+
+      if (homeScored || awayScored) {
+        const isOurGoal = match.isHome ? homeScored : awayScored;
+
+        // Find the latest goal for scorer info
+        let scorerName: string | null = null;
+        if (match.goals.length > 0) {
+          const latestGoal = match.goals.reduce((a, b) =>
+            new Date(b.recordedAt).getTime() > new Date(a.recordedAt).getTime() ? b : a
+          );
+          if (!latestGoal.isOpponentGoal && latestGoal.scorerId) {
+            const player = match.lineup.find(p => p.playerId === latestGoal.scorerId);
+            if (player) scorerName = `#${player.jerseyNumber} ${player.name}`;
+          }
+        }
+
+        const minute = match.goals.length > 0
+          ? match.goals.reduce((a, b) =>
+              new Date(b.recordedAt).getTime() > new Date(a.recordedAt).getTime() ? b : a
+            ).minute
+          : Math.floor(computeElapsed(match) / 60) + 1;
+
+        // Clear previous goal timer
+        if (goalTimerRef.current) clearTimeout(goalTimerRef.current);
+
+        setGoalCelebration({ isOurGoal, scorerName, minute, ts: Date.now() });
+        goalTimerRef.current = setTimeout(() => {
+          setGoalCelebration(null);
+          goalTimerRef.current = null;
+        }, GOAL_CELEBRATION_DURATION);
+      }
+    }
+
+    // Finish detection
+    if (prevStatus === 'live' && match.status === 'finished' && !alreadyShownFinish.current) {
+      alreadyShownFinish.current = true;
+      if (finishTimerRef.current) clearTimeout(finishTimerRef.current);
+      setFinishCelebration({ ts: Date.now() });
+      finishTimerRef.current = setTimeout(() => {
+        setFinishCelebration(null);
+        finishTimerRef.current = null;
+      }, FINISH_CELEBRATION_DURATION);
+    }
+  }, [match]);
+
+  // Cleanup timers
+  useEffect(() => () => {
+    if (goalTimerRef.current) clearTimeout(goalTimerRef.current);
+    if (finishTimerRef.current) clearTimeout(finishTimerRef.current);
+  }, []);
 
   if (loading) {
     return (
@@ -81,6 +225,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
   const isPaused = !!match.pausedAt;
   const durationSec = match.durationMinutes * 60;
   const isOvertime = elapsed > durationSec;
+  const progress = Math.min(1, elapsed / durationSec);
 
   const playerName = (id: string | null) => {
     if (!id) return t('matchPublic.unknownPlayer');
@@ -88,18 +233,78 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
     return p ? `${p.name}${p.jerseyNumber != null ? ` #${p.jerseyNumber}` : ''}` : t('matchPublic.unknownPlayer');
   };
 
-  const sortedGoals = [...match.goals].sort((a, b) => a.minute - b.minute);
-  const sortedCards = [...match.cards].sort((a, b) => a.minute - b.minute);
-  const sortedSubs = [...match.substitutions].sort((a, b) => a.minute - b.minute);
+  // Combined timeline
+  type TimelineEvent =
+    | { type: 'goal'; minute: number; data: MatchGoal }
+    | { type: 'card'; minute: number; data: MatchCard }
+    | { type: 'sub'; minute: number; data: MatchSubstitution };
+
+  const timeline: TimelineEvent[] = [
+    ...match.goals.map(g => ({ type: 'goal' as const, minute: g.minute, data: g })),
+    ...match.cards.map(c => ({ type: 'card' as const, minute: c.minute, data: c })),
+    ...match.substitutions.map(s => ({ type: 'sub' as const, minute: s.minute, data: s })),
+  ].sort((a, b) => a.minute - b.minute);
+
   const starters = match.lineup.filter(p => p.isStarter);
   const bench = match.lineup.filter(p => !p.isStarter);
 
   return (
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
+      <style>{`
+        @keyframes matchGoalCelebration {
+          0% { opacity: 0; transform: scale(0.85); }
+          8% { opacity: 1; transform: scale(1.03); }
+          14% { transform: scale(0.98); }
+          18% { opacity: 1; transform: scale(1); }
+          80% { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(0.95); }
+        }
+        @keyframes matchGoalPop {
+          0% { transform: scale(0.3) rotate(-20deg); opacity: 0; }
+          50% { transform: scale(1.3) rotate(5deg); }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes matchFinishCelebration {
+          0% { opacity: 0; transform: scale(0.9); }
+          8% { opacity: 1; transform: scale(1.03); }
+          14% { transform: scale(0.99); }
+          18% { opacity: 1; transform: scale(1); }
+          85% { opacity: 1; transform: scale(1); }
+          100% { opacity: 0; transform: scale(0.95); }
+        }
+        @keyframes livePulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: .4; }
+        }
+        @keyframes scoreChange {
+          0% { transform: scale(1); }
+          30% { transform: scale(1.15); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
+
+      {/* ── Celebration overlays ── */}
+      {goalCelebration && (
+        <GoalCelebration
+          key={goalCelebration.ts}
+          isOurGoal={goalCelebration.isOurGoal}
+          scorerName={goalCelebration.scorerName}
+          minute={goalCelebration.minute}
+          ts={goalCelebration.ts}
+        />
+      )}
+      {finishCelebration && match && (
+        <FullTimeCelebration key={finishCelebration.ts} match={match} ts={finishCelebration.ts} />
+      )}
+
+      {/* ── Header ── */}
       <div style={{
-        background: isLive ? 'linear-gradient(135deg, var(--primary), #0D47A1)' : 'var(--surface)',
-        color: isLive ? '#fff' : 'var(--text)',
+        background: isLive
+          ? 'linear-gradient(135deg, var(--primary), #0D47A1)'
+          : isFinished
+            ? 'linear-gradient(135deg, #1B5E20, #2E7D32)'
+            : 'var(--surface)',
+        color: (isLive || isFinished) ? '#fff' : 'var(--text)',
         padding: '20px 16px 16px',
         textAlign: 'center',
       }}>
@@ -115,23 +320,36 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
           fontSize: 48, fontWeight: 900, letterSpacing: 2,
         }}>
-          <span>{match.homeScore}</span>
+          <span key={`h-${match.homeScore}`} style={{ animation: 'scoreChange .4s ease-out' }}>{match.homeScore}</span>
           <span style={{ fontSize: 28, opacity: 0.5 }}>:</span>
-          <span>{match.awayScore}</span>
+          <span key={`a-${match.awayScore}`} style={{ animation: 'scoreChange .4s ease-out' }}>{match.awayScore}</span>
         </div>
 
-        {/* Status / Timer */}
+        {/* Status / Timer + Progress bar */}
         <div style={{ marginTop: 8 }}>
           {isLive && !isPaused && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 14px',
-              fontSize: 14, fontWeight: 700,
-            }}>
-              <span style={{ color: '#FF5252', fontSize: 10 }}>●</span>
-              {formatTime(elapsed)}
-              {isOvertime && <span style={{ fontSize: 11 }}>{t('matchPublic.overtime')}</span>}
-            </div>
+            <>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 14px',
+                fontSize: 14, fontWeight: 700,
+              }}>
+                <span style={{ color: '#FF5252', fontSize: 10, animation: 'livePulse 1.5s infinite' }}>●</span>
+                {formatTime(elapsed)}
+                {isOvertime && <span style={{ fontSize: 11 }}>{t('matchPublic.overtime')}</span>}
+              </div>
+              {/* Progress bar */}
+              <div style={{
+                height: 3, background: 'rgba(255,255,255,.2)', borderRadius: 3,
+                marginTop: 10, overflow: 'hidden', maxWidth: 240, margin: '10px auto 0',
+              }}>
+                <div style={{
+                  height: '100%', width: `${progress * 100}%`,
+                  background: isOvertime ? '#FF5252' : '#fff',
+                  borderRadius: 3, transition: 'width 1s linear',
+                }} />
+              </div>
+            </>
           )}
           {isLive && isPaused && (
             <div style={{
@@ -145,10 +363,10 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           {isFinished && (
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'var(--surface-var)', borderRadius: 20, padding: '4px 14px',
-              fontSize: 13, fontWeight: 700, color: 'var(--text-muted)',
+              background: 'rgba(255,255,255,.2)', borderRadius: 20, padding: '4px 14px',
+              fontSize: 13, fontWeight: 700, color: '#fff',
             }}>
-              ✓ {t('matchPublic.finished')}
+              ✓ FULL TIME
             </div>
           )}
           {match.status === 'planned' && (
@@ -163,36 +381,68 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         </div>
       </div>
 
-      {/* Content */}
+      {/* ── Content ── */}
       <div style={{ flex: 1, padding: '12px 16px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {/* Goals */}
-        {sortedGoals.length > 0 && (
-          <EventSection title={t('matchPublic.goals')} icon="⚽">
-            {sortedGoals.map(g => (
-              <GoalRow key={g.id} goal={g} playerName={playerName} t={t} />
-            ))}
+
+        {/* ── Combined timeline ── */}
+        {timeline.length > 0 && (
+          <EventSection title={t('matchPublic.timeline')} icon="📋">
+            {timeline.map((ev) => {
+              if (ev.type === 'goal') {
+                const g = ev.data as MatchGoal;
+                const isOpp = g.isOpponentGoal;
+                const isOG = g.isOwnGoal;
+                return (
+                  <div key={g.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
+                    fontSize: 13, borderBottom: '1px solid var(--border)',
+                  }}>
+                    <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 28 }}>{g.minute}'</span>
+                    <span style={{ fontSize: 15 }}>⚽</span>
+                    <span style={{ fontWeight: 600, flex: 1, color: isOpp ? '#C62828' : '#2E7D32' }}>
+                      {isOpp ? t('matchPublic.opponentGoal') : playerName(g.scorerId)}
+                      {isOG && <span style={{ color: '#C62828', marginLeft: 4, fontSize: 11 }}>({t('matchPublic.ownGoal')})</span>}
+                    </span>
+                    {g.assistId && (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        {playerName(g.assistId)}
+                      </span>
+                    )}
+                  </div>
+                );
+              }
+              if (ev.type === 'card') {
+                const c = ev.data as MatchCard;
+                const icon = c.type === 'red' ? '🟥' : c.type === 'yellow-red' ? '🟨🟥' : '🟨';
+                return (
+                  <div key={c.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
+                    fontSize: 13, borderBottom: '1px solid var(--border)',
+                  }}>
+                    <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 28 }}>{c.minute}'</span>
+                    <span style={{ fontSize: 15 }}>{icon}</span>
+                    <span style={{ fontWeight: 600, flex: 1 }}>{playerName(c.playerId)}</span>
+                  </div>
+                );
+              }
+              // sub
+              const s = ev.data as MatchSubstitution;
+              return (
+                <div key={s.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
+                  fontSize: 13, borderBottom: '1px solid var(--border)',
+                }}>
+                  <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 28 }}>{s.minute}'</span>
+                  <span style={{ fontSize: 15 }}>🔄</span>
+                  <span style={{ color: '#2E7D32', fontWeight: 600 }}>↑ {playerName(s.playerInId)}</span>
+                  <span style={{ color: '#C62828', fontWeight: 600 }}>↓ {playerName(s.playerOutId)}</span>
+                </div>
+              );
+            })}
           </EventSection>
         )}
 
-        {/* Cards */}
-        {sortedCards.length > 0 && (
-          <EventSection title={t('matchPublic.cards')} icon="🟨">
-            {sortedCards.map(c => (
-              <CardRow key={c.id} card={c} playerName={playerName} />
-            ))}
-          </EventSection>
-        )}
-
-        {/* Substitutions */}
-        {sortedSubs.length > 0 && (
-          <EventSection title={t('matchPublic.substitutions')} icon="🔄">
-            {sortedSubs.map(s => (
-              <SubRow key={s.id} sub={s} playerName={playerName} />
-            ))}
-          </EventSection>
-        )}
-
-        {/* Lineup */}
+        {/* ── Lineup ── */}
         {match.lineup.length > 0 && (
           <EventSection title={t('matchPublic.lineup')} icon="👕">
             {starters.length > 0 && (
@@ -243,7 +493,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         )}
 
         {/* Empty state */}
-        {sortedGoals.length === 0 && sortedCards.length === 0 && sortedSubs.length === 0 && match.lineup.length === 0 && (
+        {timeline.length === 0 && match.lineup.length === 0 && (
           <div style={{
             padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)',
             background: 'var(--surface)', borderRadius: 14,
@@ -254,7 +504,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         )}
       </div>
 
-      {/* Footer with branding */}
+      {/* Footer */}
       <div style={{
         padding: '12px 16px', textAlign: 'center', fontSize: 11, color: 'var(--text-muted)',
         borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6,
@@ -283,46 +533,6 @@ function EventSection({ title, icon, children }: { title: string; icon: string; 
         <span style={{ fontWeight: 800, fontSize: 14 }}>{title}</span>
       </div>
       <div style={{ padding: '8px 14px' }}>{children}</div>
-    </div>
-  );
-}
-
-function GoalRow({ goal, playerName, t }: { goal: MatchGoal; playerName: (id: string | null) => string; t: (k: string) => string }) {
-  const isOpp = goal.isOpponentGoal;
-  const isOG = goal.isOwnGoal;
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 13, borderBottom: '1px solid var(--border)' }}>
-      <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 28 }}>{goal.minute}'</span>
-      <span style={{ fontWeight: 600, flex: 1 }}>
-        {isOpp ? t('matchPublic.opponentGoal') : playerName(goal.scorerId)}
-        {isOG && <span style={{ color: '#C62828', marginLeft: 4, fontSize: 11 }}>({t('matchPublic.ownGoal')})</span>}
-      </span>
-      {goal.assistId && (
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-          {playerName(goal.assistId)}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function CardRow({ card, playerName }: { card: MatchCard; playerName: (id: string | null) => string }) {
-  const icon = card.type === 'red' ? '🟥' : card.type === 'yellow-red' ? '🟨🟥' : '🟨';
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 13, borderBottom: '1px solid var(--border)' }}>
-      <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 28 }}>{card.minute}'</span>
-      <span>{icon}</span>
-      <span style={{ fontWeight: 600, flex: 1 }}>{playerName(card.playerId)}</span>
-    </div>
-  );
-}
-
-function SubRow({ sub, playerName }: { sub: MatchSubstitution; playerName: (id: string | null) => string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 13, borderBottom: '1px solid var(--border)' }}>
-      <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 28 }}>{sub.minute}'</span>
-      <span style={{ color: '#2E7D32', fontWeight: 600 }}>↑ {playerName(sub.playerInId)}</span>
-      <span style={{ color: '#C62828', fontWeight: 600 }}>↓ {playerName(sub.playerOutId)}</span>
     </div>
   );
 }
