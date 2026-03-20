@@ -75,6 +75,7 @@ export function RegistrationFormPage({ tournamentId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [infoOpen, setInfoOpen] = useState(false);
 
   // ── Load tournament ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -115,6 +116,7 @@ export function RegistrationFormPage({ tournamentId }: Props) {
 
   // ── Derived state ───────────────────────────────────────────────────────
   const registrationEnabled = tournament?.settings.registrationEnabled ?? false;
+  const registrationClosed = tournament?.settings.registrationClosed ?? false;
   const maxTeams = tournament?.settings.maxTeams ?? 0;
   const currentTeams = tournament?.teams?.length ?? 0;
   const isFull = maxTeams > 0 && currentTeams >= maxTeams;
@@ -195,12 +197,25 @@ export function RegistrationFormPage({ tournamentId }: Props) {
     );
   }
 
+  // ─── Render: Registration closed by admin ──────────────────────────
+  if (registrationClosed) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, minHeight: '100dvh', padding: '40px 20px' }}>
+        <div style={{ fontSize: 48 }}>🔒</div>
+        <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center' }}>{tournament.name}</h2>
+        <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 14, lineHeight: 1.5 }}>
+          {t('registration.closed')}
+        </p>
+      </div>
+    );
+  }
+
   // ─── Render: Success ──────────────────────────────────────────────────
   if (submitted) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100dvh', background: 'var(--bg)' }}>
         <div style={{ width: '100%', maxWidth: 480, padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-          <div style={{ fontSize: 64 }}>✅</div>
+          <div style={{ fontSize: 64 }}>📨</div>
           <h2 style={{ fontWeight: 800, fontSize: 22, textAlign: 'center', color: 'var(--text)' }}>
             {t('registration.submitSuccess')}
           </h2>
@@ -229,12 +244,26 @@ export function RegistrationFormPage({ tournamentId }: Props) {
   // ─── Render: Full ─────────────────────────────────────────────────────
   if (isFull) {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, minHeight: '100dvh', padding: '40px 20px' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, minHeight: '100dvh', padding: '40px 20px' }}>
         <div style={{ fontSize: 48 }}>🏟️</div>
         <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center' }}>{tournament.name}</h2>
         <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 14, lineHeight: 1.5 }}>
           {t('registration.full', { current: currentTeams, max: maxTeams })}
         </p>
+        <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 13, lineHeight: 1.6, maxWidth: 340 }}>
+          {t('registration.fullEncouragement')}
+        </p>
+        <div style={{ marginTop: 24, padding: '16px 24px', borderRadius: 16, background: 'var(--card-bg)', border: '1px solid var(--border)', textAlign: 'center', maxWidth: 340 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{t('registration.fullPromo')}</div>
+          <a
+            href="https://torq.cz"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 15, fontWeight: 700, color: 'var(--primary)', textDecoration: 'none' }}
+          >
+            ⚡ torq.cz
+          </a>
+        </div>
       </div>
     );
   }
@@ -258,11 +287,92 @@ export function RegistrationFormPage({ tournamentId }: Props) {
           </p>
         </div>
 
+        {/* Notice — application must be confirmed */}
+        <div style={{ background: '#FFF8E1', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#F57F17', lineHeight: 1.5, border: '1px solid #FFECB3' }}>
+          ℹ️ {t('registration.notice')}
+        </div>
+
         {/* Teams count badge */}
         <div style={{ background: '#E3F2FD', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#1565C0', textAlign: 'center' }}>
           🏟️ {maxTeams > 0
             ? t('registration.teamsCount', { current: currentTeams, max: maxTeams })
             : t('registration.teamsCountNoLimit', { current: currentTeams })}
+        </div>
+
+        {/* Tournament details — collapsible */}
+        <div style={cardStyle}>
+          <div
+            onClick={() => setInfoOpen(!infoOpen)}
+            style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
+          >
+            <h3 style={{ fontWeight: 700, fontSize: 15, flex: 1, margin: 0 }}>📋 {t('registration.tournamentDetails')}</h3>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .2s', transform: infoOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+          </div>
+          {infoOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                <span style={{ color: 'var(--text-muted)' }}>📅 {t('tournament.create.date')}</span>
+                <span style={{ fontWeight: 600 }}>{dateStr}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                <span style={{ color: 'var(--text-muted)' }}>⏰ {t('tournament.create.startTime')}</span>
+                <span style={{ fontWeight: 600 }}>{timeStr}</span>
+              </div>
+              {tournament.settings.endTime && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>🏁 {t('registration.endTime')}</span>
+                  <span style={{ fontWeight: 600 }}>{tournament.settings.endTime}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                <span style={{ color: 'var(--text-muted)' }}>⏱️ {t('tournament.detail.matchDuration')}</span>
+                <span style={{ fontWeight: 600 }}>{tournament.settings.matchDurationMinutes} min</span>
+              </div>
+              {(tournament.settings.numberOfPitches ?? 1) > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>🏟️ {t('tournament.detail.pitchCountLabel')}</span>
+                  <span style={{ fontWeight: 600 }}>{tournament.settings.numberOfPitches}</span>
+                </div>
+              )}
+              {tournament.settings.entryFee && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>💰 {t('registration.entryFee')}</span>
+                  <span style={{ fontWeight: 600 }}>{tournament.settings.entryFee} Kč</span>
+                </div>
+              )}
+              {tournament.settings.maxBirthYear && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>🎂 {t('registration.maxBirthYear')}</span>
+                  <span style={{ fontWeight: 600 }}>{tournament.settings.maxBirthYear}+</span>
+                </div>
+              )}
+              {(tournament.settings.venueName || tournament.settings.venueAddress) && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, alignItems: 'flex-start' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>📍 {t('venue.title')}</span>
+                  <span style={{ fontWeight: 600, textAlign: 'right', maxWidth: '60%' }}>
+                    {tournament.settings.venueName}
+                    {tournament.settings.venueName && tournament.settings.venueAddress && <br />}
+                    {tournament.settings.venueAddress && (
+                      <span style={{ fontWeight: 400, fontSize: 13 }}>{tournament.settings.venueAddress}</span>
+                    )}
+                  </span>
+                </div>
+              )}
+              {tournament.settings.venueNote && (
+                <div style={{ marginTop: 4, padding: '8px 12px', background: 'var(--bg)', borderRadius: 8, fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  ℹ️ {tournament.settings.venueNote}
+                </div>
+              )}
+              {tournament.settings.rules && (
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>📝 {t('tournament.settings.rulesTitle')}</div>
+                  <p style={{ fontSize: 13, color: 'var(--text)', margin: 0, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                    {tournament.settings.rules}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Team name */}

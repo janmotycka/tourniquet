@@ -29,10 +29,17 @@ export function getAdminInviteUrl(tournamentId: string): string {
   return `${cleanBase}?join=1#tournament=${tournamentId}`;
 }
 
+/** Vrátí co-owner invite URL (s ?join=1&role=admin) pro sdílení s spolupořadateli */
+export function getCoOwnerInviteUrl(tournamentId: string): string {
+  const base = window.location.origin + window.location.pathname;
+  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
+  return `${cleanBase}?join=1&role=admin#tournament=${tournamentId}`;
+}
+
 /** Parsuje tournament ID z URL hashe (pokud existuje) */
 export function parseTournamentHashFromUrl(): string | null {
   const hash = window.location.hash;
-  const match = hash.match(/^#tournament=([a-zA-Z0-9_-]+)$/);
+  const match = hash.match(/^#tournament=([a-zA-Z0-9_-]+)/);
   return match ? match[1] : null;
 }
 
@@ -46,7 +53,7 @@ export function getRosterFormUrl(tournamentId: string, rosterToken: string): str
 /** Parsuje roster form hash z URL */
 export function parseRosterHashFromUrl(): { tournamentId: string; teamToken: string } | null {
   const hash = window.location.hash;
-  const match = hash.match(/^#roster=([a-zA-Z0-9_-]+)&k=([a-zA-Z0-9_-]+)$/);
+  const match = hash.match(/^#roster=([a-zA-Z0-9_-]+)&k=([a-zA-Z0-9_-]+)/);
   return match ? { tournamentId: match[1], teamToken: match[2] } : null;
 }
 
@@ -60,7 +67,7 @@ export function getRegistrationUrl(tournamentId: string): string {
 /** Parsuje registration hash z URL */
 export function parseRegistrationHashFromUrl(): { tournamentId: string } | null {
   const hash = window.location.hash;
-  const match = hash.match(/^#register=([a-zA-Z0-9_-]+)$/);
+  const match = hash.match(/^#register=([a-zA-Z0-9_-]+)/);
   return match ? { tournamentId: match[1] } : null;
 }
 
@@ -74,7 +81,7 @@ export function getMatchPublicUrl(matchId: string): string {
 /** Parsuje match ID z URL hashe */
 export function parseMatchHashFromUrl(): string | null {
   const hash = window.location.hash;
-  const m = hash.match(/^#match=([a-zA-Z0-9_-]+)$/);
+  const m = hash.match(/^#match=([a-zA-Z0-9_-]+)/);
   return m ? m[1] : null;
 }
 

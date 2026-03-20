@@ -5,15 +5,16 @@
  * Tok: načtení turnaje → identifikace týmu dle tokenu → vyplnění kontaktu + hráčů → odeslání.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Page } from '../../App';
-import type { Tournament, Team, RosterSubmission } from '../../types/tournament.types';
+import type { Tournament, Team, RosterSubmission, BillingProfile, CustomerBilling } from '../../types/tournament.types';
 import { subscribeToPublicTournament } from '../../services/tournament.firebase';
 import { submitRoster, loadRoster } from '../../services/roster.firebase';
 import { useI18n, getDateLocale } from '../../i18n';
 import { generateId } from '../../utils/id';
 import { logger } from '../../utils/logger';
 import { colorSwatch } from '../../utils/team-colors';
+import { generateInvoicePdf, createInvoiceDataFromApproval } from '../../utils/invoice-pdf';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -114,6 +115,27 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
   const [showRules, setShowRules] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
 
+  // ── Invoice ────────────────────────────────────────────────────────────
+  const [invoiceGenerating, setInvoiceGenerating] = useState(false);
+  const [qrPaymentUrl, setQrPaymentUrl] = useState<string | null>(null);
+
+  // ── Coach collapsible ───────────────────────────────────────────────────
+  const [showCoach, setShowCoach] = useState(false);
+
+  // ── Customer billing (odběratel) ────────────────────────────────────────
+  const [showCustomerBilling, setShowCustomerBilling] = useState(false);
+  const [custCompanyName, setCustCompanyName] = useState('');
+  const [custIco, setCustIco] = useState('');
+  const [custDic, setCustDic] = useState('');
+  const [custAddress, setCustAddress] = useState('');
+  const [custCity, setCustCity] = useState('');
+  const [custZip, setCustZip] = useState('');
+
+  // ── Section refs (for checklist scroll-to) ────────────────────────────────
+  const sectionCoachRef = useRef<HTMLDivElement>(null);
+  const sectionPlayersRef = useRef<HTMLDivElement>(null);
+  const sectionPaymentRef = useRef<HTMLDivElement>(null);
+
   // ── Load tournament via real-time subscription ────────────────────────────
   useEffect(() => {
     setLoading(true);
@@ -166,6 +188,17 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
             birthYear: p.birthYear ? String(p.birthYear) : '',
           })),
         );
+        // Pre-fill customer billing
+        if (roster.customerBilling) {
+          const cb = roster.customerBilling;
+          setCustCompanyName(cb.companyName || '');
+          setCustIco(cb.ico || '');
+          setCustDic(cb.dic || '');
+          setCustAddress(cb.address || '');
+          setCustCity(cb.city || '');
+          setCustZip(cb.zip || '');
+          setShowCustomerBilling(true);
+        }
       } else {
         // Pre-fill from localStorage (returning coach)
         const saved = localStorage.getItem('roster-coach');
@@ -268,6 +301,19 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
 
     try {
       const validPlayers = players.filter(p => p.name.trim());
+      // Customer billing (pokud vyplněno)
+      const customerBilling: CustomerBilling | undefined =
+        custCompanyName.trim() && custIco.trim()
+          ? {
+              companyName: custCompanyName.trim(),
+              ico: custIco.trim(),
+              dic: custDic.trim() || undefined,
+              address: custAddress.trim(),
+              city: custCity.trim(),
+              zip: custZip.trim(),
+            }
+          : undefined;
+
       const submission: RosterSubmission = {
         coach: {
           name: coachName.trim(),
@@ -277,11 +323,12 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
         players: validPlayers.map(p => ({
           name: p.name.trim(),
           jerseyNumber: p.jerseyNumber.trim() ? parseInt(p.jerseyNumber) : 0,
-          birthYear: p.birthYear.trim() ? parseInt(p.birthYear) : null,
+          ...(p.birthYear.trim() ? { birthYear: parseInt(p.birthYear) } : {}),
         })),
         submittedAt: new Date().toISOString(),
         teamId: team.id,
         teamName: team.name,
+        ...(customerBilling ? { customerBilling } : {}),
       };
 
       await submitRoster(tournamentId, team.id, submission);
@@ -296,16 +343,86 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
       setSubmitted(true);
       setExistingRoster(submission);
       logger.debug('[RosterForm] Roster submitted successfully');
-    } catch (err) {
+    } catch (err: any) {
       logger.error('[RosterForm] Submit failed:', err);
-      setSubmitError(t('roster.submitError'));
+      const detail = err?.message || err?.code || String(err);
+      setSubmitError(`${t('roster.submitError')} (${detail})`);
     } finally {
       setSubmitting(false);
     }
-  }, [team, validate, players, coachName, coachPhone, coachEmail, tournamentId, t]);
+  }, [team, validate, players, coachName, coachPhone, coachEmail, custCompanyName, custIco, custDic, custAddress, custCity, custZip, tournamentId, t]);
 
   // ── Is read-only? Tournament active/finished → no edits ───────────────────
   const isReadOnly = tournament ? tournament.status !== 'draft' : false;
+
+  // ── Invoice helpers ─────────────────────────────────────────────────────
+  const billingProfile = tournament?.settings.billingProfile;
+  const entryFee = tournament?.settings.entryFee;
+  const hasInvoice = !!(billingProfile?.companyName && billingProfile?.bankAccount && entryFee && entryFee > 0);
+
+  const getInvoiceData = useCallback(() => {
+    if (!tournament || !team || !hasInvoice) return null;
+    const data = createInvoiceDataFromApproval(
+      tournament.name,
+      tournament.settings.startDate,
+      team.name,
+      coachName.trim() || team.name,
+      coachEmail.trim(),
+      coachPhone.trim(),
+      entryFee!,
+      // simple counter from team index
+      (tournament.teams?.findIndex(tm => tm.id === team.id) ?? 0) + 1,
+    );
+    // Přidáme fakturační údaje odběratele, pokud je trenér vyplnil
+    if (custCompanyName.trim() && custIco.trim()) {
+      data.customerCompanyName = custCompanyName.trim();
+      data.customerIco = custIco.trim();
+      data.customerDic = custDic.trim() || undefined;
+      data.customerAddress = custAddress.trim() || undefined;
+      data.customerCity = custCity.trim() || undefined;
+      data.customerZip = custZip.trim() || undefined;
+    }
+    return data;
+  }, [tournament, team, hasInvoice, entryFee, coachName, coachEmail, coachPhone, custCompanyName, custIco, custDic, custAddress, custCity, custZip]);
+
+  // Generate QR payment code when invoice data is available
+  useEffect(() => {
+    if (!hasInvoice || !billingProfile) return;
+    const invoiceData = getInvoiceData();
+    if (!invoiceData) return;
+
+    import('qrcode').then(QRCode => {
+      const parts = ['SPD*1.0'];
+      if (billingProfile.iban) {
+        parts.push(`ACC:${billingProfile.iban.replace(/\s/g, '')}`);
+      }
+      parts.push(`AM:${invoiceData.amount.toFixed(2)}`);
+      parts.push(`CC:${invoiceData.currency}`);
+      if (invoiceData.variableSymbol) {
+        parts.push(`X-VS:${invoiceData.variableSymbol}`);
+      }
+      parts.push(`MSG:${invoiceData.description.substring(0, 60)}`);
+      const spd = parts.join('*');
+
+      QRCode.toDataURL(spd, { width: 200, margin: 1, errorCorrectionLevel: 'M' })
+        .then(url => setQrPaymentUrl(url))
+        .catch(() => {/* ignore */});
+    }).catch(() => {/* ignore */});
+  }, [hasInvoice, billingProfile, getInvoiceData]);
+
+  const handleDownloadInvoice = useCallback(async () => {
+    if (!billingProfile || !hasInvoice) return;
+    const invoiceData = getInvoiceData();
+    if (!invoiceData) return;
+    setInvoiceGenerating(true);
+    try {
+      await generateInvoicePdf(billingProfile, invoiceData, t, { download: true });
+    } catch (err) {
+      logger.error('[RosterForm] Invoice generation failed:', err);
+    } finally {
+      setInvoiceGenerating(false);
+    }
+  }, [billingProfile, hasInvoice, getInvoiceData, t]);
 
   // ─── Render: Loading ──────────────────────────────────────────────────────
 
@@ -356,6 +473,57 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
               {t('roster.playersCount', { count: players.filter(p => p.name.trim()).length })}
             </p>
           </div>
+
+          {/* Invoice / payment section */}
+          {hasInvoice && billingProfile && (
+            <div style={{ ...cardStyle, width: '100%', marginTop: 8 }}>
+              <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>💳 {t('billing.paymentTitle')}</h3>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+                {t('billing.paymentDesc')}
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{t('billing.bankAccountLabel')}</span>
+                  <span style={{ fontWeight: 700 }}>{billingProfile.bankAccount}</span>
+                </div>
+                {getInvoiceData()?.variableSymbol && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{t('billing.vsLabel')}</span>
+                    <span style={{ fontWeight: 700 }}>{getInvoiceData()!.variableSymbol}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{t('billing.amountLabel')}</span>
+                  <span style={{ fontWeight: 700 }}>{entryFee} Kč</span>
+                </div>
+              </div>
+
+              {/* QR Payment code */}
+              {qrPaymentUrl && (
+                <div style={{ textAlign: 'center', marginTop: 12 }}>
+                  <img src={qrPaymentUrl} alt="QR Platba" style={{ width: 140, height: 140, borderRadius: 8 }} />
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                    {t('invoice.qrPaymentDesc')}
+                  </p>
+                </div>
+              )}
+
+              {/* Download invoice PDF */}
+              <button
+                onClick={handleDownloadInvoice}
+                disabled={invoiceGenerating}
+                style={{
+                  width: '100%', marginTop: 12, padding: '10px 14px', borderRadius: 10,
+                  border: '1.5px solid var(--border)', background: 'var(--bg)',
+                  color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: 'pointer',
+                  opacity: invoiceGenerating ? 0.7 : 1,
+                }}
+              >
+                {invoiceGenerating ? '⏳ …' : `📄 ${t('billing.downloadInvoice')}`}
+              </button>
+            </div>
+          )}
 
           <button
             onClick={() => { setSubmitted(false); }}
@@ -410,6 +578,16 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
     );
   }
 
+  // ─── Checklist computations ──────────────────────────────────────────────
+
+  const coachDone = !!(coachName.trim() && coachPhone.trim());
+  const validPlayerCount = players.filter(p => p.name.trim()).length;
+  const rosterDone = validPlayerCount > 0;
+
+  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   // ─── Render: Form ─────────────────────────────────────────────────────────
 
   return (
@@ -417,6 +595,103 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
       <div style={{ width: '100%', maxWidth: 480, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         <Header tournament={tournament} team={team} />
+
+        {/* Checklist / progress */}
+        <div style={{
+          ...cardStyle,
+          padding: '14px 16px',
+          background: 'var(--surface)',
+          border: '1.5px solid var(--border)',
+        }}>
+          <h4 style={{ fontWeight: 700, fontSize: 14, margin: '0 0 10px', color: 'var(--text)' }}>
+            📝 {t('roster.checklist.title')}
+          </h4>
+
+          {existingRoster && (
+            <div style={{ background: '#E8F5E9', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#2E7D32', marginBottom: 10 }}>
+              ✅ {t('roster.alreadySubmitted')}
+            </div>
+          )}
+
+          {isReadOnly && (
+            <div style={{ background: '#FFF3E0', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#E65100', marginBottom: 10 }}>
+              ⚠️ {t('roster.readOnly')}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {/* Coach row */}
+            <button
+              onClick={() => { setShowCoach(true); scrollTo(sectionCoachRef); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+                borderRadius: 10, border: 'none', background: coachDone ? '#E8F5E920' : '#FFF3E020',
+                cursor: 'pointer', width: '100%', textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{coachDone ? '✅' : '⬜'}</span>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
+                  {t('roster.checklist.coach')}
+                </span>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                  {coachDone ? t('roster.checklist.coachDone') : t('roster.checklist.coachTodo')}
+                </p>
+              </div>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>→</span>
+            </button>
+
+            {/* Roster row */}
+            <button
+              onClick={() => scrollTo(sectionPlayersRef)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+                borderRadius: 10, border: 'none', background: rosterDone ? '#E8F5E920' : '#FFF3E020',
+                cursor: 'pointer', width: '100%', textAlign: 'left',
+              }}
+            >
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{rosterDone ? '✅' : '⬜'}</span>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
+                  {t('roster.checklist.roster')}
+                </span>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                  {rosterDone
+                    ? t('roster.checklist.rosterDone', { count: validPlayerCount })
+                    : t('roster.checklist.rosterTodo')}
+                </p>
+              </div>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>→</span>
+            </button>
+
+            {/* Payment row — only if tournament has invoice */}
+            {hasInvoice && (
+              <button
+                onClick={() => scrollTo(sectionPaymentRef)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px',
+                  borderRadius: 10, border: 'none', background: 'transparent',
+                  cursor: 'pointer', width: '100%', textAlign: 'left',
+                }}
+              >
+                <span style={{ fontSize: 18, lineHeight: 1 }}>💳</span>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
+                    {t('roster.checklist.payment')}
+                  </span>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                    {t('roster.checklist.paymentInfo')}
+                  </p>
+                </div>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>→</span>
+              </button>
+            )}
+          </div>
+
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '10px 0 0', textAlign: 'center' }}>
+            ℹ️ {t('roster.checklist.editableHint')}
+          </p>
+        </div>
 
         {/* Tournament info card — collapsed by default */}
         <TournamentInfoCard
@@ -431,84 +706,176 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
           locale={locale}
         />
 
-        {/* Birth year requirement info */}
-        {tournament.settings.maxBirthYear && (
-          <div style={{ background: '#FFF3E0', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#E65100', lineHeight: 1.5 }}>
-            🎂 {t('roster.birthYearRequirement', { year: String(tournament.settings.maxBirthYear) })}
+        {/* Invoice / payment — right after tournament info, independent of roster */}
+        {hasInvoice && billingProfile && (
+          <div ref={sectionPaymentRef} style={cardStyle}>
+            <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>💳 {t('billing.paymentTitle')}</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
+              {t('billing.paymentDesc')}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                <span style={{ color: 'var(--text-muted)' }}>{t('billing.bankAccountLabel')}</span>
+                <span style={{ fontWeight: 700 }}>{billingProfile.bankAccount}</span>
+              </div>
+              {getInvoiceData()?.variableSymbol && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{t('billing.vsLabel')}</span>
+                  <span style={{ fontWeight: 700 }}>{getInvoiceData()!.variableSymbol}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                <span style={{ color: 'var(--text-muted)' }}>{t('billing.amountLabel')}</span>
+                <span style={{ fontWeight: 700 }}>{entryFee} Kč</span>
+              </div>
+            </div>
+
+            {/* Inline QR payment code */}
+            {(() => {
+              // Generate QR synchronously from state or trigger generation
+              return qrPaymentUrl ? (
+                <div style={{ textAlign: 'center', marginTop: 12 }}>
+                  <img src={qrPaymentUrl} alt="QR Platba" style={{ width: 140, height: 140, borderRadius: 8 }} />
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                    {t('invoice.qrPaymentDesc')}
+                  </p>
+                </div>
+              ) : null;
+            })()}
+
+            {/* Fakturační údaje odběratele — collapsible */}
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <button
+                onClick={() => setShowCustomerBilling(!showCustomerBilling)}
+                style={{
+                  width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: 0, fontWeight: 600, fontSize: 14, color: 'var(--text)',
+                }}
+              >
+                <span>🧾 {t('billing.customerTitle')}{custCompanyName ? ` — ${custCompanyName}` : ''}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{showCustomerBilling ? '▲' : '▼'}</span>
+              </button>
+
+              {!showCustomerBilling && !custCompanyName && (
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0', lineHeight: 1.4 }}>
+                  {t('billing.customerHint')}
+                </p>
+              )}
+
+              {showCustomerBilling && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                    {t('billing.customerDesc')}
+                  </p>
+                  {[
+                    { key: 'companyName', label: t('billing.customerCompanyName'), value: custCompanyName, setter: setCustCompanyName, required: true },
+                    { key: 'ico', label: t('billing.ico'), value: custIco, setter: setCustIco, required: true },
+                    { key: 'dic', label: t('billing.dic'), value: custDic, setter: setCustDic },
+                    { key: 'address', label: t('billing.address'), value: custAddress, setter: setCustAddress },
+                    { key: 'city', label: t('billing.city'), value: custCity, setter: setCustCity },
+                    { key: 'zip', label: t('billing.zip'), value: custZip, setter: setCustZip },
+                  ].map(field => (
+                    <div key={field.key}>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>
+                        {field.label}{field.required ? ' *' : ''}
+                      </label>
+                      <input
+                        type="text"
+                        value={field.value}
+                        onChange={e => field.setter(e.target.value)}
+                        style={{
+                          ...inputStyle, padding: '10px 12px', fontSize: 15,
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={handleDownloadInvoice}
+              disabled={invoiceGenerating}
+              style={{
+                width: '100%', marginTop: 12, padding: '10px 14px', borderRadius: 10,
+                border: '1.5px solid var(--border)', background: 'var(--bg)',
+                color: 'var(--text)', fontWeight: 600, fontSize: 14, cursor: 'pointer',
+                opacity: invoiceGenerating ? 0.7 : 1,
+              }}
+            >
+              {invoiceGenerating ? '⏳ …' : `📄 ${t('billing.downloadInvoice')}`}
+            </button>
           </div>
         )}
 
-        {/* Jersey info — moved from WhatsApp message */}
-        <div style={{ background: '#E3F2FD', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#1565C0', lineHeight: 1.5 }}>
-          ℹ️ {t('roster.jerseyInfo')}
-        </div>
+        {/* Coach section — collapsible */}
+        <div ref={sectionCoachRef} style={cardStyle}>
+          <button
+            onClick={() => setShowCoach(!showCoach)}
+            style={{
+              width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: 0, fontWeight: 700, fontSize: 16, color: 'var(--text)',
+            }}
+          >
+            <span>👤 {t('roster.coach')}{coachName ? ` — ${coachName}` : ''}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{showCoach ? '▲' : '▼'}</span>
+          </button>
 
-        {existingRoster && (
-          <div style={{ background: '#E8F5E9', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#2E7D32' }}>
-            ✅ {t('roster.alreadySubmitted')}
-          </div>
-        )}
+          {showCoach && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>
+                  {t('roster.coachName')} *
+                </label>
+                <input
+                  type="text"
+                  value={coachName}
+                  onChange={e => setCoachName(e.target.value)}
+                  placeholder={t('roster.coachNamePlaceholder')}
+                  style={inputStyle}
+                  disabled={isReadOnly}
+                  autoComplete="name"
+                />
+              </div>
 
-        {isReadOnly && (
-          <div style={{ background: '#FFF3E0', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#E65100' }}>
-            ⚠️ {t('roster.readOnly')}
-          </div>
-        )}
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>
+                  {t('roster.coachPhone')} *
+                </label>
+                <input
+                  type="tel"
+                  value={coachPhone}
+                  onChange={e => setCoachPhone(e.target.value)}
+                  placeholder={t('roster.coachPhonePlaceholder')}
+                  style={inputStyle}
+                  disabled={isReadOnly}
+                  autoComplete="tel"
+                />
+              </div>
 
-        {/* Coach section */}
-        <div style={cardStyle}>
-          <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 12 }}>👤 {t('roster.coach')}</h3>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>
-                {t('roster.coachName')} *
-              </label>
-              <input
-                type="text"
-                value={coachName}
-                onChange={e => setCoachName(e.target.value)}
-                placeholder={t('roster.coachNamePlaceholder')}
-                style={inputStyle}
-                disabled={isReadOnly}
-                autoComplete="name"
-              />
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>
+                  {t('roster.coachEmail')}
+                </label>
+                <input
+                  type="email"
+                  value={coachEmail}
+                  onChange={e => setCoachEmail(e.target.value)}
+                  placeholder={t('roster.coachEmailPlaceholder')}
+                  style={inputStyle}
+                  disabled={isReadOnly}
+                  autoComplete="email"
+                />
+              </div>
             </div>
-
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>
-                {t('roster.coachPhone')} *
-              </label>
-              <input
-                type="tel"
-                value={coachPhone}
-                onChange={e => setCoachPhone(e.target.value)}
-                placeholder={t('roster.coachPhonePlaceholder')}
-                style={inputStyle}
-                disabled={isReadOnly}
-                autoComplete="tel"
-              />
-            </div>
-
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>
-                {t('roster.coachEmail')}
-              </label>
-              <input
-                type="email"
-                value={coachEmail}
-                onChange={e => setCoachEmail(e.target.value)}
-                placeholder={t('roster.coachEmailPlaceholder')}
-                style={inputStyle}
-                disabled={isReadOnly}
-                autoComplete="email"
-              />
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Players section */}
-        <div style={cardStyle}>
+        <div ref={sectionPlayersRef} style={cardStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h3 style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>
               ⚽ {t('roster.players')} ({players.filter(p => p.name.trim()).length}{tournament.settings.maxPlayersPerRoster ? `/${tournament.settings.maxPlayersPerRoster}` : ''})
@@ -521,6 +888,16 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
                 + {t('roster.addPlayer')}
               </button>
             )}
+          </div>
+
+          {/* Info banners inside players section */}
+          {tournament.settings.maxBirthYear && (
+            <div style={{ background: '#FFF3E0', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#E65100', lineHeight: 1.5, marginBottom: 8 }}>
+              🎂 {t('roster.birthYearRequirement', { year: String(tournament.settings.maxBirthYear) })}
+            </div>
+          )}
+          <div style={{ background: '#E3F2FD', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#1565C0', lineHeight: 1.5, marginBottom: 10 }}>
+            ℹ️ {t('roster.jerseyInfo')}
           </div>
 
           {/* Column headers */}
@@ -545,7 +922,15 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
                 value={player.jerseyNumber}
                 onChange={e => updatePlayer(player.id, 'jerseyNumber', e.target.value)}
                 placeholder="#"
-                style={{ ...smallInputStyle, width: '100%' }}
+                style={{
+                  width: 44, height: 44, borderRadius: 11,
+                  background: player.jerseyNumber.trim() ? (team.color || '#666') : `${team.color || '#666'}22`,
+                  color: player.jerseyNumber.trim() ? '#fff' : (team.color || '#666'),
+                  fontWeight: 800, fontSize: 16, textAlign: 'center',
+                  border: 'none', outline: 'none',
+                  padding: 0, boxSizing: 'border-box',
+                  MozAppearance: 'textfield' as never,
+                }}
                 disabled={isReadOnly}
                 min={1}
                 max={99}
