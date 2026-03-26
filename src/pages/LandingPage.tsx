@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Page } from '../App';
 import type { CatalogEntry } from '../types/tournament.types';
 import type { MatchCatalogEntry } from '../types/match.types';
@@ -384,30 +384,48 @@ function MatchCard({
   const theirScore = entry.isHome ? entry.awayScore : entry.homeScore;
   const clubLabel = entry.clubName || t('match.detail.us');
 
+  // Detect score changes for flash animation
+  const prevScoreRef = useRef({ home: entry.homeScore, away: entry.awayScore });
+  const [goalFlash, setGoalFlash] = useState(false);
+
+  useEffect(() => {
+    const prev = prevScoreRef.current;
+    if (prev.home !== entry.homeScore || prev.away !== entry.awayScore) {
+      setGoalFlash(true);
+      const timer = setTimeout(() => setGoalFlash(false), 2000);
+      prevScoreRef.current = { home: entry.homeScore, away: entry.awayScore };
+      return () => clearTimeout(timer);
+    }
+  }, [entry.homeScore, entry.awayScore]);
+
   return (
     <button
       onClick={() => navigate({ name: 'match-public', matchId: entry.id })}
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '14px 14px', borderRadius: 14,
-        background: 'var(--surface)',
+        background: goalFlash ? 'rgba(46,125,50,.08)' : 'var(--surface)',
         border: variant === 'live' ? '1.5px solid #E53935' : '1.5px solid var(--border)',
         cursor: 'pointer', width: '100%', textAlign: 'left',
-        boxShadow: variant === 'live' ? '0 0 0 1px rgba(229,57,53,.15), 0 2px 12px rgba(229,57,53,.12)' : '0 1px 4px rgba(0,0,0,.05)',
-        transition: 'transform .1s, box-shadow .15s',
-        animation: variant === 'live' ? 'liveCardPulse 2s ease-in-out infinite' : 'none',
+        boxShadow: goalFlash
+          ? '0 0 0 2px rgba(46,125,50,.4), 0 4px 20px rgba(46,125,50,.15)'
+          : variant === 'live' ? '0 0 0 1px rgba(229,57,53,.15), 0 2px 12px rgba(229,57,53,.12)' : '0 1px 4px rgba(0,0,0,.05)',
+        transition: 'all .3s ease',
+        animation: variant === 'live' && !goalFlash ? 'liveCardPulse 2s ease-in-out infinite' : 'none',
       }}
     >
       {/* Score or ball icon */}
       <div style={{
         width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-        background: variant === 'live' ? '#C62828' : 'var(--surface-var)',
+        background: goalFlash ? '#2E7D32' : variant === 'live' ? '#C62828' : 'var(--surface-var)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontWeight: 900, fontSize: variant !== 'upcoming' ? 15 : 20,
-        color: variant === 'live' ? '#fff' : 'var(--text)',
+        color: goalFlash || variant === 'live' ? '#fff' : 'var(--text)',
         letterSpacing: 1,
+        transition: 'all .3s ease',
+        transform: goalFlash ? 'scale(1.15)' : 'scale(1)',
       }}>
-        {variant === 'upcoming' ? '⚽' : `${ourScore}:${theirScore}`}
+        {variant === 'upcoming' ? '⚽' : goalFlash ? '⚽' : `${ourScore}:${theirScore}`}
       </div>
 
       {/* Content */}
