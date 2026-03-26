@@ -309,10 +309,12 @@ function TournamentCard({
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '14px 14px', borderRadius: 14,
-        background: 'var(--surface)', border: '1.5px solid var(--border)',
+        background: 'var(--surface)',
+        border: variant === 'live' ? '1.5px solid #E53935' : '1.5px solid var(--border)',
         cursor: 'pointer', width: '100%', textAlign: 'left',
-        boxShadow: variant === 'live' ? '0 2px 12px rgba(229,57,53,.12)' : '0 1px 4px rgba(0,0,0,.05)',
+        boxShadow: variant === 'live' ? '0 0 0 1px rgba(229,57,53,.15), 0 2px 12px rgba(229,57,53,.12)' : '0 1px 4px rgba(0,0,0,.05)',
         transition: 'transform .1s, box-shadow .15s',
+        animation: variant === 'live' ? 'liveCardPulse 2s ease-in-out infinite' : 'none',
       }}
     >
       {/* Team colors strip */}
@@ -388,10 +390,12 @@ function MatchCard({
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '14px 14px', borderRadius: 14,
-        background: 'var(--surface)', border: '1.5px solid var(--border)',
+        background: 'var(--surface)',
+        border: variant === 'live' ? '1.5px solid #E53935' : '1.5px solid var(--border)',
         cursor: 'pointer', width: '100%', textAlign: 'left',
-        boxShadow: variant === 'live' ? '0 2px 12px rgba(229,57,53,.12)' : '0 1px 4px rgba(0,0,0,.05)',
+        boxShadow: variant === 'live' ? '0 0 0 1px rgba(229,57,53,.15), 0 2px 12px rgba(229,57,53,.12)' : '0 1px 4px rgba(0,0,0,.05)',
         transition: 'transform .1s, box-shadow .15s',
+        animation: variant === 'live' ? 'liveCardPulse 2s ease-in-out infinite' : 'none',
       }}
     >
       {/* Score or ball icon */}

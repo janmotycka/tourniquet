@@ -77,3 +77,13 @@ body {
 
 button { cursor: pointer; border: none; font-family: inherit; }
 a { text-decoration: none; color: inherit; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes liveCardPulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(229,57,53,.15), 0 2px 12px rgba(229,57,53,.12); }
+  50% { box-shadow: 0 0 0 3px rgba(229,57,53,.2), 0 2px 16px rgba(229,57,53,.2); }
+}

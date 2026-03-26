@@ -50,6 +50,7 @@ export const en: Record<TranslationKey, string> = {
 
   // ─── Login ─────────────────────────────────────────────────────────────────
   'login.subtitle': 'Tournaments & training for football coaches',
+  'login.backToHome': 'Back to overview',
   'login.tabLogin': 'Sign in',
   'login.tabRegister': 'Register',
   'login.tabForgot': 'Forgot password',

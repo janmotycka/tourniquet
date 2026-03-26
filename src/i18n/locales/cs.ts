@@ -48,6 +48,7 @@ export const cs = {
 
   // ─── Login ─────────────────────────────────────────────────────────────────
   'login.subtitle': 'Turnaje a tréninky pro fotbalové trenéry',
+  'login.backToHome': 'Zpět na přehled',
   'login.tabLogin': 'Přihlášení',
   'login.tabRegister': 'Registrace',
   'login.tabForgot': 'Zapomenuté heslo',

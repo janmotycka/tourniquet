@@ -50,8 +50,25 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
       flex: 1, display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: '32px 24px', gap: 28, minHeight: '100dvh',
-      background: 'var(--bg)',
+      background: 'var(--bg)', position: 'relative',
     }}>
+      {/* Back to landing */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          style={{
+            position: 'absolute', top: 16, left: 16,
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 10,
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            fontSize: 13, fontWeight: 600, color: 'var(--text-muted)',
+            cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+          }}
+        >
+          ← {t('login.backToHome')}
+        </button>
+      )}
+
       {/* Logo */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
         <div style={{
@@ -236,17 +253,6 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
         {t('login.guestNote')}
       </p>
 
-      {onBack && (
-        <button
-          onClick={onBack}
-          style={{
-            fontSize: 13, color: 'var(--text-muted)', fontWeight: 600,
-            textAlign: 'center', cursor: 'pointer', background: 'none', border: 'none',
-          }}
-        >
-          ← {t('common.back')}
-        </button>
-      )}
     </div>
   );
 }

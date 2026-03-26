@@ -722,7 +722,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}
             >
-              {t('veo.add')}
+              🎥 {t('veo.add')}
             </button>
           ) : (
             <>
