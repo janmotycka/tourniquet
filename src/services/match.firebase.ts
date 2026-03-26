@@ -5,15 +5,17 @@
  *        /public-matches/{matchId}             (veřejné, pro rodiče)
  */
 
-import { ref, set, get, remove, onValue, off } from 'firebase/database';
+import { ref, set, get, remove, onValue, off, DataSnapshot } from 'firebase/database';
 import { db } from '../firebase';
-import type { SeasonMatch, PublicSeasonMatch } from '../types/match.types';
+import type { SeasonMatch, PublicSeasonMatch, MatchCatalogEntry } from '../types/match.types';
 import { logger } from '../utils/logger';
 import { safeClone } from '../utils/clone';
 
 const matchesRef = (uid: string) => ref(db, `matches/${uid}`);
 const matchRef = (uid: string, matchId: string) => ref(db, `matches/${uid}/${matchId}`);
 const publicMatchRef = (matchId: string) => ref(db, `public-matches/${matchId}`);
+const matchCatalogRef = () => ref(db, 'match-catalog');
+const matchCatalogEntryRef = (id: string) => ref(db, `match-catalog/${id}`);
 
 // Firebase RTDB smaže prázdné pole [] → musíme normalizovat při čtení
 function ensureArray(val: unknown): unknown[] {
@@ -45,12 +47,16 @@ function toPublicMatch(match: SeasonMatch, ownerUid: string): PublicSeasonMatch 
   return {
     id: match.id,
     ownerUid,
+    ...(match.clubName ? { clubName: match.clubName } : {}),
     opponent: match.opponent,
     isHome: match.isHome,
     date: match.date,
     kickoffTime: match.kickoffTime,
     competition: match.competition,
     durationMinutes: match.durationMinutes,
+    periods: match.periods,
+    periodDurationMinutes: match.periodDurationMinutes,
+    currentPeriod: match.currentPeriod,
     status: match.status,
     startedAt: match.startedAt,
     pausedAt: match.pausedAt,
@@ -131,4 +137,53 @@ export async function loadMatchesFromFirebase(uid: string): Promise<SeasonMatch[
   const matches = Object.values(data).map(normalizeMatch);
   logger.debug(`[Firebase] Loaded ${matches.length} matches`);
   return matches;
+}
+
+// ─── Match Catalog (lightweight index for landing page) ─────────────────────
+
+function toMatchCatalogEntry(match: SeasonMatch, ownerUid: string): MatchCatalogEntry {
+  return {
+    id: match.id,
+    clubName: match.clubName || '',
+    opponent: match.opponent,
+    isHome: match.isHome,
+    date: match.date,
+    kickoffTime: match.kickoffTime,
+    competition: match.competition,
+    status: match.status,
+    homeScore: match.homeScore,
+    awayScore: match.awayScore,
+    ownerUid,
+    updatedAt: match.updatedAt,
+  };
+}
+
+/** Uloží zápas do veřejného katalogu */
+export async function saveMatchCatalogEntry(match: SeasonMatch, ownerUid: string): Promise<void> {
+  const entry = toMatchCatalogEntry(match, ownerUid);
+  await set(matchCatalogEntryRef(match.id), entry);
+}
+
+/** Smaže zápas z veřejného katalogu */
+export async function deleteMatchCatalogEntry(matchId: string): Promise<void> {
+  await remove(matchCatalogEntryRef(matchId));
+}
+
+/** Real-time subscription na katalog zápasů */
+export function subscribeToMatchCatalog(
+  callback: (entries: MatchCatalogEntry[]) => void,
+): () => void {
+  const r = matchCatalogRef();
+  const handler = (snapshot: DataSnapshot) => {
+    const entries: MatchCatalogEntry[] = [];
+    if (snapshot.exists()) {
+      const data = snapshot.val() as Record<string, MatchCatalogEntry>;
+      for (const val of Object.values(data)) {
+        entries.push(val);
+      }
+    }
+    callback(entries);
+  };
+  onValue(r, handler, () => callback([]));
+  return () => off(r, 'value', handler);
 }

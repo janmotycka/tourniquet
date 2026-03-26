@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Page } from '../App';
 import type { CatalogEntry } from '../types/tournament.types';
+import type { MatchCatalogEntry } from '../types/match.types';
 import { subscribeToCatalog } from '../services/catalog.firebase';
+import { subscribeToMatchCatalog } from '../services/match.firebase';
 import { useI18n } from '../i18n';
 
 interface Props {
@@ -9,31 +11,96 @@ interface Props {
   onLogin: () => void;
 }
 
+type Filter = 'all' | 'matches' | 'tournaments';
+
+// ─── Unified feed item ─────────────────────────────────────────────────────
+
+type FeedItem =
+  | { kind: 'tournament'; data: CatalogEntry; status: 'live' | 'upcoming' | 'finished' }
+  | { kind: 'match'; data: MatchCatalogEntry; status: 'live' | 'upcoming' | 'finished' };
+
+// ─── Component ──────────────────────────────────────────────────────────────
+
 export function LandingPage({ navigate, onLogin }: Props) {
   const { t } = useI18n();
-  const [entries, setEntries] = useState<CatalogEntry[]>([]);
+  const [tournaments, setTournaments] = useState<CatalogEntry[]>([]);
+  const [matches, setMatches] = useState<MatchCatalogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    const unsub = subscribeToCatalog((list) => {
-      setEntries(list);
-      setLoading(false);
+    let tLoaded = false;
+    let mLoaded = false;
+    const done = () => { if (tLoaded && mLoaded) setLoading(false); };
+
+    const unsubT = subscribeToCatalog((list) => {
+      setTournaments(list);
+      tLoaded = true;
+      done();
     });
-    return unsub;
+    const unsubM = subscribeToMatchCatalog((list) => {
+      setMatches(list);
+      mLoaded = true;
+      done();
+    });
+    return () => { unsubT(); unsubM(); };
   }, []);
 
-  // Rozdělit turnaje do kategorií
-  const now = new Date();
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = new Date().toISOString().split('T')[0];
 
-  const live = entries.filter(e => e.status === 'active');
-  const upcoming = entries.filter(e => e.status === 'draft' && e.startDate >= todayStr);
-  const recent = entries
-    .filter(e => e.status === 'finished')
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  // Build unified feed
+  const feed = useMemo(() => {
+    const items: FeedItem[] = [];
+
+    // Tournaments
+    for (const t of tournaments) {
+      const status = t.status === 'active' ? 'live'
+        : (t.status === 'draft' && t.startDate >= todayStr) ? 'upcoming'
+        : t.status === 'finished' ? 'finished'
+        : null;
+      if (status) items.push({ kind: 'tournament', data: t, status });
+    }
+
+    // Matches
+    for (const m of matches) {
+      const status = m.status === 'live' ? 'live'
+        : m.status === 'planned' ? 'upcoming'
+        : m.status === 'finished' ? 'finished'
+        : null;
+      if (status) items.push({ kind: 'match', data: m, status });
+    }
+
+    return items;
+  }, [tournaments, matches, todayStr]);
+
+  // Apply filter + search
+  const filtered = useMemo(() => {
+    let result = feed;
+    if (filter === 'matches') result = result.filter(i => i.kind === 'match');
+    if (filter === 'tournaments') result = result.filter(i => i.kind === 'tournament');
+
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter(i => {
+        if (i.kind === 'tournament') return i.data.name.toLowerCase().includes(q);
+        return (i.data.clubName + ' ' + i.data.opponent + ' ' + i.data.competition).toLowerCase().includes(q);
+      });
+    }
+    return result;
+  }, [feed, filter, search]);
+
+  const live = filtered.filter(i => i.status === 'live');
+  const upcoming = filtered.filter(i => i.status === 'upcoming');
+  const recent = filtered
+    .filter(i => i.status === 'finished')
+    .sort((a, b) => b.data.updatedAt.localeCompare(a.data.updatedAt))
     .slice(0, 10);
 
   const hasAny = live.length > 0 || upcoming.length > 0 || recent.length > 0;
+
+  const matchCount = feed.filter(i => i.kind === 'match').length;
+  const tournamentCount = feed.filter(i => i.kind === 'tournament').length;
 
   return (
     <div style={{
@@ -81,7 +148,47 @@ export function LandingPage({ navigate, onLogin }: Props) {
       </div>
 
       {/* ─── Catalog ──────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, padding: '20px 16px 32px', maxWidth: 600, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ flex: 1, padding: '16px 16px 32px', maxWidth: 600, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+
+        {/* Filter chips + search */}
+        {!loading && feed.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {([
+                { key: 'all' as Filter, label: t('landing.filterAll'), count: feed.length },
+                { key: 'matches' as Filter, label: `⚽ ${t('landing.filterMatches')}`, count: matchCount },
+                { key: 'tournaments' as Filter, label: `🏆 ${t('landing.filterTournaments')}`, count: tournamentCount },
+              ]).map(chip => (
+                <button
+                  key={chip.key}
+                  onClick={() => setFilter(chip.key)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 10, fontWeight: 600, fontSize: 12,
+                    background: filter === chip.key ? 'var(--primary)' : 'var(--surface)',
+                    color: filter === chip.key ? '#fff' : 'var(--text-muted)',
+                    border: filter === chip.key ? 'none' : '1px solid var(--border)',
+                    cursor: 'pointer', transition: 'all .15s',
+                  }}
+                >
+                  {chip.label} {chip.count > 0 && <span style={{ opacity: 0.7 }}>({chip.count})</span>}
+                </button>
+              ))}
+            </div>
+            {feed.length > 5 && (
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder={t('landing.searchPlaceholder')}
+                style={{
+                  padding: '10px 14px', borderRadius: 10, fontSize: 13,
+                  background: 'var(--surface)', border: '1px solid var(--border)',
+                  color: 'var(--text)', outline: 'none', width: '100%', boxSizing: 'border-box',
+                }}
+              />
+            )}
+          </div>
+        )}
 
         {loading && (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
@@ -95,40 +202,37 @@ export function LandingPage({ navigate, onLogin }: Props) {
             textAlign: 'center', padding: '40px 20px',
             color: 'var(--text-muted)', fontSize: 14,
           }}>
-            {t('landing.noTournaments')}
+            {search ? t('landing.noResults') : t('landing.noTournaments')}
           </div>
         )}
 
         {/* LIVE */}
         {live.length > 0 && (
-          <TournamentSection
+          <FeedSection
             title={`🔴 ${t('landing.liveTitle')}`}
-            entries={live}
+            items={live}
             navigate={navigate}
             t={t}
-            variant="live"
           />
         )}
 
         {/* Upcoming */}
         {upcoming.length > 0 && (
-          <TournamentSection
+          <FeedSection
             title={`📅 ${t('landing.upcomingTitle')}`}
-            entries={upcoming}
+            items={upcoming}
             navigate={navigate}
             t={t}
-            variant="upcoming"
           />
         )}
 
         {/* Recent */}
         {recent.length > 0 && (
-          <TournamentSection
+          <FeedSection
             title={`🏆 ${t('landing.recentTitle')}`}
-            entries={recent}
+            items={recent}
             navigate={navigate}
             t={t}
-            variant="finished"
           />
         )}
       </div>
@@ -144,16 +248,26 @@ export function LandingPage({ navigate, onLogin }: Props) {
   );
 }
 
-// ─── Tournament Section ────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function TournamentSection({
-  title, entries, navigate, t, variant,
+function formatDate(dateStr: string): string {
+  try {
+    const [y, m, d] = dateStr.split('-');
+    return `${d}.${m}.${y}`;
+  } catch {
+    return dateStr;
+  }
+}
+
+// ─── Feed Section ──────────────────────────────────────────────────────────
+
+function FeedSection({
+  title, items, navigate, t,
 }: {
   title: string;
-  entries: CatalogEntry[];
+  items: FeedItem[];
   navigate: (p: Page) => void;
-  t: (key: string) => string;
-  variant: 'live' | 'upcoming' | 'finished';
+  t: (key: string, params?: Record<string, string | number>) => string;
 }) {
   return (
     <div style={{ marginBottom: 20 }}>
@@ -161,14 +275,10 @@ function TournamentSection({
         {title}
       </h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {entries.map(entry => (
-          <TournamentCard
-            key={entry.id}
-            entry={entry}
-            navigate={navigate}
-            t={t}
-            variant={variant}
-          />
+        {items.map(item => (
+          item.kind === 'tournament'
+            ? <TournamentCard key={`t-${item.data.id}`} entry={item.data} navigate={navigate} t={t} variant={item.status} />
+            : <MatchCard key={`m-${item.data.id}`} entry={item.data} navigate={navigate} t={t} variant={item.status} />
         ))}
       </div>
     </div>
@@ -182,18 +292,9 @@ function TournamentCard({
 }: {
   entry: CatalogEntry;
   navigate: (p: Page) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
   variant: 'live' | 'upcoming' | 'finished';
 }) {
-  const formatDate = (dateStr: string) => {
-    try {
-      const [y, m, d] = dateStr.split('-');
-      return `${d}.${m}.${y}`;
-    } catch {
-      return dateStr;
-    }
-  };
-
   const teamCountLabel = (count: number) => {
     if (count === 1) return `${count} ${t('landing.team')}`;
     if (count >= 2 && count <= 4) return `${count} ${t('landing.teamsCount')}`;
@@ -237,53 +338,139 @@ function TournamentCard({
       {/* Content */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 14, fontWeight: 700, color: 'var(--text)',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          display: 'flex', alignItems: 'center', gap: 6,
         }}>
-          {entry.name}
+          <span style={{
+            fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
+            background: '#FFF3E0', color: '#E65100', flexShrink: 0,
+          }}>🏆</span>
+          <span style={{
+            fontSize: 14, fontWeight: 700, color: 'var(--text)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {entry.name}
+          </span>
         </div>
         <div style={{
           fontSize: 12, color: 'var(--text-muted)', marginTop: 2,
           display: 'flex', gap: 8, flexWrap: 'wrap',
         }}>
-          <span>📅 {formatDate(entry.startDate)}</span>
-          <span>⏰ {entry.startTime}</span>
+          <span>{formatDate(entry.startDate)}</span>
+          <span>{entry.startTime}</span>
           <span>{teamCountLabel(entry.teamCount)}</span>
           <span>{t(formatKey)}</span>
         </div>
       </div>
 
       {/* Status badge */}
-      <div style={{ flexShrink: 0 }}>
-        {variant === 'live' && (
-          <span style={{
-            background: '#E53935', color: '#fff',
-            padding: '4px 10px', borderRadius: 8,
-            fontSize: 11, fontWeight: 800,
-            animation: 'pulse 2s infinite',
-          }}>
-            {t('landing.live')}
-          </span>
-        )}
-        {variant === 'finished' && (
-          <span style={{
-            background: 'var(--surface-var)', color: 'var(--text-muted)',
-            padding: '4px 10px', borderRadius: 8,
-            fontSize: 11, fontWeight: 600,
-          }}>
-            ✅
-          </span>
-        )}
-        {variant === 'upcoming' && (
-          <span style={{
-            background: '#E3F2FD', color: '#1565C0',
-            padding: '4px 10px', borderRadius: 8,
-            fontSize: 11, fontWeight: 600,
-          }}>
-            📅
-          </span>
-        )}
-      </div>
+      <StatusBadge variant={variant} t={t} />
     </button>
+  );
+}
+
+// ─── Match Card ──────────────────────────────────────────────────────────────
+
+function MatchCard({
+  entry, navigate, t, variant,
+}: {
+  entry: MatchCatalogEntry;
+  navigate: (p: Page) => void;
+  t: (key: string, params?: Record<string, string | number>) => string;
+  variant: 'live' | 'upcoming' | 'finished';
+}) {
+  const ourScore = entry.isHome ? entry.homeScore : entry.awayScore;
+  const theirScore = entry.isHome ? entry.awayScore : entry.homeScore;
+  const clubLabel = entry.clubName || t('match.detail.us');
+
+  return (
+    <button
+      onClick={() => navigate({ name: 'match-public', matchId: entry.id })}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '14px 14px', borderRadius: 14,
+        background: 'var(--surface)', border: '1.5px solid var(--border)',
+        cursor: 'pointer', width: '100%', textAlign: 'left',
+        boxShadow: variant === 'live' ? '0 2px 12px rgba(229,57,53,.12)' : '0 1px 4px rgba(0,0,0,.05)',
+        transition: 'transform .1s, box-shadow .15s',
+      }}
+    >
+      {/* Score or ball icon */}
+      <div style={{
+        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+        background: variant === 'live' ? '#C62828' : 'var(--surface-var)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: 900, fontSize: variant !== 'upcoming' ? 15 : 20,
+        color: variant === 'live' ? '#fff' : 'var(--text)',
+        letterSpacing: 1,
+      }}>
+        {variant === 'upcoming' ? '⚽' : `${ourScore}:${theirScore}`}
+      </div>
+
+      {/* Content */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <span style={{
+            fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
+            background: '#E3F2FD', color: '#1565C0', flexShrink: 0,
+          }}>⚽</span>
+          <span style={{
+            fontSize: 14, fontWeight: 700, color: 'var(--text)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {clubLabel} vs {entry.opponent}
+          </span>
+        </div>
+        <div style={{
+          fontSize: 12, color: 'var(--text-muted)', marginTop: 2,
+          display: 'flex', gap: 8, flexWrap: 'wrap',
+        }}>
+          <span>{formatDate(entry.date)}</span>
+          <span>{entry.kickoffTime}</span>
+          {entry.competition && <span>{entry.competition}</span>}
+        </div>
+      </div>
+
+      {/* Status badge */}
+      <StatusBadge variant={variant} t={t} />
+    </button>
+  );
+}
+
+// ─── Status Badge ────────────────────────────────────────────────────────────
+
+function StatusBadge({ variant, t }: { variant: 'live' | 'upcoming' | 'finished'; t: (key: string) => string }) {
+  if (variant === 'live') {
+    return (
+      <span style={{
+        background: '#E53935', color: '#fff',
+        padding: '4px 10px', borderRadius: 8,
+        fontSize: 11, fontWeight: 800, flexShrink: 0,
+        animation: 'pulse 2s infinite',
+      }}>
+        {t('landing.live')}
+      </span>
+    );
+  }
+  if (variant === 'finished') {
+    return (
+      <span style={{
+        background: 'var(--surface-var)', color: 'var(--text-muted)',
+        padding: '4px 10px', borderRadius: 8,
+        fontSize: 11, fontWeight: 600, flexShrink: 0,
+      }}>
+        ✅
+      </span>
+    );
+  }
+  return (
+    <span style={{
+      background: '#E3F2FD', color: '#1565C0',
+      padding: '4px 10px', borderRadius: 8,
+      fontSize: 11, fontWeight: 600, flexShrink: 0,
+    }}>
+      📅
+    </span>
   );
 }

@@ -303,6 +303,18 @@
       }
     },
 
+    // ─── Katalog zápasů (pro landing page) ──────────────────────────────────
+    // Čtení: kdokoli; Zápis: vlastník záznamu
+    "match-catalog": {
+      ".read": true,
+      "$matchId": {
+        ".write": "auth != null && (
+          !data.exists() && newData.child('ownerUid').val() === auth.uid
+          || data.exists() && data.child('ownerUid').val() === auth.uid
+        )"
+      }
+    },
+
     // ─── Veřejný zápas (sdílení s rodiči) ──────────────────────────────────
     // Čtení: kdokoli; Zápis: pouze vlastník zápasu
     "public-matches": {

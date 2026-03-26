@@ -481,7 +481,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                 touchAction: 'manipulation',
               }}
             >
-              {t('match.detail.opponentGoalBtn')}
+              ⚽ {t('match.detail.opponentGoalBtn')}
             </button>
           </div>
 

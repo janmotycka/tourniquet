@@ -128,6 +128,23 @@ export interface PublicSeasonMatch {
   updatedAt: string;
 }
 
+// ─── Catalog entry (lightweight, for landing page) ───────────────────────────
+
+export interface MatchCatalogEntry {
+  id: string;
+  clubName: string;
+  opponent: string;
+  isHome: boolean;
+  date: string;
+  kickoffTime: string;
+  competition: string;
+  status: SeasonMatchStatus;
+  homeScore: number;
+  awayScore: number;
+  ownerUid: string;
+  updatedAt: string;
+}
+
 // ─── Store input ──────────────────────────────────────────────────────────────
 
 export interface CreateSeasonMatchInput {

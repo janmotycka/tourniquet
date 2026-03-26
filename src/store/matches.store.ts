@@ -10,7 +10,7 @@ import type {
 } from '../types/match.types';
 
 import { generateId } from '../utils/id';
-import { saveMatchToFirebase, deleteMatchFromFirebase, loadMatchesFromFirebase, deletePublicMatch } from '../services/match.firebase';
+import { saveMatchToFirebase, deleteMatchFromFirebase, loadMatchesFromFirebase, deletePublicMatch, saveMatchCatalogEntry, deleteMatchCatalogEntry } from '../services/match.firebase';
 import { logger } from '../utils/logger';
 import { useToastStore } from './toast.store';
 
@@ -24,6 +24,10 @@ async function syncMatch(uid: string | null, match: SeasonMatch): Promise<string
   if (!uid) return null; // not logged in, skip silently (localStorage only)
   try {
     await saveMatchToFirebase(uid, match);
+    // Keep catalog in sync for public matches
+    if (match.isPublic) {
+      saveMatchCatalogEntry(match, uid).catch(err => logger.error('[Firebase] Catalog sync failed', err));
+    }
     return null;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -371,6 +375,7 @@ export const useMatchesStore = create<MatchesState>()(
       togglePublicMatch: (matchId) => {
         const match = get().matches.find(m => m.id === matchId);
         if (!match) return;
+        const uid = get().firebaseUid;
         const wasPublic = !!match.isPublic;
         set(state => ({
           matches: state.matches.map(m =>
@@ -379,11 +384,15 @@ export const useMatchesStore = create<MatchesState>()(
         }));
         const updated = get().matches.find(m => m.id === matchId);
         if (updated) {
-          syncMatch(get().firebaseUid, updated).then(err => { if (err) set({ syncError: err }); });
+          syncMatch(uid, updated).then(err => { if (err) set({ syncError: err }); });
         }
-        // Pokud vypínáme sdílení, smažeme public mirror
+        // Pokud vypínáme sdílení, smažeme public mirror + katalog
         if (wasPublic) {
           deletePublicMatch(matchId).catch(err => logger.error('[Firebase] Delete public match failed', err));
+          deleteMatchCatalogEntry(matchId).catch(err => logger.error('[Firebase] Delete match catalog failed', err));
+        } else if (updated && uid) {
+          // Zapínáme sdílení → zapíšeme do katalogu
+          saveMatchCatalogEntry(updated, uid).catch(err => logger.error('[Firebase] Save match catalog failed', err));
         }
       },
     }),
