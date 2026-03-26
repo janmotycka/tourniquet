@@ -95,7 +95,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
   const tournament = firebaseTournament ?? localTournament;
 
   // ── Join as referee flow ────────────────────────────────────────────────────
-  const { user } = useAuth();
+  const { user, signInAnonymously } = useAuth();
   const joinTournament = useTournamentStore(s => s.joinTournament);
   const leaveTournament = useTournamentStore(s => s.leaveTournament);
   const isOwner = useTournamentStore(s => s.isOwner);
@@ -129,9 +129,9 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
         // Přihlášený → rovnou zobrazit PIN modal
         setShowJoinModal(true);
       } else {
-        // Nepřihlášený → uložit intent a přesměrovat na login
+        // Nepřihlášený → anonymní přihlášení, zůstat na stránce
         onJoinIntent?.(tournamentId, adminJoinRole);
-        navigate({ name: 'home' });
+        signInAnonymously();
       }
     }
     clearAdminJoin?.();

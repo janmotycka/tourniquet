@@ -786,8 +786,21 @@ export const en: Record<TranslationKey, string> = {
   'match.create.kickoff': 'Kick-off time *',
   'match.create.competition': 'Competition',
   'match.create.competitionPlaceholder': 'League, Cup, Friendly...',
-  'match.create.settings': '⚙️ Settings',
+  'match.create.settings': '⚙️ Match settings',
   'match.create.matchDuration': 'Match duration',
+  'match.create.periodCount': 'Number of periods',
+  'match.create.periodDuration': 'Period duration (minutes)',
+  'match.create.periodLabel1': 'Single period — no break',
+  'match.create.periodLabel2': '2 halves — standard format',
+  'match.create.periodLabel1Short': '1 half',
+  'match.create.periodLabel2Short': '2 halves',
+  'match.create.periodLabel3': '3 thirds',
+  'match.create.periodLabel4': '4 quarters',
+  'match.period.half': '{n}. half',
+  'match.period.third': '{n}. third',
+  'match.period.quarter': '{n}. quarter',
+  'match.period.single': 'Match',
+  'match.period.halftime': 'Half-time',
   'match.create.ourClub': '🏟 Our club',
   'match.create.clubRosterInfo': 'Players from the club roster will be ready in the next step.',
   'match.create.changeClub': 'Change club',
@@ -816,7 +829,17 @@ export const en: Record<TranslationKey, string> = {
   'match.create.stepBasicInfo': 'Basic info',
   'match.create.stepLineup': 'Lineup',
   'match.create.continueLineup': 'Continue: Lineup →',
+  'match.create.skipLineup': 'Create without lineup — add later',
   'match.create.createMatch': '✅ Create match',
+
+  // ─── Match Lineup ──────────────────────────────────────────────────────────
+  'match.lineup.starters': 'Starting lineup',
+  'match.lineup.bench': 'Substitutes',
+  'match.lineup.emptyStarters': 'No players in starting lineup yet',
+  'match.lineup.emptyBench': 'No substitutes yet',
+  'match.lineup.toBench': 'To bench',
+  'match.lineup.toStart': 'To start',
+  'match.lineup.edit': 'Edit',
 
   // ─── Match Detail ─────────────────────────────────────────────────────────
   'match.detail.ourGoal': 'Our goal',
@@ -877,6 +900,22 @@ export const en: Record<TranslationKey, string> = {
   'match.detail.tabRatings': '⭐ Ratings',
   'match.detail.us': 'Us',
   'match.detail.vs': 'vs',
+
+  // ─── Match Ratings ─────────────────────────────────────────────────────────
+  'match.ratings.availableAfter': 'Ratings are available after the match ends, but you can enter them during the match too.',
+  'match.ratings.playerRatings': 'Player ratings',
+  'match.ratings.coachNote': 'Coach note',
+  'match.ratings.noLineup': 'Add a lineup first in the Lineup tab',
+
+  // ─── VEO ────────────────────────────────────────────────────────────────
+  'veo.title': '🎥 VEO recording',
+  'veo.add': '🎥 Add VEO link',
+  'veo.placeholder': 'Paste the link from VEO app...',
+  'veo.save': 'Save',
+  'veo.cancel': 'Cancel',
+  'veo.remove': 'Remove',
+  'veo.watch': '🎥 Watch recording',
+  'veo.removeConfirm': 'Remove the VEO recording link?',
 
   // ─── Match Field Mode ───────────────────────────────────────────────────
   'match.field.quickGoalHint': 'Tap = quick goal · Hold = choose scorer',
@@ -1631,6 +1670,8 @@ export const en: Record<TranslationKey, string> = {
   'matchPublic.unknownPlayer': 'Unknown player',
   'matchPublic.opponentGoal': 'Opponent goal',
   'matchPublic.ownGoal': 'own goal',
+  'matchPublic.goal': 'GOAL!',
+  'matchPublic.fullTime': 'FULL TIME',
   'matchPublic.footer': 'Live match broadcast',
 
   // ─── Landing / Catalog ──────────────────────────────────────────────────────
@@ -1656,13 +1697,14 @@ export const en: Record<TranslationKey, string> = {
 
   // ─── Match Share UI ───────────────────────────────────────────────────────
   'matchShare.shareTitle': 'Share with parents',
+  'matchShare.shareBtn': 'Share',
   'matchShare.liveSharing': 'Live sharing enabled',
   'matchShare.stopSharing': 'Stop sharing',
   'matchShare.copyLink': 'Copy link',
   'matchShare.copied': 'Copied',
   'matchShare.showQr': 'QR code',
   'matchShare.hideQr': 'Hide QR',
-  'matchShare.whatsappMessage': '⚽ *LIVE MATCH BROADCAST*\n\n⚔️ Opponent: *{opponent}*\n📅 Date: *{date}*\n⏰ Kick-off: *{time}*\n🏆 Competition: *{competition}*\n\nWatch the match live — score, goals, substitutions:\n\n👉 {url}',
+  'matchShare.whatsappMessage': '⚽ *LIVE MATCH BROADCAST*\n\n🏠 *{home}*  vs  ✈️ *{away}*\n📅 {date} · ⏰ {time}\n🏆 {competition}\n\nWatch the match live — score, goals, substitutions:\n\n👉 {url}',
 
   // ─── Dashboard tab ──────────────────────────────────────────────────────
   'dashboard.tab': 'Overview',

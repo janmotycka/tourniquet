@@ -36,7 +36,7 @@ function useSubstitutionAlert(match: SeasonMatch, elapsed: number): {
 
 // ── Quick goal feedback flash ──
 
-function QuickGoalFlash({ side, onDone }: { side: 'home' | 'away'; onDone: () => void }) {
+function QuickGoalFlash({ side, onDone }: { side: 'ours' | 'theirs'; onDone: () => void }) {
   useEffect(() => {
     const t = setTimeout(onDone, 1200);
     return () => clearTimeout(t);
@@ -46,7 +46,7 @@ function QuickGoalFlash({ side, onDone }: { side: 'home' | 'away'; onDone: () =>
     <div style={{
       position: 'fixed', inset: 0, zIndex: 200,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: side === 'home' ? 'rgba(46,125,50,.85)' : 'rgba(198,40,40,.6)',
+      background: side === 'ours' ? 'rgba(46,125,50,.85)' : 'rgba(198,40,40,.6)',
       animation: 'quickGoalFlash 1.2s ease-out forwards',
       pointerEvents: 'none',
     }}>
@@ -128,18 +128,26 @@ function InlineGoalEdit({ match, goal, onClose }: {
 // ── Configurable field panels ──
 
 type FieldPanel = 'cards' | 'subs';
-const FIELD_PANELS_KEY = 'torq-field-panels';
 
-function loadFieldPanels(): Set<FieldPanel> {
+function loadFieldPanels(matchId: string): Set<FieldPanel> {
   try {
-    const stored = localStorage.getItem(FIELD_PANELS_KEY);
+    const stored = localStorage.getItem(`torq-field-panels-${matchId}`);
     if (stored) return new Set(JSON.parse(stored));
   } catch { /* ignore */ }
   return new Set(['cards', 'subs']); // default: all on
 }
 
-function saveFieldPanels(panels: Set<FieldPanel>) {
-  localStorage.setItem(FIELD_PANELS_KEY, JSON.stringify([...panels]));
+function saveFieldPanels(matchId: string, panels: Set<FieldPanel>) {
+  localStorage.setItem(`torq-field-panels-${matchId}`, JSON.stringify([...panels]));
+}
+
+// ── Period label helper ──
+
+function getPeriodLabel(t: (k: string, p?: Record<string, string | number>) => string, periods: number, current: number): string {
+  if (periods === 1) return t('match.period.single');
+  if (periods === 2) return t('match.period.half', { n: current });
+  if (periods === 3) return t('match.period.third', { n: current });
+  return t('match.period.quarter', { n: current });
 }
 
 // ── LiveTab component ──
@@ -147,13 +155,15 @@ function saveFieldPanels(panels: Set<FieldPanel>) {
 export function LiveTab({ match }: { match: SeasonMatch }) {
   const { t } = useI18n();
   const [elapsed, setElapsed] = useState(() => computeElapsed(match));
-  const [goalModal, setGoalModal] = useState<'home' | 'away' | null>(null);
+  const [goalModal, setGoalModal] = useState<'ours' | 'theirs' | null>(null);
   const [cardModal, setCardModal] = useState(false);
   const [subModal, setSubModal] = useState(false);
-  const [quickFlash, setQuickFlash] = useState<'home' | 'away' | null>(null);
+  const [quickFlash, setQuickFlash] = useState<'ours' | 'theirs' | null>(null);
   const [editingGoal, setEditingGoal] = useState<MatchGoal | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [enabledPanels, setEnabledPanels] = useState<Set<FieldPanel>>(() => loadFieldPanels());
+  const [enabledPanels, setEnabledPanels] = useState<Set<FieldPanel>>(() => loadFieldPanels(match.id));
+  const [showVeoInput, setShowVeoInput] = useState(false);
+  const [veoInputValue, setVeoInputValue] = useState('');
 
   const startMatch = useMatchesStore(s => s.startMatch);
   const finishMatch = useMatchesStore(s => s.finishMatch);
@@ -163,6 +173,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   const addCard = useMatchesStore(s => s.addCard);
   const addSubstitution = useMatchesStore(s => s.addSubstitution);
   const removeGoal = useMatchesStore(s => s.removeGoal);
+  const updateMatch = useMatchesStore(s => s.updateMatch);
 
   // Haptic feedback helper
   const vibrate = (ms: number = 30) => {
@@ -183,10 +194,21 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
 
   const { alertActive, nextAlertMinute, suggestedIn, suggestedOut } = useSubstitutionAlert(match, elapsed);
 
+  const periods = match.periods ?? 2;
+  const periodDuration = match.periodDurationMinutes ?? Math.round(match.durationMinutes / periods);
+  const periodSeconds = periodDuration * 60;
+  const currentPeriod = match.currentPeriod ?? 1;
   const totalSeconds = match.durationMinutes * 60;
-  const remaining = Math.max(0, totalSeconds - elapsed);
+
+  // Per-period progress
+  const periodElapsed = elapsed - (currentPeriod - 1) * periodSeconds;
+  const periodRemaining = Math.max(0, periodSeconds - periodElapsed);
+  const isPeriodOvertime = periodElapsed > periodSeconds;
+  const periodProgress = Math.min(1, periodElapsed / periodSeconds);
+  // Total progress
   const isOvertime = elapsed > totalSeconds;
   const progress = Math.min(1, elapsed / totalSeconds);
+  const remaining = Math.max(0, totalSeconds - elapsed);
 
   const getPlayerName = (playerId: string | null) =>
     playerId ? (match.lineup.find(p => p.playerId === playerId)?.name ?? '?') : t('match.detail.unknown');
@@ -199,10 +221,10 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   };
 
   // Quick goal — one tap, auto-minute, no modal
-  const handleQuickGoal = (side: 'home' | 'away') => {
+  const handleQuickGoal = (side: 'ours' | 'theirs') => {
     vibrate(50);
     const minute = Math.max(1, Math.floor(elapsed / 60) + 1);
-    const isOpponentGoal = side === 'away';
+    const isOpponentGoal = side === 'theirs';
     addGoal(match.id, {
       scorerId: null,
       assistId: null,
@@ -217,7 +239,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
 
-  const handleGoalPointerDown = (side: 'home' | 'away') => {
+  const handleGoalPointerDown = (side: 'ours' | 'theirs') => {
     longPressTriggered.current = false;
     longPressTimer.current = setTimeout(() => {
       longPressTriggered.current = true;
@@ -226,7 +248,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
     }, 500);
   };
 
-  const handleGoalPointerUp = (side: 'home' | 'away') => {
+  const handleGoalPointerUp = (side: 'ours' | 'theirs') => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
@@ -247,10 +269,14 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
     setEnabledPanels(prev => {
       const next = new Set(prev);
       if (next.has(panel)) next.delete(panel); else next.add(panel);
-      saveFieldPanels(next);
+      saveFieldPanels(match.id, next);
       return next;
     });
   };
+
+  // Derive "our" vs "their" scores based on isHome
+  const ourScore = match.isHome ? match.homeScore : match.awayScore;
+  const theirScore = match.isHome ? match.awayScore : match.homeScore;
 
   const hasBench = match.lineup.some(p => !p.isStarter);
   const showCards = enabledPanels.has('cards');
@@ -281,7 +307,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
       {/* Match header */}
       <div style={{ textAlign: 'center', paddingBottom: 4 }}>
         <div style={{ fontWeight: 800, fontSize: 20, color: 'var(--text)' }}>
-          {match.isHome ? t('match.detail.us') : match.opponent} {t('match.detail.vs')} {match.isHome ? match.opponent : t('match.detail.us')}
+          {match.clubName || t('match.detail.us')} {t('match.detail.vs')} {match.opponent}
         </div>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
           {formatDate(match.date)} · {match.kickoffTime}
@@ -298,19 +324,42 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
         {/* Timer */}
         {match.status === 'live' && (
           <div style={{ textAlign: 'center', marginBottom: 12 }}>
+            {/* Period indicator */}
+            {periods > 1 && (
+              <div style={{ marginBottom: 6 }}>
+                <span style={{
+                  display: 'inline-block', padding: '3px 12px', borderRadius: 8,
+                  background: 'rgba(255,255,255,.2)', fontSize: 12, fontWeight: 700, color: '#fff',
+                }}>
+                  {getPeriodLabel(t, periods, currentPeriod)}
+                </span>
+              </div>
+            )}
             <div style={{
               fontFeatureSettings: '"tnum"', fontWeight: 900, fontSize: 36,
               color: '#fff', letterSpacing: 2,
             }}>
-              {isOvertime ? '+' : ''}{formatTime(isOvertime ? elapsed - totalSeconds : remaining)}
+              {isPeriodOvertime ? '+' : ''}{formatTime(isPeriodOvertime ? periodElapsed - periodSeconds : periodRemaining)}
             </div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,.75)', marginTop: 2 }}>
-              {isOvertime ? t('match.detail.overtime') : t('match.detail.remaining', { min: Math.floor(elapsed / 60) })}
+              {isPeriodOvertime ? t('match.detail.overtime') : t('match.detail.remaining', { min: Math.floor(elapsed / 60) })}
             </div>
-            {/* Progress bar */}
+            {/* Period progress bar */}
             <div style={{ height: 4, background: 'rgba(255,255,255,.25)', borderRadius: 4, marginTop: 10, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${progress * 100}%`, background: '#fff', borderRadius: 4, transition: 'width .5s' }} />
+              <div style={{ height: '100%', width: `${periodProgress * 100}%`, background: '#fff', borderRadius: 4, transition: 'width .5s' }} />
             </div>
+            {/* Period dots */}
+            {periods > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 8 }}>
+                {Array.from({ length: periods }, (_, i) => (
+                  <div key={i} style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: i + 1 < currentPeriod ? '#fff' : i + 1 === currentPeriod ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.3)',
+                    boxShadow: i + 1 === currentPeriod ? '0 0 6px rgba(255,255,255,.6)' : 'none',
+                  }} />
+                ))}
+              </div>
+            )}
           </div>
         )}
         {match.status === 'planned' && (
@@ -320,23 +369,23 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
           <div style={{ textAlign: 'center', fontSize: 15, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 12 }}>{t('match.detail.finished')}</div>
         )}
 
-        {/* Score */}
+        {/* Score — always: left = our team, right = opponent */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
           <div style={{ textAlign: 'center', flex: 1 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: match.status === 'live' ? 'rgba(255,255,255,.8)' : 'var(--text-muted)', marginBottom: 4 }}>
-              {match.isHome ? `🏠 ${t('match.detail.us')}` : `✈️ ${t('match.detail.us')}`}
+              {match.clubName || t('match.detail.us')}
             </div>
             <div style={{ fontSize: 52, fontWeight: 900, lineHeight: 1, color: match.status === 'live' ? '#fff' : 'var(--text)' }}>
-              {match.homeScore}
+              {ourScore}
             </div>
           </div>
           <div style={{ fontSize: 24, fontWeight: 800, color: match.status === 'live' ? 'rgba(255,255,255,.6)' : 'var(--text-muted)' }}>:</div>
           <div style={{ textAlign: 'center', flex: 1 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: match.status === 'live' ? 'rgba(255,255,255,.8)' : 'var(--text-muted)', marginBottom: 4 }}>
-              {match.isHome ? '✈️ ' : '🏠 '}{match.opponent}
+              {match.opponent}
             </div>
             <div style={{ fontSize: 52, fontWeight: 900, lineHeight: 1, color: match.status === 'live' ? '#fff' : 'var(--text)' }}>
-              {match.awayScore}
+              {theirScore}
             </div>
           </div>
         </div>
@@ -406,8 +455,8 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
           {/* ── Goal buttons — big touch targets ── */}
           <div style={{ display: 'flex', gap: 10 }}>
             <button
-              onPointerDown={() => handleGoalPointerDown('home')}
-              onPointerUp={() => handleGoalPointerUp('home')}
+              onPointerDown={() => handleGoalPointerDown('ours')}
+              onPointerUp={() => handleGoalPointerUp('ours')}
               onPointerLeave={handleGoalPointerLeave}
               onContextMenu={e => e.preventDefault()}
               style={{
@@ -421,8 +470,8 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               ⚽ {t('match.detail.ourGoalBtn')}
             </button>
             <button
-              onPointerDown={() => handleGoalPointerDown('away')}
-              onPointerUp={() => handleGoalPointerUp('away')}
+              onPointerDown={() => handleGoalPointerDown('theirs')}
+              onPointerUp={() => handleGoalPointerUp('theirs')}
               onPointerLeave={handleGoalPointerLeave}
               onContextMenu={e => e.preventDefault()}
               style={{
@@ -469,7 +518,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             </div>
           )}
 
-          {/* Pause / Finish */}
+          {/* Pause / Next period / Finish */}
           <div style={{ display: 'flex', gap: 10 }}>
             {!match.pausedAt ? (
               <button
@@ -482,15 +531,33 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                 {t('match.detail.pauseBtn')}
               </button>
             ) : (
-              <button
-                onClick={() => { vibrate(); resumeMatch(match.id); }}
-                style={{
-                  flex: 1, padding: '14px', borderRadius: 14, fontWeight: 700, fontSize: 14,
-                  background: '#E8F5E9', color: '#2E7D32',
-                }}
-              >
-                {t('match.detail.resumeBtn')}
-              </button>
+              <>
+                <button
+                  onClick={() => { vibrate(); resumeMatch(match.id); }}
+                  style={{
+                    flex: 1, padding: '14px', borderRadius: 14, fontWeight: 700, fontSize: 14,
+                    background: '#E8F5E9', color: '#2E7D32',
+                  }}
+                >
+                  {t('match.detail.resumeBtn')}
+                </button>
+                {/* Next period button (only if paused AND not last period) */}
+                {periods > 1 && currentPeriod < periods && (
+                  <button
+                    onClick={() => {
+                      vibrate(50);
+                      updateMatch(match.id, { currentPeriod: currentPeriod + 1 });
+                      resumeMatch(match.id);
+                    }}
+                    style={{
+                      flex: 1, padding: '14px', borderRadius: 14, fontWeight: 700, fontSize: 14,
+                      background: 'var(--primary)', color: '#fff',
+                    }}
+                  >
+                    {getPeriodLabel(t, periods, currentPeriod + 1)} →
+                  </button>
+                )}
+              </>
             )}
             <button
               onClick={() => { vibrate(); handleFinish(); }}
@@ -614,11 +681,104 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
         </div>
       )}
 
+      {/* ── VEO recording ── */}
+      {match.veoUrl ? (
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 15 }}>🎥</span>
+            <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{t('veo.title')}</span>
+            <button
+              onClick={() => {
+                if (confirm(t('veo.removeConfirm'))) {
+                  updateMatch(match.id, { veoUrl: undefined });
+                }
+              }}
+              style={{ fontSize: 11, fontWeight: 600, color: '#C62828', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+            >
+              {t('veo.remove')}
+            </button>
+          </div>
+          <a
+            href={match.veoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'block', marginTop: 8, padding: '10px 14px', borderRadius: 10,
+              background: '#E3F2FD', color: 'var(--primary)', fontWeight: 700, fontSize: 13,
+              textDecoration: 'none', textAlign: 'center',
+            }}
+          >
+            {t('veo.watch')}
+          </a>
+        </div>
+      ) : (
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: showVeoInput ? '14px 16px' : '0' }}>
+          {!showVeoInput ? (
+            <button
+              onClick={() => setShowVeoInput(true)}
+              style={{
+                width: '100%', padding: '12px 16px', borderRadius: 14, fontWeight: 600, fontSize: 13,
+                background: 'var(--surface)', color: 'var(--text-muted)', border: 'none', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}
+            >
+              {t('veo.add')}
+            </button>
+          ) : (
+            <>
+              <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>🎥</span> {t('veo.title')}
+              </div>
+              <input
+                type="url"
+                value={veoInputValue}
+                onChange={e => setVeoInputValue(e.target.value)}
+                placeholder={t('veo.placeholder')}
+                autoFocus
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14,
+                  border: '1.5px solid var(--border)', background: 'var(--bg)',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button
+                  onClick={() => { setShowVeoInput(false); setVeoInputValue(''); }}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 13,
+                    background: 'var(--surface-var)', color: 'var(--text-muted)',
+                  }}
+                >
+                  {t('veo.cancel')}
+                </button>
+                <button
+                  onClick={() => {
+                    if (veoInputValue.trim()) {
+                      updateMatch(match.id, { veoUrl: veoInputValue.trim() });
+                      setShowVeoInput(false);
+                      setVeoInputValue('');
+                    }
+                  }}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 13,
+                    background: 'var(--primary)', color: '#fff',
+                    opacity: veoInputValue.trim() ? 1 : 0.4,
+                  }}
+                  disabled={!veoInputValue.trim()}
+                >
+                  {t('veo.save')}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* ── Modals ── */}
       {goalModal !== null && (
         <GoalModal
           match={match}
-          isOpponentGoal={goalModal === 'away'}
+          isOpponentGoal={goalModal === 'theirs'}
           onAdd={g => addGoal(match.id, g)}
           onClose={() => setGoalModal(null)}
           t={t}

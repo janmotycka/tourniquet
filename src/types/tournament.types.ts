@@ -98,6 +98,7 @@ export interface Match {
   nextMatchId?: string;              // vítěz postupuje do tohoto zápasu
   homeTeamPlaceholder?: string;      // "1. Sk. A" — dokud se neurčí skutečný tým
   awayTeamPlaceholder?: string;
+  veoUrl?: string;                   // odkaz na VEO záznam zápasu
 }
 
 // ─── Standing (computed, never stored) ───────────────────────────────────────

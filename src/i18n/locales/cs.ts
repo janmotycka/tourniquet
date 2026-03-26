@@ -784,8 +784,21 @@ export const cs = {
   'match.create.kickoff': 'Čas výkopu *',
   'match.create.competition': 'Soutěž',
   'match.create.competitionPlaceholder': 'Liga, Pohár, Přátelský...',
-  'match.create.settings': '⚙️ Nastavení',
+  'match.create.settings': '⚙️ Nastavení zápasu',
   'match.create.matchDuration': 'Délka zápasu',
+  'match.create.periodCount': 'Počet period',
+  'match.create.periodDuration': 'Délka periody (minuty)',
+  'match.create.periodLabel1': 'Jeden poločas — bez přestávky',
+  'match.create.periodLabel2': '2 poločasy — standardní formát',
+  'match.create.periodLabel1Short': '1 poločas',
+  'match.create.periodLabel2Short': '2 poločasy',
+  'match.create.periodLabel3': '3 třetiny',
+  'match.create.periodLabel4': '4 čtvrtiny',
+  'match.period.half': '{n}. poločas',
+  'match.period.third': '{n}. třetina',
+  'match.period.quarter': '{n}. čtvrtina',
+  'match.period.single': 'Zápas',
+  'match.period.halftime': 'Přestávka',
   'match.create.ourClub': '🏟 Náš klub',
   'match.create.clubRosterInfo': 'Hráči z klubové soupisky budou připraveni v dalším kroku.',
   'match.create.changeClub': 'Změnit klub',
@@ -814,7 +827,17 @@ export const cs = {
   'match.create.stepBasicInfo': 'Základní info',
   'match.create.stepLineup': 'Sestava',
   'match.create.continueLineup': 'Pokračovat: Sestava →',
+  'match.create.skipLineup': 'Vytvořit bez sestavy — doplním později',
   'match.create.createMatch': '✅ Vytvořit zápas',
+
+  // ─── Match Lineup ──────────────────────────────────────────────────────────
+  'match.lineup.starters': 'Základní sestava',
+  'match.lineup.bench': 'Náhradníci',
+  'match.lineup.emptyStarters': 'Zatím žádní hráči v základní sestavě',
+  'match.lineup.emptyBench': 'Zatím žádní náhradníci',
+  'match.lineup.toBench': 'Na lavičku',
+  'match.lineup.toStart': 'Do sestavy',
+  'match.lineup.edit': 'Upravit',
 
   // ─── Match Detail ─────────────────────────────────────────────────────────
   'match.detail.ourGoal': 'Náš gól',
@@ -875,6 +898,22 @@ export const cs = {
   'match.detail.tabRatings': '⭐ Hodnocení',
   'match.detail.us': 'My',
   'match.detail.vs': 'vs',
+
+  // ─── Match Ratings ─────────────────────────────────────────────────────────
+  'match.ratings.availableAfter': 'Hodnocení je dostupné po ukončení zápasu, ale můžete zadávat i průběžně.',
+  'match.ratings.playerRatings': 'Hodnocení hráčů',
+  'match.ratings.coachNote': 'Trenérova poznámka',
+  'match.ratings.noLineup': 'Nejdříve zadejte sestavu v záložce Sestava',
+
+  // ─── VEO ────────────────────────────────────────────────────────────────
+  'veo.title': '🎥 VEO záznam',
+  'veo.add': '🎥 Přidat VEO odkaz',
+  'veo.placeholder': 'Vložte odkaz z VEO aplikace...',
+  'veo.save': 'Uložit',
+  'veo.cancel': 'Zrušit',
+  'veo.remove': 'Odebrat',
+  'veo.watch': '🎥 Sledovat záznam',
+  'veo.removeConfirm': 'Odebrat odkaz na VEO záznam?',
 
   // ─── Match Field Mode ───────────────────────────────────────────────────
   'match.field.quickGoalHint': 'Tap = rychlý gól · Podržet = výběr střelce',
@@ -1633,6 +1672,8 @@ export const cs = {
   'matchPublic.unknownPlayer': 'Neznámý hráč',
   'matchPublic.opponentGoal': 'Gól soupeře',
   'matchPublic.ownGoal': 'vlastňák',
+  'matchPublic.goal': 'GÓÓL!',
+  'matchPublic.fullTime': 'KONEC',
   'matchPublic.footer': 'Živý přenos zápasu',
 
   // ─── Landing / Catalog ──────────────────────────────────────────────────────
@@ -1658,13 +1699,14 @@ export const cs = {
 
   // ─── Match Share UI ───────────────────────────────────────────────────────
   'matchShare.shareTitle': 'Sdílet s rodiči',
+  'matchShare.shareBtn': 'Sdílet',
   'matchShare.liveSharing': 'Živé sdílení zapnuto',
   'matchShare.stopSharing': 'Vypnout sdílení',
   'matchShare.copyLink': 'Kopírovat odkaz',
   'matchShare.copied': 'Zkopírováno',
   'matchShare.showQr': 'QR kód',
   'matchShare.hideQr': 'Skrýt QR',
-  'matchShare.whatsappMessage': '⚽ *ŽIVÝ PŘENOS ZÁPASU*\n\n⚔️ Soupeř: *{opponent}*\n📅 Datum: *{date}*\n⏰ Začátek: *{time}*\n🏆 Soutěž: *{competition}*\n\nSledujte zápas živě — skóre, góly, střídání:\n\n👉 {url}',
+  'matchShare.whatsappMessage': '⚽ *ŽIVÝ PŘENOS ZÁPASU*\n\n🏠 *{home}*  vs  ✈️ *{away}*\n📅 {date} · ⏰ {time}\n🏆 {competition}\n\nSledujte zápas živě — skóre, góly, střídání:\n\n👉 {url}',
 
   // ─── Dashboard tab ──────────────────────────────────────────────────────
   'dashboard.tab': 'Přehled',

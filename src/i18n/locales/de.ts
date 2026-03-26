@@ -786,8 +786,21 @@ export const de: Record<TranslationKey, string> = {
   'match.create.kickoff': 'Anstoßzeit *',
   'match.create.competition': 'Wettbewerb',
   'match.create.competitionPlaceholder': 'Liga, Pokal, Freundschaftsspiel...',
-  'match.create.settings': '⚙️ Einstellungen',
+  'match.create.settings': '⚙️ Spieleinstellungen',
   'match.create.matchDuration': 'Spieldauer',
+  'match.create.periodCount': 'Anzahl der Perioden',
+  'match.create.periodDuration': 'Periodendauer (Minuten)',
+  'match.create.periodLabel1': 'Eine Halbzeit — keine Pause',
+  'match.create.periodLabel2': '2 Halbzeiten — Standardformat',
+  'match.create.periodLabel1Short': '1 Halbzeit',
+  'match.create.periodLabel2Short': '2 Halbzeiten',
+  'match.create.periodLabel3': '3 Drittel',
+  'match.create.periodLabel4': '4 Viertel',
+  'match.period.half': '{n}. Halbzeit',
+  'match.period.third': '{n}. Drittel',
+  'match.period.quarter': '{n}. Viertel',
+  'match.period.single': 'Spiel',
+  'match.period.halftime': 'Halbzeitpause',
   'match.create.ourClub': '🏟 Unser Verein',
   'match.create.clubRosterInfo': 'Spieler aus dem Vereinskader stehen im nächsten Schritt zur Verfügung.',
   'match.create.changeClub': 'Verein ändern',
@@ -816,7 +829,17 @@ export const de: Record<TranslationKey, string> = {
   'match.create.stepBasicInfo': 'Grundinfo',
   'match.create.stepLineup': 'Aufstellung',
   'match.create.continueLineup': 'Weiter: Aufstellung →',
+  'match.create.skipLineup': 'Ohne Aufstellung erstellen — später ergänzen',
   'match.create.createMatch': '✅ Spiel erstellen',
+
+  // ─── Match Lineup ──────────────────────────────────────────────────────────
+  'match.lineup.starters': 'Startaufstellung',
+  'match.lineup.bench': 'Auswechselspieler',
+  'match.lineup.emptyStarters': 'Noch keine Spieler in der Startaufstellung',
+  'match.lineup.emptyBench': 'Noch keine Auswechselspieler',
+  'match.lineup.toBench': 'Auf die Bank',
+  'match.lineup.toStart': 'In die Startelf',
+  'match.lineup.edit': 'Bearbeiten',
 
   // ─── Match Detail ─────────────────────────────────────────────────────────
   'match.detail.ourGoal': 'Unser Tor',
@@ -877,6 +900,22 @@ export const de: Record<TranslationKey, string> = {
   'match.detail.tabRatings': '⭐ Bewertungen',
   'match.detail.us': 'Wir',
   'match.detail.vs': 'vs',
+
+  // ─── Match Ratings ─────────────────────────────────────────────────────────
+  'match.ratings.availableAfter': 'Bewertungen sind nach Spielende verfügbar, können aber auch während des Spiels eingegeben werden.',
+  'match.ratings.playerRatings': 'Spielerbewertungen',
+  'match.ratings.coachNote': 'Trainernotiz',
+  'match.ratings.noLineup': 'Geben Sie zuerst eine Aufstellung im Tab Aufstellung ein',
+
+  // ─── VEO ────────────────────────────────────────────────────────────────
+  'veo.title': '🎥 VEO-Aufnahme',
+  'veo.add': '🎥 VEO-Link hinzufügen',
+  'veo.placeholder': 'Link aus der VEO-App einfügen...',
+  'veo.save': 'Speichern',
+  'veo.cancel': 'Abbrechen',
+  'veo.remove': 'Entfernen',
+  'veo.watch': '🎥 Aufnahme ansehen',
+  'veo.removeConfirm': 'VEO-Aufnahme-Link entfernen?',
 
   // ─── Match Field Mode ───────────────────────────────────────────────────
   'match.field.quickGoalHint': 'Tippen = schnelles Tor · Halten = Torschütze wählen',
@@ -1631,6 +1670,8 @@ export const de: Record<TranslationKey, string> = {
   'matchPublic.unknownPlayer': 'Unbekannter Spieler',
   'matchPublic.opponentGoal': 'Gegnertor',
   'matchPublic.ownGoal': 'Eigentor',
+  'matchPublic.goal': 'TOOOR!',
+  'matchPublic.fullTime': 'ABPFIFF',
   'matchPublic.footer': 'Live-Spielübertragung',
 
   // ─── Landing / Catalog ──────────────────────────────────────────────────────
@@ -1656,13 +1697,14 @@ export const de: Record<TranslationKey, string> = {
 
   // ─── Match Share UI ───────────────────────────────────────────────────────
   'matchShare.shareTitle': 'Mit Eltern teilen',
+  'matchShare.shareBtn': 'Teilen',
   'matchShare.liveSharing': 'Live-Teilen aktiviert',
   'matchShare.stopSharing': 'Teilen beenden',
   'matchShare.copyLink': 'Link kopieren',
   'matchShare.copied': 'Kopiert',
   'matchShare.showQr': 'QR-Code',
   'matchShare.hideQr': 'QR ausblenden',
-  'matchShare.whatsappMessage': '⚽ *LIVE-SPIELÜBERTRAGUNG*\n\n⚔️ Gegner: *{opponent}*\n📅 Datum: *{date}*\n⏰ Anpfiff: *{time}*\n🏆 Wettbewerb: *{competition}*\n\nSpiel live verfolgen — Ergebnis, Tore, Auswechslungen:\n\n👉 {url}',
+  'matchShare.whatsappMessage': '⚽ *LIVE-SPIELÜBERTRAGUNG*\n\n🏠 *{home}*  vs  ✈️ *{away}*\n📅 {date} · ⏰ {time}\n🏆 {competition}\n\nSpiel live verfolgen — Ergebnis, Tore, Auswechslungen:\n\n👉 {url}',
 
   // ─── Dashboard tab ──────────────────────────────────────────────────────
   'dashboard.tab': 'Übersicht',

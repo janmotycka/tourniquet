@@ -45,12 +45,18 @@ export function RatingsTab({ match }: { match: SeasonMatch }) {
           background: '#FFF3E0', borderRadius: 12, padding: '10px 14px',
           fontSize: 13, color: '#E65100', fontWeight: 600,
         }}>
-          💡 Hodnocení je dostupné po ukončení zápasu, ale můžete zadávat i průběžně.
+          💡 {t('match.ratings.availableAfter')}
         </div>
       )}
 
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>⭐ Hodnocení hráčů</h3>
+        <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>⭐ {t('match.ratings.playerRatings')}</h3>
+        {allPlayers.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>👕</div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{t('match.ratings.noLineup')}</div>
+          </div>
+        )}
         {allPlayers.map(p => (
           <div key={p.playerId} style={{
             display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
@@ -73,7 +79,7 @@ export function RatingsTab({ match }: { match: SeasonMatch }) {
       </div>
 
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15 }}>📝 Trenérova poznámka</h3>
+        <h3 style={{ fontWeight: 700, fontSize: 15 }}>📝 {t('match.ratings.coachNote')}</h3>
         <textarea
           value={note}
           onChange={e => { setNote(e.target.value); setSaved(false); }}

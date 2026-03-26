@@ -117,16 +117,21 @@ function AppRouter() {
   };
 
   // Po přihlášení načteme data z Firebase + subscription listener + kontakty
+  // Anonymní uživatelé (spolupořadatelé) potřebují jen firebaseUid pro joinTournament
   useEffect(() => {
     if (user) {
-      loadFromFirebase(user.uid);
-      loadContacts(user.uid);
-      loadMatches(user.uid);
-      loadTemplates(user.uid);
-      loadClubs(user.uid);
-      loadTrainings(user.uid);
-      const unsubscribe = subscribeToStatus(user.uid);
-      return () => unsubscribe();
+      if (user.isAnonymous) {
+        setFirebaseUid(user.uid);
+      } else {
+        loadFromFirebase(user.uid);
+        loadContacts(user.uid);
+        loadMatches(user.uid);
+        loadTemplates(user.uid);
+        loadClubs(user.uid);
+        loadTrainings(user.uid);
+        const unsubscribe = subscribeToStatus(user.uid);
+        return () => unsubscribe();
+      }
     } else {
       setFirebaseUid(null);
       setMatchesFirebaseUid(null);

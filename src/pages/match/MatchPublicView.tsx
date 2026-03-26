@@ -33,6 +33,7 @@ const FINISH_CELEBRATION_DURATION = 8000;
 function GoalCelebration({ isOurGoal, scorerName, minute, ts }: {
   isOurGoal: boolean; scorerName: string | null; minute: number; ts: number;
 }) {
+  const { t } = useI18n();
   return (
     <div key={ts} style={{
       position: 'fixed', inset: 0, zIndex: 200,
@@ -45,7 +46,7 @@ function GoalCelebration({ isOurGoal, scorerName, minute, ts }: {
     }}>
       <div style={{ fontSize: 56, animation: 'matchGoalPop .5s ease-out' }}>⚽</div>
       <div style={{ fontSize: 28, fontWeight: 900, color: '#fff', letterSpacing: 3, textTransform: 'uppercase' }}>
-        GÓÓL!
+        {t('matchPublic.goal')}
       </div>
       {scorerName && (
         <div style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,.9)', marginTop: 4 }}>
@@ -83,10 +84,12 @@ function FullTimeCelebration({ match, ts }: { match: PublicSeasonMatch; ts: numb
         <span>{match.awayScore}</span>
       </div>
       <div style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,.85)' }}>
-        {match.isHome ? t('matchPublic.us') : match.opponent} vs {match.isHome ? match.opponent : t('matchPublic.us')}
+        {match.isHome
+          ? `${match.clubName || t('matchPublic.us')} vs ${match.opponent}`
+          : `${match.opponent} vs ${match.clubName || t('matchPublic.us')}`}
       </div>
       <div style={{ fontSize: 12, fontWeight: 700, color: '#81C784', letterSpacing: 2, marginTop: 4 }}>
-        ✓ FULL TIME
+        ✓ {t('matchPublic.fullTime')}
       </div>
     </div>
   );
@@ -223,9 +226,20 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
   const isLive = match.status === 'live';
   const isFinished = match.status === 'finished';
   const isPaused = !!match.pausedAt;
+  const periods = match.periods ?? 2;
+  const periodDuration = match.periodDurationMinutes ?? Math.round(match.durationMinutes / periods);
+  const periodSeconds = periodDuration * 60;
+  const currentPeriod = match.currentPeriod ?? 1;
   const durationSec = match.durationMinutes * 60;
+  const periodElapsed = elapsed - (currentPeriod - 1) * periodSeconds;
+  const isPeriodOvertime = periodElapsed > periodSeconds;
   const isOvertime = elapsed > durationSec;
   const progress = Math.min(1, elapsed / durationSec);
+
+  const periodLabel = periods === 1 ? t('match.period.single')
+    : periods === 2 ? t('match.period.half', { n: currentPeriod })
+    : periods === 3 ? t('match.period.third', { n: currentPeriod })
+    : t('match.period.quarter', { n: currentPeriod });
 
   const playerName = (id: string | null) => {
     if (!id) return t('matchPublic.unknownPlayer');
@@ -307,15 +321,33 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         color: (isLive || isFinished) ? '#fff' : 'var(--text)',
         padding: '20px 16px 16px',
         textAlign: 'center',
+        position: 'relative',
       }}>
+        {/* Back button */}
+        <button
+          onClick={() => {
+            window.location.hash = '';
+            window.location.reload();
+          }}
+          style={{
+            position: 'absolute', left: 12, top: 14,
+            background: 'rgba(255,255,255,.2)', borderRadius: 10, padding: '6px 10px',
+            fontWeight: 700, fontSize: 14, color: (isLive || isFinished) ? '#fff' : 'var(--text-muted)',
+            border: 'none', cursor: 'pointer', backdropFilter: 'blur(4px)',
+          }}
+        >
+          ←
+        </button>
         <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.8, marginBottom: 4 }}>
           {match.competition} · {formatDate(match.date)} · {match.kickoffTime}
         </div>
         <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>
-          {match.isHome ? t('matchPublic.us') : match.opponent} vs {match.isHome ? match.opponent : t('matchPublic.us')}
+          {match.isHome
+            ? `${match.clubName || t('matchPublic.us')} vs ${match.opponent}`
+            : `${match.opponent} vs ${match.clubName || t('matchPublic.us')}`}
         </div>
 
-        {/* Score */}
+        {/* Score — football convention: Home : Away */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
           fontSize: 48, fontWeight: 900, letterSpacing: 2,
@@ -329,6 +361,12 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         <div style={{ marginTop: 8 }}>
           {isLive && !isPaused && (
             <>
+              {/* Period label */}
+              {periods > 1 && (
+                <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
+                  {periodLabel}
+                </div>
+              )}
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 14px',
@@ -336,7 +374,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               }}>
                 <span style={{ color: '#FF5252', fontSize: 10, animation: 'livePulse 1.5s infinite' }}>●</span>
                 {formatTime(elapsed)}
-                {isOvertime && <span style={{ fontSize: 11 }}>{t('matchPublic.overtime')}</span>}
+                {isPeriodOvertime && <span style={{ fontSize: 11 }}>{t('matchPublic.overtime')}</span>}
               </div>
               {/* Progress bar */}
               <div style={{
@@ -349,16 +387,35 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
                   borderRadius: 3, transition: 'width 1s linear',
                 }} />
               </div>
+              {/* Period dots */}
+              {periods > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 8 }}>
+                  {Array.from({ length: periods }, (_, i) => (
+                    <div key={i} style={{
+                      width: 7, height: 7, borderRadius: '50%',
+                      background: i + 1 < currentPeriod ? '#fff' : i + 1 === currentPeriod ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.3)',
+                      boxShadow: i + 1 === currentPeriod ? '0 0 6px rgba(255,255,255,.5)' : 'none',
+                    }} />
+                  ))}
+                </div>
+              )}
             </>
           )}
           {isLive && isPaused && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 14px',
-              fontSize: 14, fontWeight: 700,
-            }}>
-              ⏸ {formatTime(elapsed)} · {t('matchPublic.paused')}
-            </div>
+            <>
+              {periods > 1 && (
+                <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
+                  {periodLabel}
+                </div>
+              )}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 14px',
+                fontSize: 14, fontWeight: 700,
+              }}>
+                ⏸ {formatTime(elapsed)} · {t('matchPublic.paused')}
+              </div>
+            </>
           )}
           {isFinished && (
             <div style={{
@@ -366,7 +423,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               background: 'rgba(255,255,255,.2)', borderRadius: 20, padding: '4px 14px',
               fontSize: 13, fontWeight: 700, color: '#fff',
             }}>
-              ✓ FULL TIME
+              ✓ {t('matchPublic.fullTime')}
             </div>
           )}
           {match.status === 'planned' && (
@@ -462,6 +519,25 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               </div>
             )}
           </EventSection>
+        )}
+
+        {/* ── VEO recording link ── */}
+        {match.veoUrl && (
+          <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+            <a
+              href={match.veoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                padding: '14px 16px', textDecoration: 'none',
+                background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
+                color: '#fff', fontWeight: 700, fontSize: 14,
+              }}
+            >
+              {t('veo.watch')}
+            </a>
+          </div>
         )}
 
         {/* Finished match promo banner */}

@@ -18,8 +18,10 @@ function formatDate(dateStr: string): string {
 
 function matchResult(m: SeasonMatch, t: (key: string, params?: Record<string, string | number>) => string): { label: string; color: string; bg: string } | null {
   if (m.status !== 'finished') return null;
-  if (m.homeScore > m.awayScore) return { label: t('match.result.win'), color: '#2E7D32', bg: '#E8F5E9' };
-  if (m.homeScore < m.awayScore) return { label: t('match.result.loss'), color: '#C62828', bg: '#FFEBEE' };
+  const ourScore = m.isHome ? m.homeScore : m.awayScore;
+  const theirScore = m.isHome ? m.awayScore : m.homeScore;
+  if (ourScore > theirScore) return { label: t('match.result.win'), color: '#2E7D32', bg: '#E8F5E9' };
+  if (ourScore < theirScore) return { label: t('match.result.loss'), color: '#C62828', bg: '#FFEBEE' };
   return { label: t('match.result.draw'), color: '#E65100', bg: '#FFF3E0' };
 }
 
@@ -88,7 +90,7 @@ function MatchCard({ match, onClick, t }: { match: SeasonMatch; onClick: () => v
               fontWeight: 900, fontSize: 20, color: isLive ? '#fff' : 'var(--text)',
               letterSpacing: 1,
             }}>
-              {match.homeScore} : {match.awayScore}
+              {match.isHome ? match.homeScore : match.awayScore} : {match.isHome ? match.awayScore : match.homeScore}
             </div>
           )}
           {result && (

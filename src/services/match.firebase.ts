@@ -62,6 +62,7 @@ function toPublicMatch(match: SeasonMatch, ownerUid: string): PublicSeasonMatch 
     goals: match.goals,
     substitutions: match.substitutions,
     cards: match.cards,
+    ...(match.veoUrl ? { veoUrl: match.veoUrl } : {}),
     updatedAt: match.updatedAt,
   };
 }

@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import {
   onAuthStateChanged, signInWithPopup, signOut,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signInAnonymously as firebaseSignInAnonymously,
   updateProfile, sendPasswordResetEmail, sendEmailVerification,
   type User,
 } from 'firebase/auth';
@@ -17,6 +18,7 @@ interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<string | null>;
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<string | null>;
   resetPassword: (email: string) => Promise<string | null>;
+  signInAnonymously: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -137,12 +139,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const signInAnonymously = async () => {
+    try {
+      await firebaseSignInAnonymously(auth);
+    } catch (err) {
+      logger.error('[Auth] anonymous sign-in error:', err);
+    }
+  };
+
   const logout = async () => {
     await signOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, authError, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, logout }}>
+    <AuthContext.Provider value={{ user, loading, authError, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, signInAnonymously, logout }}>
       {children}
     </AuthContext.Provider>
   );

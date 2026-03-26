@@ -33,6 +33,16 @@ export function PublicHeader({
       borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 8px' }}>
+        <button
+          onClick={() => navigate({ name: 'home' })}
+          style={{
+            background: 'var(--surface-var)', borderRadius: 10, padding: '6px 10px',
+            fontWeight: 700, fontSize: 14, color: 'var(--text-muted)', flexShrink: 0,
+            border: 'none', cursor: 'pointer',
+          }}
+        >
+          ←
+        </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontWeight: 800, fontSize: 17, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             🏆 {tournament.name}

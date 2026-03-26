@@ -52,8 +52,12 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
     if (!currentMatch) return;
     const url = getMatchPublicUrl(matchId);
     const dateStr = formatDate(currentMatch.date);
+    const teamName = currentMatch.clubName || t('match.detail.us');
+    const home = currentMatch.isHome ? teamName : currentMatch.opponent;
+    const away = currentMatch.isHome ? currentMatch.opponent : teamName;
     const msg = t('matchShare.whatsappMessage', {
-      opponent: currentMatch.opponent,
+      home,
+      away,
       date: dateStr,
       time: currentMatch.kickoffTime,
       competition: currentMatch.competition,
@@ -83,19 +87,23 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
       {/* Header */}
       <div style={{
         padding: '14px 16px 10px', background: 'var(--surface)',
-        boxShadow: '0 1px 0 var(--border)',
+        boxShadow: '0 1px 4px rgba(0,0,0,.05)',
         position: 'sticky', top: 0, zIndex: 10,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <button
             onClick={() => navigate({ name: 'match-list' })}
-            style={{ background: 'var(--surface-var)', borderRadius: 10, padding: '7px 12px', fontWeight: 700, fontSize: 14 }}
+            style={{
+              width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18, color: 'var(--text-muted)', flexShrink: 0,
+            }}
           >
             ←
           </button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {currentMatch.isHome ? t('match.detail.us') : currentMatch.opponent} {t('match.detail.vs')} {currentMatch.isHome ? currentMatch.opponent : t('match.detail.us')}
+              {currentMatch.clubName || t('match.detail.us')} {t('match.detail.vs')} {currentMatch.opponent}
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {formatDate(currentMatch.date)} · {currentMatch.kickoffTime}
@@ -106,18 +114,19 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
             onClick={isPublic ? () => setShowShare(s => !s) : handleTogglePublic}
             style={{
               background: isPublic ? 'var(--primary-light)' : 'var(--surface-var)',
-              borderRadius: 10, padding: '7px 10px', fontWeight: 700, fontSize: 13,
+              borderRadius: 10, padding: '7px 10px', fontWeight: 700, fontSize: 12,
               color: isPublic ? 'var(--primary)' : 'var(--text-muted)', flexShrink: 0,
+              display: 'flex', alignItems: 'center', gap: 4,
             }}
             title={t('matchShare.shareTitle')}
           >
-            📡
+            <span style={{ fontSize: 14 }}>📡</span> {t('matchShare.shareBtn')}
           </button>
           <div style={{
             fontWeight: 900, fontSize: 20, color: isLive ? 'var(--primary)' : 'var(--text)',
             letterSpacing: 1, flexShrink: 0,
           }}>
-            {currentMatch.homeScore}:{currentMatch.awayScore}
+            {currentMatch.isHome ? currentMatch.homeScore : currentMatch.awayScore}:{currentMatch.isHome ? currentMatch.awayScore : currentMatch.homeScore}
           </div>
         </div>
 

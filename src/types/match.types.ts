@@ -61,13 +61,17 @@ export interface SubstitutionSettings {
 export interface SeasonMatch {
   id: string;
   clubId: string;            // reference na náš klub (pro výběr hráčů)
+  clubName?: string;         // název našeho klubu (pro zobrazení místo "My")
   opponent: string;          // název soupeře
   isHome: boolean;           // domácí / venkovní
   date: string;              // "YYYY-MM-DD"
   kickoffTime: string;       // "HH:MM"
   competition: string;       // "Liga", "Pohár", "Přátelský"...
-  durationMinutes: number;   // délka zápasu (default 60)
+  durationMinutes: number;   // celková délka zápasu v minutách (periods × periodDurationMinutes)
+  periods: number;            // počet period (1–4, default 2 = poločasy)
+  periodDurationMinutes: number; // délka jedné periody v minutách
 
+  currentPeriod: number;      // aktuální perioda (1-based, 0 = nezačal)
   status: SeasonMatchStatus;
   startedAt: string | null;
   pausedAt: string | null;
@@ -88,6 +92,7 @@ export interface SeasonMatch {
   note?: string;             // trenérova poznámka k zápasu
 
   isPublic?: boolean;        // true = sdíleno přes veřejný odkaz pro rodiče
+  veoUrl?: string;           // odkaz na VEO záznam zápasu
 
   createdAt: string;
   updatedAt: string;
@@ -98,12 +103,16 @@ export interface SeasonMatch {
 export interface PublicSeasonMatch {
   id: string;
   ownerUid: string;          // pro Firebase rules
+  clubName?: string;
   opponent: string;
   isHome: boolean;
   date: string;
   kickoffTime: string;
   competition: string;
   durationMinutes: number;
+  periods?: number;
+  periodDurationMinutes?: number;
+  currentPeriod?: number;
   status: SeasonMatchStatus;
   startedAt: string | null;
   pausedAt: string | null;
@@ -115,6 +124,7 @@ export interface PublicSeasonMatch {
   goals: MatchGoal[];
   substitutions: MatchSubstitution[];
   cards: MatchCard[];
+  veoUrl?: string;
   updatedAt: string;
 }
 
@@ -122,12 +132,15 @@ export interface PublicSeasonMatch {
 
 export interface CreateSeasonMatchInput {
   clubId: string;
+  clubName?: string;
   opponent: string;
   isHome: boolean;
   date: string;
   kickoffTime: string;
   competition: string;
   durationMinutes: number;
+  periods: number;
+  periodDurationMinutes: number;
   lineup: MatchLineupPlayer[];
   substitutionSettings?: SubstitutionSettings;
 }

@@ -48,6 +48,86 @@ function ClubBadge({ club, size = 32 }: { club: Club; size?: number }) {
   );
 }
 
+// ─── Opponent searchable input ────────────────────────────────────────────────
+
+function OpponentInput({ value, onChange, clubs, t }: {
+  value: string;
+  onChange: (v: string) => void;
+  clubs: Club[];
+  t: (key: string, params?: Record<string, string | number>) => string;
+}) {
+  const [focused, setFocused] = useState(false);
+
+  const query = value.toLowerCase();
+  const filtered = clubs.filter(c => c.name.toLowerCase().includes(query));
+  const showDropdown = focused && filtered.length > 0 && value !== filtered[0]?.name;
+  const selectedClub = clubs.find(c => c.name === value);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+        {t('match.create.opponent')}
+      </label>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '10px 12px', borderRadius: 10,
+        border: focused ? '2px solid var(--primary)' : '1.5px solid var(--border)',
+        background: 'var(--bg)', boxSizing: 'border-box',
+        transition: 'border .15s',
+      }}>
+        {selectedClub && <ClubBadge club={selectedClub} size={22} />}
+        <input
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setTimeout(() => setFocused(false), 150)}
+          placeholder={t('match.create.opponentPlaceholder')}
+          style={{
+            flex: 1, border: 'none', outline: 'none', fontSize: 15,
+            background: 'transparent', color: 'var(--text)', padding: 0,
+          }}
+        />
+        {value && (
+          <button
+            onClick={() => onChange('')}
+            style={{ fontSize: 16, color: 'var(--text-muted)', background: 'none', border: 'none', padding: '0 2px', cursor: 'pointer' }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {/* Dropdown */}
+      {showDropdown && (
+        <div style={{
+          position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 20,
+          marginTop: 4, borderRadius: 12, background: 'var(--surface)',
+          boxShadow: '0 4px 16px rgba(0,0,0,.15)', border: '1px solid var(--border)',
+          maxHeight: 200, overflowY: 'auto',
+        }}>
+          {filtered.map(club => (
+            <button
+              key={club.id}
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { onChange(club.name); setFocused(false); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%', padding: '10px 14px', border: 'none',
+                background: 'transparent', cursor: 'pointer', textAlign: 'left',
+                fontSize: 14, fontWeight: 600, color: 'var(--text)',
+              }}
+            >
+              <ClubBadge club={club} size={24} />
+              {club.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── CreateMatchPage ────────────────────────────────────────────────────────────
 
 export function CreateMatchPage({ navigate }: Props) {
@@ -73,7 +153,9 @@ export function CreateMatchPage({ navigate }: Props) {
   const [date, setDate] = useState(todayStr());
   const [kickoffTime, setKickoffTime] = useState(nowTimeStr());
   const [competition, setCompetition] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [periods, setPeriods] = useState(2);
+  const [periodDuration, setPeriodDuration] = useState(20);
+  const durationMinutes = periods * periodDuration;
   // Auto-select myClub, fallback to first club
   const [selectedClubId, setSelectedClubId] = useState<string>(myClub?.id ?? clubs[0]?.id ?? '');
   const [selectedCategory, setSelectedCategory] = useState<AgeCategory | null>(null);
@@ -171,7 +253,7 @@ export function CreateMatchPage({ navigate }: Props) {
   };
 
   const step0Valid = opponent.trim().length > 0 && date && kickoffTime;
-  const step1Valid = lineup.some(p => p.isStarter);
+  const step1Valid = true; // sestava je volitelná — trenér ji doplní později
 
   const handleCreate = () => {
     if (!step1Valid) return;
@@ -181,12 +263,15 @@ export function CreateMatchPage({ navigate }: Props) {
 
     createMatch({
       clubId: selectedClubId,
+      clubName: selectedClub?.name,
       opponent: opponent.trim(),
       isHome,
       date,
       kickoffTime,
       competition: competition.trim(),
       durationMinutes,
+      periods,
+      periodDurationMinutes: periodDuration,
       lineup,
       substitutionSettings: subSettings,
     });
@@ -203,79 +288,32 @@ export function CreateMatchPage({ navigate }: Props) {
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.basicInfo')}</h3>
 
-        {/* ── Soupeř: picker + text input ── */}
-        <div>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-            {t('match.create.opponent')}
-          </label>
+        {/* ── Soupeř: searchable input with dropdown ── */}
+        <OpponentInput
+          value={opponent}
+          onChange={setOpponent}
+          clubs={opponentClubs}
+          t={t}
+        />
 
-          {/* Opponent clubs rychlý výběr */}
-          {opponentClubs.length > 0 && (
-            <div style={{ marginBottom: 8 }}>
-              <div style={{
-                display: 'flex', flexWrap: 'wrap', gap: 6,
-              }}>
-                {opponentClubs.map(club => {
-                  const isSelected = opponent === club.name;
-                  return (
-                    <button
-                      key={club.id}
-                      onClick={() => setOpponent(isSelected ? '' : club.name)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '6px 10px', borderRadius: 10,
-                        border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
-                        background: isSelected ? 'var(--primary-light)' : 'var(--bg)',
-                        fontSize: 13, fontWeight: 600, color: 'var(--text)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <ClubBadge club={club} size={20} />
-                      <span style={{
-                        maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {club.name}
-                      </span>
-                      {isSelected && <span style={{ color: 'var(--primary)', fontSize: 14, marginLeft: 2 }}>✓</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Text input — vždy viditelný pro ruční zadání / editaci */}
-          <input
-            type="text"
-            value={opponent}
-            onChange={e => setOpponent(e.target.value)}
-            placeholder={t('match.create.opponentPlaceholder')}
-            style={{
-              width: '100%', padding: '10px 12px', borderRadius: 10,
-              border: '1.5px solid var(--border)', fontSize: 15,
-              background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box',
-            }}
-          />
-          {opponentClubs.length > 0 && (
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-              {t('match.create.opponentPickerHint')}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+        {/* Home/Away — subtle toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
             {t('match.create.wherePlay')}
-          </label>
-          <div style={{ display: 'flex', gap: 8 }}>
+          </span>
+          <div style={{
+            display: 'inline-flex', background: 'var(--surface-var)', borderRadius: 8, overflow: 'hidden',
+          }}>
             {[{ v: true, label: t('match.create.homeBtn') }, { v: false, label: t('match.create.awayBtn') }].map(({ v, label }) => (
               <button
                 key={String(v)}
                 onClick={() => setIsHome(v)}
                 style={{
-                  flex: 1, padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 14,
-                  background: isHome === v ? 'var(--primary)' : 'var(--surface-var)',
-                  color: isHome === v ? '#fff' : 'var(--text)',
+                  padding: '6px 14px', fontWeight: 600, fontSize: 13,
+                  background: isHome === v ? 'var(--primary)' : 'transparent',
+                  color: isHome === v ? '#fff' : 'var(--text-muted)',
+                  borderRadius: isHome === v ? 8 : 0,
+                  transition: 'all .15s',
                 }}
               >
                 {label}
@@ -331,10 +369,72 @@ export function CreateMatchPage({ navigate }: Props) {
         </div>
       </div>
 
-      {/* Match settings */}
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 8 }}>{t('match.create.settings')}</h3>
-        <Stepper label={t('match.create.matchDuration')} value={durationMinutes} min={10} max={120} onChange={setDurationMinutes} unit={t('common.min')} />
+      {/* Match settings — halves & duration */}
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.settings')}</h3>
+
+        {/* Halves: 1 or 2 */}
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+            {t('match.create.periodCount')}
+          </label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[1, 2].map(n => (
+              <button
+                key={n}
+                onClick={() => setPeriods(n)}
+                style={{
+                  flex: 1, padding: '12px 0', borderRadius: 12, fontWeight: 800, fontSize: 15,
+                  background: periods === n ? 'var(--primary)' : 'var(--surface-var)',
+                  color: periods === n ? '#fff' : 'var(--text)',
+                  border: periods === n ? '2px solid var(--primary)' : '2px solid var(--border)',
+                  transition: 'all .15s',
+                }}
+              >
+                {n === 1 ? t('match.create.periodLabel1Short') : t('match.create.periodLabel2Short')}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Period duration — slider */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+              {t('match.create.periodDuration')}
+            </label>
+            <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--primary)' }}>
+              {periodDuration}'
+            </span>
+          </div>
+          <input
+            type="range"
+            min={5}
+            max={45}
+            step={1}
+            value={periodDuration}
+            onChange={e => setPeriodDuration(Number(e.target.value))}
+            style={{
+              width: '100%', height: 6, borderRadius: 3,
+              accentColor: 'var(--primary)',
+              cursor: 'pointer',
+            }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+            <span>5'</span>
+            <span>45'</span>
+          </div>
+        </div>
+
+        {/* Total duration summary */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          padding: '10px 14px', borderRadius: 10, background: 'var(--primary-light)',
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
+            {periods === 1 ? `${periodDuration}` : `${periods}×${periodDuration}'`} = {durationMinutes} {t('common.min')}
+          </span>
+        </div>
       </div>
 
       {/* ── Náš klub — auto-selected, kompaktní zobrazení ── */}
@@ -646,23 +746,35 @@ export function CreateMatchPage({ navigate }: Props) {
         maxWidth: 480, margin: '0 auto',
       }}>
         {step === 0 ? (
-          <button
-            onClick={() => { setStep(1); if (selectedClub && lineup.length === 0) initLineupFromClub(selectedClub, selectedCategory); }}
-            disabled={!step0Valid}
-            style={{
-              width: '100%', padding: '14px', borderRadius: 14, fontWeight: 800, fontSize: 16,
-              background: step0Valid ? 'var(--primary)' : 'var(--border)', color: step0Valid ? '#fff' : 'var(--text-muted)',
-            }}
-          >
-            {t('match.create.continueLineup')}
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button
+              onClick={() => { setStep(1); if (selectedClub && lineup.length === 0) initLineupFromClub(selectedClub, selectedCategory); }}
+              disabled={!step0Valid}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 14, fontWeight: 800, fontSize: 16,
+                background: step0Valid ? 'var(--primary)' : 'var(--border)', color: step0Valid ? '#fff' : 'var(--text-muted)',
+              }}
+            >
+              {t('match.create.continueLineup')}
+            </button>
+            <button
+              onClick={handleCreate}
+              disabled={!step0Valid}
+              style={{
+                width: '100%', padding: '10px', borderRadius: 12, fontWeight: 600, fontSize: 13,
+                background: 'transparent', color: step0Valid ? 'var(--text-muted)' : 'var(--border)',
+                border: 'none', cursor: step0Valid ? 'pointer' : 'default',
+              }}
+            >
+              {t('match.create.skipLineup')}
+            </button>
+          </div>
         ) : (
           <button
             onClick={handleCreate}
-            disabled={!step1Valid}
             style={{
               width: '100%', padding: '14px', borderRadius: 14, fontWeight: 800, fontSize: 16,
-              background: step1Valid ? 'var(--primary)' : 'var(--border)', color: step1Valid ? '#fff' : 'var(--text-muted)',
+              background: 'var(--primary)', color: '#fff',
             }}
           >
             {t('match.create.createMatch')}
@@ -689,13 +801,24 @@ function ManualPlayerAdd({ onAdd, t }: { onAdd: (name: string, jersey: number) =
   };
 
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
+    <div style={{
+      borderRadius: 14, padding: '14px 16px',
+      border: expanded ? '2px solid var(--primary)' : '2px dashed var(--border)',
+      background: expanded ? 'var(--surface)' : 'transparent',
+      transition: 'all .15s',
+    }}>
       <button
         onClick={() => setExpanded(e => !e)}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 14, width: '100%' }}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          fontWeight: 700, fontSize: 14, width: '100%',
+          color: expanded ? 'var(--primary)' : 'var(--text-muted)',
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+        }}
       >
-        <span style={{ fontSize: 18 }}>{expanded ? '−' : '+'}</span>
+        <span style={{ fontSize: 16 }}>👤</span>
         {t('match.create.addPlayerManual')}
+        <span style={{ fontSize: 14, fontWeight: 800 }}>{expanded ? '−' : '+'}</span>
       </button>
       {expanded && (
         <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
@@ -705,7 +828,7 @@ function ManualPlayerAdd({ onAdd, t }: { onAdd: (name: string, jersey: number) =
             onChange={e => setName(e.target.value)}
             placeholder={t('match.create.playerNamePlaceholder')}
             style={{
-              flex: 1, padding: '9px 10px', borderRadius: 10, border: '1.5px solid var(--border)',
+              flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--border)',
               fontSize: 14, background: 'var(--bg)', color: 'var(--text)',
             }}
           />
@@ -713,10 +836,10 @@ function ManualPlayerAdd({ onAdd, t }: { onAdd: (name: string, jersey: number) =
             type="number"
             value={jersey}
             onChange={e => setJersey(e.target.value)}
-            placeholder={t('tournament.create.jerseyNo')}
+            placeholder="#"
             min={1} max={99}
             style={{
-              width: 56, padding: '9px 8px', borderRadius: 10, border: '1.5px solid var(--border)',
+              width: 52, padding: '10px 8px', borderRadius: 10, border: '1.5px solid var(--border)',
               fontSize: 14, background: 'var(--bg)', color: 'var(--text)', textAlign: 'center',
             }}
           />
@@ -724,8 +847,8 @@ function ManualPlayerAdd({ onAdd, t }: { onAdd: (name: string, jersey: number) =
             onClick={handleAdd}
             disabled={!name.trim() || !jersey}
             style={{
-              padding: '9px 14px', borderRadius: 12, fontWeight: 700, fontSize: 14,
-              background: 'var(--primary)', color: '#fff', opacity: (!name.trim() || !jersey) ? 0.5 : 1,
+              padding: '10px 16px', borderRadius: 12, fontWeight: 800, fontSize: 16,
+              background: 'var(--primary)', color: '#fff', opacity: (!name.trim() || !jersey) ? 0.4 : 1,
             }}
           >
             +
