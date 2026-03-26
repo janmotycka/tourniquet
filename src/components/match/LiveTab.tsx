@@ -518,20 +518,100 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             </div>
           )}
 
-          {/* Pause / Next period / Finish */}
-          <div style={{ display: 'flex', gap: 10 }}>
-            {!match.pausedAt ? (
-              <button
-                onClick={() => { vibrate(); pauseMatch(match.id); }}
-                style={{
-                  flex: 1, padding: '14px', borderRadius: 14, fontWeight: 700, fontSize: 14,
-                  background: 'var(--surface-var)', color: 'var(--text)',
-                }}
-              >
-                {t('match.detail.pauseBtn')}
-              </button>
-            ) : (
-              <>
+          {/* ── Match controls ── */}
+          {(() => {
+            const isLastPeriod = currentPeriod >= periods;
+            const canGoNextPeriod = periods > 1 && !isLastPeriod;
+            const isPaused = !!match.pausedAt;
+
+            // STATE 1: Running → Pause + End half (or Finish if last period)
+            if (!isPaused) {
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={() => { vibrate(); pauseMatch(match.id); }}
+                      style={{
+                        flex: 1, padding: '14px', borderRadius: 14, fontWeight: 700, fontSize: 14,
+                        background: 'var(--surface-var)', color: 'var(--text)',
+                      }}
+                    >
+                      ⏸ {t('match.detail.pauseBtn')}
+                    </button>
+                    {canGoNextPeriod ? (
+                      <button
+                        onClick={() => {
+                          vibrate(50);
+                          pauseMatch(match.id);
+                          updateMatch(match.id, { currentPeriod: currentPeriod + 1 });
+                        }}
+                        style={{
+                          flex: 1, padding: '14px', borderRadius: 14, fontWeight: 700, fontSize: 14,
+                          background: '#FFF3E0', color: '#E65100', border: '1.5px solid #FFE0B2',
+                        }}
+                      >
+                        ⏱ {t('match.detail.halftimeBtn')}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => { vibrate(); handleFinish(); }}
+                        style={{
+                          flex: 1, padding: '14px', borderRadius: 14, fontWeight: 700, fontSize: 14,
+                          background: '#FFEBEE', color: '#C62828', border: '1.5px solid #FFCDD2',
+                        }}
+                      >
+                        ■ {t('match.detail.finishBtn')}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            // STATE 2: Paused in halftime (currentPeriod already advanced) → big "Start 2nd half"
+            if (canGoNextPeriod || currentPeriod > 1) {
+              // Check if we're in halftime break (period was advanced but not resumed)
+              const inHalftimeBreak = currentPeriod > 1 && isPeriodOvertime === false && periodElapsed <= 0;
+
+              if (inHalftimeBreak) {
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {/* Halftime indicator */}
+                    <div style={{
+                      textAlign: 'center', padding: '10px', borderRadius: 12,
+                      background: '#FFF3E0', color: '#E65100', fontWeight: 700, fontSize: 14,
+                    }}>
+                      ⏱ {t('match.detail.halftimeBreak')}
+                    </div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button
+                        onClick={() => { vibrate(50); resumeMatch(match.id); }}
+                        style={{
+                          flex: 2, padding: '16px', borderRadius: 14, fontWeight: 800, fontSize: 16,
+                          background: '#2E7D32', color: '#fff',
+                          boxShadow: '0 4px 12px rgba(46,125,50,.30)',
+                        }}
+                      >
+                        ▶ {t('match.detail.startNextPeriod', { period: getPeriodLabel(t, periods, currentPeriod) })}
+                      </button>
+                      <button
+                        onClick={() => { vibrate(); handleFinish(); }}
+                        style={{
+                          flex: 1, padding: '16px', borderRadius: 14, fontWeight: 700, fontSize: 14,
+                          background: '#FFEBEE', color: '#C62828', border: '1.5px solid #FFCDD2',
+                        }}
+                      >
+                        ■ {t('match.detail.finishBtn')}
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+            }
+
+            // STATE 3: Regular pause (mid-period) → Resume + Finish
+            return (
+              <div style={{ display: 'flex', gap: 10 }}>
                 <button
                   onClick={() => { vibrate(); resumeMatch(match.id); }}
                   style={{
@@ -539,36 +619,20 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                     background: '#E8F5E9', color: '#2E7D32',
                   }}
                 >
-                  {t('match.detail.resumeBtn')}
+                  ▶ {t('match.detail.resumeBtn')}
                 </button>
-                {/* Next period button (only if paused AND not last period) */}
-                {periods > 1 && currentPeriod < periods && (
-                  <button
-                    onClick={() => {
-                      vibrate(50);
-                      updateMatch(match.id, { currentPeriod: currentPeriod + 1 });
-                      resumeMatch(match.id);
-                    }}
-                    style={{
-                      flex: 1, padding: '14px', borderRadius: 14, fontWeight: 700, fontSize: 14,
-                      background: 'var(--primary)', color: '#fff',
-                    }}
-                  >
-                    {getPeriodLabel(t, periods, currentPeriod + 1)} →
-                  </button>
-                )}
-              </>
-            )}
-            <button
-              onClick={() => { vibrate(); handleFinish(); }}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 14, fontWeight: 700, fontSize: 14,
-                background: '#FFEBEE', color: '#C62828', border: '1.5px solid #FFCDD2',
-              }}
-            >
-              {t('match.detail.finishBtn')}
-            </button>
-          </div>
+                <button
+                  onClick={() => { vibrate(); handleFinish(); }}
+                  style={{
+                    flex: 1, padding: '14px', borderRadius: 14, fontWeight: 700, fontSize: 14,
+                    background: '#FFEBEE', color: '#C62828', border: '1.5px solid #FFCDD2',
+                  }}
+                >
+                  ■ {t('match.detail.finishBtn')}
+                </button>
+              </div>
+            );
+          })()}
 
           {/* ── Settings toggle ── */}
           <button
