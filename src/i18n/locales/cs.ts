@@ -1715,7 +1715,7 @@ export const cs = {
   'matchShare.copied': 'Zkopírováno',
   'matchShare.showQr': 'QR kód',
   'matchShare.hideQr': 'Skrýt QR',
-  'matchShare.whatsappMessage': '⚽ *ŽIVÝ PŘENOS ZÁPASU*\n\n🏠 *{home}*  vs  ✈️ *{away}*\n📅 {date} · ⏰ {time}\n🏆 {competition}\n\nSledujte zápas živě — skóre, góly, střídání:\n\n👉 {url}',
+  'matchShare.whatsappMessage': '⚽ *ŽIVÝ PŘENOS ZÁPASU*\n\n🏠 Domácí: *{home}*\n✈️ Hosté: *{away}*\n📅 Datum: *{date}*\n⏰ Začátek: *{time}*\n🏆 Soutěž: *{competition}*\n\nSledujte zápas živě — skóre, góly, střídání:\n\n👉 {url}',
 
   // ─── Dashboard tab ──────────────────────────────────────────────────────
   'dashboard.tab': 'Přehled',

@@ -1713,7 +1713,7 @@ export const de: Record<TranslationKey, string> = {
   'matchShare.copied': 'Kopiert',
   'matchShare.showQr': 'QR-Code',
   'matchShare.hideQr': 'QR ausblenden',
-  'matchShare.whatsappMessage': '⚽ *LIVE-SPIELÜBERTRAGUNG*\n\n🏠 *{home}*  vs  ✈️ *{away}*\n📅 {date} · ⏰ {time}\n🏆 {competition}\n\nSpiel live verfolgen — Ergebnis, Tore, Auswechslungen:\n\n👉 {url}',
+  'matchShare.whatsappMessage': '⚽ *LIVE-SPIELÜBERTRAGUNG*\n\n🏠 Heim: *{home}*\n✈️ Gast: *{away}*\n📅 Datum: *{date}*\n⏰ Anpfiff: *{time}*\n🏆 Wettbewerb: *{competition}*\n\nSpiel live verfolgen — Ergebnis, Tore, Auswechslungen:\n\n👉 {url}',
 
   // ─── Dashboard tab ──────────────────────────────────────────────────────
   'dashboard.tab': 'Übersicht',
