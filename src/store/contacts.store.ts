@@ -4,7 +4,8 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { safeStorage } from '../utils/safe-storage';
 import type { Contact } from '../types/contact.types';
 import { generateId } from '../utils/id';
 import {
@@ -93,6 +94,6 @@ export const useContactsStore = create<ContactsState>()(
       getByPhone: (phone) => get().contacts.find(c => c.phone === phone),
       getByClub: (clubId) => get().contacts.filter(c => c.clubId === clubId),
     }),
-    { name: 'trenink-contacts' },
+    { name: 'trenink-contacts', storage: createJSONStorage(() => safeStorage) },
   ),
 );

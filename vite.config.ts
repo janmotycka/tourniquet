@@ -19,12 +19,18 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Rozdělení bundlu na menší chunky → rychlejší první načtení
-        manualChunks: {
-          'vendor-react':    ['react', 'react-dom'],
-          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/database', 'firebase/functions'],
-          'vendor-zustand':  ['zustand'],
-          'vendor-pdf':      ['jspdf'],
-          'vendor-qr':       ['qrcode'],
+        manualChunks(id) {
+          // Vendor chunky
+          if (id.includes('node_modules/react-dom')) return 'vendor-react';
+          if (id.includes('node_modules/react/')) return 'vendor-react';
+          if (id.includes('node_modules/firebase/')) return 'vendor-firebase';
+          if (id.includes('node_modules/zustand')) return 'vendor-zustand';
+          if (id.includes('node_modules/jspdf')) return 'vendor-pdf';
+          if (id.includes('node_modules/qrcode')) return 'vendor-qr';
+          if (id.includes('node_modules/html2canvas')) return 'vendor-html2canvas';
+          if (id.includes('node_modules/@stripe')) return 'vendor-stripe';
+          // Data chunky — velké datové soubory cvičení
+          if (id.includes('/data/exercises/')) return 'exercises-data';
         },
       },
     },

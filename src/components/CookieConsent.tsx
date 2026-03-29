@@ -19,14 +19,15 @@ export function CookieConsent({ onPrivacyPolicy }: { onPrivacyPolicy?: () => voi
 
   return (
     <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: Z.banner,
+      position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+      width: '100%', maxWidth: 480, zIndex: Z.banner,
       background: 'var(--surface)', borderTop: '1px solid var(--border)',
       boxShadow: '0 -2px 12px rgba(0,0,0,.1)',
       padding: '12px 16px',
       display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-      animation: 'slideUp .3s ease-out',
+      animation: 'cookieSlideUp .3s ease-out',
     }}>
-      <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+      <style>{`@keyframes cookieSlideUp { from { transform: translateX(-50%) translateY(100%); } to { transform: translateX(-50%) translateY(0); } }`}</style>
 
       <p style={{ flex: 1, margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--text-muted)', minWidth: 200 }}>
         {t('consent.text')}{' '}

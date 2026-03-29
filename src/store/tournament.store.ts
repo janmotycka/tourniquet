@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { safeStorage } from '../utils/safe-storage';
 import type { Tournament, Match, Goal, CreateTournamentInput, TournamentSettings, RosterSubmission } from '../types/tournament.types';
 import { generateRoundRobinSchedule, generateGroupsKnockoutSchedule, generatePureKnockoutSchedule, advanceTeamsFromGroups, generateId, computeMatchStartTime, parseStartDateTime, recalculateMatchTimes } from '../utils/tournament-schedule';
 import { TEAM_COLORS } from '../utils/team-colors';
@@ -11,6 +12,7 @@ import {
   deleteTournamentFromFirebase,
   loadTournamentsFromFirebase,
   loadPublicTournament,
+  loadPinAuth,
   subscribeToPublicTournament,
   writeJoinedUser,
 } from '../services/tournament.firebase';
@@ -340,8 +342,14 @@ export const useTournamentStore = create<TournamentState>()(
         const tournament = await loadPublicTournament(tournamentId);
         if (!tournament) return { success: false, error: 'Turnaj nenalezen.' };
 
+        // Načti PIN z oddělené cesty (bezpečnější), fallback na public mirror (starší turnaje)
+        const pinData = await loadPinAuth(tournamentId);
+        const pinHash = pinData?.pinHash ?? (tournament as Tournament & { pinHash?: string }).pinHash;
+        const pinSalt = pinData?.pinSalt ?? (tournament as Tournament & { pinSalt?: string }).pinSalt;
+        if (!pinHash) return { success: false, error: 'Turnaj nemá nastavený PIN.' };
+
         // Ověř PIN (salt může chybět u starých turnajů → zpětná kompatibilita)
-        const ok = await verifyPin(pin, tournament.pinHash, tournament.pinSalt);
+        const ok = await verifyPin(pin, pinHash, pinSalt);
         if (!ok) return { success: false, error: 'Nesprávný PIN.' };
 
         // Přidej do joinnutých
@@ -1079,6 +1087,7 @@ export const useTournamentStore = create<TournamentState>()(
     }),
     {
       name: 'trenink-tournaments',
+      storage: createJSONStorage(() => safeStorage),
       partialize: (state) => ({
         tournaments: state.tournaments,
         joinedTournaments: state.joinedTournaments,

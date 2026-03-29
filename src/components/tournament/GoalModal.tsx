@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Match, Team, Goal, Player } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
 import { computeCurrentMinute } from '../../utils/tournament-schedule';
+import { textOnColor, isLightColor } from '../../utils/team-colors';
 
 export function GoalModal({ match, teams, onAdd, onClose }: {
   match: Match;
@@ -75,7 +76,8 @@ export function GoalModal({ match, teams, onAdd, onClose }: {
                       <button key={tid} onClick={() => { setScoringTeamId(tid); setPlayerId(null); }} style={{
                         flex: 1, padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 14,
                         background: scoringTeamId === tid ? tm?.color ?? 'var(--primary)' : 'var(--surface-var)',
-                        color: scoringTeamId === tid ? '#fff' : 'var(--text)',
+                        color: scoringTeamId === tid ? textOnColor(tm?.color ?? '#1a3c6e') : 'var(--text)',
+                        boxShadow: scoringTeamId === tid && tm?.color && isLightColor(tm.color) ? 'inset 0 0 0 2px rgba(0,0,0,0.15)' : undefined,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       }}>
                         {tm?.logoBase64 ? (
@@ -110,8 +112,9 @@ export function GoalModal({ match, teams, onAdd, onClose }: {
                       }}>
                         <span style={{
                           width: 26, height: 26, borderRadius: 6, background: scoringTeam.color,
-                          color: '#fff', fontWeight: 700, fontSize: 12,
+                          color: textOnColor(scoringTeam.color), fontWeight: 700, fontSize: 12,
                           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                          boxShadow: isLightColor(scoringTeam.color) ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
                         }}>{p.jerseyNumber}</span>
                         <span style={{ fontWeight: 600 }}>{p.name}</span>
                       </button>

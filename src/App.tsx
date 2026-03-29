@@ -1,20 +1,17 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { I18nProvider, useI18n } from './i18n';
 import { ThemeProvider } from './theme/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
 import { LandingPage } from './pages/LandingPage';
 import { HomePage } from './pages/HomePage';
-import { TournamentPublicView } from './pages/tournament/TournamentPublicView';
-import { RosterFormPage } from './pages/tournament/RosterFormPage';
-import { RegistrationFormPage } from './pages/tournament/RegistrationFormPage';
-import { MatchPublicView } from './pages/match/MatchPublicView';
-import { OnboardingModal } from './components/OnboardingModal';
+import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
 import { ToastContainer } from './components/ToastContainer';
 import { CookieConsent } from './components/CookieConsent';
 import { ConnectionStatus } from './components/ConnectionStatus';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { useTournamentStore } from './store/tournament.store';
 import { useSubscriptionStore } from './store/subscription.store';
 import { useToastStore } from './store/toast.store';
@@ -45,6 +42,10 @@ const MatchStatsPage = lazy(() => import('./pages/match/MatchStatsPage').then(m 
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage').then(m => ({ default: m.TermsOfServicePage })));
+const TournamentPublicView = lazy(() => import('./pages/tournament/TournamentPublicView').then(m => ({ default: m.TournamentPublicView })));
+const RosterFormPage = lazy(() => import('./pages/tournament/RosterFormPage').then(m => ({ default: m.RosterFormPage })));
+const RegistrationFormPage = lazy(() => import('./pages/tournament/RegistrationFormPage').then(m => ({ default: m.RegistrationFormPage })));
+const MatchPublicView = lazy(() => import('./pages/match/MatchPublicView').then(m => ({ default: m.MatchPublicView })));
 
 export type Page =
   | { name: 'home' }
@@ -104,6 +105,11 @@ function AppRouter() {
   const setTrainingsFirebaseUid = useTrainingsStore(s => s.setFirebaseUid);
 
   const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin, adminJoinRole, setAdminJoinRole } = usePageStore();
+
+  // Onboarding wizard state — MUST be before any early returns (React hooks rule)
+  const [onboarded, setOnboarded] = useState(() => {
+    try { return !!localStorage.getItem('torq_onboarded'); } catch { return true; }
+  });
 
   const navigate = (p: Page) => {
     if (p.name === 'tournament-public') {
@@ -172,41 +178,47 @@ function AppRouter() {
   // Veřejné stránky — nevyžadují přihlášení, renderují se i během načítání auth
   if (page.name === 'roster-form') {
     return (
-      <RosterFormPage
-        tournamentId={page.tournamentId}
-        teamToken={page.teamToken}
-        navigate={navigate}
-      />
+      <Suspense fallback={<PageSpinner />}>
+        <RosterFormPage
+          tournamentId={page.tournamentId}
+          teamToken={page.teamToken}
+          navigate={navigate}
+        />
+      </Suspense>
     );
   }
 
   if (page.name === 'registration-form') {
     return (
-      <RegistrationFormPage
-        tournamentId={page.tournamentId}
-        navigate={navigate}
-      />
+      <Suspense fallback={<PageSpinner />}>
+        <RegistrationFormPage
+          tournamentId={page.tournamentId}
+          navigate={navigate}
+        />
+      </Suspense>
     );
   }
 
   if (page.name === 'tournament-public') {
     return (
-      <TournamentPublicView
-        tournamentId={page.tournamentId}
-        navigate={navigate}
-        onJoinIntent={(tid, role) => setJoinIntent({ tournamentId: tid, role })}
-        joinIntent={joinIntent?.tournamentId === page.tournamentId}
-        joinIntentRole={joinIntent?.role}
-        clearJoinIntent={() => { setJoinIntent(null); setAdminJoinRole(undefined); }}
-        adminJoin={adminJoin}
-        adminJoinRole={adminJoinRole}
-        clearAdminJoin={() => { setAdminJoin(false); setAdminJoinRole(undefined); }}
-      />
+      <Suspense fallback={<PageSpinner />}>
+        <TournamentPublicView
+          tournamentId={page.tournamentId}
+          navigate={navigate}
+          onJoinIntent={(tid, role) => setJoinIntent({ tournamentId: tid, role })}
+          joinIntent={joinIntent?.tournamentId === page.tournamentId}
+          joinIntentRole={joinIntent?.role}
+          clearJoinIntent={() => { setJoinIntent(null); setAdminJoinRole(undefined); }}
+          adminJoin={adminJoin}
+          adminJoinRole={adminJoinRole}
+          clearAdminJoin={() => { setAdminJoin(false); setAdminJoinRole(undefined); }}
+        />
+      </Suspense>
     );
   }
 
   if (page.name === 'match-public') {
-    return <MatchPublicView matchId={page.matchId} />;
+    return <Suspense fallback={<PageSpinner />}><MatchPublicView matchId={page.matchId} /></Suspense>;
   }
 
   // Načítání Firebase auth stavu — jen pro autentizované stránky
@@ -230,10 +242,12 @@ function AppRouter() {
     return <LoginPage onBack={() => setPage({ name: 'home' })} />;
   }
 
+  if (!onboarded) {
+    return <OnboardingWizard navigate={navigate} onComplete={() => setOnboarded(true)} />;
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
-      <OnboardingModal navigate={navigate} />
-
       <Suspense fallback={<PageSpinner />}>
         {(page.name === 'home' || page.name === 'login') && <HomePage navigate={navigate} />}
         {page.name === 'training-home' && <TrainingHomePage navigate={navigate} />}
@@ -275,6 +289,7 @@ export default function App() {
             <ToastContainer />
             <ConfirmModal />
             <AppRouter />
+            <PWAInstallBanner />
             <CookieConsent onPrivacyPolicy={() => usePageStore.getState().setPage({ name: 'privacy-policy' })} />
           </AuthProvider>
         </I18nProvider>

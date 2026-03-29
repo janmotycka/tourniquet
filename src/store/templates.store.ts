@@ -4,7 +4,8 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { safeStorage } from '../utils/safe-storage';
 import type { TournamentTemplate } from '../types/tournament.types';
 import {
   saveTemplate as saveTemplateFb,
@@ -54,6 +55,6 @@ export const useTemplatesStore = create<TemplatesState>()(
         }
       },
     }),
-    { name: 'trenink-templates' },
+    { name: 'trenink-templates', storage: createJSONStorage(() => safeStorage) },
   ),
 );

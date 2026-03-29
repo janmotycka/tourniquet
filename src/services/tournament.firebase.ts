@@ -22,6 +22,9 @@ const tournamentRef = (uid: string, id: string) =>
 const publicRef = (id: string) =>
   ref(db, `public/${id}`);
 
+const pinAuthRef = (id: string) =>
+  ref(db, `pin-auth/${id}`);
+
 const userTournamentsRef = (uid: string) =>
   ref(db, `tournaments/${uid}`);
 
@@ -32,10 +35,12 @@ function toFirebase(t: Tournament): object {
   return safeClone(t);
 }
 
-/** Verze pro public mirror — odstraní citlivé osobní údaje (GDPR) */
+/** Verze pro public mirror — odstraní citlivé osobní údaje (GDPR) + pinHash/pinSalt */
 function toPublicFirebase(t: Tournament): object {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { pinHash, pinSalt, ...rest } = t as Tournament & { pinHash?: string; pinSalt?: string };
   const sanitized = {
-    ...t,
+    ...rest,
     teams: t.teams.map(team => {
       return {
         ...team,
@@ -134,17 +139,27 @@ function fromFirebase(data: unknown): Tournament {
 
 // ─── Zápis ────────────────────────────────────────────────────────────────────
 
-/** Uloží/přepíše turnaj v DB (admin cesta + public mirror + katalog) */
+/** Uloží/přepíše turnaj v DB (admin cesta + public mirror + pin-auth + katalog) */
 export async function saveTournamentToFirebase(uid: string, tournament: Tournament): Promise<void> {
   const data = toFirebase(tournament);
   const publicData = toPublicFirebase(tournament);
-  await Promise.all([
+  const t = tournament as Tournament & { pinHash?: string; pinSalt?: string };
+  const promises: Promise<void>[] = [
     set(tournamentRef(uid, tournament.id), data),
     // update() místo set() — zachová joinedUsers zapsané připojenými rozhodčími
     update(publicRef(tournament.id), publicData as Record<string, unknown>),
     // Katalogový index pro veřejný přehled turnajů
     saveCatalogEntry(tournament),
-  ]);
+  ];
+  // Uloží PIN hash do oddělené cesty (nepřístupné bez auth)
+  if (t.pinHash) {
+    promises.push(set(pinAuthRef(tournament.id), {
+      pinHash: t.pinHash,
+      pinSalt: t.pinSalt ?? null,
+      ownerUid: uid,
+    }));
+  }
+  await Promise.all(promises);
 }
 
 /** Zapíše turnaj POUZE do public mirror (pro non-owner kolaboranty).
@@ -187,6 +202,21 @@ export async function deleteTournamentFromFirebase(uid: string, tournamentId: st
     remove(publicRef(tournamentId)),
     deleteCatalogEntry(tournamentId),
   ]);
+}
+
+// ─── PIN auth ────────────────────────────────────────────────────────────────
+
+/** Načte PIN hash/salt ze zabezpečené cesty (vyžaduje auth) */
+export async function loadPinAuth(tournamentId: string): Promise<{ pinHash: string; pinSalt?: string } | null> {
+  try {
+    const snapshot = await get(pinAuthRef(tournamentId));
+    if (!snapshot.exists()) return null;
+    const data = snapshot.val();
+    return { pinHash: data.pinHash, pinSalt: data.pinSalt ?? undefined };
+  } catch {
+    // Fallback: starší turnaje mohou mít pinHash v public mirror
+    return null;
+  }
 }
 
 // ─── Čtení ────────────────────────────────────────────────────────────────────

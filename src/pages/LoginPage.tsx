@@ -52,23 +52,6 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
       padding: '32px 24px', gap: 28, minHeight: '100dvh',
       background: 'var(--bg)', position: 'relative',
     }}>
-      {/* Back to landing */}
-      {onBack && (
-        <button
-          onClick={onBack}
-          style={{
-            position: 'absolute', top: 16, left: 16,
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '8px 14px', borderRadius: 10,
-            background: 'var(--surface)', border: '1px solid var(--border)',
-            fontSize: 13, fontWeight: 600, color: 'var(--text-muted)',
-            cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
-          }}
-        >
-          ← {t('login.backToHome')}
-        </button>
-      )}
-
       {/* Logo */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
         <div style={{
@@ -90,6 +73,23 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
           🚧 {t('home.betaNotice')}
         </span>
       </div>
+
+      {/* Browse live events button */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          style={{
+            width: '100%', maxWidth: 380,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            padding: '14px 20px', borderRadius: 16,
+            background: 'var(--surface)', border: '1.5px solid var(--border)',
+            fontSize: 15, fontWeight: 700, color: 'var(--text)',
+            cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.06)',
+          }}
+        >
+          📺 {t('login.browseLiveEvents')}
+        </button>
+      )}
 
       {/* Login card */}
       <div style={{

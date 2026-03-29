@@ -65,6 +65,24 @@ body {
   overflow-x: hidden;
 }
 
+/* Desktop: dekorativní pozadí kolem mobilního containeru */
+@media (min-width: 520px) {
+  body {
+    background:
+      linear-gradient(135deg, var(--primary) 0%, transparent 50%),
+      linear-gradient(225deg, var(--secondary) 0%, transparent 50%),
+      var(--bg);
+    background-attachment: fixed;
+  }
+  [data-theme="dark"] body {
+    background:
+      linear-gradient(135deg, rgba(26,35,126,.3) 0%, transparent 50%),
+      linear-gradient(225deg, rgba(255,107,53,.15) 0%, transparent 50%),
+      #0a0a0a;
+    background-attachment: fixed;
+  }
+}
+
 #root {
   min-height: 100dvh;
   display: flex;
@@ -73,6 +91,14 @@ body {
   margin: 0 auto;
   background: var(--bg);
   overflow-x: hidden;
+}
+
+@media (min-width: 520px) {
+  #root {
+    box-shadow: 0 0 40px rgba(0,0,0,.15);
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
 }
 
 button { cursor: pointer; border: none; font-family: inherit; }
@@ -86,4 +112,9 @@ a { text-decoration: none; color: inherit; }
 @keyframes liveCardPulse {
   0%, 100% { box-shadow: 0 0 0 1px rgba(229,57,53,.15), 0 2px 12px rgba(229,57,53,.12); }
   50% { box-shadow: 0 0 0 3px rgba(229,57,53,.2), 0 2px 16px rgba(229,57,53,.2); }
+}
+
+@keyframes slideUp {
+  from { transform: translateX(-50%) translateY(100px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0); opacity: 1; }
 }

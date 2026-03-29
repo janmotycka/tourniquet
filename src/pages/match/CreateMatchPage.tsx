@@ -134,6 +134,7 @@ export function CreateMatchPage({ navigate }: Props) {
   const { t } = useI18n();
   const clubs = useClubsStore(s => s.clubs);
   const createMatch = useMatchesStore(s => s.createMatch);
+  const allMatches = useMatchesStore(s => s.matches);
 
   // Detekce domovského klubu (myClub = první s ageCategories > 0)
   const myClub = useMemo(
@@ -564,8 +565,54 @@ export function CreateMatchPage({ navigate }: Props) {
 
   // ─── Step 1: Lineup ───────────────────────────────────────────────────────
 
+  // Previous matches for "copy lineup" (same club, sorted by date desc)
+  const previousMatches = useMemo(() =>
+    allMatches
+      .filter(m => m.clubId === selectedClubId && m.lineup.length > 0)
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 5),
+    [allMatches, selectedClubId],
+  );
+
+  const copyLineupFromMatch = (sourceMatchId: string) => {
+    const source = allMatches.find(m => m.id === sourceMatchId);
+    if (!source) return;
+    setLineup(source.lineup.map(p => ({ ...p })));
+  };
+
   const renderStep1 = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '16px' }}>
+      {/* Copy lineup from previous match */}
+      {previousMatches.length > 0 && (
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.copyLineup')}</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {previousMatches.map(m => (
+              <button
+                key={m.id}
+                onClick={() => copyLineupFromMatch(m.id)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                  borderRadius: 12, border: '1.5px solid var(--border)', background: 'var(--bg)',
+                  textAlign: 'left', cursor: 'pointer', width: '100%',
+                }}
+              >
+                <span style={{ fontSize: 14 }}>📋</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    vs {m.opponent}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {m.date.split('-').reverse().join('.')} · {m.lineup.filter(p => p.isStarter).length} + {m.lineup.filter(p => !p.isStarter).length}
+                  </div>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>{t('match.create.useLineup')}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Substitution assistant settings */}
       {benchers.length > 0 && (
         <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -5,6 +5,7 @@ import { useTournamentStore } from '../../store/tournament.store';
 import { useContactsStore } from '../../store/contacts.store';
 import { submitRoster } from '../../services/roster.firebase';
 import { generateId } from '../../utils/id';
+import { textOnColor, isLightColor } from '../../utils/team-colors';
 
 interface AdminPlayerRow { id: string; name: string; jerseyNumber: string; birthYear: string; }
 
@@ -289,7 +290,8 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
                     {/* Jersey badge — compact */}
                     <div style={{
                       width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-                      background: teamColor, color: '#fff',
+                      background: teamColor, color: textOnColor(teamColor),
+                      boxShadow: isLightColor(teamColor) ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
                       fontWeight: 800, fontSize: 11,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
@@ -323,7 +325,8 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
               <div style={{
                 padding: '5px 10px',
                 background: (birthYearTooOld || jerseyDuplicate) ? '#C62828' : canAdd ? 'var(--primary)' : teamColor,
-                color: '#fff',
+                color: (birthYearTooOld || jerseyDuplicate || canAdd) ? '#fff' : textOnColor(teamColor),
+                boxShadow: (!birthYearTooOld && !jerseyDuplicate && !canAdd && isLightColor(teamColor)) ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
                 display: 'flex', alignItems: 'center', gap: 5,
               }}>
                 <span style={{ fontSize: 12 }}>👤</span>

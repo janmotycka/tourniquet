@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { safeStorage } from '../utils/safe-storage';
 import { generateId } from '../utils/id';
 
 export interface Coach {
@@ -43,6 +44,6 @@ export const useCoachesStore = create<CoachesState>()(
         ),
       })),
     }),
-    { name: 'trenink-coaches' }
+    { name: 'trenink-coaches', storage: createJSONStorage(() => safeStorage) }
   )
 );

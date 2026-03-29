@@ -258,10 +258,11 @@ export function MatchListPage({ navigate }: Props) {
               <button
                 onClick={(e) => handleDelete(match, e)}
                 style={{
-                  position: 'absolute', top: 10, right: 10,
+                  position: 'absolute', bottom: 10, right: 10,
                   width: 28, height: 28, borderRadius: 8,
-                  background: '#FFEBEE', color: '#C62828', fontWeight: 700, fontSize: 14,
+                  background: 'var(--surface-var)', color: 'var(--text-muted)', fontWeight: 700, fontSize: 14,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  opacity: 0.6,
                 }}
               >
                 ×

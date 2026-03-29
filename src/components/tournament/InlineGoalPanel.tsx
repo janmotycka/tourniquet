@@ -1,5 +1,5 @@
 import type { Match, Team } from '../../types/tournament.types';
-import { textOnColor } from '../../utils/team-colors';
+import { textOnColor, isLightColor } from '../../utils/team-colors';
 import { useI18n } from '../../i18n';
 
 export function InlineGoalPanel({ match, teams, teamId, onGoal, onClose }: {
@@ -60,11 +60,13 @@ export function InlineGoalPanel({ match, teams, teamId, onGoal, onClose }: {
               style={{
                 padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
                 background: teamColor, color: textOnColor(teamColor),
+                boxShadow: isLightColor(teamColor) ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
                 display: 'flex', alignItems: 'center', gap: 5,
               }}
             >
               <span style={{
-                background: 'rgba(255,255,255,.22)', borderRadius: 4, padding: '1px 5px',
+                background: isLightColor(teamColor) ? 'rgba(0,0,0,.12)' : 'rgba(255,255,255,.22)',
+                borderRadius: 4, padding: '1px 5px',
                 fontSize: 11, fontWeight: 800, minWidth: 20, textAlign: 'center',
               }}>{p.jerseyNumber}</span>
               {p.name}

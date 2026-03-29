@@ -8,7 +8,8 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { safeStorage } from '../utils/safe-storage';
 import type { Club, ClubPlayer, CreateClubInput, AgeCategory } from '../types/club.types';
 import { generateId } from '../utils/id';
 import {
@@ -196,6 +197,6 @@ export const useClubsStore = create<ClubsState>()(
         syncClub(get(), clubId);
       },
     }),
-    { name: 'trenink-clubs' },
+    { name: 'trenink-clubs', storage: createJSONStorage(() => safeStorage) },
   ),
 );

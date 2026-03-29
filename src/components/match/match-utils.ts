@@ -1,4 +1,4 @@
-import type { SeasonMatch } from '../../types/match.types';
+import type { SeasonMatch, MatchLineupPlayer } from '../../types/match.types';
 
 export type TFn = (key: string, params?: Record<string, string | number>) => string;
 
@@ -20,4 +20,46 @@ export function formatTime(seconds: number): string {
 export function formatDate(dateStr: string): string {
   const [y, m, d] = dateStr.split('-');
   return `${d}.${m}.${y}`;
+}
+
+/**
+ * Compute playing time in minutes for each player.
+ * Uses lineup (starters) + substitutions to determine when each player was on/off field.
+ */
+export function computePlayingTime(match: SeasonMatch, elapsedMinutes: number): Map<string, number> {
+  const result = new Map<string, number>();
+
+  // Track who's on field and when they entered
+  const onFieldSince = new Map<string, number>(); // playerId → minute they entered
+
+  // Starters enter at minute 0
+  for (const p of match.lineup) {
+    if (p.isStarter) {
+      onFieldSince.set(p.playerId, 0);
+    }
+  }
+
+  // Sort subs by minute
+  const sortedSubs = [...match.substitutions].sort((a, b) => a.minute - b.minute);
+
+  for (const sub of sortedSubs) {
+    // Player going out — calculate their time
+    const enteredAt = onFieldSince.get(sub.playerOutId);
+    if (enteredAt !== undefined) {
+      const prev = result.get(sub.playerOutId) ?? 0;
+      result.set(sub.playerOutId, prev + (sub.minute - enteredAt));
+      onFieldSince.delete(sub.playerOutId);
+    }
+
+    // Player coming in — start tracking
+    onFieldSince.set(sub.playerInId, sub.minute);
+  }
+
+  // Players still on field — add time until now
+  for (const [playerId, enteredAt] of onFieldSince) {
+    const prev = result.get(playerId) ?? 0;
+    result.set(playerId, prev + (elapsedMinutes - enteredAt));
+  }
+
+  return result;
 }

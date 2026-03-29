@@ -1,7 +1,73 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { PublicSeasonMatch, MatchGoal, MatchCard, MatchSubstitution, MatchLineupPlayer } from '../../types/match.types';
 import { subscribeToPublicMatch } from '../../services/match.firebase';
 import { useI18n } from '../../i18n';
+
+// ─── Wake Lock hook ─────────────────────────────────────────────────────────
+
+function useWakeLock(enabled: boolean) {
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !('wakeLock' in navigator)) return;
+
+    let released = false;
+
+    const request = async () => {
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+        wakeLockRef.current.addEventListener('release', () => {
+          wakeLockRef.current = null;
+        });
+      } catch { /* user denied or not supported */ }
+    };
+
+    request();
+
+    // Re-acquire on visibility change (e.g. tab switch back)
+    const onVisibility = () => {
+      if (!released && document.visibilityState === 'visible' && !wakeLockRef.current) {
+        request();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      released = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+      wakeLockRef.current?.release().catch(() => {});
+    };
+  }, [enabled]);
+}
+
+// ─── Notification helpers ───────────────────────────────────────────────────
+
+function useGoalNotifications(enabled: boolean) {
+  const permRef = useRef<NotificationPermission>('default');
+
+  useEffect(() => {
+    if ('Notification' in window) {
+      permRef.current = Notification.permission;
+    }
+  }, []);
+
+  const requestPermission = useCallback(async () => {
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'granted') return true;
+    const result = await Notification.requestPermission();
+    permRef.current = result;
+    return result === 'granted';
+  }, []);
+
+  const notify = useCallback((title: string, body: string) => {
+    if (!enabled || permRef.current !== 'granted') return;
+    try {
+      new Notification(title, { body, icon: '⚽', tag: 'torq-goal' });
+    } catch { /* silent */ }
+  }, [enabled]);
+
+  return { requestPermission, notify, supported: 'Notification' in window };
+}
 
 // ─── Timer helper ──────────────────────────────────────────────────────────
 
@@ -103,6 +169,16 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
   const [loading, setLoading] = useState(true);
   const [elapsed, setElapsed] = useState(0);
 
+  // ── Notifications ──
+  const [notificationsOn, setNotificationsOn] = useState(() => {
+    try { return localStorage.getItem(`torq-notif-${matchId}`) === '1'; } catch { return false; }
+  });
+  const { requestPermission, notify, supported: notifSupported } = useGoalNotifications(notificationsOn);
+
+  // ── Wake Lock — auto-enable for live matches ──
+  const isLiveMatch = match?.status === 'live';
+  useWakeLock(isLiveMatch ?? false);
+
   // ── Celebrations ──
   const [goalCelebration, setGoalCelebration] = useState<{
     isOurGoal: boolean; scorerName: string | null; minute: number; ts: number;
@@ -177,6 +253,17 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         if (goalTimerRef.current) clearTimeout(goalTimerRef.current);
 
         setGoalCelebration({ isOurGoal, scorerName, minute, ts: Date.now() });
+
+        // Send browser notification
+        if (match) {
+          const home = match.isHome ? (match.clubName || 'My team') : match.opponent;
+          const away = match.isHome ? match.opponent : (match.clubName || 'My team');
+          notify(
+            `⚽ ${t('matchPublic.goal')}! ${match.homeScore}:${match.awayScore}`,
+            `${home} vs ${away}${scorerName ? ` · ${scorerName} ${minute}'` : ''}`,
+          );
+        }
+
         goalTimerRef.current = setTimeout(() => {
           setGoalCelebration(null);
           goalTimerRef.current = null;
@@ -338,23 +425,77 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         >
           ←
         </button>
-        <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.8, marginBottom: 4 }}>
-          {match.competition} · {formatDate(match.date)} · {match.kickoffTime}
-        </div>
-        <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>
-          {match.isHome
-            ? `${match.clubName || t('matchPublic.us')} vs ${match.opponent}`
-            : `${match.opponent} vs ${match.clubName || t('matchPublic.us')}`}
+
+        {/* Notification toggle */}
+        {notifSupported && isLive && (
+          <button
+            onClick={async () => {
+              if (!notificationsOn) {
+                const granted = await requestPermission();
+                if (granted) {
+                  setNotificationsOn(true);
+                  try { localStorage.setItem(`torq-notif-${matchId}`, '1'); } catch {}
+                }
+              } else {
+                setNotificationsOn(false);
+                try { localStorage.removeItem(`torq-notif-${matchId}`); } catch {}
+              }
+            }}
+            style={{
+              position: 'absolute', right: 12, top: 14,
+              background: notificationsOn ? 'rgba(255,255,255,.3)' : 'rgba(255,255,255,.15)',
+              borderRadius: 10, padding: '6px 10px',
+              fontWeight: 700, fontSize: 14, color: '#fff',
+              border: notificationsOn ? '1.5px solid rgba(255,255,255,.5)' : '1.5px solid transparent',
+              cursor: 'pointer', backdropFilter: 'blur(4px)',
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}
+            title={t(notificationsOn ? 'matchPublic.notifOff' : 'matchPublic.notifOn')}
+          >
+            {notificationsOn ? '🔔' : '🔕'}
+          </button>
+        )}
+
+        {/* Competition + date */}
+        <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, marginBottom: 10, letterSpacing: 0.5 }}>
+          {match.competition && <span>{match.competition} · </span>}
+          {formatDate(match.date)} · {match.kickoffTime}
         </div>
 
-        {/* Score — football convention: Home : Away */}
+        {/* Score — TV style: Team  Score : Score  Team */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
-          fontSize: 48, fontWeight: 900, letterSpacing: 2,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0,
         }}>
-          <span key={`h-${match.homeScore}`} style={{ animation: 'scoreChange .4s ease-out' }}>{match.homeScore}</span>
-          <span style={{ fontSize: 28, opacity: 0.5 }}>:</span>
-          <span key={`a-${match.awayScore}`} style={{ animation: 'scoreChange .4s ease-out' }}>{match.awayScore}</span>
+          {/* Home team */}
+          <div style={{ flex: 1, textAlign: 'right', paddingRight: 12, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {match.isHome ? (match.clubName || t('matchPublic.us')) : match.opponent}
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.6, marginTop: 2 }}>
+              {t('matchPublic.home')}
+            </div>
+          </div>
+
+          {/* Score */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            fontSize: 48, fontWeight: 900, letterSpacing: 2,
+            minWidth: 120, justifyContent: 'center', flexShrink: 0,
+          }}>
+            <span key={`h-${match.homeScore}`} style={{ animation: 'scoreChange .4s ease-out' }}>{match.homeScore}</span>
+            <span style={{ fontSize: 24, opacity: 0.4 }}>:</span>
+            <span key={`a-${match.awayScore}`} style={{ animation: 'scoreChange .4s ease-out' }}>{match.awayScore}</span>
+          </div>
+
+          {/* Away team */}
+          <div style={{ flex: 1, textAlign: 'left', paddingLeft: 12, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {match.isHome ? match.opponent : (match.clubName || t('matchPublic.us'))}
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.6, marginTop: 2 }}>
+              {t('matchPublic.away')}
+            </div>
+          </div>
         </div>
 
         {/* Status / Timer + Progress bar */}
@@ -368,13 +509,17 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
                 </div>
               )}
               <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 14px',
-                fontSize: 14, fontWeight: 700,
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '5px 16px',
+                fontSize: 16, fontWeight: 800, letterSpacing: 1,
               }}>
-                <span style={{ color: '#FF5252', fontSize: 10, animation: 'livePulse 1.5s infinite' }}>●</span>
+                <span style={{
+                  display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
+                  background: '#FF5252', animation: 'livePulse 1.2s infinite',
+                  boxShadow: '0 0 8px rgba(255,82,82,.6)',
+                }} />
                 {formatTime(elapsed)}
-                {isPeriodOvertime && <span style={{ fontSize: 11 }}>{t('matchPublic.overtime')}</span>}
+                {isPeriodOvertime && <span style={{ fontSize: 11, background: 'rgba(255,82,82,.3)', borderRadius: 8, padding: '1px 6px' }}>{t('matchPublic.overtime')}</span>}
               </div>
               {/* Progress bar */}
               <div style={{
@@ -401,22 +546,26 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               )}
             </>
           )}
-          {isLive && isPaused && (
-            <>
-              {periods > 1 && (
-                <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
-                  {periodLabel}
+          {isLive && isPaused && (() => {
+            const inHalftimeBreak = currentPeriod > 1 && !isPeriodOvertime && periodElapsed <= 0;
+            return (
+              <>
+                {periods > 1 && (
+                  <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
+                    {periodLabel}
+                  </div>
+                )}
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: inHalftimeBreak ? 'rgba(255,152,0,.3)' : 'rgba(255,255,255,0.2)',
+                  borderRadius: 20, padding: '4px 14px',
+                  fontSize: 14, fontWeight: 700,
+                }}>
+                  {inHalftimeBreak ? `⏱ ${t('matchPublic.halftimeBreak')}` : `⏸ ${formatTime(elapsed)} · ${t('matchPublic.paused')}`}
                 </div>
-              )}
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '4px 14px',
-                fontSize: 14, fontWeight: 700,
-              }}>
-                ⏸ {formatTime(elapsed)} · {t('matchPublic.paused')}
-              </div>
-            </>
-          )}
+              </>
+            );
+          })()}
           {isFinished && (
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -444,11 +593,28 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         {/* ── Combined timeline ── */}
         {timeline.length > 0 && (
           <EventSection title={t('matchPublic.timeline')} icon="📋">
-            {timeline.map((ev) => {
+            {(() => {
+              // Track running score for goal progression display
+              let runHome = 0;
+              let runAway = 0;
+              const goalOrder = match.goals
+                .slice()
+                .sort((a, b) => a.minute - b.minute || new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime());
+              const goalScoreMap = new Map<string, string>();
+              for (const g of goalOrder) {
+                if (g.isOpponentGoal) {
+                  match.isHome ? runAway++ : runHome++;
+                } else {
+                  match.isHome ? runHome++ : runAway++;
+                }
+                goalScoreMap.set(g.id, `${runHome}:${runAway}`);
+              }
+              return timeline.map((ev) => {
               if (ev.type === 'goal') {
                 const g = ev.data as MatchGoal;
                 const isOpp = g.isOpponentGoal;
                 const isOG = g.isOwnGoal;
+                const runningScore = goalScoreMap.get(g.id);
                 return (
                   <div key={g.id} style={{
                     display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
@@ -463,6 +629,15 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
                     {g.assistId && (
                       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                         {playerName(g.assistId)}
+                      </span>
+                    )}
+                    {runningScore && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 800, color: 'var(--text-muted)',
+                        background: 'var(--surface-var)', borderRadius: 6, padding: '2px 6px',
+                        letterSpacing: 1,
+                      }}>
+                        {runningScore}
                       </span>
                     )}
                   </div>
@@ -495,7 +670,8 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
                   <span style={{ color: '#C62828', fontWeight: 600 }}>↓ {playerName(s.playerOutId)}</span>
                 </div>
               );
-            })}
+            });
+            })()}
           </EventSection>
         )}
 
@@ -540,6 +716,37 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           </div>
         )}
 
+        {/* ── Finished match stats ── */}
+        {isFinished && (match.goals.length > 0 || match.cards.length > 0 || match.substitutions.length > 0) && (
+          <EventSection title={t('matchPublic.matchStats')} icon="📊">
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
+              padding: '4px 0',
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--primary)' }}>{match.goals.length}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{t('matchPublic.goals')}</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: match.cards.length > 0 ? '#F9A825' : 'var(--text-muted)' }}>{match.cards.length}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{t('matchPublic.cards')}</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-muted)' }}>{match.substitutions.length}</div>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{t('matchPublic.substitutions')}</div>
+              </div>
+            </div>
+            {elapsed > 0 && (
+              <div style={{
+                textAlign: 'center', fontSize: 12, color: 'var(--text-muted)',
+                borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4,
+              }}>
+                {t('matchPublic.duration')}: <strong>{Math.floor(elapsed / 60)} min</strong>
+              </div>
+            )}
+          </EventSection>
+        )}
+
         {/* Finished match promo banner */}
         {isFinished && (
           <div style={{
@@ -568,8 +775,32 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           </div>
         )}
 
-        {/* Empty state */}
-        {timeline.length === 0 && match.lineup.length === 0 && (
+        {/* Empty state — planned match */}
+        {match.status === 'planned' && timeline.length === 0 && match.lineup.length === 0 && (
+          <div style={{
+            padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)',
+            background: 'var(--surface)', borderRadius: 14,
+          }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🏟️</div>
+            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
+              {match.isHome
+                ? `${match.clubName || t('matchPublic.us')} vs ${match.opponent}`
+                : `${match.opponent} vs ${match.clubName || t('matchPublic.us')}`}
+            </p>
+            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>
+              {t('matchPublic.plannedKickoff')}
+            </p>
+            <p style={{ fontSize: 20, fontWeight: 900, color: 'var(--primary)' }}>
+              {formatDate(match.date)} · {match.kickoffTime}
+            </p>
+            {match.competition && (
+              <p style={{ fontSize: 12, fontWeight: 600, marginTop: 8, opacity: 0.7 }}>{match.competition}</p>
+            )}
+          </div>
+        )}
+
+        {/* Empty state — live/finished with no events */}
+        {match.status !== 'planned' && timeline.length === 0 && match.lineup.length === 0 && (
           <div style={{
             padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)',
             background: 'var(--surface)', borderRadius: 14,

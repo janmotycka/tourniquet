@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Team } from '../../../types/tournament.types';
 import { voteMvp } from '../../../services/tournament.firebase';
 import { useI18n } from '../../../i18n';
+import { textOnColor, isLightColor } from '../../../utils/team-colors';
 
 /** Unikátní ID návštěvníka */
 function getVoterId(): string {
@@ -154,7 +155,8 @@ export function MvpVoting({ tournamentId, teams }: Props) {
               >
                 <span style={{
                   width: 22, height: 22, borderRadius: '50%',
-                  background: selectedTeam.color, color: '#fff',
+                  background: selectedTeam.color, color: textOnColor(selectedTeam.color),
+                  boxShadow: isLightColor(selectedTeam.color) ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 10, fontWeight: 700, flexShrink: 0,
                 }}>

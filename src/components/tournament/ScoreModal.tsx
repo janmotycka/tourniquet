@@ -265,7 +265,8 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                                   style={{
                                     padding: '5px 10px', borderRadius: 7, fontSize: 12, fontWeight: 700,
                                     background: g.playerId === p.id ? scoringTeam.color : 'var(--surface-var)',
-                                    color: g.playerId === p.id ? '#fff' : 'var(--text)',
+                                    color: g.playerId === p.id ? textOnColor(scoringTeam.color) : 'var(--text)',
+                                    boxShadow: g.playerId === p.id && isLightColor(scoringTeam.color) ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
                                     display: 'flex', alignItems: 'center', gap: 4,
                                   }}
                                 >

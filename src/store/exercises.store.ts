@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { safeStorage } from '../utils/safe-storage';
 import type { Exercise } from '../types/exercise.types';
 
 interface ExercisesState {
@@ -38,6 +39,6 @@ export const useExercisesStore = create<ExercisesState>()(
           : [...s.favoriteIds, id],
       })),
     }),
-    { name: 'trenink-custom-exercises' }
+    { name: 'trenink-custom-exercises', storage: createJSONStorage(() => safeStorage) }
   )
 );

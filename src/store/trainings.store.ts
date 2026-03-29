@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { safeStorage } from '../utils/safe-storage';
 import type { TrainingUnit } from '../types/training.types';
 import {
   saveTraining as saveTrainingFb,
@@ -141,6 +142,7 @@ export const useTrainingsStore = create<TrainingsState>()(
     }),
     {
       name: 'trenink-saved-trainings',
+      storage: createJSONStorage(() => safeStorage),
     }
   )
 );

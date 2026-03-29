@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { safeStorage } from '../utils/safe-storage';
 import { ref, onValue, off } from 'firebase/database';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebase';
@@ -141,6 +142,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     }),
     {
       name: 'trenink-subscription',
+      storage: createJSONStorage(() => safeStorage),
     }
   )
 );

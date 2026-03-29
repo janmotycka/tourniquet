@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { safeStorage } from '../utils/safe-storage';
 import type {
   SeasonMatch,
   CreateSeasonMatchInput,
@@ -20,19 +21,27 @@ function now(): string {
 
 // ─── Firebase sync helper ─────────────────────────────────────────────────────
 
-async function syncMatch(uid: string | null, match: SeasonMatch): Promise<string | null> {
-  if (!uid) return null; // not logged in, skip silently (localStorage only)
+async function syncMatchAndTrack(uid: string | null, match: SeasonMatch, storeSetter: (fn: (s: MatchesState) => Partial<MatchesState>) => void): Promise<void> {
+  if (!uid) return; // not logged in, skip silently (localStorage only)
   try {
     await saveMatchToFirebase(uid, match);
     // Keep catalog in sync for public matches
     if (match.isPublic) {
       saveMatchCatalogEntry(match, uid).catch(err => logger.error('[Firebase] Catalog sync failed', err));
     }
-    return null;
+    // Remove from pending on success
+    storeSetter(s => ({
+      syncError: null,
+      pendingSync: s.pendingSync.filter(id => id !== match.id),
+    }));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error('[Firebase] Match sync failed:', msg);
-    return `Firebase sync selhal: ${msg}`;
+    // Add to pending queue for retry
+    storeSetter(s => ({
+      syncError: `Sync selhal: ${msg.slice(0, 80)}`,
+      pendingSync: s.pendingSync.includes(match.id) ? s.pendingSync : [...s.pendingSync, match.id],
+    }));
   }
 }
 
@@ -42,10 +51,12 @@ interface MatchesState {
   matches: SeasonMatch[];
   firebaseUid: string | null;
   syncError: string | null;
+  pendingSync: string[]; // match IDs waiting to be synced
 
   // Firebase
   setFirebaseUid: (uid: string | null) => void;
   loadFromFirebase: (uid: string) => Promise<void>;
+  retryPendingSync: () => void;
 
   // CRUD
   createMatch: (input: CreateSeasonMatchInput) => SeasonMatch;
@@ -60,7 +71,7 @@ interface MatchesState {
   resumeMatch: (id: string) => void;
 
   // Události
-  addGoal: (matchId: string, goal: Omit<MatchGoal, 'id' | 'recordedAt'>) => void;
+  addGoal: (matchId: string, goal: Omit<MatchGoal, 'id' | 'recordedAt'>) => string;
   removeGoal: (matchId: string, goalId: string) => void;
   addCard: (matchId: string, card: Omit<MatchCard, 'id' | 'recordedAt'>) => void;
   removeCard: (matchId: string, cardId: string) => void;
@@ -82,6 +93,7 @@ export const useMatchesStore = create<MatchesState>()(
       matches: [],
       firebaseUid: null,
       syncError: null,
+      pendingSync: [],
 
       // ── Firebase ──────────────────────────────────────────────────────────
 
@@ -117,7 +129,16 @@ export const useMatchesStore = create<MatchesState>()(
         const localMatches = get().matches;
         const firebaseIds = new Set(matches.map(m => m.id));
         const localOnly = localMatches.filter(m => !firebaseIds.has(m.id));
-        set({ matches: [...matches, ...localOnly], firebaseUid: uid });
+        set({ matches: [...matches, ...localOnly], firebaseUid: uid, pendingSync: [] });
+      },
+
+      retryPendingSync: () => {
+        const { firebaseUid, pendingSync, matches } = get();
+        if (!firebaseUid || pendingSync.length === 0) return;
+        for (const matchId of pendingSync) {
+          const match = matches.find(m => m.id === matchId);
+          if (match) syncMatchAndTrack(firebaseUid, match, set);
+        }
       },
 
       // ── CRUD ────────────────────────────────────────────────────────────────
@@ -154,7 +175,7 @@ export const useMatchesStore = create<MatchesState>()(
           updatedAt: now(),
         };
         set(state => ({ matches: [match, ...state.matches] }));
-        syncMatch(get().firebaseUid, match).then(err => { if (err) set({ syncError: err }); });
+        syncMatchAndTrack(get().firebaseUid, match, set);
         return match;
       },
 
@@ -165,7 +186,7 @@ export const useMatchesStore = create<MatchesState>()(
           ),
         }));
         const updated = get().matches.find(m => m.id === id);
-        if (updated) syncMatch(get().firebaseUid, updated).then(err => { if (err) set({ syncError: err }); });
+        if (updated) syncMatchAndTrack(get().firebaseUid, updated, set);
       },
 
       deleteMatch: (id) => {
@@ -193,7 +214,7 @@ export const useMatchesStore = create<MatchesState>()(
           ),
         }));
         const m = get().matches.find(x => x.id === id);
-        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
       },
 
       finishMatch: (id) => {
@@ -217,7 +238,7 @@ export const useMatchesStore = create<MatchesState>()(
           }),
         }));
         const fm = get().matches.find(x => x.id === id);
-        if (fm) syncMatch(get().firebaseUid, fm).then(err => { if (err) set({ syncError: err }); });
+        if (fm) syncMatchAndTrack(get().firebaseUid, fm, set);
       },
 
       pauseMatch: (id) => {
@@ -236,7 +257,7 @@ export const useMatchesStore = create<MatchesState>()(
           }),
         }));
         const m = get().matches.find(x => x.id === id);
-        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
       },
 
       resumeMatch: (id) => {
@@ -252,7 +273,7 @@ export const useMatchesStore = create<MatchesState>()(
           }),
         }));
         const m = get().matches.find(x => x.id === id);
-        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
       },
 
       // ── Události ─────────────────────────────────────────────────────────────
@@ -282,7 +303,8 @@ export const useMatchesStore = create<MatchesState>()(
           }),
         }));
         const m = get().matches.find(x => x.id === matchId);
-        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
+        return newGoal.id;
       },
 
       removeGoal: (matchId, goalId) => {
@@ -308,7 +330,7 @@ export const useMatchesStore = create<MatchesState>()(
           }),
         }));
         const m = get().matches.find(x => x.id === matchId);
-        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
       },
 
       addCard: (matchId, card) => {
@@ -319,7 +341,7 @@ export const useMatchesStore = create<MatchesState>()(
           ),
         }));
         const m = get().matches.find(x => x.id === matchId);
-        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
       },
 
       removeCard: (matchId, cardId) => {
@@ -329,7 +351,7 @@ export const useMatchesStore = create<MatchesState>()(
           ),
         }));
         const m = get().matches.find(x => x.id === matchId);
-        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
       },
 
       addSubstitution: (matchId, sub) => {
@@ -347,7 +369,7 @@ export const useMatchesStore = create<MatchesState>()(
           }),
         }));
         const m = get().matches.find(x => x.id === matchId);
-        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
       },
 
       removeSubstitution: (matchId, subId) => {
@@ -357,7 +379,7 @@ export const useMatchesStore = create<MatchesState>()(
           ),
         }));
         const m = get().matches.find(x => x.id === matchId);
-        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
       },
 
       // ── Hodnocení ──────────────────────────────────────────────────────────
@@ -369,7 +391,7 @@ export const useMatchesStore = create<MatchesState>()(
           ),
         }));
         const m = get().matches.find(x => x.id === matchId);
-        if (m) syncMatch(get().firebaseUid, m).then(err => { if (err) set({ syncError: err }); });
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
       },
 
       togglePublicMatch: (matchId) => {
@@ -384,7 +406,7 @@ export const useMatchesStore = create<MatchesState>()(
         }));
         const updated = get().matches.find(m => m.id === matchId);
         if (updated) {
-          syncMatch(uid, updated).then(err => { if (err) set({ syncError: err }); });
+          syncMatchAndTrack(uid, updated, set);
         }
         // Pokud vypínáme sdílení, smažeme public mirror + katalog
         if (wasPublic) {
@@ -398,6 +420,7 @@ export const useMatchesStore = create<MatchesState>()(
     }),
     {
       name: 'trenink-matches',
+      storage: createJSONStorage(() => safeStorage),
       partialize: (state) => ({ matches: state.matches }),
     }
   )
