@@ -248,31 +248,33 @@ function AppRouter() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
-      <Suspense fallback={<PageSpinner />}>
-        {(page.name === 'home' || page.name === 'login') && <HomePage navigate={navigate} />}
-        {page.name === 'training-home' && <TrainingHomePage navigate={navigate} />}
-        {page.name === 'generator' && <GeneratorPage navigate={navigate} />}
-        {page.name === 'training' && (
-          <TrainingDetailPage training={page.training} navigate={navigate} />
-        )}
-        {page.name === 'saved' && <SavedPage navigate={navigate} />}
-        {page.name === 'library' && <ExerciseLibraryPage navigate={navigate} />}
-        {page.name === 'manual-builder' && <ManualBuilderPage navigate={navigate} />}
-        {page.name === 'calendar' && <CalendarPage navigate={navigate} />}
-        {page.name === 'tournament-list' && <TournamentListPage navigate={navigate} />}
-        {page.name === 'tournament-create' && <CreateTournamentPage navigate={navigate} />}
-        {page.name === 'tournament-detail' && (
-          <TournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
-        )}
-        {page.name === 'clubs' && <ClubsPage navigate={navigate} />}
-        {page.name === 'match-list' && <MatchListPage navigate={navigate} />}
-        {page.name === 'match-create' && <CreateMatchPage navigate={navigate} />}
-        {page.name === 'match-detail' && <MatchDetailPage matchId={page.matchId} navigate={navigate} />}
-        {page.name === 'match-stats' && <MatchStatsPage navigate={navigate} />}
-        {page.name === 'settings' && <SettingsPage navigate={navigate} />}
-        {page.name === 'privacy-policy' && <PrivacyPolicyPage navigate={navigate} />}
-        {page.name === 'terms-of-service' && <TermsOfServicePage navigate={navigate} />}
-      </Suspense>
+      <main style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+        <Suspense fallback={<PageSpinner />}>
+          {(page.name === 'home' || page.name === 'login') && <HomePage navigate={navigate} />}
+          {page.name === 'training-home' && <TrainingHomePage navigate={navigate} />}
+          {page.name === 'generator' && <GeneratorPage navigate={navigate} />}
+          {page.name === 'training' && (
+            <TrainingDetailPage training={page.training} navigate={navigate} />
+          )}
+          {page.name === 'saved' && <SavedPage navigate={navigate} />}
+          {page.name === 'library' && <ExerciseLibraryPage navigate={navigate} />}
+          {page.name === 'manual-builder' && <ManualBuilderPage navigate={navigate} />}
+          {page.name === 'calendar' && <CalendarPage navigate={navigate} />}
+          {page.name === 'tournament-list' && <TournamentListPage navigate={navigate} />}
+          {page.name === 'tournament-create' && <CreateTournamentPage navigate={navigate} />}
+          {page.name === 'tournament-detail' && (
+            <TournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
+          )}
+          {page.name === 'clubs' && <ClubsPage navigate={navigate} />}
+          {page.name === 'match-list' && <MatchListPage navigate={navigate} />}
+          {page.name === 'match-create' && <CreateMatchPage navigate={navigate} />}
+          {page.name === 'match-detail' && <MatchDetailPage matchId={page.matchId} navigate={navigate} />}
+          {page.name === 'match-stats' && <MatchStatsPage navigate={navigate} />}
+          {page.name === 'settings' && <SettingsPage navigate={navigate} />}
+          {page.name === 'privacy-policy' && <PrivacyPolicyPage navigate={navigate} />}
+          {page.name === 'terms-of-service' && <TermsOfServicePage navigate={navigate} />}
+        </Suspense>
+      </main>
     </div>
   );
 }

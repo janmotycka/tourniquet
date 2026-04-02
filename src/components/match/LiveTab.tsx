@@ -342,7 +342,7 @@ function InlineGoalEdit({ match, goal, onClose }: {
           <h3 style={{ fontWeight: 800, fontSize: 16 }}>
             ⚽ {t('match.field.assignScorer')} ({goal.minute}')
           </h3>
-          <button onClick={onClose} style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 700 }}>×</button>
+          <button onClick={onClose} aria-label="Close" style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 700 }}>×</button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -1108,6 +1108,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                   {match.status !== 'finished' && (
                     <button
                       onClick={() => removeGoal(match.id, g.id)}
+                      aria-label="Remove goal"
                       style={{ fontSize: 16, color: 'var(--text-muted)', fontWeight: 600, padding: '4px 6px', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}
                     >
                       ×

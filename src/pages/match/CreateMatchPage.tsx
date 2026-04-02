@@ -20,10 +20,10 @@ function Stepper({ value, min, max, onChange, label, unit }: {
         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{value} {unit}</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min}
+        <button onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} aria-label={`${label} −`}
           style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 20, color: value <= min ? 'var(--text-muted)' : 'var(--text)' }}>−</button>
         <span style={{ fontWeight: 800, fontSize: 18, minWidth: 36, textAlign: 'center', color: 'var(--primary)' }}>{value}</span>
-        <button onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max}
+        <button onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} aria-label={`${label} +`}
           style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 20, color: value >= max ? 'var(--text-muted)' : 'var(--text)' }}>+</button>
       </div>
     </div>
@@ -91,6 +91,7 @@ function OpponentInput({ value, onChange, clubs, t }: {
         {value && (
           <button
             onClick={() => onChange('')}
+            aria-label="Clear"
             style={{ fontSize: 16, color: 'var(--text-muted)', background: 'none', border: 'none', padding: '0 2px', cursor: 'pointer' }}
           >
             ×
@@ -874,6 +875,7 @@ function ManualPlayerAdd({ onAdd, t }: { onAdd: (name: string, jersey: number) =
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder={t('match.create.playerNamePlaceholder')}
+            aria-label={t('match.create.playerNamePlaceholder')}
             style={{
               flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--border)',
               fontSize: 14, background: 'var(--bg)', color: 'var(--text)',
@@ -884,6 +886,7 @@ function ManualPlayerAdd({ onAdd, t }: { onAdd: (name: string, jersey: number) =
             value={jersey}
             onChange={e => setJersey(e.target.value)}
             placeholder="#"
+            aria-label="Jersey number"
             min={1} max={99}
             style={{
               width: 52, padding: '10px 8px', borderRadius: 10, border: '1.5px solid var(--border)',

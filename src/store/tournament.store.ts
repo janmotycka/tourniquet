@@ -180,7 +180,10 @@ async function syncById(
     const updated = get().getTournamentById(tournamentId);
     if (updated) {
       const err = await syncToFirebase(get().firebaseUid, updated);
-      if (err) set({ syncError: err });
+      if (err) {
+        set({ syncError: err });
+        useToastStore.getState().show('error', 'Synchronizace selhala — změny se uloží lokálně.', 5000);
+      }
     }
   });
   syncQueues.set(tournamentId, currentSync.catch(() => { /* prevent queue stall */ }));
@@ -339,11 +342,23 @@ export const useTournamentStore = create<TournamentState>()(
         }
 
         // Načti turnaj z public path
-        const tournament = await loadPublicTournament(tournamentId);
+        let tournament: Tournament | null;
+        try {
+          tournament = await loadPublicTournament(tournamentId);
+        } catch (err) {
+          logger.error('[Firebase] loadPublicTournament failed:', err);
+          return { success: false, error: 'Nepodařilo se načíst turnaj — zkontrolujte připojení.' };
+        }
         if (!tournament) return { success: false, error: 'Turnaj nenalezen.' };
 
         // Načti PIN z oddělené cesty (bezpečnější), fallback na public mirror (starší turnaje)
-        const pinData = await loadPinAuth(tournamentId);
+        let pinData: { pinHash: string; pinSalt?: string } | null = null;
+        try {
+          pinData = await loadPinAuth(tournamentId);
+        } catch (err) {
+          logger.error('[Firebase] loadPinAuth failed:', err);
+          return { success: false, error: 'Nepodařilo se ověřit PIN — zkuste to znovu.' };
+        }
         const pinHash = pinData?.pinHash ?? (tournament as Tournament & { pinHash?: string }).pinHash;
         const pinSalt = pinData?.pinSalt ?? (tournament as Tournament & { pinSalt?: string }).pinSalt;
         if (!pinHash) return { success: false, error: 'Turnaj nemá nastavený PIN.' };
@@ -354,11 +369,20 @@ export const useTournamentStore = create<TournamentState>()(
 
         // Přidej do joinnutých
         set(state => ({
-          joinedTournaments: [tournament, ...state.joinedTournaments],
+          joinedTournaments: [tournament!, ...state.joinedTournaments],
         }));
 
         // Ulož referenci do Firebase
-        await addJoinedTournament(uid, tournamentId, tournament.ownerUid ?? '', tournament.name);
+        try {
+          await addJoinedTournament(uid, tournamentId, tournament.ownerUid ?? '', tournament.name);
+        } catch (err) {
+          logger.error('[Firebase] addJoinedTournament failed:', err);
+          // Rollback optimistic update
+          set(state => ({
+            joinedTournaments: state.joinedTournaments.filter(jt => jt.id !== tournamentId),
+          }));
+          return { success: false, error: 'Nepodařilo se uložit připojení — zkuste to znovu.' };
+        }
 
         // Zapiš joinedUsers/{uid} do public mirror (potřebné pro Firebase security rules)
         try {
@@ -393,12 +417,22 @@ export const useTournamentStore = create<TournamentState>()(
         const unsub = activeSubscriptions.get(tournamentId);
         if (unsub) { unsub(); activeSubscriptions.delete(tournamentId); }
 
+        // Snapshot for rollback
+        const previousJoined = get().joinedTournaments;
+
         set(state => ({
           joinedTournaments: state.joinedTournaments.filter(t => t.id !== tournamentId),
         }));
 
         if (uid) {
-          await removeJoinedTournament(uid, tournamentId);
+          try {
+            await removeJoinedTournament(uid, tournamentId);
+          } catch (err) {
+            logger.error('[Firebase] removeJoinedTournament failed:', err);
+            // Rollback — restore the removed tournament
+            set({ joinedTournaments: previousJoined });
+            useToastStore.getState().show('error', 'Nepodařilo se opustit turnaj — zkuste to znovu.', 5000);
+          }
         }
       },
 
@@ -550,6 +584,8 @@ export const useTournamentStore = create<TournamentState>()(
 
       deleteTournament: async (id) => {
         const uid = get().firebaseUid;
+        // Snapshot for rollback
+        const previousTournaments = get().tournaments;
         set(state => ({
           tournaments: state.tournaments.filter(t => t.id !== id),
         }));
@@ -558,6 +594,9 @@ export const useTournamentStore = create<TournamentState>()(
             await deleteTournamentFromFirebase(uid, id);
           } catch (err) {
             logger.error('[Firebase] Delete failed:', err);
+            // Rollback — restore deleted tournament
+            set({ tournaments: previousTournaments });
+            useToastStore.getState().show('error', 'Nepodařilo se smazat turnaj ze serveru.', 5000);
           }
         }
       },
@@ -1013,13 +1052,23 @@ export const useTournamentStore = create<TournamentState>()(
         await syncById(get, set, tournamentId);
 
         // Remove registration record from Firebase
-        const { deleteRegistration } = await import('../services/registration.firebase');
-        await deleteRegistration(tournamentId, registrationId);
+        try {
+          const { deleteRegistration } = await import('../services/registration.firebase');
+          await deleteRegistration(tournamentId, registrationId);
+        } catch (err) {
+          logger.error('[Firebase] deleteRegistration failed (approve):', err);
+          useToastStore.getState().show('warning', 'Tým byl přidán, ale registrace se nepodařila smazat.', 5000);
+        }
       },
 
       rejectRegistration: async (tournamentId, registrationId) => {
-        const { deleteRegistration } = await import('../services/registration.firebase');
-        await deleteRegistration(tournamentId, registrationId);
+        try {
+          const { deleteRegistration } = await import('../services/registration.firebase');
+          await deleteRegistration(tournamentId, registrationId);
+        } catch (err) {
+          logger.error('[Firebase] deleteRegistration failed (reject):', err);
+          useToastStore.getState().show('error', 'Nepodařilo se smazat registraci — zkuste to znovu.', 5000);
+        }
       },
 
       regenerateSchedule: async (tournamentId, newSettings) => {

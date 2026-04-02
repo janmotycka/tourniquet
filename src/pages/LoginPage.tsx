@@ -139,16 +139,22 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
         {!(mode === 'reset' && resetSent) && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {mode === 'register' && (
-              <input
-                type="text"
-                value={name}
-                onChange={e => { setName(e.target.value); setError(''); }}
-                placeholder={t('login.name')}
-                style={inputStyle}
-                autoComplete="name"
-              />
+              <>
+                <label className="sr-only" htmlFor="login-name">{t('login.name')}</label>
+                <input
+                  id="login-name"
+                  type="text"
+                  value={name}
+                  onChange={e => { setName(e.target.value); setError(''); }}
+                  placeholder={t('login.name')}
+                  style={inputStyle}
+                  autoComplete="name"
+                />
+              </>
             )}
+            <label className="sr-only" htmlFor="login-email">{t('login.email')}</label>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={e => { setEmail(e.target.value); setError(''); }}
@@ -157,15 +163,19 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
               autoComplete="email"
             />
             {mode !== 'reset' && (
-              <input
-                type="password"
-                value={password}
-                onChange={e => { setPassword(e.target.value); setError(''); }}
-                placeholder={t('login.password')}
-                style={inputStyle}
-                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-              />
+              <>
+                <label className="sr-only" htmlFor="login-password">{t('login.password')}</label>
+                <input
+                  id="login-password"
+                  type="password"
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setError(''); }}
+                  placeholder={t('login.password')}
+                  style={inputStyle}
+                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                />
+              </>
             )}
           </div>
         )}
