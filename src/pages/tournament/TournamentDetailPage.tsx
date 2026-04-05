@@ -24,6 +24,29 @@ interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
 type Tab = 'dashboard' | 'standings' | 'matches' | 'scorers' | 'chat' | 'settings';
 
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function TournamentDetailSkeleton() {
+  return (
+    <div style={{ padding: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div style={{ width: 36, height: 36, background: 'var(--surface-var)', borderRadius: 10, animation: 'skeletonPulse 1.5s infinite' }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ height: 18, width: '60%', background: 'var(--surface-var)', borderRadius: 8, marginBottom: 6, animation: 'skeletonPulse 1.5s infinite' }} />
+          <div style={{ height: 12, width: '35%', background: 'var(--surface-var)', borderRadius: 6, animation: 'skeletonPulse 1.5s infinite' }} />
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {[1, 2, 3].map(i => (
+          <div key={i} style={{ flex: 1, height: 36, background: 'var(--surface-var)', borderRadius: 8, animation: 'skeletonPulse 1.5s infinite' }} />
+        ))}
+      </div>
+      <div style={{ height: 140, background: 'var(--surface)', borderRadius: 16, marginBottom: 12, animation: 'skeletonPulse 1.5s infinite' }} />
+      <div style={{ height: 100, background: 'var(--surface)', borderRadius: 16, animation: 'skeletonPulse 1.5s infinite' }} />
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export function TournamentDetailPage({ tournamentId, navigate }: Props) {
   // Check if tournament was just created — auto-dismiss after 8s
@@ -51,6 +74,13 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
   const isAdmin = useTournamentStore(s => s.hasAdminAccess(tournamentId));
   const leaveTournament = useTournamentStore(s => s.leaveTournament);
 
+  const [isHydrating, setIsHydrating] = useState(!tournament);
+  useEffect(() => {
+    if (tournament) { setIsHydrating(false); return; }
+    const timer = setTimeout(() => setIsHydrating(false), 800);
+    return () => clearTimeout(timer);
+  }, [tournament]);
+
   const [pinVerified, setPinVerified] = useState(() => isPinVerified(tournamentId) || !isOwner);
   const startMatch = useTournamentStore(s => s.startMatch);
   const finishMatch = useTournamentStore(s => s.finishMatch);
@@ -69,6 +99,10 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
   const updatePlayer = useTournamentStore(s => s.updatePlayer);
   const updateTeamName = useTournamentStore(s => s.updateTeamName);
   const [rosterTeamId, setRosterTeamId] = useState<string | null>(null);
+
+  if (!tournament && isHydrating) {
+    return <TournamentDetailSkeleton />;
+  }
 
   if (!tournament) {
     return (

@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
 import { useSubscriptionStore } from '../../store/subscription.store';
 import { useConfirmStore } from '../../store/confirm.store';
 import { FeatureGate } from '../../components/FeatureGate';
 import { useI18n } from '../../i18n';
+import { useToastStore } from '../../store/toast.store';
 import type { SeasonMatch } from '../../types/match.types';
 
 interface Props { navigate: (p: Page) => void; }
@@ -117,6 +118,27 @@ function MatchCard({ match, onClick, t }: { match: SeasonMatch; onClick: () => v
   );
 }
 
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function MatchListSkeleton() {
+  return (
+    <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {[1, 2, 3].map(i => (
+        <div key={i} style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div style={{ height: 14, width: '40%', background: 'var(--surface-var)', borderRadius: 8, animation: 'skeletonPulse 1.5s infinite' }} />
+            <div style={{ height: 14, width: 50, background: 'var(--surface-var)', borderRadius: 8, animation: 'skeletonPulse 1.5s infinite' }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ height: 20, width: '50%', background: 'var(--surface-var)', borderRadius: 8, animation: 'skeletonPulse 1.5s infinite' }} />
+            <div style={{ height: 36, width: 70, background: 'var(--surface-var)', borderRadius: 12, animation: 'skeletonPulse 1.5s infinite' }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── MatchListPage ─────────────────────────────────────────────────────────────
 
 export function MatchListPage({ navigate }: Props) {
@@ -126,6 +148,13 @@ export function MatchListPage({ navigate }: Props) {
   const getLimits = useSubscriptionStore(s => s.getLimits);
   const limits = getLimits();
   const [filter, setFilter] = useState<'all' | 'live' | 'planned' | 'finished'>('all');
+  const [isHydrating, setIsHydrating] = useState(matches.length === 0);
+
+  useEffect(() => {
+    if (matches.length > 0) { setIsHydrating(false); return; }
+    const timer = setTimeout(() => setIsHydrating(false), 800);
+    return () => clearTimeout(timer);
+  }, [matches.length]);
 
   // Sort: live → planned (newest) → finished (newest)
   // useMemo: přepočítá se jen při změně matches
@@ -151,6 +180,7 @@ export function MatchListPage({ navigate }: Props) {
     const ok = await ask({ title: t('common.delete'), message: t('match.list.deleteConfirm', { opponent: m.opponent }), destructive: true });
     if (ok) {
       deleteMatch(m.id);
+      useToastStore.getState().show('success', t('toast.matchDeleted'));
     }
   };
 
@@ -223,7 +253,9 @@ export function MatchListPage({ navigate }: Props) {
           </FeatureGate>
         )}
 
-        {filtered.length === 0 ? (
+        {isHydrating ? (
+          <MatchListSkeleton />
+        ) : filtered.length === 0 ? (
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
             justifyContent: 'center', gap: 16, paddingTop: 60, color: 'var(--text-muted)',

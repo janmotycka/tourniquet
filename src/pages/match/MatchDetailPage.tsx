@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
 import { useI18n } from '../../i18n';
@@ -12,6 +12,18 @@ interface Props { matchId: string; navigate: (p: Page) => void; }
 
 type Tab = 'live' | 'lineup' | 'ratings';
 
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function MatchDetailSkeleton() {
+  return (
+    <div style={{ padding: 16 }}>
+      <div style={{ height: 20, width: '60%', background: 'var(--surface-var)', borderRadius: 8, marginBottom: 12, animation: 'skeletonPulse 1.5s infinite' }} />
+      <div style={{ height: 120, background: 'var(--surface)', borderRadius: 20, marginBottom: 12, animation: 'skeletonPulse 1.5s infinite' }} />
+      <div style={{ height: 60, background: 'var(--surface)', borderRadius: 16, animation: 'skeletonPulse 1.5s infinite' }} />
+    </div>
+  );
+}
+
 // ─── MatchDetailPage ──────────────────────────────────────────────────────────
 
 export function MatchDetailPage({ matchId, navigate }: Props) {
@@ -23,6 +35,12 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
   const [showShare, setShowShare] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [isHydrating, setIsHydrating] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsHydrating(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Re-read match on any store change
   const currentMatch = matches.find(m => m.id === matchId) ?? match;
@@ -65,6 +83,10 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
     });
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
   }, [matchId, currentMatch, t]);
+
+  if (!currentMatch && isHydrating) {
+    return <MatchDetailSkeleton />;
+  }
 
   if (!currentMatch) {
     return (

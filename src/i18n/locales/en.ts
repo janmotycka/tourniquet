@@ -30,6 +30,9 @@ export const en: Record<TranslationKey, string> = {
   // ─── App ───────────────────────────────────────────────────────────────────
   'app.loading': 'Loading app…',
   'app.offline': 'You are offline — some features may not be available',
+  'app.reconnecting': 'Reconnecting…',
+  'app.retrySync': 'Try again',
+  'app.pendingSync': '{count} changes pending sync',
   'app.installPWA': 'Install app',
   'app.premiumActivated': 'Premium activated! 🎉',
 
@@ -1836,4 +1839,11 @@ export const en: Record<TranslationKey, string> = {
   'payments.totalRemaining': 'Remaining',
   'payments.allPaid': 'All paid ✓',
   'payments.paidAt': 'Paid {date}',
+
+  // ── Toast notifications ────────────────────────────────────────────────────
+  'toast.tournamentCreated': 'Tournament created',
+  'toast.matchCreated': 'Match created',
+  'toast.ratingsSaved': 'Ratings saved',
+  'toast.tournamentDeleted': 'Tournament deleted',
+  'toast.matchDeleted': 'Match deleted',
 };

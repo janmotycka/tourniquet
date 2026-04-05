@@ -138,6 +138,11 @@ a:focus-visible,
   50% { box-shadow: 0 0 0 3px rgba(229,57,53,.2), 0 2px 16px rgba(229,57,53,.2); }
 }
 
+@keyframes skeletonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 @keyframes slideUp {
   from { transform: translateX(-50%) translateY(100px); opacity: 0; }
   to   { transform: translateX(-50%) translateY(0); opacity: 1; }

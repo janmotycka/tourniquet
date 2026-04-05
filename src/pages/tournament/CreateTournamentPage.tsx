@@ -12,6 +12,7 @@ import type { TournamentSettings, TournamentFormat, GroupDefinition, TiebreakerC
 import { DEFAULT_TIEBREAKER_ORDER } from '../../types/tournament.types';
 import type { Club, AgeCategory } from '../../types/club.types';
 import { TEAM_COLORS } from '../../utils/team-colors';
+import { useToastStore } from '../../store/toast.store';
 
 import {
   ClubPickerModal,
@@ -331,6 +332,7 @@ export function CreateTournamentPage({ navigate }: Props) {
       }
       // Mark as just created so dashboard shows welcome banner
       try { sessionStorage.setItem(`torq_just_created_${tournament.id}`, '1'); } catch { /* */ }
+      useToastStore.getState().show('success', t('toast.tournamentCreated'));
       navigate({ name: 'tournament-detail', tournamentId: tournament.id });
     } finally {
       setCreating(false);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { SeasonMatch, PlayerRating } from '../../types/match.types';
 import { useMatchesStore } from '../../store/matches.store';
 import { useI18n } from '../../i18n';
+import { useToastStore } from '../../store/toast.store';
 import { StarRating } from './StarRating';
 
 export function RatingsTab({ match }: { match: SeasonMatch }) {
@@ -35,6 +36,7 @@ export function RatingsTab({ match }: { match: SeasonMatch }) {
   const handleSave = () => {
     saveRatings(match.id, ratings, note.trim() || undefined);
     setSaved(true);
+    useToastStore.getState().show('success', t('toast.ratingsSaved'));
     setTimeout(() => setSaved(false), 2500);
   };
 

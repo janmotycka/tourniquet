@@ -111,6 +111,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
     const ok = await ask({ title: t('confirm.deleteTournament'), message: t('confirm.deleteTournamentMsg', { name: tournament.name }), destructive: true });
     if (ok) {
       deleteTournament(tournament.id);
+      showToast('success', t('toast.tournamentDeleted'));
       navigate({ name: 'tournament-list' });
     }
   };

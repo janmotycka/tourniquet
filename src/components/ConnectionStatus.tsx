@@ -58,10 +58,10 @@ export function ConnectionStatus() {
   const message = isOffline
     ? `📡 ${t('app.offline')}`
     : isReconnecting
-      ? '⏳ Obnovuji spojení...'
+      ? `⏳ ${t('app.reconnecting')}`
       : syncError
         ? `⚠️ ${syncError}`
-        : `🔄 ${pendingSync.length} ${pendingSync.length === 1 ? 'změna čeká' : 'změn čeká'} na sync`;
+        : `🔄 ${t('app.pendingSync', { count: pendingSync.length })}`;
 
   return (
     <div style={{
@@ -85,7 +85,7 @@ export function ConnectionStatus() {
             cursor: 'pointer',
           }}
         >
-          Zkusit znovu
+          {t('app.retrySync')}
         </button>
       )}
     </div>

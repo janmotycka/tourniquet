@@ -28,6 +28,9 @@ export const cs = {
   // ─── App ───────────────────────────────────────────────────────────────────
   'app.loading': 'Načítám aplikaci…',
   'app.offline': 'Jste offline — některé funkce nemusí být dostupné',
+  'app.reconnecting': 'Obnovuji spojení…',
+  'app.retrySync': 'Zkusit znovu',
+  'app.pendingSync': '{count} změn čeká na sync',
   'app.installPWA': 'Nainstalovat aplikaci',
   'app.premiumActivated': 'Premium aktivováno! 🎉',
 
@@ -1838,6 +1841,13 @@ export const cs = {
   'payments.totalRemaining': 'Zbývá',
   'payments.allPaid': 'Vše zaplaceno ✓',
   'payments.paidAt': 'Zaplaceno {date}',
+
+  // ── Toast notifikace ───────────────────────────────────────────────────────
+  'toast.tournamentCreated': 'Turnaj vytvořen',
+  'toast.matchCreated': 'Zápas vytvořen',
+  'toast.ratingsSaved': 'Hodnocení uloženo',
+  'toast.tournamentDeleted': 'Turnaj smazán',
+  'toast.matchDeleted': 'Zápas smazán',
 } as const;
 
 export type TranslationKey = keyof typeof cs;

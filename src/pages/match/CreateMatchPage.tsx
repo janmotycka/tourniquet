@@ -5,6 +5,7 @@ import { useClubsStore } from '../../store/clubs.store';
 import { useI18n } from '../../i18n';
 import type { MatchLineupPlayer, SubstitutionSettings } from '../../types/match.types';
 import type { Club, AgeCategory } from '../../types/club.types';
+import { useToastStore } from '../../store/toast.store';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -277,6 +278,7 @@ export function CreateMatchPage({ navigate }: Props) {
       lineup,
       substitutionSettings: subSettings,
     });
+    useToastStore.getState().show('success', t('toast.matchCreated'));
     navigate({ name: 'match-list' });
   };
 

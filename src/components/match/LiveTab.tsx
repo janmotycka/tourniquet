@@ -288,26 +288,7 @@ function useSubstitutionAlert(match: SeasonMatch, elapsed: number): {
   return { alertActive, nextAlertMinute, suggestedIn, suggestedOut };
 }
 
-// ── Quick goal feedback flash ──
-
-function QuickGoalFlash({ side, onDone }: { side: 'ours' | 'theirs'; onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 1200);
-    return () => clearTimeout(t);
-  }, [onDone]);
-
-  return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 200,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: side === 'ours' ? 'rgba(46,125,50,.85)' : 'rgba(198,40,40,.6)',
-      animation: 'quickGoalFlash 1.2s ease-out forwards',
-      pointerEvents: 'none',
-    }}>
-      <div style={{ fontSize: 64, animation: 'quickGoalPop .4s ease-out' }}>⚽</div>
-    </div>
-  );
-}
+// (QuickGoalFlash removed — goal feedback is now inline on the score card)
 
 // ── Inline goal edit (assign scorer to quick-added goal) ──
 
@@ -418,6 +399,13 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   const [enabledPanels, setEnabledPanels] = useState<Set<FieldPanel>>(() => loadFieldPanels(match.id));
   const [showVeoInput, setShowVeoInput] = useState(false);
   const [veoInputValue, setVeoInputValue] = useState('');
+
+  // Auto-dismiss quickFlash after 1.5s
+  useEffect(() => {
+    if (!quickFlash) return;
+    const t = setTimeout(() => setQuickFlash(null), 1500);
+    return () => clearTimeout(t);
+  }, [quickFlash]);
 
   // Undo toast for quick goals
   const [undoToast, setUndoToast] = useState<{ goalId: string; side: 'ours' | 'theirs' } | null>(null);
@@ -562,16 +550,6 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   return (
     <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <style>{`
-        @keyframes quickGoalFlash {
-          0% { opacity: 1; }
-          70% { opacity: 1; }
-          100% { opacity: 0; }
-        }
-        @keyframes quickGoalPop {
-          0% { transform: scale(0.3); opacity: 0; }
-          50% { transform: scale(1.3); }
-          100% { transform: scale(1); opacity: 1; }
-        }
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: .7; }
@@ -585,10 +563,22 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
           50% { transform: scale(1.15); }
           100% { transform: scale(1); }
         }
+        @keyframes goalCardTint {
+          0% { opacity: .35; }
+          60% { opacity: .35; }
+          100% { opacity: 0; }
+        }
+        @keyframes goalShimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        @keyframes goalBannerFade {
+          0% { opacity: 0; transform: translateY(4px); }
+          15% { opacity: 1; transform: translateY(0); }
+          75% { opacity: 1; }
+          100% { opacity: 0; }
+        }
       `}</style>
-
-      {/* Quick goal flash */}
-      {quickFlash && <QuickGoalFlash side={quickFlash} onDone={() => setQuickFlash(null)} />}
 
       {/* Landscape fullscreen scoreboard */}
       {isLandscape && match.status === 'live' && (
@@ -638,7 +628,27 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
         background: match.status === 'live' ? 'var(--primary)' : 'var(--surface)',
         borderRadius: 20, padding: match.status === 'live' ? '14px 20px 18px' : '20px',
         boxShadow: match.status === 'live' ? '0 4px 20px rgba(21,101,192,.30)' : '0 1px 4px rgba(0,0,0,.06)',
+        position: 'relative', overflow: 'hidden',
       }}>
+        {/* Goal flash tint overlay — contained within score card */}
+        {quickFlash && (
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: 20,
+            background: quickFlash === 'ours' ? 'rgba(46,125,50,.5)' : 'rgba(198,40,40,.45)',
+            animation: 'goalCardTint 1.5s ease-out forwards',
+            pointerEvents: 'none', zIndex: 1,
+          }} />
+        )}
+        {/* Shimmer overlay */}
+        {quickFlash && (
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: 20,
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255,213,79,.3) 50%, transparent 100%)',
+            backgroundSize: '200% 100%',
+            animation: 'goalShimmer 1s ease-out forwards',
+            pointerEvents: 'none', zIndex: 1,
+          }} />
+        )}
         {/* Timer — compact inline layout for live */}
         {match.status === 'live' && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
@@ -674,7 +684,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             <div style={{ fontSize: 11, fontWeight: 600, color: match.status === 'live' ? 'rgba(255,255,255,.7)' : 'var(--text-muted)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {match.clubName || t('match.detail.us')}
             </div>
-            <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1, color: match.status === 'live' ? '#fff' : 'var(--text)' }}>
+            <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1, color: match.status === 'live' ? '#fff' : 'var(--text)', animation: quickFlash === 'ours' ? 'scoreFlash .5s ease-out' : undefined }}>
               {ourScore}
             </div>
           </div>
@@ -683,11 +693,23 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             <div style={{ fontSize: 11, fontWeight: 600, color: match.status === 'live' ? 'rgba(255,255,255,.7)' : 'var(--text-muted)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {match.opponent}
             </div>
-            <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1, color: match.status === 'live' ? '#fff' : 'var(--text)' }}>
+            <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1, color: match.status === 'live' ? '#fff' : 'var(--text)', animation: quickFlash === 'theirs' ? 'scoreFlash .5s ease-out' : undefined }}>
               {theirScore}
             </div>
           </div>
         </div>
+
+        {/* Goal banner — brief inline flash */}
+        {quickFlash && (
+          <div style={{
+            textAlign: 'center', marginTop: 8, fontSize: 14, fontWeight: 800,
+            color: '#fff', letterSpacing: 1,
+            animation: 'goalBannerFade 1.5s ease-out forwards',
+            position: 'relative', zIndex: 2,
+          }}>
+            ⚽ GÓÓL!
+          </div>
+        )}
 
         {/* Progress bar + pause — under score, minimal */}
         {match.status === 'live' && (
