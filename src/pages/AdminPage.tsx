@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions, auth } from '../firebase';
 import { useI18n } from '../i18n';
@@ -15,6 +15,8 @@ interface UserInfo {
   subscription: { status: string; plan: string };
 }
 
+type Filter = 'all' | 'premium' | 'free';
+
 export function AdminPage() {
   const { t } = useI18n();
   const setPage = usePageStore(s => s.setPage);
@@ -22,6 +24,7 @@ export function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
 
   const currentUid = auth.currentUser?.uid;
   const isAdmin = currentUid === ADMIN_UID;
@@ -54,7 +57,6 @@ export function AdminPage() {
       setUpdating(user.uid);
       const setSubscription = httpsCallable(functions, 'adminSetSubscription');
       await setSubscription({ targetUid: user.uid, status: newStatus, plan: newPlan });
-      // Update local state
       setUsers(prev => prev.map(u =>
         u.uid === user.uid
           ? { ...u, subscription: { status: newStatus, plan: newPlan } }
@@ -67,6 +69,36 @@ export function AdminPage() {
     }
   };
 
+  // Sort: admin first, then premium, then named users, anonymous last
+  const sortedAndFiltered = useMemo(() => {
+    let list = [...users];
+
+    // Filter
+    if (filter === 'premium') list = list.filter(u => u.subscription.status === 'active');
+    if (filter === 'free') list = list.filter(u => u.subscription.status !== 'active');
+
+    // Sort
+    list.sort((a, b) => {
+      // Admin always first
+      if (a.uid === ADMIN_UID) return -1;
+      if (b.uid === ADMIN_UID) return 1;
+      // Premium before free
+      const aPremium = a.subscription.status === 'active' ? 1 : 0;
+      const bPremium = b.subscription.status === 'active' ? 1 : 0;
+      if (aPremium !== bPremium) return bPremium - aPremium;
+      // Named before anonymous
+      const aAnon = !a.displayName && !a.email ? 1 : 0;
+      const bAnon = !b.displayName && !b.email ? 1 : 0;
+      if (aAnon !== bAnon) return aAnon - bAnon;
+      // By last sign in
+      return (b.lastSignIn || '').localeCompare(a.lastSignIn || '');
+    });
+
+    return list;
+  }, [users, filter]);
+
+  const premiumCount = users.filter(u => u.subscription.status === 'active').length;
+
   if (!isAdmin) {
     return (
       <div style={{ padding: 24, textAlign: 'center' }}>
@@ -75,7 +107,7 @@ export function AdminPage() {
           onClick={() => setPage({ name: 'home' })}
           style={{ marginTop: 16, padding: '10px 20px', borderRadius: 10, fontWeight: 700, background: 'var(--primary)', color: '#fff' }}
         >
-          ← {t('common.back')}
+          {t('common.back')}
         </button>
       </div>
     );
@@ -84,20 +116,43 @@ export function AdminPage() {
   return (
     <div style={{ padding: '16px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
         <button
           onClick={() => setPage({ name: 'settings' })}
           style={{ padding: '8px 14px', borderRadius: 10, fontWeight: 700, fontSize: 13, background: 'var(--surface)', color: 'var(--text-muted)' }}
         >
-          ← {t('common.back')}
+          {t('common.back')}
         </button>
         <h1 style={{ fontSize: 20, fontWeight: 800 }}>🛡️ Admin</h1>
         <button
           onClick={loadUsers}
-          style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, background: 'var(--surface)', color: 'var(--text-muted)' }}
+          aria-label="Refresh"
+          style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: 8, fontSize: 14, fontWeight: 600, background: 'var(--surface)', color: 'var(--text-muted)' }}
         >
           ↻
         </button>
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+        {([
+          { key: 'all' as Filter, label: `All (${users.length})` },
+          { key: 'premium' as Filter, label: `★ Premium (${premiumCount})` },
+          { key: 'free' as Filter, label: `Free (${users.length - premiumCount})` },
+        ]).map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
+            style={{
+              padding: '6px 12px', borderRadius: 8, fontWeight: 700, fontSize: 12,
+              background: filter === tab.key ? 'var(--primary)' : 'var(--surface)',
+              color: filter === tab.key ? '#fff' : 'var(--text-muted)',
+              border: filter === tab.key ? 'none' : '1px solid var(--border)',
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {error && (
@@ -110,12 +165,10 @@ export function AdminPage() {
         <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading...</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 4 }}>
-            {users.length} users
-          </div>
-          {users.map(user => {
+          {sortedAndFiltered.map(user => {
             const isPremium = user.subscription.status === 'active';
             const isCurrentUser = user.uid === ADMIN_UID;
+            const isAnonymous = !user.displayName && !user.email;
             return (
               <div
                 key={user.uid}
@@ -124,6 +177,7 @@ export function AdminPage() {
                   padding: '12px 14px', borderRadius: 14,
                   background: 'var(--surface)',
                   border: isCurrentUser ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                  opacity: isAnonymous ? 0.6 : 1,
                 }}
               >
                 {/* Avatar */}
