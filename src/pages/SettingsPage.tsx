@@ -422,6 +422,24 @@ export function SettingsPage({ navigate }: Props) {
           </button>
         </div>
 
+        {/* Admin panel — only for admin UID */}
+        {user?.uid === 'EmIOqHuZVaWVbWN0imh6D1cttAf1' && (
+          <div style={cardStyle}>
+            <button
+              onClick={() => navigate({ name: 'admin' })}
+              style={{
+                background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600,
+                fontSize: 14, padding: '12px 16px', borderRadius: 12, textAlign: 'left',
+                border: '1.5px solid var(--primary)', display: 'flex', alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              🛡️ Admin panel
+              <span style={{ color: 'var(--text-muted)' }}>→</span>
+            </button>
+          </div>
+        )}
+
         {/* Beta badge */}
         <div style={{
           textAlign: 'center', fontSize: 12, color: 'var(--text-muted)',

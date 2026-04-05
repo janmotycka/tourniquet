@@ -12,3 +12,4 @@
 export { createCheckoutSession, createPortalSession } from './stripe';
 export { stripeWebhook } from './webhook';
 export { onNewRegistration, rosterReminder } from './notifications';
+export { adminSetSubscription, adminListUsers } from './admin';

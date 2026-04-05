@@ -40,6 +40,7 @@ const CreateMatchPage = lazy(() => import('./pages/match/CreateMatchPage').then(
 const MatchDetailPage = lazy(() => import('./pages/match/MatchDetailPage').then(m => ({ default: m.MatchDetailPage })));
 const MatchStatsPage = lazy(() => import('./pages/match/MatchStatsPage').then(m => ({ default: m.MatchStatsPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage').then(m => ({ default: m.TermsOfServicePage })));
 const TournamentPublicView = lazy(() => import('./pages/tournament/TournamentPublicView').then(m => ({ default: m.TournamentPublicView })));
@@ -70,6 +71,7 @@ export type Page =
   | { name: 'match-public'; matchId: string }
   | { name: 'match-stats' }
   | { name: 'settings' }
+  | { name: 'admin' }
   | { name: 'privacy-policy' }
   | { name: 'terms-of-service' };
 
@@ -271,6 +273,7 @@ function AppRouter() {
           {page.name === 'match-detail' && <MatchDetailPage matchId={page.matchId} navigate={navigate} />}
           {page.name === 'match-stats' && <MatchStatsPage navigate={navigate} />}
           {page.name === 'settings' && <SettingsPage navigate={navigate} />}
+          {page.name === 'admin' && <AdminPage />}
           {page.name === 'privacy-policy' && <PrivacyPolicyPage navigate={navigate} />}
           {page.name === 'terms-of-service' && <TermsOfServicePage navigate={navigate} />}
         </Suspense>
