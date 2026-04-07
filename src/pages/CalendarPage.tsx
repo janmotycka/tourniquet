@@ -364,7 +364,7 @@ export function CalendarPage({ navigate }: Props) {
     const toShare = savedTrainings.filter(tr => selectedIds.has(tr.id));
     if (toShare.length === 0) return;
     await copyToClipboard(buildShareText(toShare, locale));
-    useToastStore.getState().show(t('calendar.copied'), 'success');
+    useToastStore.getState().show('success', t('calendar.copied'));
   };
 
   // Navigate calendar months

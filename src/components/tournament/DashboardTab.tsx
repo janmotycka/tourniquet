@@ -166,7 +166,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
       });
       setInvoiceCounter(prev => prev + 1);
     } catch {
-      showToast(t('common.error'), 'error');
+      showToast('error', t('common.error'));
     }
   };
 
@@ -179,7 +179,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
       }
       await rejectRegistration(tournament.id, regId);
     } catch {
-      showToast(t('common.error'), 'error');
+      showToast('error', t('common.error'));
     }
   };
 
@@ -284,7 +284,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
             try {
               await exportTournamentPdf(tournament, t, locale);
             } catch {
-              showToast(t('pdf.exportFailed'), 'error');
+              showToast('error', t('pdf.exportFailed'));
             } finally {
               setPdfExporting(false);
             }

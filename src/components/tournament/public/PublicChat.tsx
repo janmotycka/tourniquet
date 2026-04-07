@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ChatMessage, Team } from '../../../types/tournament.types';
 import { sendChatMessage, subscribeToChatMessages, deleteChatMessage, subscribeChatPolls } from '../../../services/tournament.firebase';
 import type { ChatPoll } from '../../../services/tournament.firebase';

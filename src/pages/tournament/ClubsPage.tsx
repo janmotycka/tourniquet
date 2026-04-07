@@ -338,7 +338,10 @@ export function ClubsPage({ navigate }: Props) {
           stats={getPlayerStats(selectedPlayer) ?? {
             tournamentGoals: 0, tournamentMatches: 0, tournamentsPlayed: 0,
             seasonGoals: 0, seasonAssists: 0, seasonYellowCards: 0, seasonRedCards: 0,
-            seasonMatches: 0, seasonAvgRating: null, totalGoals: 0, totalMatches: 0,
+            seasonMatches: 0, seasonAvgRating: null,
+            trainingsTotal: 0, trainingsPresent: 0, trainingsAbsent: 0, trainingsExcused: 0,
+            attendanceRate: null,
+            totalGoals: 0, totalMatches: 0,
           }}
           onClose={() => setSelectedPlayer(null)}
           onEdit={handlePlayerEditFromDetail}

@@ -91,10 +91,13 @@ function fromFirebase(data: unknown): Tournament {
     const team = t as RawTeam;
     return {
       ...team,
-      players: normalizeArray(team?.players).map((p: Record<string, unknown>) => ({
-        ...p,
-        birthYear: (p as { birthYear?: number }).birthYear ?? null,
-      })),
+      players: normalizeArray(team?.players).map((p: unknown) => {
+        const player = p as Record<string, unknown>;
+        return {
+          ...player,
+          birthYear: (player as { birthYear?: number }).birthYear ?? null,
+        };
+      }),
     };
   });
 
@@ -286,7 +289,7 @@ export async function sendChatMessage(
 /** Odešle systémovou uvítací zprávu do chatu (pokud je chat prázdný) */
 export async function sendWelcomeChatMessage(
   tournamentId: string,
-  tournamentName: string,
+  _tournamentName: string,
   welcomeText: string,
 ): Promise<void> {
   // Zkontrolujeme, jestli chat už má zprávy

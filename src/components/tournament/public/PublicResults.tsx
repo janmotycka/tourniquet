@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { Tournament, Match } from '../../../types/tournament.types';
 import { computeMatchElapsed, formatMatchTime } from '../../../utils/tournament-schedule';
 import { useI18n } from '../../../i18n';
+import type { Locale } from '../../../i18n/context';
 import { PublicTeamBadge } from './PublicTeamBadge';
 import { LiveReactions } from './LiveReactions';
 
@@ -124,7 +125,7 @@ function GoalOverlay({ goal, homeScore, awayScore, homeTeamName, awayTeamName }:
 // ─── Řádek zápasu ───────────────────────────────────────────────────────────
 function MatchRow({ match, isLive = false, tournament, t, locale, goalOverlay }: {
   match: Match; isLive?: boolean; tournament: Tournament;
-  t: (key: string, params?: Record<string, unknown>) => string; locale: string;
+  t: (key: string, params?: Record<string, string | number>) => string; locale: Locale;
   goalOverlay?: GoalInfo | null;
 }) {
   const getTeam = (id: string) => tournament.teams.find(tm => tm.id === id);

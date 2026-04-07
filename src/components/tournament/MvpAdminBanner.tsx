@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Team } from '../../types/tournament.types';
+import type { Team, TournamentSettings } from '../../types/tournament.types';
 import { subscribeMvpVotes, resetMvpVotes } from '../../services/tournament.firebase';
 import type { MvpVote } from '../../services/tournament.firebase';
 import { useTournamentStore } from '../../store/tournament.store';
@@ -54,7 +54,7 @@ export function MvpAdminBanner({ tournamentId, teams, mvpVotingEnabled, settings
 
   const handleStop = async () => {
     await updateTournament(tournamentId, {
-      settings: { ...settings, mvpVotingEnabled: false },
+      settings: { ...(settings as unknown as TournamentSettings), mvpVotingEnabled: false },
     });
   };
 

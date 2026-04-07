@@ -170,6 +170,16 @@ export function AdminPage() {
     }
   }, []);
 
+  const loadClubRequests = useCallback(async () => {
+    try {
+      const fn = httpsCallable<unknown, { requests: ClubRequestItem[] }>(functions, 'adminListClubRequests');
+      const res = await fn({});
+      setClubRequests(res.data.requests || []);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load club requests');
+    }
+  }, []);
+
   // Catalog + pending: realtime via RTDB (admin can read)
   useEffect(() => {
     if (!isAdmin) return;
@@ -298,16 +308,6 @@ export function AdminPage() {
   };
 
   // ─── Club requests (Etapa 1 — shared clubs) ────────────────────────────
-
-  const loadClubRequests = useCallback(async () => {
-    try {
-      const fn = httpsCallable<unknown, { requests: ClubRequestItem[] }>(functions, 'adminListClubRequests');
-      const res = await fn({});
-      setClubRequests(res.data.requests || []);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load club requests');
-    }
-  }, []);
 
   const approveClubRequest = async (req: ClubRequestItem) => {
     const note = window.prompt(t('admin.clubRequests.approveNote')) ?? '';

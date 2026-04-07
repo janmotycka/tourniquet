@@ -37,7 +37,7 @@ export function ClubForm({
       const b64 = await resizeLogoToBase64(file);
       setLogoBase64(b64);
     } catch {
-      useToastStore.getState().show(t('clubs.imageError'), 'error');
+      useToastStore.getState().show('error', t('clubs.imageError'));
     } finally {
       setLogoLoading(false);
       if (logoRef.current) logoRef.current.value = '';

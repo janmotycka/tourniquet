@@ -428,7 +428,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   const updateMatch = useMatchesStore(s => s.updateMatch);
 
   // Haptic feedback helper
-  const vibrate = (ms: number = 30) => {
+  const vibrate = (ms: number | number[] = 30) => {
     try { navigator.vibrate?.(ms); } catch { /* not supported */ }
   };
 

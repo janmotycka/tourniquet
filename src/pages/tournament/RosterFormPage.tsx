@@ -323,7 +323,7 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
         players: validPlayers.map(p => ({
           name: p.name.trim(),
           jerseyNumber: p.jerseyNumber.trim() ? parseInt(p.jerseyNumber) : 0,
-          ...(p.birthYear.trim() ? { birthYear: parseInt(p.birthYear) } : {}),
+          birthYear: p.birthYear.trim() ? parseInt(p.birthYear) : null,
         })),
         submittedAt: new Date().toISOString(),
         teamId: team.id,

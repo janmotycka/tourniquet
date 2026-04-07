@@ -304,7 +304,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
         onShowLeaveConfirm={() => setShowLeaveConfirm(true)}
         liveMatch={liveMatch}
         tab={tab}
-        setTab={setTab}
+        setTab={(tab) => { if (tab !== 'rules') setTab(tab); }}
         tabs={TABS}
       />
 
@@ -765,7 +765,7 @@ function FinishedBanner({ tournament, isGuest }: { tournament: Tournament; isGue
           </button>
 
           {/* Native share (mobile) */}
-          {typeof navigator !== 'undefined' && navigator.share && (
+          {typeof navigator !== 'undefined' && 'share' in navigator && (
             <button
               onClick={handleNativeShare}
               title={t('promo.shareSummary')}
