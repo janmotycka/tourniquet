@@ -6,6 +6,9 @@ import type { Exercise, PhaseType } from '../types/exercise.types';
 import { useTrainingsStore } from '../store/trainings.store';
 import { useExercisesStore } from '../store/exercises.store';
 import { useCoachesStore } from '../store/coaches.store';
+import { useClubsStore } from '../store/clubs.store';
+import { AGE_CATEGORIES, type AgeCategory as ClubAgeCategory } from '../types/club.types';
+import { AttendanceSheet } from '../components/training/AttendanceSheet';
 import { ALL_EXERCISES } from '../data/exercises/index';
 import { CATEGORY_CONFIGS } from '../data/categories.data';
 import { SKILL_FOCUS_CONFIGS } from '../data/skill-focus.data';
@@ -644,7 +647,15 @@ export function TrainingDetailPage({ training, navigate }: Props) {
 
   const saveTraining = useTrainingsStore(s => s.saveTraining);
   const updateTraining = useTrainingsStore(s => s.updateTraining);
+  const assignTrainingToClub = useTrainingsStore(s => s.assignTrainingToClub);
+  const setAttendanceFn = useTrainingsStore(s => s.setAttendance);
+  // Najdi klub z aktuálního stavu (pro reaktivitu)
+  const liveTraining = useTrainingsStore(s => s.savedTrainings.find(tr => tr.id === training.id)) ?? training;
+  const clubs = useClubsStore(s => s.clubs);
+  const myClub = clubs[0]; // hlavní klub
   const { savedCoaches } = useCoachesStore();
+  const [showAttendance, setShowAttendance] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const cfg = CATEGORY_CONFIGS[training.input.category];
 
   // Build coachNames map for warmup assignments
@@ -735,6 +746,99 @@ export function TrainingDetailPage({ training, navigate }: Props) {
           </div>
         </div>
 
+        {/* ── Klub & docházka (Phase 3) ── */}
+        {myClub && !editMode && (
+          <div style={{
+            background: 'var(--surface)', borderRadius: 16, padding: '14px 16px',
+            marginBottom: 16, boxShadow: '0 1px 6px rgba(0,0,0,.06)',
+            display: 'flex', flexDirection: 'column', gap: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>
+                🏟 {t('training.event.assignTeam')}
+              </div>
+              {liveTraining.clubAgeCategory ? (
+                <button
+                  onClick={() => setShowCategoryPicker(o => !o)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    background: 'var(--primary-light)', color: 'var(--primary)',
+                  }}
+                >
+                  {liveTraining.clubAgeCategory} ▾
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowCategoryPicker(true)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    background: 'var(--primary-light)', color: 'var(--primary)',
+                  }}
+                >
+                  + {t('training.event.pickCategory')}
+                </button>
+              )}
+            </div>
+
+            {showCategoryPicker && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {AGE_CATEGORIES.map((cat: ClubAgeCategory) => {
+                  const active = liveTraining.clubAgeCategory === cat;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => {
+                        assignTrainingToClub(training.id, myClub.id, cat);
+                        setShowCategoryPicker(false);
+                      }}
+                      style={{
+                        padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                        background: active ? 'var(--primary)' : 'var(--surface-var)',
+                        color: active ? '#fff' : 'var(--text)',
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  );
+                })}
+                {liveTraining.clubAgeCategory && (
+                  <button
+                    onClick={() => {
+                      assignTrainingToClub(training.id, null, null);
+                      setShowCategoryPicker(false);
+                    }}
+                    style={{
+                      padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      background: '#FFEBEE', color: '#C62828',
+                    }}
+                  >✕ {t('common.remove')}</button>
+                )}
+              </div>
+            )}
+
+            {liveTraining.clubAgeCategory && (
+              <button
+                onClick={() => setShowAttendance(true)}
+                style={{
+                  padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                  background: 'var(--primary)', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                📝 {t('training.attendance.openButton')}
+                {liveTraining.attendance && Object.keys(liveTraining.attendance).length > 0 && (
+                  <span style={{
+                    background: 'rgba(255,255,255,.25)', borderRadius: 6, padding: '1px 6px', fontSize: 11,
+                  }}>
+                    {Object.values(liveTraining.attendance).filter(s => s === 'present').length}
+                    /{Object.keys(liveTraining.attendance).length}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Phase blocks */}
         <h2 style={{ fontWeight: 700, fontSize: 16, marginBottom: 12 }}>
           {editMode ? '✏️ ' + t('training.detail.editPhases') : t('training.detail.trainingProgress')}
@@ -782,6 +886,15 @@ export function TrainingDetailPage({ training, navigate }: Props) {
 
       {selectedEx && <ExerciseModal ex={selectedEx} onClose={() => setSelectedEx(null)} />}
       {showShare && <ShareModal training={training} onClose={() => setShowShare(false)} />}
+      {showAttendance && myClub && liveTraining.clubAgeCategory && (
+        <AttendanceSheet
+          players={myClub.players ?? []}
+          ageCategory={liveTraining.clubAgeCategory}
+          initial={liveTraining.attendance ?? {}}
+          onSave={(att) => setAttendanceFn(training.id, att)}
+          onClose={() => setShowAttendance(false)}
+        />
+      )}
     </div>
   );
 }

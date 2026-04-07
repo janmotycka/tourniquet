@@ -10,10 +10,8 @@ interface Props { navigate: (p: Page) => void; }
 
 export function SavedPage({ navigate }: Props) {
   const { t, locale } = useI18n();
-  const { savedTrainings, deleteTraining } = useTrainingsStore(s => ({
-    savedTrainings: s.savedTrainings,
-    deleteTraining: s.deleteTraining,
-  }));
+  const savedTrainings = useTrainingsStore(s => s.savedTrainings);
+  const deleteTraining = useTrainingsStore(s => s.deleteTraining);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const confirmDelete = () => {

@@ -101,6 +101,35 @@ body {
   }
 }
 
+/* ─── Desktop layout mode ──────────────────────────────────────────────────
+ * When the desktop shell is active, #root takes the full viewport — no
+ * mobile container, no centering, no fake phone frame. The body gradient
+ * background is also disabled because the shell paints its own surface.
+ */
+body[data-layout-mode="desktop"] #root {
+  max-width: 100%;
+  margin: 0;
+  background: var(--bg);
+  box-shadow: none;
+  border-left: none;
+  border-right: none;
+  overflow-x: auto;
+}
+body[data-layout-mode="desktop"] {
+  background: var(--bg);
+}
+@media (min-width: 520px) {
+  body[data-layout-mode="desktop"] {
+    background: var(--bg);
+  }
+  body[data-layout-mode="desktop"] #root {
+    box-shadow: none;
+    border-left: none;
+    border-right: none;
+  }
+}
+
+
 button { cursor: pointer; border: none; font-family: inherit; }
 a { text-decoration: none; color: inherit; }
 

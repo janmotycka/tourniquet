@@ -6,7 +6,8 @@ import {
   updateProfile, sendPasswordResetEmail, sendEmailVerification,
   type User,
 } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { ref as dbRef, get as dbGet } from 'firebase/database';
+import { auth, db, googleProvider } from '../firebase';
 import { logger } from '../utils/logger';
 import { useI18n } from '../i18n';
 
@@ -14,6 +15,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   authError: string | null;
+  blocked: boolean;
+  blockReason: string | null;
   signInWithGoogle: () => void;
   signInWithEmail: (email: string, password: string) => Promise<string | null>;
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<string | null>;
@@ -36,10 +39,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState(false);
+  const [blockReason, setBlockReason] = useState<string | null>(null);
 
-  // Sleduj stav přihlášení
+  // Sleduj stav přihlášení + kontrola block flagu
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      if (u && !u.isAnonymous) {
+        try {
+          const flagsSnap = await dbGet(dbRef(db, `users/${u.uid}/flags`));
+          const flags = flagsSnap.val() as { blocked?: boolean; reason?: string } | null;
+          if (flags?.blocked === true) {
+            logger.warn('[Auth] user is blocked, signing out');
+            setBlocked(true);
+            setBlockReason(flags.reason || null);
+            setUser(null);
+            await signOut(auth);
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          logger.error('[Auth] failed to read flags:', err);
+        }
+      }
+      setBlocked(false);
+      setBlockReason(null);
       setUser(u);
       setLoading(false);
     });
@@ -152,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, authError, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, signInAnonymously, logout }}>
+    <AuthContext.Provider value={{ user, loading, authError, blocked, blockReason, signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, signInAnonymously, logout }}>
       {children}
     </AuthContext.Provider>
   );

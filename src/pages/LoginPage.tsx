@@ -5,7 +5,7 @@ import { useI18n } from '../i18n';
 type Mode = 'login' | 'register' | 'reset';
 
 export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, authError } = useAuth();
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, resetPassword, authError, blocked, blockReason } = useAuth();
   const { t } = useI18n();
 
   const [mode, setMode] = useState<Mode>('login');
@@ -180,8 +180,20 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
           </div>
         )}
 
+        {/* Blocked banner */}
+        {blocked && (
+          <div style={{
+            background: '#FFF3E0', border: '2px solid #E65100', borderRadius: 12, padding: '14px 16px',
+            fontSize: 13, color: '#BF360C', fontWeight: 600,
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>⛔ {t('auth.accountBlocked')}</div>
+            {blockReason && <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>{blockReason}</div>}
+            <div style={{ fontSize: 12, opacity: 0.85 }}>{t('auth.accountBlockedHelp')}</div>
+          </div>
+        )}
+
         {/* Error */}
-        {(error || authError) && (
+        {(error || authError) && !blocked && (
           <div style={{
             background: '#FFEBEE', borderRadius: 10, padding: '10px 14px',
             fontSize: 13, color: '#C62828', fontWeight: 600,

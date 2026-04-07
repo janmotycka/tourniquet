@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Page } from '../../App';
 import { logger } from '../../utils/logger';
 import { useTournamentStore } from '../../store/tournament.store';
+import { useLayoutMode } from '../../hooks/useLayoutMode';
 import type { Tournament } from '../../types/tournament.types';
 import { subscribeToPublicTournament, subscribeToChatMessages, subscribeMvpVotes } from '../../services/tournament.firebase';
 import type { MvpVote } from '../../services/tournament.firebase';
@@ -50,6 +51,7 @@ export function TournamentPublicView(props: Props) {
 
 function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinIntent, joinIntentRole, clearJoinIntent, adminJoin, adminJoinRole, clearAdminJoin }: Props) {
   const { t } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const [tab, setTab] = useState<Tab>('results');
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
@@ -282,7 +284,16 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
   ];
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      width: '100%',
+      maxWidth: isDesktop ? 560 : undefined,
+      alignSelf: isDesktop ? 'center' : undefined,
+      boxShadow: isDesktop ? '0 0 40px rgba(0,0,0,.08)' : undefined,
+    }}>
       {/* Header + live banner + tab bar */}
       <PublicHeader
         tournament={tournament}

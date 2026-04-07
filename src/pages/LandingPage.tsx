@@ -92,25 +92,48 @@ export function LandingPage({ navigate, onLogin }: Props) {
 
   const live = filtered.filter(i => i.status === 'live');
   const upcoming = filtered.filter(i => i.status === 'upcoming');
-  const recent = filtered
-    .filter(i => i.status === 'finished')
-    .sort((a, b) => b.data.updatedAt.localeCompare(a.data.updatedAt))
-    .slice(0, 10);
 
-  const hasAny = live.length > 0 || upcoming.length > 0 || recent.length > 0;
+  // Split finished events into "recent" (last 7 days) and "older" (archive)
+  const RECENT_DAYS = 7;
+  const recentCutoff = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000)
+    .toISOString().split('T')[0];
+
+  const allFinished = filtered
+    .filter(i => i.status === 'finished')
+    .sort((a, b) => b.data.updatedAt.localeCompare(a.data.updatedAt));
+
+  const recent = allFinished.filter(i => {
+    const dateStr = i.kind === 'tournament' ? i.data.startDate : i.data.date;
+    return dateStr >= recentCutoff;
+  });
+
+  const archive = allFinished
+    .filter(i => {
+      const dateStr = i.kind === 'tournament' ? i.data.startDate : i.data.date;
+      return dateStr < recentCutoff;
+    })
+    .slice(0, 30);
+
+  const [archiveOpen, setArchiveOpen] = useState(false);
+
+  const hasAny = live.length > 0 || upcoming.length > 0 || recent.length > 0 || archive.length > 0;
 
   const matchCount = feed.filter(i => i.kind === 'match').length;
   const tournamentCount = feed.filter(i => i.kind === 'tournament').length;
 
   return (
     <div style={{
-      minHeight: '100dvh', background: 'var(--bg)',
-      display: 'flex', flexDirection: 'column',
+      minHeight: '100dvh',
+      background: 'var(--bg)',
     }}>
-      {/* ─── Hero ─────────────────────────────────────────────────────────── */}
+      {/* ─── Hero — gradient banner ──────────────────────────────────────── */}
       <div style={{
         background: 'linear-gradient(135deg, #1A237E 0%, #283593 50%, #3949AB 100%)',
-        color: '#fff', padding: '40px 24px 32px', textAlign: 'center',
+        color: '#fff',
+        padding: '36px 24px 28px',
+        textAlign: 'center',
+        boxShadow: '0 4px 16px rgba(26, 35, 126, 0.18)',
+        position: 'relative',
       }}>
         <div style={{
           width: 64, height: 64, borderRadius: 20,
@@ -148,12 +171,27 @@ export function LandingPage({ navigate, onLogin }: Props) {
       </div>
 
       {/* ─── Catalog ──────────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, padding: '16px 16px 32px', maxWidth: 600, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      {/* NOTE: outer is plain block (no flex, no overflow). Sticky filter chips
+          are bound to the page's scrolling ancestor (window on mobile, <main>
+          on desktop). Any `display: flex` / `overflow` here would break that. */}
+      <div style={{ maxWidth: 560, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
 
-        {/* Filter chips + search */}
+        {/* Filter chips + search — sticky at top when scrolling */}
         {!loading && feed.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            background: 'var(--bg)',
+            padding: '16px 16px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            borderBottom: '1px solid var(--border)',
+            backdropFilter: 'blur(8px)',
+            backgroundColor: 'rgba(248, 249, 252, 0.92)',
+          }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {([
                 { key: 'all' as Filter, label: t('landing.filterAll'), count: feed.length },
                 { key: 'matches' as Filter, label: `⚽ ${t('landing.filterMatches')}`, count: matchCount },
@@ -163,11 +201,12 @@ export function LandingPage({ navigate, onLogin }: Props) {
                   key={chip.key}
                   onClick={() => setFilter(chip.key)}
                   style={{
-                    padding: '6px 12px', borderRadius: 10, fontWeight: 600, fontSize: 12,
+                    padding: '8px 14px', borderRadius: 12, fontWeight: 700, fontSize: 13,
                     background: filter === chip.key ? 'var(--primary)' : 'var(--surface)',
                     color: filter === chip.key ? '#fff' : 'var(--text-muted)',
                     border: filter === chip.key ? 'none' : '1px solid var(--border)',
                     cursor: 'pointer', transition: 'all .15s',
+                    boxShadow: filter === chip.key ? '0 2px 8px rgba(26,35,126,.2)' : 'none',
                   }}
                 >
                   {chip.label} {chip.count > 0 && <span style={{ opacity: 0.7 }}>({chip.count})</span>}
@@ -189,6 +228,8 @@ export function LandingPage({ navigate, onLogin }: Props) {
             )}
           </div>
         )}
+
+        <div style={{ padding: '16px 16px 32px' }}>
 
         {loading && (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
@@ -235,6 +276,37 @@ export function LandingPage({ navigate, onLogin }: Props) {
             t={t}
           />
         )}
+
+        {/* Archive — collapsible older finished events */}
+        {archive.length > 0 && (
+          <div style={{ marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => setArchiveOpen(o => !o)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', padding: '12px 14px', borderRadius: 12,
+                background: 'var(--surface)', border: '1px solid var(--border)',
+                color: 'var(--text)', fontSize: 13, fontWeight: 700,
+                cursor: 'pointer', transition: 'background .15s',
+              }}
+            >
+              <span>🗄 {t('landing.archiveTitle')} ({archive.length})</span>
+              <span style={{ fontSize: 12, opacity: 0.6 }}>{archiveOpen ? '▲' : '▼'}</span>
+            </button>
+            {archiveOpen && (
+              <div style={{ marginTop: 10 }}>
+                <FeedSection
+                  title=""
+                  items={archive}
+                  navigate={navigate}
+                  t={t}
+                />
+              </div>
+            )}
+          </div>
+        )}
+        </div>
       </div>
 
       {/* ─── Footer ───────────────────────────────────────────────────────── */}
@@ -271,9 +343,11 @@ function FeedSection({
 }) {
   return (
     <div style={{ marginBottom: 20 }}>
-      <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '0 0 10px' }}>
-        {title}
-      </h2>
+      {title && (
+        <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: '0 0 10px' }}>
+          {title}
+        </h2>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map(item => (
           item.kind === 'tournament'

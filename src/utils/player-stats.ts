@@ -9,6 +9,7 @@
 import type { ClubPlayer } from '../types/club.types';
 import type { Tournament } from '../types/tournament.types';
 import type { SeasonMatch } from '../types/match.types';
+import type { TrainingUnit } from '../types/training.types';
 
 export interface PlayerStats {
   // Turnaje
@@ -23,6 +24,13 @@ export interface PlayerStats {
   seasonRedCards: number;
   seasonMatches: number;           // zápasy, kde hráč byl v sestavě
   seasonAvgRating: number | null;  // průměrné hodnocení (null = žádné)
+
+  // Tréninky
+  trainingsTotal: number;          // počet tréninků kategorie hráče s vyplněnou docházkou
+  trainingsPresent: number;
+  trainingsAbsent: number;
+  trainingsExcused: number;
+  attendanceRate: number | null;   // 0–100 % (null = žádný záznam)
 
   // Celkově
   totalGoals: number;
@@ -39,6 +47,11 @@ const EMPTY_STATS: PlayerStats = {
   seasonRedCards: 0,
   seasonMatches: 0,
   seasonAvgRating: null,
+  trainingsTotal: 0,
+  trainingsPresent: 0,
+  trainingsAbsent: 0,
+  trainingsExcused: 0,
+  attendanceRate: null,
   totalGoals: 0,
   totalMatches: 0,
 };
@@ -56,6 +69,7 @@ export function aggregatePlayerStats(
   clubId: string,
   tournaments: Tournament[],
   seasonMatches: SeasonMatch[],
+  trainings: TrainingUnit[] = [],
 ): PlayerStats {
   const stats = { ...EMPTY_STATS };
   const playerName = player.name.toLowerCase().trim();
@@ -146,6 +160,24 @@ export function aggregatePlayerStats(
     stats.seasonAvgRating = Math.round(
       (ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length) * 10,
     ) / 10;
+  }
+
+  // ─── Tréninky / docházka ───────────────────────────────────────────────
+  for (const tr of trainings) {
+    if (tr.clubId !== clubId) continue;
+    if (tr.clubAgeCategory !== player.ageCategory) continue;
+    if (!tr.attendance) continue;
+    const status = tr.attendance[player.id];
+    if (!status) continue;
+    stats.trainingsTotal++;
+    if (status === 'present') stats.trainingsPresent++;
+    else if (status === 'absent') stats.trainingsAbsent++;
+    else if (status === 'excused') stats.trainingsExcused++;
+  }
+  if (stats.trainingsTotal > 0) {
+    stats.attendanceRate = Math.round(
+      (stats.trainingsPresent / stats.trainingsTotal) * 100,
+    );
   }
 
   // Celkově

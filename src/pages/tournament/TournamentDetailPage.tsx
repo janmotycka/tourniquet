@@ -19,6 +19,7 @@ import { AdminRosterSheet } from '../../components/tournament/AdminRosterSheet';
 import { PinGate } from '../../components/tournament/PinGate';
 import { MvpAdminBanner } from '../../components/tournament/MvpAdminBanner';
 import { DashboardTab } from '../../components/tournament/DashboardTab';
+import { useLayoutMode } from '../../hooks/useLayoutMode';
 
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
@@ -68,6 +69,12 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
   const [showPinGate, setShowPinGate] = useState(false);
   const { t } = useI18n();
   const ask = useConfirmStore(s => s.ask);
+
+  const { isDesktop } = useLayoutMode();
+  const innerMax = isDesktop ? 1100 : undefined;
+  const innerWrap: React.CSSProperties = isDesktop
+    ? { maxWidth: innerMax, width: '100%', margin: '0 auto' }
+    : {};
 
   const tournament = useTournamentStore(s => s.getTournamentById(tournamentId));
   const isOwner = useTournamentStore(s => s.isOwner(tournamentId));
@@ -235,7 +242,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
         display: 'flex', flexDirection: 'column', gap: 0,
         borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px' }}>
+        <div style={{ ...innerWrap, display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px' }}>
           <button onClick={() => navigate({ name: 'tournament-list' })} aria-label="Back" style={{
             width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
             fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -299,7 +306,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
         )}
 
         {/* Tab bar */}
-        <div style={{ display: 'flex', padding: '0 16px', gap: 0 }}>
+        <div style={{ ...innerWrap, display: 'flex', padding: '0 16px', gap: 0 }}>
           {TABS.map(ti => (
             <button key={ti.id} onClick={() => setTab(ti.id)} style={{
               flex: 1, padding: '10px 6px', fontWeight: 600, fontSize: 13,
@@ -321,6 +328,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={innerWrap}>
         {tab === 'dashboard' && (
           <DashboardTab
             tournament={tournament}
@@ -379,6 +387,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
         {tab === 'scorers' && <ScorersTab tournament={tournament} />}
         {tab === 'chat' && chatEnabled && <PublicChat tournamentId={tournament.id} teams={tournament.teams} isAdmin />}
         {tab === 'settings' && <SettingsTab tournament={tournament} navigate={navigate} isOwner={isOwner} isAdmin={isAdmin} leaveTournament={leaveTournament} />}
+        </div>
       </div>
 
       {/* PIN gate */}

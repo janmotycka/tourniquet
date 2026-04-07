@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { safeStorage } from '../utils/safe-storage';
-import type { TrainingUnit } from '../types/training.types';
+import type { TrainingUnit, TrainingAttendance, AttendanceStatus } from '../types/training.types';
+import type { AgeCategory as ClubAgeCategory } from '../types/club.types';
 import {
   saveTraining as saveTrainingFb,
   loadTrainings as loadTrainingsFb,
@@ -23,6 +24,11 @@ interface TrainingsState {
   deleteTraining: (id: string) => void;
   getTrainingById: (id: string) => TrainingUnit | undefined;
   scheduleTraining: (id: string, date: string | null) => void;
+
+  // Phase 3 — kalendářová událost / docházka
+  assignTrainingToClub: (id: string, clubId: string | null, clubAgeCategory: ClubAgeCategory | null) => void;
+  setAttendance: (id: string, attendance: TrainingAttendance) => void;
+  setPlayerAttendance: (id: string, playerId: string, status: AttendanceStatus | null) => void;
 }
 
 /** Sync konkrétní trénink na Firebase (fire & forget) */
@@ -135,6 +141,50 @@ export const useTrainingsStore = create<TrainingsState>()(
               ? { ...t, scheduledDate: date ?? undefined, updatedAt: new Date().toISOString() }
               : t
           ),
+        }));
+        const updated = get().savedTrainings.find(t => t.id === id);
+        if (updated) syncTraining(get(), updated);
+      },
+
+      // ─── Phase 3 — kalendářová událost ────────────────────────────────
+      assignTrainingToClub: (id, clubId, clubAgeCategory) => {
+        set((state) => ({
+          savedTrainings: state.savedTrainings.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  clubId: clubId ?? undefined,
+                  clubAgeCategory: clubAgeCategory ?? undefined,
+                  updatedAt: new Date().toISOString(),
+                }
+              : t
+          ),
+        }));
+        const updated = get().savedTrainings.find(t => t.id === id);
+        if (updated) syncTraining(get(), updated);
+      },
+
+      setAttendance: (id, attendance) => {
+        set((state) => ({
+          savedTrainings: state.savedTrainings.map((t) =>
+            t.id === id
+              ? { ...t, attendance, updatedAt: new Date().toISOString() }
+              : t
+          ),
+        }));
+        const updated = get().savedTrainings.find(t => t.id === id);
+        if (updated) syncTraining(get(), updated);
+      },
+
+      setPlayerAttendance: (id, playerId, status) => {
+        set((state) => ({
+          savedTrainings: state.savedTrainings.map((t) => {
+            if (t.id !== id) return t;
+            const next: TrainingAttendance = { ...(t.attendance ?? {}) };
+            if (status === null) delete next[playerId];
+            else next[playerId] = status;
+            return { ...t, attendance: next, updatedAt: new Date().toISOString() };
+          }),
         }));
         const updated = get().savedTrainings.find(t => t.id === id);
         if (updated) syncTraining(get(), updated);

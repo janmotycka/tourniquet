@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { PublicSeasonMatch, MatchGoal, MatchCard, MatchSubstitution, MatchLineupPlayer } from '../../types/match.types';
 import { subscribeToPublicMatch } from '../../services/match.firebase';
 import { useI18n } from '../../i18n';
+import { useLayoutMode } from '../../hooks/useLayoutMode';
 
 // ─── Wake Lock hook ─────────────────────────────────────────────────────────
 
@@ -165,6 +166,7 @@ function FullTimeCelebration({ match, ts }: { match: PublicSeasonMatch; ts: numb
 
 export function MatchPublicView({ matchId }: { matchId: string }) {
   const { t } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const [match, setMatch] = useState<PublicSeasonMatch | null>(null);
   const [loading, setLoading] = useState(true);
   const [elapsed, setElapsed] = useState(0);
@@ -350,7 +352,16 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
   const bench = match.lineup.filter(p => !p.isStarter);
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+    <div style={{
+      minHeight: '100dvh',
+      background: 'var(--bg)',
+      display: 'flex',
+      flexDirection: 'column',
+      width: '100%',
+      maxWidth: isDesktop ? 560 : undefined,
+      alignSelf: isDesktop ? 'center' : undefined,
+      boxShadow: isDesktop ? '0 0 40px rgba(0,0,0,.08)' : undefined,
+    }}>
       <style>{`
         @keyframes matchGoalCelebration {
           0% { opacity: 0; transform: scale(0.85); }
@@ -412,15 +423,27 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
       }}>
         {/* Back button */}
         <button
+          type="button"
+          aria-label={t('common.back') || 'Zpět'}
           onClick={() => {
             window.location.hash = '';
             window.location.reload();
           }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,.35)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,.2)';
+          }}
           style={{
-            position: 'absolute', left: 12, top: 14,
-            background: 'rgba(255,255,255,.2)', borderRadius: 10, padding: '6px 10px',
-            fontWeight: 700, fontSize: 14, color: (isLive || isFinished) ? '#fff' : 'var(--text-muted)',
+            position: 'absolute', left: 12, top: 12, zIndex: 5,
+            width: 40, height: 40,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(255,255,255,.2)', borderRadius: 12,
+            fontWeight: 700, fontSize: 18, lineHeight: 1,
+            color: (isLive || isFinished) ? '#fff' : 'var(--text-muted)',
             border: 'none', cursor: 'pointer', backdropFilter: 'blur(4px)',
+            transition: 'background .15s',
           }}
         >
           ←

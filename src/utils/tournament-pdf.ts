@@ -55,6 +55,15 @@ async function loadFonts(doc: JsPDFType): Promise<boolean> {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+function truncateText(doc: JsPDFType, text: string, maxW: number): string {
+  if (doc.getTextWidth(text) <= maxW) return text;
+  let t = text;
+  while (t.length > 3 && doc.getTextWidth(t + '…') > maxW) {
+    t = t.slice(0, -1);
+  }
+  return t + '…';
+}
+
 function hexToRgb(hex: string): [number, number, number] {
   const clean = hex.replace('#', '');
   return [
@@ -300,11 +309,23 @@ export async function exportTournamentPdf(
   y += 8;
 
   const hasPitches = (settings.numberOfPitches ?? 1) > 1;
-  const getTeamName = (id: string) => tournament.teams.find(t => t.id === id)?.name ?? '?';
+  const getSideName = (m: typeof tournament.matches[0], side: 'home' | 'away'): string => {
+    const id = side === 'home' ? m.homeTeamId : m.awayTeamId;
+    const placeholder = side === 'home' ? m.homeTeamPlaceholder : m.awayTeamPlaceholder;
+    if (id) {
+      const team = tournament.teams.find(tm => tm.id === id);
+      if (team) return team.name;
+    }
+    return placeholder ?? '?';
+  };
 
-  // Matches grouped by round
+  // Split matches: group phase (rendered by round) vs knockout (rendered as bracket)
+  const groupMatches = sortedMatches.filter(m => !m.stage || m.stage === 'group');
+  const knockoutMatches = sortedMatches.filter(m => m.stage && m.stage !== 'group');
+
+  // Group-phase matches grouped by round
   const rounds = new Map<number, typeof tournament.matches>();
-  for (const m of sortedMatches) {
+  for (const m of groupMatches) {
     const arr = rounds.get(m.roundIndex) ?? [];
     arr.push(m);
     rounds.set(m.roundIndex, arr);
@@ -355,7 +376,7 @@ export async function exportTournamentPdf(
     // Home team — right-aligned before score zone
     setFont('bold', matchFontSize);
     doc.setTextColor(30, 30, 30);
-    const homeName = truncateName(getTeamName(m.homeTeamId), maxHomeNameW);
+    const homeName = truncateName(getSideName(m, 'home'), maxHomeNameW);
     doc.text(homeName, homeEndX, rowY, { align: 'right' });
 
     // Score / colon — centered
@@ -373,7 +394,7 @@ export async function exportTournamentPdf(
     // Away team — left-aligned after score zone
     setFont('bold', matchFontSize);
     doc.setTextColor(30, 30, 30);
-    const awayName = truncateName(getTeamName(m.awayTeamId), maxAwayNameW);
+    const awayName = truncateName(getSideName(m, 'away'), maxAwayNameW);
     doc.text(awayName, awayStartX, rowY);
   };
 
@@ -411,6 +432,166 @@ export async function exportTournamentPdf(
     y += lineH;
   }
   y += 2;
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // 4b. PLAYOFF BRACKET (pavouk) — visual knockout diagram
+  // ═════════════════════════════════════════════════════════════════════════
+  if (knockoutMatches.length > 0) {
+    // Group by stage — column order: QF → SF → F (third-place drawn separately)
+    const byStage: Record<string, typeof knockoutMatches> = {
+      quarterfinal: [], semifinal: [], final: [], 'third-place': [],
+    };
+    for (const m of knockoutMatches) {
+      const s = m.stage ?? 'final';
+      if (byStage[s]) byStage[s].push(m);
+    }
+    for (const s of Object.keys(byStage)) {
+      byStage[s].sort((a, b) => (a.bracketPosition ?? a.matchIndex) - (b.bracketPosition ?? b.matchIndex));
+    }
+    const columns: { label: string; matches: typeof knockoutMatches }[] = [];
+    if (byStage.quarterfinal.length) columns.push({ label: t('pdf.stage.quarterfinal'), matches: byStage.quarterfinal });
+    if (byStage.semifinal.length)    columns.push({ label: t('pdf.stage.semifinal'),    matches: byStage.semifinal });
+    if (byStage.final.length)        columns.push({ label: t('pdf.stage.final'),        matches: byStage.final });
+    const thirdPlace = byStage['third-place'][0] ?? null;
+
+    const bracketSpace = columns.length * 18 + (thirdPlace ? 24 : 0) + 16; // rough estimate
+    if (y + bracketSpace > pageH - footerSpace) {
+      doc.addPage();
+      y = 15;
+    }
+
+    // Section header
+    y += 4;
+    setFont('bold', 12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(t('pdf.playoffBracket'), pageW / 2, y, { align: 'center' });
+    y += 4;
+    doc.setDrawColor(30, 30, 30);
+    doc.setLineWidth(0.4);
+    doc.line(M + 30, y, pageW - M - 30, y);
+    y += 5;
+
+    // Layout: columns distributed across available width
+    const cols = columns.length;
+    if (cols > 0) {
+      const boxW = Math.min(56, (W - 4) / cols - 4);
+      const boxH = 14; // home + separator + away
+      const colW = (W - 4) / cols;
+      const bracketStartY = y;
+
+      // Max matches in any column = first column (typically quarterfinal or semifinal)
+      const maxMatches = Math.max(...columns.map(c => c.matches.length));
+      const totalBracketH = maxMatches * (boxH + 8);
+
+      // Draw column headers
+      setFont('bold', 9);
+      doc.setTextColor(80, 80, 80);
+      columns.forEach((col, i) => {
+        const cx = M + 2 + colW * i + colW / 2;
+        doc.text(col.label.toUpperCase(), cx, bracketStartY, { align: 'center' });
+      });
+
+      const boxesStartY = bracketStartY + 4;
+
+      // Remember center Y for each drawn box to connect lines
+      const prevCenters: number[] = [];
+
+      columns.forEach((col, colIdx) => {
+        const n = col.matches.length;
+        // Center matches vertically within totalBracketH
+        const spacing = totalBracketH / n;
+        const curCenters: number[] = [];
+
+        col.matches.forEach((m, rowIdx) => {
+          const centerY = boxesStartY + spacing * (rowIdx + 0.5);
+          const boxX = M + 2 + colW * colIdx + (colW - boxW) / 2;
+          const boxY = centerY - boxH / 2;
+
+          // Box
+          doc.setDrawColor(180, 180, 180);
+          doc.setLineWidth(0.3);
+          doc.setFillColor(252, 252, 252);
+          doc.roundedRect(boxX, boxY, boxW, boxH, 1.5, 1.5, 'FD');
+
+          // Home team
+          setFont('bold', 8);
+          const homeName = getSideName(m, 'home');
+          const awayName = getSideName(m, 'away');
+          doc.setTextColor(m.homeTeamId ? 20 : 130, m.homeTeamId ? 20 : 130, m.homeTeamId ? 20 : 130);
+          const homeTrunc = truncateText(doc, homeName, boxW - 10);
+          doc.text(homeTrunc, boxX + 2, boxY + 5);
+          // Score
+          if (m.status === 'finished') {
+            doc.setTextColor(0, 0, 0);
+            doc.text(String(m.homeScore), boxX + boxW - 2, boxY + 5, { align: 'right' });
+          }
+          // Separator
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.2);
+          doc.line(boxX + 2, boxY + boxH / 2, boxX + boxW - 2, boxY + boxH / 2);
+          // Away team
+          doc.setTextColor(m.awayTeamId ? 20 : 130, m.awayTeamId ? 20 : 130, m.awayTeamId ? 20 : 130);
+          const awayTrunc = truncateText(doc, awayName, boxW - 10);
+          doc.text(awayTrunc, boxX + 2, boxY + boxH - 2.5);
+          if (m.status === 'finished') {
+            doc.setTextColor(0, 0, 0);
+            doc.text(String(m.awayScore), boxX + boxW - 2, boxY + boxH - 2.5, { align: 'right' });
+          }
+
+          curCenters.push(centerY);
+        });
+
+        // Connector lines from previous column to this column (pair by pair)
+        if (colIdx > 0 && prevCenters.length >= 2 * n) {
+          doc.setDrawColor(180, 180, 180);
+          doc.setLineWidth(0.3);
+          const prevRightX = M + 2 + colW * (colIdx - 1) + (colW + boxW) / 2;
+          const curLeftX  = M + 2 + colW * colIdx + (colW - boxW) / 2;
+          const midX = (prevRightX + curLeftX) / 2;
+          for (let i = 0; i < n; i++) {
+            const topY = prevCenters[i * 2];
+            const botY = prevCenters[i * 2 + 1];
+            const centerY = curCenters[i];
+            // Horizontal out from upper prev
+            doc.line(prevRightX, topY, midX, topY);
+            doc.line(prevRightX, botY, midX, botY);
+            // Vertical connector
+            doc.line(midX, topY, midX, botY);
+            // Horizontal into current box
+            doc.line(midX, centerY, curLeftX, centerY);
+          }
+        }
+
+        prevCenters.length = 0;
+        prevCenters.push(...curCenters);
+      });
+
+      y = boxesStartY + totalBracketH + 2;
+
+      // Third-place match — small separate box below
+      if (thirdPlace) {
+        y += 4;
+        setFont('bold', 9);
+        doc.setTextColor(80, 80, 80);
+        doc.text(t('pdf.stage.thirdPlace').toUpperCase(), pageW / 2, y, { align: 'center' });
+        y += 3;
+        const tpBoxW = 60;
+        const tpBoxH = 14;
+        const tpX = (pageW - tpBoxW) / 2;
+        doc.setDrawColor(180, 180, 180);
+        doc.setLineWidth(0.3);
+        doc.setFillColor(252, 252, 252);
+        doc.roundedRect(tpX, y, tpBoxW, tpBoxH, 1.5, 1.5, 'FD');
+        setFont('bold', 8);
+        doc.setTextColor(130, 130, 130);
+        doc.text(truncateText(doc, getSideName(thirdPlace, 'home'), tpBoxW - 10), tpX + 2, y + 5);
+        doc.setDrawColor(220, 220, 220);
+        doc.line(tpX + 2, y + tpBoxH / 2, tpX + tpBoxW - 2, y + tpBoxH / 2);
+        doc.text(truncateText(doc, getSideName(thirdPlace, 'away'), tpBoxW - 10), tpX + 2, y + tpBoxH - 2.5);
+        y += tpBoxH + 2;
+      }
+    }
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 5. PATIČKA

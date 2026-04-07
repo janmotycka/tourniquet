@@ -4,6 +4,7 @@ import { useClubsStore } from '../../store/clubs.store';
 import { useContactsStore } from '../../store/contacts.store';
 import { useTournamentStore } from '../../store/tournament.store';
 import { useMatchesStore } from '../../store/matches.store';
+import { useTrainingsStore } from '../../store/trainings.store';
 import { useConfirmStore } from '../../store/confirm.store';
 import type { Club, AgeCategory, ClubPlayer } from '../../types/club.types';
 import type { Contact } from '../../types/contact.types';
@@ -29,10 +30,12 @@ export function ClubsPage({ navigate }: Props) {
   const updateClub = useClubsStore(s => s.updateClub);
   const deleteClub = useClubsStore(s => s.deleteClub);
   const setAgeCategories = useClubsStore(s => s.setAgeCategories);
+  const movePlayerToCategory = useClubsStore(s => s.movePlayerToCategory);
 
   // Data pro statistiky hráčů
   const tournaments = useTournamentStore(s => s.tournaments);
   const seasonMatches = useMatchesStore(s => s.matches);
+  const trainings = useTrainingsStore(s => s.savedTrainings);
 
   // Contacts
   const contacts = useContactsStore(s => s.contacts);
@@ -66,8 +69,8 @@ export function ClubsPage({ navigate }: Props) {
   // Statistiky hráčů — memoizované pro celý klub
   const getPlayerStats = useCallback((player: ClubPlayer): PlayerStats | null => {
     if (!myClub) return null;
-    return aggregatePlayerStats(player, myClub.id, tournaments, seasonMatches);
-  }, [myClub, tournaments, seasonMatches]);
+    return aggregatePlayerStats(player, myClub.id, tournaments, seasonMatches, trainings);
+  }, [myClub, tournaments, seasonMatches, trainings]);
 
   // Player detail handlers
   const handlePlayerTap = useCallback((player: ClubPlayer) => {
@@ -339,6 +342,14 @@ export function ClubsPage({ navigate }: Props) {
           }}
           onClose={() => setSelectedPlayer(null)}
           onEdit={handlePlayerEditFromDetail}
+          onMoveCategory={(newCat) => {
+            movePlayerToCategory(myClub.id, selectedPlayer.id, newCat);
+            // Refresh local selection so UI re-renders with new category
+            const updated = useClubsStore.getState().clubs
+              .find(c => c.id === myClub.id)?.players
+              .find(p => p.id === selectedPlayer.id);
+            if (updated) setSelectedPlayer(updated);
+          }}
         />
       )}
     </div>

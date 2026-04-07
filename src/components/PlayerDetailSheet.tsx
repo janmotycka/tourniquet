@@ -2,7 +2,9 @@
  * PlayerDetailSheet — bottom-sheet s kartou hráče a statistikami.
  */
 
-import type { ClubPlayer, Club } from '../types/club.types';
+import { useState } from 'react';
+import type { ClubPlayer, Club, AgeCategory } from '../types/club.types';
+import { AGE_CATEGORIES } from '../types/club.types';
 import type { PlayerStats } from '../utils/player-stats';
 import { useI18n } from '../i18n';
 
@@ -12,6 +14,7 @@ interface Props {
   stats: PlayerStats;
   onClose: () => void;
   onEdit: () => void;
+  onMoveCategory?: (newCategory: AgeCategory) => void;
 }
 
 function StatBox({ value, label, icon, color }: {
@@ -30,8 +33,21 @@ function StatBox({ value, label, icon, color }: {
   );
 }
 
-export function PlayerDetailSheet({ player, club, stats, onClose, onEdit }: Props) {
+export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMoveCategory }: Props) {
   const { t } = useI18n();
+  const [moveOpen, setMoveOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  const handleMove = (cat: AgeCategory) => {
+    if (cat === player.ageCategory) { setMoveOpen(false); return; }
+    const msg = t('clubs.moveCategoryConfirm', { name: player.name, from: player.ageCategory, to: cat });
+    if (window.confirm(msg)) {
+      onMoveCategory?.(cat);
+      setMoveOpen(false);
+    }
+  };
+
+  const history = player.categoryHistory ?? [];
 
   const age = player.birthYear
     ? new Date().getFullYear() - player.birthYear
@@ -137,6 +153,95 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit }: Prop
               >✏️</button>
             </div>
           </div>
+
+          {/* ── Přesun do kategorie + historie ── */}
+          {onMoveCategory && (
+            <div style={{
+              background: 'var(--bg)', borderRadius: 14, padding: '12px 14px',
+              marginBottom: 12,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1, fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+                  📂 {t('clubs.moveCategory')}
+                </div>
+                <button
+                  onClick={() => setMoveOpen(o => !o)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                    background: 'var(--primary-light)', color: 'var(--primary)',
+                    border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  {player.ageCategory} ▾
+                </button>
+              </div>
+
+              {moveOpen && (
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10,
+                  paddingTop: 10, borderTop: '1px solid var(--border)',
+                }}>
+                  {AGE_CATEGORIES.map(cat => {
+                    const isCurrent = cat === player.ageCategory;
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => handleMove(cat)}
+                        disabled={isCurrent}
+                        style={{
+                          padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                          background: isCurrent ? 'var(--primary)' : 'var(--surface-var)',
+                          color: isCurrent ? '#fff' : 'var(--text)',
+                          border: 'none', cursor: isCurrent ? 'default' : 'pointer',
+                          opacity: isCurrent ? 0.7 : 1,
+                        }}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {history.length > 0 && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+                  <button
+                    onClick={() => setHistoryOpen(o => !o)}
+                    style={{
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      background: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+                      fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
+                    }}
+                  >
+                    <span>🕒 {t('clubs.categoryHistory')} ({history.length})</span>
+                    <span>{historyOpen ? '▲' : '▼'}</span>
+                  </button>
+                  {historyOpen && (
+                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {[...history]
+                        .sort((a, b) => (a.from < b.from ? 1 : -1))
+                        .map((h, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              fontSize: 12, color: 'var(--text)',
+                              padding: '4px 8px', borderRadius: 6,
+                              background: !h.to ? 'var(--primary-light)' : 'var(--surface-var)',
+                            }}
+                          >
+                            <span style={{ fontWeight: 700, minWidth: 36 }}>{h.category}</span>
+                            <span style={{ color: 'var(--text-muted)' }}>
+                              {h.from}{h.to ? ` → ${h.to}` : ' →'}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Souhrn — hlavní čísla ── */}
           <div style={{
@@ -264,8 +369,60 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit }: Prop
             )}
           </div>
 
+          {/* ── Tréninky / docházka ── */}
+          {stats.trainingsTotal > 0 && (
+            <div style={{
+              background: 'var(--bg)', borderRadius: 14, padding: '14px 16px',
+              marginBottom: 10,
+            }}>
+              <div style={{
+                fontWeight: 700, fontSize: 13, color: 'var(--text-muted)',
+                marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                📝 {t('playerDetail.trainings')}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#2E7D32' }}>
+                    {stats.trainingsPresent}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {t('training.attendance.present')}
+                  </div>
+                </div>
+                <div style={{ width: 1, background: 'var(--border)' }} />
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#C62828' }}>
+                    {stats.trainingsAbsent}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {t('training.attendance.absent')}
+                  </div>
+                </div>
+                <div style={{ width: 1, background: 'var(--border)' }} />
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#F9A825' }}>
+                    {stats.trainingsExcused}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {t('training.attendance.excused')}
+                  </div>
+                </div>
+                <div style={{ width: 1, background: 'var(--border)' }} />
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>
+                    {stats.attendanceRate ?? 0}%
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {t('playerDetail.attendanceRate')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Empty state — žádné statistiky ── */}
-          {stats.totalMatches === 0 && (
+          {stats.totalMatches === 0 && stats.trainingsTotal === 0 && (
             <div style={{
               textAlign: 'center', padding: '16px 0', color: 'var(--text-muted)', fontSize: 13,
             }}>
