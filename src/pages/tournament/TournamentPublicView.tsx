@@ -205,7 +205,6 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
       }
     });
     return unsub;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId]);
 
   const handleRefresh = useCallback(() => {

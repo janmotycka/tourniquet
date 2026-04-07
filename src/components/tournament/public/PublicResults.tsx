@@ -444,6 +444,9 @@ export function PublicResults({ tournament, selectedTeamId }: { tournament: Tour
     for (const id of prev.keys()) {
       if (!liveIds.has(id)) prev.delete(id);
     }
+    // getTeam and t are stable within a render cycle; tracking them would
+    // cause spurious re-runs of the goal-celebration effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveMatches, finishedMatches]);
 
   const totalMatches = liveMatches.length + scheduledMatches.length + finishedMatches.length;

@@ -115,6 +115,9 @@ export function LiveReactions({ tournamentId, matchId, homeTeam, awayTeam, readO
       setCounts(newCounts);
     });
     return unsub;
+    // Effect only uses .id from homeTeam/awayTeam which are already tracked;
+    // adding the full objects would cause unnecessary re-subscribes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId, matchId, homeTeam.id, awayTeam.id]);
 
   const handleTap = useCallback(async (teamId: string, emoji: ReactionEmoji) => {

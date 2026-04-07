@@ -204,7 +204,6 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
   // Live timer
   useEffect(() => {
     if (!match || match.status !== 'live' || match.pausedAt) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setElapsed(computeElapsed(match)); // initial sync from match prop
     const interval = setInterval(() => setElapsed(computeElapsed(match)), 1000);
     return () => clearInterval(interval);
@@ -213,7 +212,6 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
   // Update elapsed on match change (for paused/finished)
   useEffect(() => {
     if (match && match.status !== 'live') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setElapsed(computeElapsed(match)); // sync after match status change
     }
   }, [match]);
@@ -256,7 +254,6 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         // Clear previous goal timer
         if (goalTimerRef.current) clearTimeout(goalTimerRef.current);
 
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setGoalCelebration({ isOurGoal, scorerName, minute, ts: Date.now() }); // trigger goal celebration animation
 
         // Send browser notification
@@ -286,6 +283,8 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         finishTimerRef.current = null;
       }, FINISH_CELEBRATION_DURATION);
     }
+    // notify and t are stable from hooks; only `match` drives this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match]);
 
   // Cleanup timers
