@@ -35,6 +35,23 @@ interface PageState {
 
   adminJoinRole: 'admin' | undefined;
   setAdminJoinRole: (v: 'admin' | undefined) => void;
+
+  /** Pending invite for sdílený klub (z URL ?join=club&id=...) */
+  clubJoinIntent: { inviteId: string } | null;
+  setClubJoinIntent: (intent: { inviteId: string } | null) => void;
+}
+
+function getInitialClubJoinIntent(): { inviteId: string } | null {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('join') === 'club') {
+      const id = params.get('id');
+      if (id) return { inviteId: id };
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
 export const usePageStore = create<PageState>(() => ({
@@ -55,4 +72,7 @@ export const usePageStore = create<PageState>(() => ({
     return params.get('role') === 'admin' ? 'admin' as const : undefined;
   })(),
   setAdminJoinRole: (v) => usePageStore.setState({ adminJoinRole: v }),
+
+  clubJoinIntent: getInitialClubJoinIntent(),
+  setClubJoinIntent: (intent) => usePageStore.setState({ clubJoinIntent: intent }),
 }));

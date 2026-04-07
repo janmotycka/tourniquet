@@ -1,8 +1,45 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { ref as dbRef, get as dbGet } from 'firebase/database';
 import type { Page } from '../../App';
+import { db } from '../../firebase';
 import { useI18n } from '../../i18n';
 import { useClubsStore } from '../../store/clubs.store';
 import { AGE_CATEGORIES, type AgeCategory } from '../../types/club.types';
+import { resizeLogoToBase64 } from '../clubs/resize-logo';
+import { useToastStore } from '../../store/toast.store';
+import { logger } from '../../utils/logger';
+import { createPersonalClub, requestOfficialClub } from '../../services/club-functions';
+import { useAuth } from '../../context/AuthContext';
+
+interface CatalogClub {
+  id: string;
+  name: string;
+  city?: string;
+  logoUrl?: string;
+  source: string;
+}
+
+// Fetch logo URL → base64 (so we can persist it offline-first like manual uploads).
+// Wikimedia Commons sends Access-Control-Allow-Origin: * so CORS works in browser.
+async function urlToBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { mode: 'cors', headers: { Accept: 'image/*' } });
+    if (!res.ok) {
+      logger.warn('[OnboardingWizard] Logo fetch failed:', res.status, url);
+      return null;
+    }
+    const blob = await res.blob();
+    return await new Promise<string | null>((resolve) => {
+      const r = new FileReader();
+      r.onloadend = () => resolve(typeof r.result === 'string' ? r.result : null);
+      r.onerror = () => resolve(null);
+      r.readAsDataURL(blob);
+    });
+  } catch (err) {
+    logger.warn('[OnboardingWizard] Logo fetch threw:', err);
+    return null;
+  }
+}
 
 const STORAGE_KEY = 'torq_onboarded';
 
@@ -25,16 +62,80 @@ const CLUB_COLORS = [
 
 export function OnboardingWizard({ navigate, onComplete }: Props) {
   const { t } = useI18n();
+  const { user } = useAuth();
   const createClub = useClubsStore(s => s.createClub);
   const addPlayer = useClubsStore(s => s.addPlayer);
+  const loadSharedClubs = useClubsStore(s => s.loadSharedClubs);
 
   const [step, setStep] = useState<Step>('welcome');
 
   // Club state
   const [clubName, setClubName] = useState('');
   const [clubColor, setClubColor] = useState(CLUB_COLORS[0]);
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+  const [logoLoading, setLogoLoading] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<AgeCategory[]>([]);
   const [createdClubId, setCreatedClubId] = useState<string | null>(null);
+  const logoRef = useRef<HTMLInputElement>(null);
+
+  // Catalog autocomplete
+  const [catalog, setCatalog] = useState<CatalogClub[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [catalogQuery, setCatalogQuery] = useState('');
+  const [catalogPickedFrom, setCatalogPickedFrom] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    dbGet(dbRef(db, 'clubsCatalog'))
+      .then((snap) => {
+        if (cancelled) return;
+        const data = snap.val() as Record<string, CatalogClub> | null;
+        setCatalog(data ? Object.values(data) : []);
+      })
+      .catch(() => {
+        /* catalog optional — fail silently */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const catalogResults = useMemo(() => {
+    const q = catalogQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+    return catalog
+      .filter((c) => c.name.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 8);
+  }, [catalog, catalogQuery]);
+
+  const pickCatalogClub = async (c: CatalogClub) => {
+    setClubName(c.name);
+    setCatalogPickedFrom(c.id);
+    setSearchOpen(false);
+    setCatalogQuery('');
+    if (c.logoUrl) {
+      setLogoLoading(true);
+      const b64 = await urlToBase64(c.logoUrl);
+      if (b64) setLogoBase64(b64);
+      setLogoLoading(false);
+    }
+  };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoLoading(true);
+    try {
+      const b64 = await resizeLogoToBase64(file);
+      setLogoBase64(b64);
+    } catch {
+      useToastStore.getState().show('error', t('clubs.imageError'));
+    } finally {
+      setLogoLoading(false);
+      if (logoRef.current) logoRef.current.value = '';
+    }
+  };
 
   // Players state
   const [players, setPlayers] = useState<Array<{ name: string; jersey: string }>>([
@@ -46,15 +147,58 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
     onComplete();
   }, [onComplete]);
 
-  const handleCreateClub = () => {
-    if (!clubName.trim()) return;
-    const club = createClub({
-      name: clubName.trim(),
-      color: clubColor,
-      ageCategories: selectedCategories.length > 0 ? selectedCategories : ['U10'],
-    });
-    setCreatedClubId(club.id);
-    setStep('players');
+  const [creatingClub, setCreatingClub] = useState(false);
+
+  const handleCreateClub = async () => {
+    if (!clubName.trim() || creatingClub) return;
+    setCreatingClub(true);
+    try {
+      // 1) Vytvoř shared club (Cloud Function — single source of truth pro nový model)
+      if (catalogPickedFrom) {
+        await requestOfficialClub({
+          catalogId: catalogPickedFrom,
+          catalogName: clubName.trim(),
+          requesterName: user?.displayName || user?.email || 'Unknown',
+          requesterRole: 'Coach',
+        });
+        useToastStore.getState().show('info', t('clubs.shared.requestForm.sent'));
+      } else {
+        const res = await createPersonalClub({
+          name: clubName.trim(),
+          color: clubColor,
+          logoBase64,
+        });
+        if (user?.uid) {
+          await loadSharedClubs(user.uid);
+        }
+        logger.debug('[Onboarding] Created shared club:', res.clubId);
+      }
+
+      // 2) Mirror do legacy clubs store kvůli "players" step v tomto wizardu —
+      //    legacy addPlayer() píše do localStorage + /users/{uid}/clubs/{id}.
+      //    TODO: až bude addPlayer migrován na shared scope, tenhle mirror odstranit.
+      const localClub = createClub({
+        name: clubName.trim(),
+        color: clubColor,
+        logoBase64,
+        ageCategories: selectedCategories.length > 0 ? selectedCategories : ['U10'],
+      });
+      setCreatedClubId(localClub.id);
+
+      setStep('players');
+    } catch (err) {
+      logger.warn('[Onboarding] handleCreateClub failed:', err);
+      const msg = (err as Error).message || '';
+      if (msg.toLowerCase().includes('limit')) {
+        useToastStore.getState().show('error', t('clubs.shared.createPersonalLimit'));
+      } else if (msg.toLowerCase().includes('already')) {
+        useToastStore.getState().show('error', t('clubs.shared.requestForm.errorAlreadyClaimed'));
+      } else {
+        useToastStore.getState().show('error', msg || 'Error');
+      }
+    } finally {
+      setCreatingClub(false);
+    }
   };
 
   const handleSavePlayers = () => {
@@ -95,6 +239,12 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
     background: 'var(--bg)', padding: '0 20px',
   };
 
+  // Centered content wrapper — drží wizard v rozumné šířce na desktopu
+  const contentWrapStyle: React.CSSProperties = {
+    width: '100%', maxWidth: 560, margin: '0 auto',
+    flex: 1, display: 'flex', flexDirection: 'column',
+  };
+
   const btnPrimary: React.CSSProperties = {
     width: '100%', padding: '14px', borderRadius: 14,
     background: 'var(--primary)', color: '#fff',
@@ -119,7 +269,6 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   // ─── Progress bar ──────────────────────────────────────────────────────────
 
   const stepIndex = step === 'welcome' ? 0 : step === 'club' ? 1 : step === 'players' ? 2 : 3;
-  const progress = stepIndex / 3;
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -130,6 +279,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
         @keyframes confettiBounce { 0% { transform: scale(0.3); opacity: 0; } 50% { transform: scale(1.15); } 100% { transform: scale(1); opacity: 1; } }
       `}</style>
 
+      <div style={contentWrapStyle}>
       {/* Progress bar */}
       {step !== 'welcome' && step !== 'done' && (
         <div style={{ padding: '16px 0 0', display: 'flex', gap: 6 }}>
@@ -181,18 +331,141 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
             <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>{t('wizard.createClubDesc')}</p>
           </div>
 
-          {/* Club name */}
-          <div>
-            <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: 'block' }}>
-              {t('wizard.clubName')}
-            </label>
-            <input
-              value={clubName}
-              onChange={e => setClubName(e.target.value)}
-              placeholder={t('wizard.clubNamePlaceholder')}
-              style={inputStyle}
-              autoFocus
-            />
+          {/* Logo + Club name vedle sebe */}
+          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
+            {/* Logo */}
+            <div>
+              <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: 'block' }}>
+                {t('clubs.logoLabel')}
+              </label>
+              <input
+                ref={logoRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleLogoChange}
+              />
+              <button
+                onClick={() => logoRef.current?.click()}
+                disabled={logoLoading}
+                style={{
+                  width: 64, height: 64, borderRadius: 14, overflow: 'hidden',
+                  border: '2px dashed var(--border)', flexShrink: 0, padding: 0,
+                  background: logoBase64 ? 'transparent' : 'var(--surface)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
+                title={t('clubs.uploadLogo')}
+              >
+                {logoBase64
+                  ? <img src={logoBase64} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: 22, opacity: 0.5 }}>{logoLoading ? '⏳' : '📷'}</span>
+                }
+              </button>
+              {logoBase64 && (
+                <button
+                  onClick={() => setLogoBase64(null)}
+                  style={{
+                    fontSize: 11, color: '#C62828', background: 'transparent',
+                    border: 'none', padding: '4px 0', marginTop: 2, cursor: 'pointer',
+                  }}
+                >
+                  {t('clubs.removeLogo')}
+                </button>
+              )}
+            </div>
+
+            {/* Club name */}
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, display: 'block' }}>
+                {t('wizard.clubName')}
+              </label>
+              <input
+                value={clubName}
+                onChange={e => setClubName(e.target.value)}
+                placeholder={t('wizard.clubNamePlaceholder')}
+                style={inputStyle}
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {/* Catalog autocomplete */}
+          {catalog.length > 0 && (
+            <div>
+              <button
+                onClick={() => setSearchOpen((v) => !v)}
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: 10,
+                  background: 'var(--primary-light)', color: 'var(--primary)',
+                  border: '1px dashed var(--primary)', fontWeight: 700, fontSize: 13,
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                🔍 {t('wizard.clubSearch')}
+                {catalogPickedFrom && <span style={{ fontSize: 11, marginLeft: 8, opacity: 0.7 }}>· {t('wizard.clubFromCatalog')}</span>}
+              </button>
+              {searchOpen && (
+                <div style={{ marginTop: 8 }}>
+                  <input
+                    type="search"
+                    value={catalogQuery}
+                    onChange={(e) => setCatalogQuery(e.target.value)}
+                    placeholder={t('wizard.clubSearchPlaceholder')}
+                    autoFocus
+                    style={inputStyle}
+                  />
+                  {catalogQuery.trim().length >= 2 && (
+                    <div style={{
+                      marginTop: 6, maxHeight: 240, overflowY: 'auto',
+                      border: '1px solid var(--border)', borderRadius: 10,
+                      background: 'var(--surface)',
+                    }}>
+                      {catalogResults.length === 0 ? (
+                        <div style={{ padding: 12, fontSize: 12, color: 'var(--text-muted)' }}>
+                          {t('wizard.clubNotFound')}
+                        </div>
+                      ) : (
+                        catalogResults.map((c) => (
+                          <button
+                            key={c.id}
+                            onClick={() => pickCatalogClub(c)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 10,
+                              width: '100%', padding: '10px 12px',
+                              background: 'transparent', border: 'none',
+                              borderBottom: '1px solid var(--border)',
+                              cursor: 'pointer', textAlign: 'left',
+                            }}
+                          >
+                            {c.logoUrl ? (
+                              <img src={c.logoUrl} alt="" style={{ width: 28, height: 28, objectFit: 'contain', flexShrink: 0 }} />
+                            ) : (
+                              <div style={{ width: 28, height: 28, borderRadius: 6, background: 'var(--surface-var)', flexShrink: 0 }} />
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{c.name}</div>
+                              {c.city && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{c.city}</div>}
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+                    {t('wizard.clubSearchHint')}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* FAČR poznámka */}
+          <div style={{
+            fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5,
+            background: 'var(--primary-light)', padding: '10px 12px', borderRadius: 10,
+          }}>
+            ℹ️ {t('wizard.facrNote')}
           </div>
 
           {/* Color picker */}
@@ -339,6 +612,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

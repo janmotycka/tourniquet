@@ -1,8 +1,14 @@
+import { useMemo } from 'react';
 import type { Page } from '../App';
 import { useAuth } from '../context/AuthContext';
 import { useSubscriptionStore } from '../store/subscription.store';
+import { useMatchesStore } from '../store/matches.store';
+import { useTournamentStore } from '../store/tournament.store';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { useI18n } from '../i18n';
+import { useLayoutMode } from '../hooks/useLayoutMode';
+import { DesktopPage } from '../components/desktop/DesktopPage';
+import { ClubSwitcher } from '../components/clubs/ClubSwitcher';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -11,6 +17,201 @@ export function HomePage({ navigate }: Props) {
   const isPremium = useSubscriptionStore(s => s.isPremium);
   const { t } = useI18n();
   const { canInstall, install } = usePWAInstall();
+  const { isDesktop } = useLayoutMode();
+
+  // Live overview — currently running matches & active tournaments
+  const matches = useMatchesStore(s => s.matches);
+  const tournaments = useTournamentStore(s => s.tournaments);
+  const liveMatches = useMemo(() => matches.filter(m => m.status === 'live'), [matches]);
+  const activeTournaments = useMemo(() => tournaments.filter(tt => tt.status === 'active'), [tournaments]);
+  const hasLive = liveMatches.length > 0 || activeTournaments.length > 0;
+
+  if (isDesktop) {
+    const upcomingMatches = matches
+      .filter(m => m.status !== 'finished' && m.status !== 'live')
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
+      .slice(0, 5);
+
+    return (
+      <DesktopPage
+        title={t('home.greeting')}
+        subtitle={user?.displayName ?? user?.email ?? t('home.loggedIn')}
+      >
+        {/* ─── Live now — prominent only when something is live ──────────── */}
+        {hasLive && (
+          <section style={{
+            background: 'var(--surface)',
+            border: '1.5px solid #C62828',
+            borderRadius: 16,
+            padding: '18px 22px',
+            marginBottom: 24,
+            boxShadow: '0 0 0 4px rgba(198, 40, 40, 0.08)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <span aria-hidden style={{
+                width: 10, height: 10, borderRadius: '50%',
+                background: '#C62828', animation: 'pulse 1.4s ease-in-out infinite',
+              }} />
+              <h2 style={{
+                fontSize: 13, fontWeight: 800, color: '#C62828',
+                textTransform: 'uppercase', letterSpacing: 0.5,
+              }}>
+                {t('home.liveNow')}
+              </h2>
+              <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+                {liveMatches.length + activeTournaments.length}
+              </span>
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: 10,
+            }}>
+              {liveMatches.map(m => {
+                const our = m.isHome ? m.homeScore : m.awayScore;
+                const their = m.isHome ? m.awayScore : m.homeScore;
+                const ourName = m.clubName ?? t('match.our');
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => navigate({ name: 'match-detail', matchId: m.id })}
+                    style={liveCardStyle}
+                  >
+                    <span style={liveBadgeStyle('#C62828')}>LIVE</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>
+                        {ourName} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>vs</span> {m.opponent}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {m.competition || t('home.match')}
+                      </div>
+                    </div>
+                    <div style={liveScoreStyle}>{our}:{their}</div>
+                  </button>
+                );
+              })}
+              {activeTournaments.map(tt => {
+                const matchesPlayed = tt.matches.filter(mm => mm.status === 'finished').length;
+                const matchesTotal = tt.matches.length;
+                return (
+                  <button
+                    key={tt.id}
+                    onClick={() => navigate({ name: 'tournament-detail', tournamentId: tt.id })}
+                    style={liveCardStyle}
+                  >
+                    <span style={liveBadgeStyle('#E65100')}>🏆</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>{tt.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {tt.teams.length} {t('table.teams').toLowerCase()} · {matchesPlayed}/{matchesTotal} {t('table.matches').toLowerCase()}
+                      </div>
+                    </div>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 18 }}>→</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Public events feed entry */}
+        <button
+          onClick={() => navigate({ name: 'public-feed' })}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 14,
+            width: '100%', padding: '14px 18px',
+            background: 'linear-gradient(135deg, #1A237E 0%, #283593 100%)',
+            color: '#fff', border: 'none', borderRadius: 14,
+            cursor: 'pointer', marginBottom: 24, textAlign: 'left',
+            boxShadow: '0 4px 16px rgba(26,35,126,.18)',
+          }}
+        >
+          <span style={{ fontSize: 24 }}>📡</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: 14 }}>{t('home.publicFeedTitle')}</div>
+            <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>{t('home.publicFeedSub')}</div>
+          </div>
+          <span style={{ fontSize: 18, opacity: 0.8 }}>→</span>
+        </button>
+
+        {/* ─── Main 2-column grid: Upcoming | Activity feed ──────────────── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.6fr) minmax(0, 1fr)',
+          gap: 20,
+          alignItems: 'start',
+        }}>
+          {/* LEFT: Upcoming matches */}
+          <DashSection
+            title={t('home.upcoming') || 'Nadcházející'}
+            action={upcomingMatches.length > 0 ? { label: t('common.all') || 'Vše', onClick: () => navigate({ name: 'match-list' }) } : undefined}
+          >
+            {upcomingMatches.length === 0 ? (
+              <EmptyRow text={t('home.noUpcoming') || 'Žádné nadcházející zápasy'} />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {upcomingMatches.map(m => {
+                  const ourName = m.clubName ?? t('match.our');
+                  const date = m.date ? new Date(m.date).toLocaleDateString() : '—';
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => navigate({ name: 'match-detail', matchId: m.id })}
+                      style={listRowStyle}
+                    >
+                      <div style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                        minWidth: 48, padding: '4px 8px', borderRadius: 8,
+                        background: 'var(--surface-var)',
+                      }}>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>
+                          {date.split('/')[0] || date.split('.')[0]}
+                        </span>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>
+                          {ourName} <span style={{ color: 'var(--text-muted)' }}>vs</span> {m.opponent}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                          {m.competition || t('home.match')} · {date}
+                        </div>
+                      </div>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </DashSection>
+
+          {/* RIGHT: Activity feed / notifications (placeholder for now) */}
+          <DashSection title={t('home.activity') || 'Novinky a upozornění'}>
+            <EmptyRow text={t('home.activityEmpty') || 'Zatím žádné novinky'} />
+            {!isPremium() && (
+              <button
+                onClick={() => navigate({ name: 'settings' })}
+                style={{
+                  marginTop: 12,
+                  width: '100%',
+                  background: 'linear-gradient(135deg, #FFF8E1 0%, #FFE082 100%)',
+                  border: '1.5px solid #FFD54F', borderRadius: 12,
+                  padding: '14px 16px', textAlign: 'left', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                }}
+              >
+                <span style={{ fontSize: 22 }}>⭐</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#E65100' }}>{t('home.premiumBanner')}</div>
+                  <div style={{ fontSize: 11, color: '#BF360C', marginTop: 2 }}>{t('subscription.price')}</div>
+                </div>
+                <span style={{ color: '#E65100' }}>→</span>
+              </button>
+            )}
+          </DashSection>
+        </div>
+      </DesktopPage>
+    );
+  }
 
   return (
     <div style={{
@@ -46,6 +247,146 @@ export function HomePage({ navigate }: Props) {
           ⚙️
         </button>
       </div>
+
+      {/* Active club switcher (shared workspaces) */}
+      <ClubSwitcher navigate={navigate} compact />
+
+
+      {/* ─── LIVE NOW — currently running matches & tournaments ──────────── */}
+      {hasLive && (
+        <section
+          aria-label={t('home.liveNow')}
+          style={{
+            background: 'var(--surface)',
+            borderRadius: 16,
+            padding: '14px 16px 16px',
+            border: '1.5px solid #C62828',
+            boxShadow: '0 0 0 4px rgba(198, 40, 40, 0.08)',
+            display: 'flex', flexDirection: 'column', gap: 12,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span
+              aria-hidden
+              style={{
+                width: 10, height: 10, borderRadius: '50%',
+                background: '#C62828',
+                animation: 'pulse 1.4s ease-in-out infinite',
+                flexShrink: 0,
+              }}
+            />
+            <h2 style={{ fontWeight: 800, fontSize: 14, color: '#C62828', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {t('home.liveNow')}
+            </h2>
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+              {liveMatches.length + activeTournaments.length}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {liveMatches.map(m => {
+              const our = m.isHome ? m.homeScore : m.awayScore;
+              const their = m.isHome ? m.awayScore : m.homeScore;
+              const ourName = m.clubName ?? t('match.our');
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => navigate({ name: 'match-detail', matchId: m.id })}
+                  style={{
+                    background: 'var(--surface-var)',
+                    borderRadius: 12, padding: '12px 14px',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    width: '100%', textAlign: 'left',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  <span style={{
+                    fontSize: 10, fontWeight: 800, color: '#fff', background: '#C62828',
+                    padding: '3px 8px', borderRadius: 6, letterSpacing: 0.5, flexShrink: 0,
+                  }}>
+                    LIVE
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontWeight: 700, fontSize: 14, color: 'var(--text)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {ourName} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>vs</span> {m.opponent}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                      {m.competition || t('home.match')}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontWeight: 900, fontSize: 18, color: 'var(--text)',
+                    background: 'var(--surface)', borderRadius: 8, padding: '4px 10px',
+                    flexShrink: 0,
+                  }}>
+                    {our}:{their}
+                  </div>
+                </button>
+              );
+            })}
+
+            {activeTournaments.map(tt => {
+              const matchesPlayed = tt.matches.filter(mm => mm.status === 'finished').length;
+              const matchesTotal = tt.matches.length;
+              return (
+                <button
+                  key={tt.id}
+                  onClick={() => navigate({ name: 'tournament-detail', tournamentId: tt.id })}
+                  style={{
+                    background: 'var(--surface-var)',
+                    borderRadius: 12, padding: '12px 14px',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    width: '100%', textAlign: 'left',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  <span style={{
+                    fontSize: 10, fontWeight: 800, color: '#fff', background: '#E65100',
+                    padding: '3px 8px', borderRadius: 6, letterSpacing: 0.5, flexShrink: 0,
+                  }}>
+                    🏆
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontWeight: 700, fontSize: 14, color: 'var(--text)',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {tt.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                      {tt.teams.length} {t('table.teams').toLowerCase()} · {matchesPlayed}/{matchesTotal} {t('table.matches').toLowerCase()}
+                    </div>
+                  </div>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 18, flexShrink: 0 }}>→</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Public events feed entry */}
+      <button
+        onClick={() => navigate({ name: 'public-feed' })}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 14,
+          width: '100%', padding: '14px 18px',
+          background: 'linear-gradient(135deg, #1A237E 0%, #283593 100%)',
+          color: '#fff', border: 'none', borderRadius: 14,
+          cursor: 'pointer', textAlign: 'left',
+          boxShadow: '0 4px 16px rgba(26,35,126,.18)',
+        }}
+      >
+        <span style={{ fontSize: 24 }}>📡</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: 14 }}>{t('home.publicFeedTitle')}</div>
+          <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>{t('home.publicFeedSub')}</div>
+        </div>
+        <span style={{ fontSize: 18, opacity: 0.8 }}>→</span>
+      </button>
 
       {/* Upgrade CTA banner for free users */}
       {!isPremium() && (
@@ -218,6 +559,87 @@ export function HomePage({ navigate }: Props) {
         </a>
       </div>
 
+    </div>
+  );
+}
+
+// ─── Desktop dashboard helpers ──────────────────────────────────────────────
+const listRowStyle: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 12,
+  padding: '10px 12px',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
+  borderRadius: 10,
+  width: '100%', textAlign: 'left', cursor: 'pointer',
+};
+
+const liveCardStyle: React.CSSProperties = {
+  background: 'var(--surface-var)',
+  borderRadius: 12, padding: '12px 14px',
+  display: 'flex', alignItems: 'center', gap: 12,
+  width: '100%', textAlign: 'left',
+  border: '1px solid var(--border)', cursor: 'pointer',
+};
+
+const liveScoreStyle: React.CSSProperties = {
+  fontWeight: 900, fontSize: 18, color: 'var(--text)',
+  background: 'var(--surface)', borderRadius: 8, padding: '4px 10px',
+  flexShrink: 0,
+};
+
+function liveBadgeStyle(bg: string): React.CSSProperties {
+  return {
+    fontSize: 10, fontWeight: 800, color: '#fff', background: bg,
+    padding: '3px 8px', borderRadius: 6, letterSpacing: 0.5, flexShrink: 0,
+  };
+}
+
+function DashSection({ title, action, children }: {
+  title: string;
+  action?: { label: string; onClick: () => void };
+  children: React.ReactNode;
+}) {
+  return (
+    <section style={{
+      background: 'var(--surface)',
+      border: '1px solid var(--border)',
+      borderRadius: 14,
+      padding: '18px 20px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
+        <h2 style={{
+          fontSize: 12, fontWeight: 800, color: 'var(--text-muted)',
+          textTransform: 'uppercase', letterSpacing: 0.6, flex: 1,
+        }}>
+          {title}
+        </h2>
+        {action && (
+          <button
+            onClick={action.onClick}
+            style={{
+              background: 'transparent', border: 'none',
+              color: 'var(--primary)', fontSize: 12, fontWeight: 700,
+              cursor: 'pointer', padding: 0,
+            }}
+          >
+            {action.label} →
+          </button>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EmptyRow({ text }: { text: string }) {
+  return (
+    <div style={{
+      padding: '24px 16px', textAlign: 'center',
+      color: 'var(--text-muted)', fontSize: 13,
+      background: 'var(--surface-var)', borderRadius: 10,
+      border: '1px dashed var(--border)',
+    }}>
+      {text}
     </div>
   );
 }

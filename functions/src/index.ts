@@ -12,4 +12,34 @@
 export { createCheckoutSession, createPortalSession } from './stripe';
 export { stripeWebhook } from './webhook';
 export { onNewRegistration, rosterReminder } from './notifications';
-export { adminSetSubscription, adminListUsers } from './admin';
+export {
+  adminSetSubscription,
+  adminListUsers,
+  adminSetUserBlock,
+  adminPurgeUserTournaments,
+  adminGetStats,
+  adminSyncClubsCatalog,
+  adminApproveClubSubmission,
+  adminUpdateCatalogClub,
+  adminDeleteCatalogClub,
+} from './admin';
+
+// Shared Club Workspaces — multi-coach club membership
+export {
+  createPersonalClub,
+  requestOfficialClub,
+  adminApproveClubRequest,
+  adminRejectClubRequest,
+  adminListClubRequests,
+  createClubInvite,
+  joinClubByInvite,
+  revokeClubInvite,
+  listClubInvites,
+  removeClubMember,
+  changeClubMemberRole,
+  leaveClub,
+  adminAddClubMember,
+  adminTransferClubOwnership,
+  adminDeleteClub,
+  migrateUserClubs,
+} from './clubs';

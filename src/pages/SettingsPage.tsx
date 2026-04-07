@@ -10,6 +10,9 @@ import { useI18n, getCurrencyForLocale, getDateLocale } from '../i18n';
 import type { Locale } from '../i18n';
 import { useTheme } from '../theme/ThemeContext';
 import type { ThemePreference } from '../theme/ThemeContext';
+import { useLayoutMode } from '../hooks/useLayoutMode';
+import type { LayoutModePreference } from '../hooks/useLayoutMode';
+import { ADMIN_UID } from '../constants/admin';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -25,6 +28,7 @@ export function SettingsPage({ navigate }: Props) {
   const showToast = useToastStore(s => s.show);
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useTheme();
+  const { preference: layoutPreference, setPreference: setLayoutPreference, isDesktop } = useLayoutMode();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -78,27 +82,38 @@ export function SettingsPage({ navigate }: Props) {
   const dateLocale = getDateLocale(locale);
 
   const cardStyle = {
-    background: 'var(--surface)', borderRadius: 14, padding: 20,
+    background: 'var(--surface)', borderRadius: isDesktop ? 12 : 14, padding: isDesktop ? 16 : 20,
     boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-    display: 'flex' as const, flexDirection: 'column' as const, gap: 12,
+    display: 'flex' as const, flexDirection: 'column' as const, gap: isDesktop ? 10 : 12,
   };
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px',
-        borderBottom: '1px solid var(--border)', background: 'var(--surface)',
-      }}>
-        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{
-          width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
-          fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>←</button>
-        <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('settings.title')}</h1>
-      </div>
+      {/* Header — only mobile (desktop already has shell breadcrumb) */}
+      {!isDesktop && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px',
+          borderBottom: '1px solid var(--border)', background: 'var(--surface)',
+        }}>
+          <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{
+            width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
+            fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>←</button>
+          <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('settings.title')}</h1>
+        </div>
+      )}
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{
+        flex: 1, overflowY: 'auto',
+        padding: isDesktop ? '24px 24px 32px' : '20px',
+        display: 'flex', flexDirection: 'column',
+        gap: isDesktop ? 14 : 20,
+        width: '100%',
+        maxWidth: isDesktop ? 720 : undefined,
+        alignSelf: isDesktop ? 'center' : undefined,
+        boxSizing: 'border-box',
+      }}>
 
         {/* 1. Profil */}
         <div style={cardStyle}>
@@ -278,6 +293,32 @@ export function SettingsPage({ navigate }: Props) {
               ))}
             </div>
           </div>
+
+          {/* Layout */}
+          <div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{t('layout.title')}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {([
+                ['auto', '🔄 ' + t('layout.auto')],
+                ['mobile', '📱 ' + t('layout.mobile')],
+                ['desktop', '🖥 ' + t('layout.desktop')],
+              ] as [LayoutModePreference, string][]).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setLayoutPreference(val)}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 13,
+                    background: layoutPreference === val ? 'var(--primary)' : 'var(--surface-var)',
+                    color: layoutPreference === val ? '#fff' : 'var(--text)',
+                    border: layoutPreference === val ? 'none' : '1.5px solid var(--border)',
+                    transition: 'all .15s',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* 4. Feedback */}
@@ -423,7 +464,7 @@ export function SettingsPage({ navigate }: Props) {
         </div>
 
         {/* Admin panel — only for admin UID */}
-        {user?.uid === 'EmIOqHuZVaWVbWN0imh6D1cttAf1' && (
+        {user?.uid === ADMIN_UID && (
           <div style={cardStyle}>
             <button
               onClick={() => navigate({ name: 'admin' })}

@@ -12,6 +12,9 @@ import { ConnectionStatus } from './components/ConnectionStatus';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { JoinClubModal } from './components/clubs/JoinClubModal';
+import { useLayoutMode } from './hooks/useLayoutMode';
+import { DesktopShell } from './components/desktop/DesktopShell';
 import { useTournamentStore } from './store/tournament.store';
 import { useSubscriptionStore } from './store/subscription.store';
 import { useToastStore } from './store/toast.store';
@@ -33,6 +36,8 @@ const ManualBuilderPage = lazy(() => import('./pages/ManualBuilderPage').then(m 
 const CalendarPage = lazy(() => import('./pages/CalendarPage').then(m => ({ default: m.CalendarPage })));
 const TournamentListPage = lazy(() => import('./pages/tournament/TournamentListPage').then(m => ({ default: m.TournamentListPage })));
 const CreateTournamentPage = lazy(() => import('./pages/tournament/CreateTournamentPage').then(m => ({ default: m.CreateTournamentPage })));
+const TournamentCreateChoicePage = lazy(() => import('./pages/tournament/TournamentCreateChoicePage').then(m => ({ default: m.TournamentCreateChoicePage })));
+const TournamentPlannerPage = lazy(() => import('./pages/tournament/TournamentPlannerPage').then(m => ({ default: m.TournamentPlannerPage })));
 const TournamentDetailPage = lazy(() => import('./pages/tournament/TournamentDetailPage').then(m => ({ default: m.TournamentDetailPage })));
 const ClubsPage = lazy(() => import('./pages/tournament/ClubsPage').then(m => ({ default: m.ClubsPage })));
 const MatchListPage = lazy(() => import('./pages/match/MatchListPage').then(m => ({ default: m.MatchListPage })));
@@ -41,6 +46,7 @@ const MatchDetailPage = lazy(() => import('./pages/match/MatchDetailPage').then(
 const MatchStatsPage = lazy(() => import('./pages/match/MatchStatsPage').then(m => ({ default: m.MatchStatsPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
+const ClubMembersPage = lazy(() => import('./pages/ClubMembersPage').then(m => ({ default: m.ClubMembersPage })));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage').then(m => ({ default: m.PrivacyPolicyPage })));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage').then(m => ({ default: m.TermsOfServicePage })));
 const TournamentPublicView = lazy(() => import('./pages/tournament/TournamentPublicView').then(m => ({ default: m.TournamentPublicView })));
@@ -50,6 +56,7 @@ const MatchPublicView = lazy(() => import('./pages/match/MatchPublicView').then(
 
 export type Page =
   | { name: 'home' }
+  | { name: 'public-feed' }
   | { name: 'login' }
   | { name: 'training-home' }
   | { name: 'generator' }
@@ -59,12 +66,15 @@ export type Page =
   | { name: 'manual-builder' }
   | { name: 'calendar' }
   | { name: 'tournament-list' }
+  | { name: 'tournament-create-choice' }
   | { name: 'tournament-create' }
+  | { name: 'tournament-planner' }
   | { name: 'tournament-detail'; tournamentId: string }
   | { name: 'tournament-public'; tournamentId: string }
   | { name: 'roster-form'; tournamentId: string; teamToken: string }
   | { name: 'registration-form'; tournamentId: string }
   | { name: 'clubs' }
+  | { name: 'club-members' }
   | { name: 'match-list' }
   | { name: 'match-create' }
   | { name: 'match-detail'; matchId: string }
@@ -103,10 +113,12 @@ function AppRouter() {
   const loadTemplates = useTemplatesStore(s => s.loadFromFirebase);
   const loadClubs = useClubsStore(s => s.loadFromFirebase);
   const setClubsFirebaseUid = useClubsStore(s => s.setFirebaseUid);
+  const loadSharedClubs = useClubsStore(s => s.loadSharedClubs);
   const loadTrainings = useTrainingsStore(s => s.loadFromFirebase);
   const setTrainingsFirebaseUid = useTrainingsStore(s => s.setFirebaseUid);
 
-  const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin, adminJoinRole, setAdminJoinRole } = usePageStore();
+  const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin, adminJoinRole, setAdminJoinRole, clubJoinIntent } = usePageStore();
+  const { mode: layoutMode } = useLayoutMode();
 
   // Onboarding wizard state — MUST be before any early returns (React hooks rule)
   const [onboarded, setOnboarded] = useState(() => {
@@ -136,6 +148,9 @@ function AppRouter() {
         loadMatches(user.uid);
         loadTemplates(user.uid);
         loadClubs(user.uid);
+        // Shared Club Workspaces (Etapa 1): načti sdílené kluby + activeClubId
+        // Non-blocking — legacy clubs store dál funguje
+        void loadSharedClubs(user.uid);
         loadTrainings(user.uid);
         const unsubscribe = subscribeToStatus(user.uid);
         return () => unsubscribe();
@@ -146,7 +161,7 @@ function AppRouter() {
       setClubsFirebaseUid(null);
       setTrainingsFirebaseUid(null);
     }
-  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, loadMatches, setMatchesFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, loadTrainings, setTrainingsFirebaseUid]);
+  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, loadMatches, setMatchesFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, loadTrainings, setTrainingsFirebaseUid, loadSharedClubs]);
 
   // Po přihlášení + existuje joinIntent → přesměrovat zpět na public view
   useEffect(() => {
@@ -168,6 +183,14 @@ function AppRouter() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sync body[data-page] and body[data-layout-mode] for CSS hooks
+  useEffect(() => {
+    document.body.dataset.page = page.name;
+  }, [page.name]);
+  useEffect(() => {
+    document.body.dataset.layoutMode = layoutMode;
+  }, [layoutMode]);
 
   // Po přihlášení z login stránky přesměruj na home
   // (musí být PŘED early returns — React hooks nesmí měnit pořadí mezi rendery)
@@ -248,36 +271,56 @@ function AppRouter() {
     return <OnboardingWizard navigate={navigate} onComplete={() => setOnboarded(true)} />;
   }
 
+  const pageContent = (
+    <Suspense fallback={<PageSpinner />}>
+      {(page.name === 'home' || page.name === 'login') && <HomePage navigate={navigate} />}
+      {page.name === 'public-feed' && <LandingPage navigate={navigate} onLogin={() => setPage({ name: 'home' })} />}
+      {page.name === 'training-home' && <TrainingHomePage navigate={navigate} />}
+      {page.name === 'generator' && <GeneratorPage navigate={navigate} />}
+      {page.name === 'training' && (
+        <TrainingDetailPage training={page.training} navigate={navigate} />
+      )}
+      {page.name === 'saved' && <SavedPage navigate={navigate} />}
+      {page.name === 'library' && <ExerciseLibraryPage navigate={navigate} />}
+      {page.name === 'manual-builder' && <ManualBuilderPage navigate={navigate} />}
+      {page.name === 'calendar' && <CalendarPage navigate={navigate} />}
+      {page.name === 'tournament-list' && <TournamentListPage navigate={navigate} />}
+      {page.name === 'tournament-create-choice' && <TournamentCreateChoicePage navigate={navigate} />}
+      {page.name === 'tournament-create' && <CreateTournamentPage navigate={navigate} />}
+      {page.name === 'tournament-planner' && <TournamentPlannerPage navigate={navigate} />}
+      {page.name === 'tournament-detail' && (
+        <TournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
+      )}
+      {page.name === 'clubs' && <ClubsPage navigate={navigate} />}
+      {page.name === 'club-members' && <ClubMembersPage navigate={navigate} />}
+      {page.name === 'match-list' && <MatchListPage navigate={navigate} />}
+      {page.name === 'match-create' && <CreateMatchPage navigate={navigate} />}
+      {page.name === 'match-detail' && <MatchDetailPage matchId={page.matchId} navigate={navigate} />}
+      {page.name === 'match-stats' && <MatchStatsPage navigate={navigate} />}
+      {page.name === 'settings' && <SettingsPage navigate={navigate} />}
+      {page.name === 'admin' && <AdminPage />}
+      {page.name === 'privacy-policy' && <PrivacyPolicyPage navigate={navigate} />}
+      {page.name === 'terms-of-service' && <TermsOfServicePage navigate={navigate} />}
+    </Suspense>
+  );
+
+  if (layoutMode === 'desktop') {
+    return (
+      <>
+        <DesktopShell currentPage={page} navigate={navigate}>
+          {pageContent}
+        </DesktopShell>
+        {clubJoinIntent && <JoinClubModal inviteId={clubJoinIntent.inviteId} />}
+      </>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
       <main style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-        <Suspense fallback={<PageSpinner />}>
-          {(page.name === 'home' || page.name === 'login') && <HomePage navigate={navigate} />}
-          {page.name === 'training-home' && <TrainingHomePage navigate={navigate} />}
-          {page.name === 'generator' && <GeneratorPage navigate={navigate} />}
-          {page.name === 'training' && (
-            <TrainingDetailPage training={page.training} navigate={navigate} />
-          )}
-          {page.name === 'saved' && <SavedPage navigate={navigate} />}
-          {page.name === 'library' && <ExerciseLibraryPage navigate={navigate} />}
-          {page.name === 'manual-builder' && <ManualBuilderPage navigate={navigate} />}
-          {page.name === 'calendar' && <CalendarPage navigate={navigate} />}
-          {page.name === 'tournament-list' && <TournamentListPage navigate={navigate} />}
-          {page.name === 'tournament-create' && <CreateTournamentPage navigate={navigate} />}
-          {page.name === 'tournament-detail' && (
-            <TournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
-          )}
-          {page.name === 'clubs' && <ClubsPage navigate={navigate} />}
-          {page.name === 'match-list' && <MatchListPage navigate={navigate} />}
-          {page.name === 'match-create' && <CreateMatchPage navigate={navigate} />}
-          {page.name === 'match-detail' && <MatchDetailPage matchId={page.matchId} navigate={navigate} />}
-          {page.name === 'match-stats' && <MatchStatsPage navigate={navigate} />}
-          {page.name === 'settings' && <SettingsPage navigate={navigate} />}
-          {page.name === 'admin' && <AdminPage />}
-          {page.name === 'privacy-policy' && <PrivacyPolicyPage navigate={navigate} />}
-          {page.name === 'terms-of-service' && <TermsOfServicePage navigate={navigate} />}
-        </Suspense>
+        {pageContent}
       </main>
+      {clubJoinIntent && <JoinClubModal inviteId={clubJoinIntent.inviteId} />}
     </div>
   );
 }

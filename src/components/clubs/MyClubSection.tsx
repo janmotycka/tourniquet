@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import type { Club, AgeCategory, ClubPlayer } from '../../types/club.types';
 import type { Contact } from '../../types/contact.types';
 import type { PlayerStats } from '../../utils/player-stats';
@@ -6,6 +6,11 @@ import { useClubsStore } from '../../store/clubs.store';
 import { PlayerRosterEditor } from '../PlayerRosterEditor';
 import { colorSwatch } from '../../utils/team-colors';
 import { ContactRow } from './ContactRow';
+
+// Lazy: xlsx (~250 kB) se načte až v okamžiku, kdy uživatel klikne na Import
+const ImportPlayersModal = lazy(() =>
+  import('./ImportPlayersModal').then(m => ({ default: m.ImportPlayersModal })),
+);
 
 interface MyClubSectionProps {
   club: Club;
@@ -32,11 +37,13 @@ export function MyClubSection({
   t,
 }: MyClubSectionProps) {
   const addPlayer = useClubsStore(s => s.addPlayer);
+  const addPlayersBulk = useClubsStore(s => s.addPlayersBulk);
   const updatePlayer = useClubsStore(s => s.updatePlayer);
   const removePlayer = useClubsStore(s => s.removePlayer);
   const [activeTab, setActiveTab] = useState<AgeCategory | null>(
     club.ageCategories.length > 0 ? club.ageCategories[0] : null,
   );
+  const [importOpen, setImportOpen] = useState(false);
 
   const playersByCategory = useMemo(() => {
     const map = {} as Record<AgeCategory, typeof club.players>;
@@ -89,6 +96,15 @@ export function MyClubSection({
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <button
+            onClick={() => setImportOpen(true)}
+            title={t('clubs.import.title')}
+            style={{
+              width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)',
+              color: 'var(--primary)', fontSize: 16,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >📥</button>
           <button
             onClick={onEditClub}
             style={{
@@ -195,6 +211,17 @@ export function MyClubSection({
       >
         + 👤
       </button>
+
+      {/* Import modal */}
+      {importOpen && (
+        <Suspense fallback={null}>
+          <ImportPlayersModal
+            club={club}
+            onClose={() => setImportOpen(false)}
+            onImport={(players) => addPlayersBulk(club.id, players)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

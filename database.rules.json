@@ -342,27 +342,29 @@
       }
     },
 
-    // ─── Zápasy sezóny (Match Tracker — owner-only) ────────────────────────
+    // ─── Zápasy sezóny (klubový scope — všichni členové klubu) ─────────────
+    // Legacy klíč {uid} je povolený pro backward compat během migrace.
+    // Nový klíč {clubId} vyžaduje členství v klubu.
     "matches": {
-      "$uid": {
-        ".read":  "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
+      "$scopeId": {
+        ".read":  "auth != null && (auth.uid === $scopeId || root.child('clubs').child($scopeId).child('members').child(auth.uid).exists())",
+        ".write": "auth != null && (auth.uid === $scopeId || (root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() && root.child('clubs').child($scopeId).child('members').child(auth.uid).child('role').val() !== 'viewer'))"
       }
     },
 
-    // ─── Kontakty trenérů (databáze pro organizátora) ────────────────────────
+    // ─── Kontakty trenérů (klubový scope) ───────────────────────────────────
     "contacts": {
-      "$uid": {
-        ".read":  "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
+      "$scopeId": {
+        ".read":  "auth != null && (auth.uid === $scopeId || root.child('clubs').child($scopeId).child('members').child(auth.uid).exists())",
+        ".write": "auth != null && (auth.uid === $scopeId || (root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() && root.child('clubs').child($scopeId).child('members').child(auth.uid).child('role').val() !== 'viewer'))"
       }
     },
 
-    // ─── Uložené tréninky (owner-only) ──────────────────────────────────────
+    // ─── Uložené tréninky (klubový scope) ───────────────────────────────────
     "trainings": {
-      "$uid": {
-        ".read":  "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
+      "$scopeId": {
+        ".read":  "auth != null && (auth.uid === $scopeId || root.child('clubs').child($scopeId).child('members').child(auth.uid).exists())",
+        ".write": "auth != null && (auth.uid === $scopeId || (root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() && root.child('clubs').child($scopeId).child('members').child(auth.uid).child('role').val() !== 'viewer'))"
       }
     },
 
@@ -372,6 +374,124 @@
         ".read":  "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid"
       }
+    },
+
+    // ─── Sdílené klubové workspaces ─────────────────────────────────────────
+    // Shared clubs — více trenérů může sdílet jeden klub (owner/coach/viewer)
+    // Vytvoření/smazání/správa členství: pouze Cloud Functions (admin SDK bypass)
+    // Čtení: všichni členové
+    // Zápis obsahu (players, teams, ageCategories, name, logo, color): owner + coach
+    // Členství a ownership: server-only (immutable z klienta)
+    "clubs": {
+      "$clubId": {
+        ".read":  "auth != null && data.child('members').child(auth.uid).exists()",
+        // Zápis povolen pouze pokud klub už existuje A uživatel je owner nebo coach
+        // Tím se zabrání vytváření/mazání klubu z klienta (jen přes CF)
+        ".write": "auth != null && data.exists() && data.child('members').child(auth.uid).exists() && data.child('members').child(auth.uid).child('role').val() !== 'viewer'",
+
+        // Immutable fields — jen CF (admin SDK bypass)
+        "id":         { ".validate": "!data.exists() || newData.val() === data.val()" },
+        "createdBy":  { ".validate": "!data.exists() || newData.val() === data.val()" },
+        "createdAt":  { ".validate": "!data.exists() || newData.val() === data.val()" },
+        "catalogId":  { ".validate": "!data.exists() || newData.val() === data.val()" },
+        "ownership":  { ".validate": "!data.exists() || newData.val() === data.val()" },
+
+        // Členství — immutable z klienta (jen invite/remove přes Cloud Functions)
+        "members": {
+          "$memberUid": {
+            ".validate": "!data.exists() || newData.val() === data.val() || newData.val() === null && false"
+          }
+        },
+
+        // Validace názvu a barvy
+        "name": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200"
+        },
+        "color": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        }
+      }
+    },
+
+    // ─── Ukazatele uživatele na kluby, kterých je členem ────────────────────
+    // /users/{uid}/memberOfClubs/{clubId} = role string
+    // Píše pouze CF (admin SDK), čte vlastník
+    // (rule samotný subtree definován níže v "users")
+
+    // ─── Pozvánky do klubů (PIN-based, podobně jako tournament invites) ─────
+    // Write: pouze CF (vytváří invite + PIN)
+    // Read: přihlášení uživatelé (pro verifikaci PIN při joinu)
+    "clubInvites": {
+      "$inviteId": {
+        ".read":  "auth != null",
+        ".write": false
+      }
+    },
+
+    // ─── PIN hashe pro klubové invites (oddělené úložiště) ──────────────────
+    "clubPinAuth": {
+      "$inviteId": {
+        ".read":  "auth != null",
+        ".write": false
+      }
+    },
+
+    // ─── Žádosti o ověřený (oficiální) klub z katalogu ─────────────────────
+    // User submit: přihlášený uživatel si může vytvořit vlastní žádost
+    // Read/Approve: pouze CF (admin SDK bypass)
+    "clubRequests": {
+      ".read": false,
+      "$requestId": {
+        ".write": "auth != null && (
+          (!data.exists() && newData.child('requesterUid').val() === auth.uid)
+          || (data.exists() && data.child('requesterUid').val() === auth.uid && newData.val() === null)
+        )",
+        ".validate": "newData.hasChildren(['catalogId', 'catalogName', 'requesterUid', 'requesterName', 'requesterRole', 'status', 'createdAt'])",
+        "catalogId":     { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+        "catalogName":   { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+        "requesterUid":  { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+        "requesterName": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+        "requesterRole": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+        "evidenceUrl":   { ".validate": "newData.isString() && newData.val().length <= 500" },
+        "facrId":        { ".validate": "newData.isString() && newData.val().length <= 50" },
+        "status":        { ".validate": "newData.isString() && (newData.val() === 'pending' || newData.val() === 'approved' || newData.val() === 'rejected')" },
+        "createdAt":     { ".validate": "newData.isString() && newData.val().length <= 30" }
+      }
+    },
+
+    // ─── Katalog klubů (Wikidata sync + manuální editace) ──────────────────
+    // Čtení: kdokoli (kvůli autocomplete v onboardingu pro nepřihlášené)
+    // Zápis: pouze admin SDK (Cloud Functions) — frontend nemůže psát přímo
+    "clubsCatalog": {
+      ".read": true,
+      ".write": false,
+      ".indexOn": ["name", "wikidataId"]
+    },
+
+    // ─── Pending klub návrhy (od uživatelů) ────────────────────────────────
+    // Zápis: přihlášený uživatel může vytvořit nový návrh (svůj submittedBy)
+    // Čtení: pouze admin SDK
+    "clubsCatalogPending": {
+      ".read": false,
+      "$submissionId": {
+        ".write": "auth != null && (
+          (!data.exists() && newData.child('submittedBy').val() === auth.uid)
+          || newData.val() === null && data.child('submittedBy').val() === auth.uid
+        )",
+        ".validate": "newData.hasChildren(['name', 'submittedBy', 'submittedAt'])",
+        "name":        { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 200" },
+        "city":        { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "logoUrl":     { ".validate": "newData.isString() && newData.val().length <= 500" },
+        "submittedBy": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+        "submittedAt": { ".validate": "newData.isString() && newData.val().length <= 30" }
+      }
+    },
+
+    // ─── Admin audit log (kdo, kdy, co) ────────────────────────────────────
+    // Čtení i zápis: pouze admin SDK (Cloud Functions)
+    "adminAuditLog": {
+      ".read": false,
+      ".write": false
     },
 
     // ─── Uživatelská data ────────────────────────────────────────────────────
@@ -386,9 +506,28 @@
           ".write": false
         },
 
-        // Kluby — vlastník může číst i psát
+        // Bezpečnostní flagy (block, watch) — píše pouze admin SDK
+        // Vlastník je smí číst (pro zobrazení blokovaného stavu v UI)
+        "flags": {
+          ".write": false
+        },
+
+        // Legacy kluby (před migrací na /clubs/{clubId}) — vlastník může číst i psát
+        // Po migraci tento uzel bude prázdný, ale rule zůstane pro backward compat
         "clubs": {
           ".write": "auth != null && auth.uid === $uid"
+        },
+
+        // Ukazatele na kluby, jejichž je uživatel členem — píše pouze CF
+        // Hodnota: role ('owner' | 'coach' | 'viewer')
+        "memberOfClubs": {
+          ".write": false
+        },
+
+        // Aktivní klub (pro workspace switcher) — vlastník může měnit
+        "activeClubId": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.isString() && newData.val().length <= 100 || newData.val() === null"
         },
 
         // Připojené turnaje (přes PIN) — vlastník může číst i psát
