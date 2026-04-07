@@ -13,31 +13,6 @@ import { TeamBadge } from './TeamBadge';
 import { MatchCardTimer } from './MatchCardTimer';
 import { InlineGoalPanel } from './InlineGoalPanel';
 
-/** Malá komponenta pro gólový flash v admin view */
-function AdminGoalFlash({ homeScore, awayScore }: { homeScore: number; awayScore: number }) {
-  const [flash, setFlash] = useState(false);
-  const prev = useRef({ home: homeScore, away: awayScore });
-  useEffect(() => {
-    const scored = homeScore > prev.current.home || awayScore > prev.current.away;
-    prev.current = { home: homeScore, away: awayScore };
-    if (scored) {
-      setFlash(true);
-      const t = setTimeout(() => setFlash(false), 2000);
-      return () => clearTimeout(t);
-    }
-  }, [homeScore, awayScore]);
-  if (!flash) return null;
-  return (
-    <div style={{
-      textAlign: 'center', padding: '4px 0',
-      background: 'linear-gradient(90deg, transparent 0%, rgba(255,213,79,.3) 50%, transparent 100%)',
-      fontSize: 12, fontWeight: 900, color: '#F57F17', letterSpacing: 1.5,
-    }}>
-      ⚽ GÓÓL!
-    </div>
-  );
-}
-
 /** Komponenta pro flash při ukončení zápasu v admin view */
 function AdminFinishFlash({ status }: { status: string }) {
   const { t } = useI18n();
@@ -45,7 +20,8 @@ function AdminFinishFlash({ status }: { status: string }) {
   const prev = useRef(status);
   useEffect(() => {
     if (prev.current === 'live' && status === 'finished') {
-      setFlash(true);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFlash(true); // trigger transient flash animation
       const t = setTimeout(() => setFlash(false), 2500);
       return () => clearTimeout(t);
     }

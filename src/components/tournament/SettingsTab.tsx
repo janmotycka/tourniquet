@@ -18,11 +18,32 @@ import { exportTournamentStandingsCSV, exportTournamentMatchesCSV, exportTournam
 import { logger } from '../../utils/logger';
 import { copyToClipboard } from '../../utils/training-share';
 import { generateId } from '../../utils/id';
-import { TeamBadge } from './TeamBadge';
 import { Dropdown, ColorDot } from '../ui/Dropdown';
 
+// Inline stepper helper for SettingsTab
+function SettingsStepper({ value, min, max, onChange, label, unit }: {
+  value: number; min: number; max: number;
+  onChange: (v: number) => void; label: string; unit: string;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0' }}>
+      <div>
+        <div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{value} {unit}</div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} aria-label="Decrease"
+          style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 20, color: value <= min ? 'var(--text-muted)' : 'var(--text)' }}>−</button>
+        <span style={{ fontWeight: 800, fontSize: 18, minWidth: 36, textAlign: 'center', color: 'var(--primary)' }}>{value}</span>
+        <button onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} aria-label="Increase"
+          style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 20, color: value >= max ? 'var(--text-muted)' : 'var(--text)' }}>+</button>
+      </div>
+    </div>
+  );
+}
+
 export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, leaveTournament }: { tournament: Tournament; navigate: (p: Page) => void; isOwner: boolean; isAdmin?: boolean; leaveTournament: (tournamentId: string) => Promise<void> }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const ask = useConfirmStore(s => s.ask);
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -46,9 +67,6 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
   const [tbDragOverIdx, setTbDragOverIdx] = useState<number | null>(null);
   const [tbSaved, setTbSaved] = useState(false);
 
-  // Team removal
-  const [teamRemoved, setTeamRemoved] = useState(false);
-
   // PIN change
   const [pinChangeOpen, setPinChangeOpen] = useState(false);
   const [newPin, setNewPin] = useState('');
@@ -57,7 +75,6 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
   // Collapsible sections
   const [qrOpen, setQrOpen] = useState(false);
   const [coOwnerOpen, setCoOwnerOpen] = useState(false);
-  const [teamMgmtOpen, setTeamMgmtOpen] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
   const [tiebreakerOpen, setTiebreakerOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -73,7 +90,6 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
   const deleteTournament = useTournamentStore(s => s.deleteTournament);
   const updateTournament = useTournamentStore(s => s.updateTournament);
   const regenerateSchedule = useTournamentStore(s => s.regenerateSchedule);
-  const removeTeam = useTournamentStore(s => s.removeTeam);
   const saveTemplate = useTemplatesStore(s => s.saveTemplate);
   const showToast = useToastStore(s => s.show);
 
@@ -87,7 +103,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
   }, [firebaseUid, billingLoaded]);
 
   useEffect(() => {
-    generateQRCodeDataUrl(tournament.id).then(setQrUrl).catch(() => {});
+    generateQRCodeDataUrl(tournament.id).then(setQrUrl).catch(() => { /* ignore */ });
   }, [tournament.id]);
 
   const publicUrl = getTournamentPublicUrl(tournament.id);
@@ -174,26 +190,6 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
     setRegenSaved(true);
     setTimeout(() => setRegenSaved(false), 2500);
   };
-
-  // Inline stepper helper for SettingsTab
-  const SettingsStepper = ({ value, min, max, onChange, label, unit }: {
-    value: number; min: number; max: number;
-    onChange: (v: number) => void; label: string; unit: string;
-  }) => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0' }}>
-      <div>
-        <div style={{ fontWeight: 600, fontSize: 14 }}>{label}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{value} {unit}</div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} aria-label="Decrease"
-          style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 20, color: value <= min ? 'var(--text-muted)' : 'var(--text)' }}>−</button>
-        <span style={{ fontWeight: 800, fontSize: 18, minWidth: 36, textAlign: 'center', color: 'var(--primary)' }}>{value}</span>
-        <button onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} aria-label="Increase"
-          style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)', fontWeight: 700, fontSize: 20, color: value >= max ? 'var(--text-muted)' : 'var(--text)' }}>+</button>
-      </div>
-    </div>
-  );
 
   return (
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -836,6 +832,7 @@ const AWARD_TITLE_KEYS = [
 const ALL_AWARD_KEYS = [...AWARD_TITLE_KEYS, 'tournament.awards.bestScorer', 'tournament.awards.fanFavorite'] as const;
 
 /** Pokud title je i18n klíč, vrátí překlad; jinak vrátí title as-is */
+// eslint-disable-next-line react-refresh/only-export-components
 export function translateAwardTitle(title: string, t: (key: string) => string): string {
   if ((ALL_AWARD_KEYS as readonly string[]).includes(title)) return t(title);
   return title;

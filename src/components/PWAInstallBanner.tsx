@@ -24,7 +24,7 @@ export function PWAInstallBanner() {
 
   const handleDismiss = () => {
     setDismissed(true);
-    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch {}
+    try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* ignore */ }
   };
 
   const handleInstall = async () => {

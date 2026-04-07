@@ -562,7 +562,7 @@ export const listClubInvites = functions.region('europe-west1').https.onCall(asy
   const snap = await db.ref('clubInvites').orderByChild('clubId').equalTo(clubId).get();
   const all = (snap.val() || {}) as Record<string, { used: boolean; expiresAt: string }>;
   const invites = Object.entries(all)
-    .filter(([_, inv]) => !inv.used && new Date(inv.expiresAt).getTime() > Date.now())
+    .filter(([, inv]) => !inv.used && new Date(inv.expiresAt).getTime() > Date.now())
     .map(([id, inv]) => ({ id, ...inv }));
 
   return { invites };

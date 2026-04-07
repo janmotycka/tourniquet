@@ -1,4 +1,4 @@
-import type { SeasonMatch, MatchLineupPlayer } from '../../types/match.types';
+import type { SeasonMatch } from '../../types/match.types';
 
 export type TFn = (key: string, params?: Record<string, string | number>) => string;
 

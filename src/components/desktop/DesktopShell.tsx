@@ -166,10 +166,10 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
   // When user navigates to a page in another module, auto-expand & highlight it
   useEffect(() => {
     if (currentModuleKey) {
-      setExpandedKey(currentModuleKey);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setExpandedKey(currentModuleKey); // sync expanded/highlighted to current route
       setHighlightedKey(currentModuleKey);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentModuleKey]);
 
   const isAdmin = user?.uid === ADMIN_UID;

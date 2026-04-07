@@ -6,7 +6,6 @@ import { useTournamentStore } from '../../store/tournament.store';
 import { computeStandings } from '../../utils/tournament-schedule';
 import { BracketView } from '../../components/BracketView';
 import { TeamBadge } from './TeamBadge';
-import { StandingsCriteriaBox } from './public/StandingsCriteriaBox';
 
 export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament: Tournament; onTeamClick?: (teamId: string) => void; isOwner?: boolean }) {
   const { t } = useI18n();
@@ -15,8 +14,6 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
   const [penaltyA, setPenaltyA] = useState(0);
   const [penaltyB, setPenaltyB] = useState(0);
   const [penaltySaved, setPenaltySaved] = useState(false);
-  const [rulesOpen, setRulesOpen] = useState(false);
-  const [criteriaOpen, setCriteriaOpen] = useState(false);
 
   const hasLiveMatch = tournament.matches.some(m => m.status === 'live');
 

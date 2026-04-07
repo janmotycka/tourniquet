@@ -204,7 +204,8 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
   // Live timer
   useEffect(() => {
     if (!match || match.status !== 'live' || match.pausedAt) return;
-    setElapsed(computeElapsed(match));
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setElapsed(computeElapsed(match)); // initial sync from match prop
     const interval = setInterval(() => setElapsed(computeElapsed(match)), 1000);
     return () => clearInterval(interval);
   }, [match]);
@@ -212,7 +213,8 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
   // Update elapsed on match change (for paused/finished)
   useEffect(() => {
     if (match && match.status !== 'live') {
-      setElapsed(computeElapsed(match));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setElapsed(computeElapsed(match)); // sync after match status change
     }
   }, [match]);
 
@@ -254,7 +256,8 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         // Clear previous goal timer
         if (goalTimerRef.current) clearTimeout(goalTimerRef.current);
 
-        setGoalCelebration({ isOurGoal, scorerName, minute, ts: Date.now() });
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setGoalCelebration({ isOurGoal, scorerName, minute, ts: Date.now() }); // trigger goal celebration animation
 
         // Send browser notification
         if (match) {
@@ -457,11 +460,11 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
                 const granted = await requestPermission();
                 if (granted) {
                   setNotificationsOn(true);
-                  try { localStorage.setItem(`torq-notif-${matchId}`, '1'); } catch {}
+                  try { localStorage.setItem(`torq-notif-${matchId}`, '1'); } catch { /* ignore */ }
                 }
               } else {
                 setNotificationsOn(false);
-                try { localStorage.removeItem(`torq-notif-${matchId}`); } catch {}
+                try { localStorage.removeItem(`torq-notif-${matchId}`); } catch { /* ignore */ }
               }
             }}
             style={{
@@ -626,9 +629,9 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               const goalScoreMap = new Map<string, string>();
               for (const g of goalOrder) {
                 if (g.isOpponentGoal) {
-                  match.isHome ? runAway++ : runHome++;
+                  if (match.isHome) runAway++; else runHome++;
                 } else {
-                  match.isHome ? runHome++ : runAway++;
+                  if (match.isHome) runHome++; else runAway++;
                 }
                 goalScoreMap.set(g.id, `${runHome}:${runAway}`);
               }

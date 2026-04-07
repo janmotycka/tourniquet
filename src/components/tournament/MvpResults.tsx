@@ -32,8 +32,6 @@ export function MvpResults({ tournamentId, teams }: Props) {
   }
 
   const sorted = Object.values(playerVotes).sort((a, b) => b.count - a.count);
-  const winner = sorted[0];
-  const winnerTeam = teams.find(t => t.id === winner.teamId);
 
   return (
     <div style={{

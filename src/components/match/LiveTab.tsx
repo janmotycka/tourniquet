@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { SeasonMatch, MatchLineupPlayer, MatchGoal } from '../../types/match.types';
 import { useMatchesStore } from '../../store/matches.store';
 import { useConfirmStore } from '../../store/confirm.store';
 import { useI18n } from '../../i18n';
-import { computeElapsed, formatTime, formatDate, computePlayingTime } from './match-utils';
+import { computeElapsed, formatTime, computePlayingTime } from './match-utils';
 import { GoalModal } from './GoalModal';
 import { CardModal } from './CardModal';
 import { SubstitutionModal } from './SubstitutionModal';
@@ -93,7 +93,7 @@ function LandscapeScoreboard({ match, elapsed, onQuickGoal, onPause, onResume, t
   };
 
   const vibrate = (ms: number = 30) => {
-    try { navigator.vibrate?.(ms); } catch {}
+    try { navigator.vibrate?.(ms); } catch { /* ignore */ }
   };
 
   return (
@@ -441,8 +441,9 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
 
   // Sync elapsed on match data change
   useEffect(() => {
-    setElapsed(computeElapsed(match));
-  }, [match.startedAt, match.pausedAt, match.pausedElapsed]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setElapsed(computeElapsed(match)); // initial sync from match prop
+  }, [match.startedAt, match.pausedAt, match.pausedElapsed, match]);
 
   const { alertActive, nextAlertMinute, suggestedIn, suggestedOut } = useSubstitutionAlert(match, elapsed);
 
@@ -450,7 +451,6 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   const periodDuration = match.periodDurationMinutes ?? Math.round(match.durationMinutes / periods);
   const periodSeconds = periodDuration * 60;
   const currentPeriod = match.currentPeriod ?? 1;
-  const totalSeconds = match.durationMinutes * 60;
 
   // Per-period progress
   const periodElapsed = elapsed - (currentPeriod - 1) * periodSeconds;
@@ -458,9 +458,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   const isPeriodOvertime = periodElapsed > periodSeconds;
   const periodProgress = Math.min(1, periodElapsed / periodSeconds);
   // Total progress
-  const isOvertime = elapsed > totalSeconds;
-  const progress = Math.min(1, elapsed / totalSeconds);
-  const remaining = Math.max(0, totalSeconds - elapsed);
+  // (isOvertime/progress/remaining derivations reserved for future UI)
 
   const getPlayerName = (playerId: string | null) =>
     playerId ? (match.lineup.find(p => p.playerId === playerId)?.name ?? '?') : t('match.detail.unknown');
@@ -829,7 +827,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
           {/* Hint — only on first use, then auto-dismiss */}
           {!hintDismissed && match.goals.length === 0 && (
             <div
-              onClick={() => { try { localStorage.setItem('torq_goal_hint_seen', '1'); } catch {} }}
+              onClick={() => { try { localStorage.setItem('torq_goal_hint_seen', '1'); } catch { /* ignore */ } }}
               style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: -4 }}
             >
               {t('match.field.quickGoalHint')}
@@ -1016,7 +1014,6 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
         const playingTime = computePlayingTime(match, elapsedMin);
         const maxTime = Math.max(1, elapsedMin);
         // Sort: on-field first (by minutes desc), then bench (by minutes desc)
-        const onFieldIds = new Set<string>();
         // Compute who's currently on field
         const currentlyOnField = new Set(match.lineup.filter(p => p.isStarter).map(p => p.playerId));
         for (const sub of match.substitutions) {

@@ -27,7 +27,7 @@ interface Props {
   onDismissCreated: () => void;
 }
 
-export function DashboardTab({ tournament, navigate, isAdmin, justCreated, onDismissCreated }: Props) {
+export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreated }: Props) {
   const { t, locale } = useI18n();
   const [copied, setCopied] = useState(false);
   const [registrations, setRegistrations] = useState<Record<string, RegistrationSubmission>>({});
@@ -67,7 +67,6 @@ export function DashboardTab({ tournament, navigate, isAdmin, justCreated, onDis
   const [rejectedRegs, setRejectedRegs] = useState<Array<{ teamName: string; coachName: string; coachPhone: string }>>([]);
   const [rejectTarget, setRejectTarget] = useState<{ regId: string; reg: RegistrationSubmission } | null>(null);
   const [editTeamsMode, setEditTeamsMode] = useState(false);
-  const generateRosterTokens = useTournamentStore(s => s.generateRosterTokens);
   const acceptRoster = useTournamentStore(s => s.acceptRoster);
   const addManualTeam = useTournamentStore(s => s.addManualTeam);
   const updateTournament = useTournamentStore(s => s.updateTournament);
@@ -80,7 +79,6 @@ export function DashboardTab({ tournament, navigate, isAdmin, justCreated, onDis
   const [showAddTeam, setShowAddTeam] = useState(false);
   const [addTeamName, setAddTeamName] = useState('');
   const [addTeamCategory, setAddTeamCategory] = useState<{ club: Club; category?: AgeCategory } | null>(null);
-  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
 
   const isRegistration = tournament.settings.registrationEnabled ?? false;
   const regUrl = getRegistrationUrl(tournament.id);

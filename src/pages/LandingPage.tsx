@@ -95,8 +95,11 @@ export function LandingPage({ navigate, onLogin }: Props) {
 
   // Split finished events into "recent" (last 7 days) and "older" (archive)
   const RECENT_DAYS = 7;
-  const recentCutoff = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000)
-    .toISOString().split('T')[0];
+  const recentCutoff = useMemo(
+    // eslint-disable-next-line react-hooks/purity
+    () => new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    [],
+  );
 
   const allFinished = filtered
     .filter(i => i.status === 'finished')
@@ -465,7 +468,8 @@ function MatchCard({
   useEffect(() => {
     const prev = prevScoreRef.current;
     if (prev.home !== entry.homeScore || prev.away !== entry.awayScore) {
-      setGoalFlash(true);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setGoalFlash(true); // goal flash animation
       const timer = setTimeout(() => setGoalFlash(false), 2000);
       prevScoreRef.current = { home: entry.homeScore, away: entry.awayScore };
       return () => clearTimeout(timer);

@@ -1,7 +1,7 @@
 import type { jsPDF as JsPDFType } from 'jspdf';
 import type { Tournament } from '../types/tournament.types';
 import { formatMatchTime } from './tournament-schedule';
-import { generateQRCodeDataUrl, getTournamentPublicUrl } from './qr-code';
+import { generateQRCodeDataUrl } from './qr-code';
 import type { Locale } from '../i18n';
 import { getDateLocale } from '../i18n';
 

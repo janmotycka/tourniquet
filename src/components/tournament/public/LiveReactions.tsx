@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { sendReaction, subscribeReactions, REACTION_EMOJIS } from '../../../services/tournament.firebase';
 import type { ReactionEmoji } from '../../../services/tournament.firebase';
 
@@ -23,17 +23,25 @@ function FloatingEmoji({ emoji, id, side, onDone }: { emoji: string; id: number;
     return () => clearTimeout(t);
   }, [id, onDone]);
 
+  // Lock randomized position/size once per mount via refs.
+  // eslint-disable-next-line react-hooks/purity
+  const offsetRef = useRef(10 + Math.random() * 35);
+  // eslint-disable-next-line react-hooks/purity
+  const sizeRef = useRef(18 + Math.random() * 6);
+
+  const style: React.CSSProperties = {
+    position: 'absolute',
+    bottom: '100%',
+    [side]: `${offsetRef.current}%`,
+    fontSize: sizeRef.current,
+    opacity: 0,
+    pointerEvents: 'none',
+    animation: 'reactionFloatUp 1.2s ease-out forwards',
+  };
+
   return (
     <span
-      style={{
-        position: 'absolute',
-        bottom: '100%',
-        [side]: `${10 + Math.random() * 35}%`,
-        fontSize: 18 + Math.random() * 6,
-        opacity: 0,
-        pointerEvents: 'none',
-        animation: 'reactionFloatUp 1.2s ease-out forwards',
-      }}
+      style={style}
     >
       {emoji}
     </span>

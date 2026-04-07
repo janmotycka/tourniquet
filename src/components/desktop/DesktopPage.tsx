@@ -75,6 +75,7 @@ export function DesktopPage({ title, subtitle, primaryAction, secondaryActions, 
 }
 
 // ─── Reusable primary button styling for desktop ────────────────────────────
+// eslint-disable-next-line react-refresh/only-export-components
 export const desktopPrimaryButtonStyle: React.CSSProperties = {
   background: 'var(--primary)',
   color: '#fff',
@@ -90,6 +91,7 @@ export const desktopPrimaryButtonStyle: React.CSSProperties = {
   boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const desktopSecondaryButtonStyle: React.CSSProperties = {
   background: 'var(--surface-var)',
   color: 'var(--text)',

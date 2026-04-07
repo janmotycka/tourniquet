@@ -22,7 +22,8 @@ export function MvpAdminBanner({ tournamentId, teams, mvpVotingEnabled, settings
 
   useEffect(() => {
     if (mvpVotingEnabled) {
-      setWasEnabled(true);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setWasEnabled(true); // reset banner state on prop change
       setDismissed(false);
     }
   }, [mvpVotingEnabled]);

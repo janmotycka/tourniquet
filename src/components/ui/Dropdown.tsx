@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Z } from '../../utils/z-index';
 
 // ─── Shared dropdown panel styles ──────────────────────────────────────────
@@ -145,6 +145,7 @@ const defaultTriggerStyle: CSSProperties = {
   padding: 0, margin: 0,
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const panelStyle: CSSProperties = {
   position: 'absolute',
   top: 'calc(100% + 6px)',
@@ -157,6 +158,7 @@ export const panelStyle: CSSProperties = {
   overflow: 'hidden',
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const itemStyle: CSSProperties = {
   width: '100%',
   display: 'flex',

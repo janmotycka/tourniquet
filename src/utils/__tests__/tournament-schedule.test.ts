@@ -323,7 +323,6 @@ describe('computeStandings', () => {
   // ── Tiebreaker: head-to-head (2 teams) ───────────────────────────────────
 
   it('h2h resolves 2-team tie correctly', () => {
-    const fourTeams = [...teams, makeTeam('d', 'Delta')];
     // A beats C 1-0, B beats D 1-0 → both 3pts, GD+1, GF1
     // A beats B 1-0 → A: 6pts, B: 3pts — this makes them different
     // Better test: make them equal on pts, use h2h
@@ -345,27 +344,9 @@ describe('computeStandings', () => {
   });
 
   it('h2h works with away team winning', () => {
-    const fourTeams = [...teams, makeTeam('d', 'Delta')];
-    // A and B both beat C and D, but B beat A
-    const matches = [
-      makeFinishedMatch('m1', 'a', 'b', 0, 1), // B wins as away
-      makeFinishedMatch('m2', 'a', 'c', 2, 0),
-      makeFinishedMatch('m3', 'b', 'c', 2, 0),
-      makeFinishedMatch('m4', 'a', 'd', 2, 0),
-      makeFinishedMatch('m5', 'b', 'd', 2, 0),
-    ];
-    const standings = computeStandings(matches, fourTeams, ['h2h', 'goalDifference', 'goalsFor']);
-    // A: 6pts (lost to B, beat C and D)
-    // B: 9pts (beat A, C, D)
-    // Actually B has more points. Let me adjust:
-    // Make A and B draw with others so they have same total
-    const matches2 = [
-      makeFinishedMatch('m1', 'a', 'b', 0, 1), // B wins
-      makeFinishedMatch('m2', 'a', 'c', 3, 0), // A wins big
-      makeFinishedMatch('m3', 'b', 'c', 1, 1), // B draws
-    ];
-    const standings2 = computeStandings(matches2, teams, ['h2h', 'goalDifference', 'goalsFor']);
-    // A: 3pts (loss + win), B: 4pts (win + draw) — not tied! Adjust again:
+    // (earlier scratch scenarios omitted — see final matches3 below)
+    // A and B both beat C and D, but B beat A — not tied, so adjusted below.
+    // Adjust again:
     // Both need same points. A and B both beat C, and B beats A.
     // A: 3pts, B: 6pts — not equal.
     // Try: A beats C, B beats C, A draws B

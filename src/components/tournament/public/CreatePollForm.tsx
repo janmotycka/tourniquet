@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { createChatPoll } from '../../../services/tournament.firebase';
 import { useI18n } from '../../../i18n';
 
@@ -44,12 +44,8 @@ export function CreatePollForm({ tournamentId, onClose }: Props) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [sending, setSending] = useState(false);
-  const [templates, setTemplates] = useState<PollTemplate[]>([]);
+  const [templates, setTemplates] = useState<PollTemplate[]>(() => loadTemplates());
   const [showTemplates, setShowTemplates] = useState(false);
-
-  useEffect(() => {
-    setTemplates(loadTemplates());
-  }, []);
 
   const addOption = () => {
     if (options.length < 6) setOptions([...options, '']);

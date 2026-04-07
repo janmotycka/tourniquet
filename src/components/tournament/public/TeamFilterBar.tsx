@@ -1,7 +1,7 @@
 import type { Tournament } from '../../../types/tournament.types';
 import { useI18n } from '../../../i18n';
 import { PublicTeamBadge } from './PublicTeamBadge';
-import { Dropdown, ColorDot } from '../../ui/Dropdown';
+import { Dropdown } from '../../ui/Dropdown';
 import type { DropdownItem } from '../../ui/Dropdown';
 
 export function TeamFilterBar({ tournament, selectedTeamId, onSelect }: {

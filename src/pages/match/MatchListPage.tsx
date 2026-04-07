@@ -329,7 +329,8 @@ export function MatchListPage({ navigate }: Props) {
   const [isHydrating, setIsHydrating] = useState(matches.length === 0);
 
   useEffect(() => {
-    if (matches.length > 0) { setIsHydrating(false); return; }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (matches.length > 0) { setIsHydrating(false); return; } // hydration state
     const timer = setTimeout(() => setIsHydrating(false), 800);
     return () => clearTimeout(timer);
   }, [matches.length]);

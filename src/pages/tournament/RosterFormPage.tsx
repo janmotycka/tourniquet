@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Page } from '../../App';
-import type { Tournament, Team, RosterSubmission, BillingProfile, CustomerBilling } from '../../types/tournament.types';
+import type { Tournament, Team, RosterSubmission, CustomerBilling } from '../../types/tournament.types';
 import { subscribeToPublicTournament } from '../../services/tournament.firebase';
 import { submitRoster, loadRoster } from '../../services/roster.firebase';
 import { useI18n, getDateLocale } from '../../i18n';
@@ -343,9 +343,10 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
       setSubmitted(true);
       setExistingRoster(submission);
       logger.debug('[RosterForm] Roster submitted successfully');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('[RosterForm] Submit failed:', err);
-      const detail = err?.message || err?.code || String(err);
+      const e = err as { message?: string; code?: string } | undefined;
+      const detail = e?.message || e?.code || String(err);
       setSubmitError(`${t('roster.submitError')} (${detail})`);
     } finally {
       setSubmitting(false);

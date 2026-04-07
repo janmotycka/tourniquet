@@ -83,7 +83,8 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
 
   const [isHydrating, setIsHydrating] = useState(!tournament);
   useEffect(() => {
-    if (tournament) { setIsHydrating(false); return; }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (tournament) { setIsHydrating(false); return; } // hydration state
     const timer = setTimeout(() => setIsHydrating(false), 800);
     return () => clearTimeout(timer);
   }, [tournament]);
@@ -101,11 +102,57 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
   const resumeMatch = useTournamentStore(s => s.resumeMatch);
   const cancelMatchStore = useTournamentStore(s => s.cancelMatch);
   const reorderMatchesStore = useTournamentStore(s => s.reorderMatches);
-  const addPlayer = useTournamentStore(s => s.addPlayer);
-  const removePlayer = useTournamentStore(s => s.removePlayer);
-  const updatePlayer = useTournamentStore(s => s.updatePlayer);
-  const updateTeamName = useTournamentStore(s => s.updateTeamName);
   const [rosterTeamId, setRosterTeamId] = useState<string | null>(null);
+
+  // ── Unread chat messages ───────────────────────────────────────────────────
+  const [unreadCount, setUnreadCount] = useState(0);
+  const lastReadRef = useRef<string>('');
+  const tabRef = useRef(tab);
+  useEffect(() => { tabRef.current = tab; }, [tab]);
+
+  const chatEnabledEarly = tournament?.settings.chatEnabled ?? false;
+
+  useEffect(() => {
+    if (tab === 'chat') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setUnreadCount(0); // reset unread counter when chat tab opened
+      const now = new Date().toISOString();
+      lastReadRef.current = now;
+      try { localStorage.setItem(`torq_chat_read_${tournamentId}`, now); } catch { /* */ }
+    }
+  }, [tab, tournamentId]);
+
+  useEffect(() => {
+    if (!chatEnabledEarly) return;
+    try {
+      lastReadRef.current = localStorage.getItem(`torq_chat_read_${tournamentId}`) ?? '';
+    } catch { /* */ }
+
+    const unsub = subscribeToChatMessages(tournamentId, (msgs) => {
+      if (tabRef.current !== 'chat' && msgs.length > 0) {
+        const lr = lastReadRef.current;
+        if (lr) {
+          setUnreadCount(msgs.filter(m => m.createdAt > lr).length);
+        } else {
+          setUnreadCount(msgs.length);
+        }
+      }
+    });
+    return unsub;
+  }, [tournamentId, chatEnabledEarly]);
+
+  // ── Pending registrations badge ────────────────────────────────────────────
+  const [pendingRegCount, setPendingRegCount] = useState(0);
+  const regEnabledEarly = tournament?.settings.registrationEnabled ?? false;
+  useEffect(() => {
+    if (!regEnabledEarly || !isAdmin) return;
+    const unsub = subscribeToRegistrations(tournamentId, (regs) => {
+      setPendingRegCount(Object.keys(regs).length);
+    });
+    return unsub;
+  }, [tournamentId, regEnabledEarly, isAdmin]);
+
+  const generateInitialSchedule = useTournamentStore(s => s.generateInitialSchedule);
 
   if (!tournament && isHydrating) {
     return <TournamentDetailSkeleton />;
@@ -165,61 +212,15 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
 
   const chatEnabled = tournament.settings.chatEnabled ?? false;
 
-  // ── Unread chat messages ───────────────────────────────────────────────────
-  const [unreadCount, setUnreadCount] = useState(0);
-  const lastReadRef = useRef<string>('');
-  const tabRef = useRef(tab);
-  tabRef.current = tab;
-
-  useEffect(() => {
-    if (tab === 'chat') {
-      setUnreadCount(0);
-      const now = new Date().toISOString();
-      lastReadRef.current = now;
-      try { localStorage.setItem(`torq_chat_read_${tournamentId}`, now); } catch { /* */ }
-    }
-  }, [tab, tournamentId]);
-
-  useEffect(() => {
-    if (!chatEnabled) return;
-    try {
-      lastReadRef.current = localStorage.getItem(`torq_chat_read_${tournamentId}`) ?? '';
-    } catch { /* */ }
-
-    const unsub = subscribeToChatMessages(tournamentId, (msgs) => {
-      if (tabRef.current !== 'chat' && msgs.length > 0) {
-        const lr = lastReadRef.current;
-        if (lr) {
-          setUnreadCount(msgs.filter(m => m.createdAt > lr).length);
-        } else {
-          setUnreadCount(msgs.length);
-        }
-      }
-    });
-    return unsub;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tournamentId, chatEnabled]);
-
   const chatLabel = unreadCount > 0
     ? `💬 ${t('tournament.chat.title')} (${unreadCount > 99 ? '99+' : unreadCount})`
     : `💬 ${t('tournament.chat.title')}`;
-
-  // ── Pending registrations badge ────────────────────────────────────────────
-  const [pendingRegCount, setPendingRegCount] = useState(0);
-  useEffect(() => {
-    if (!tournament.settings.registrationEnabled || !isAdmin) return;
-    const unsub = subscribeToRegistrations(tournamentId, (regs) => {
-      setPendingRegCount(Object.keys(regs).length);
-    });
-    return unsub;
-  }, [tournamentId, tournament.settings.registrationEnabled, isAdmin]);
 
   const settingsLabel = pendingRegCount > 0
     ? `⚙️ ${t('tournament.detail.tabSettings')} (${pendingRegCount})`
     : `⚙️ ${t('tournament.detail.tabSettings')}`;
 
   const isFriendly = tournament.settings.friendlyMode ?? false;
-  const generateInitialSchedule = useTournamentStore(s => s.generateInitialSchedule);
   const needsSchedule = tournament.matches.length === 0 && tournament.teams.length >= 2;
 
   const dashboardLabel = pendingRegCount > 0
