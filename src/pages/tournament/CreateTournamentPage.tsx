@@ -13,6 +13,7 @@ import { DEFAULT_TIEBREAKER_ORDER } from '../../types/tournament.types';
 import type { Club, AgeCategory } from '../../types/club.types';
 import { TEAM_COLORS } from '../../utils/team-colors';
 import { useToastStore } from '../../store/toast.store';
+import { useLayoutMode } from '../../hooks/useLayoutMode';
 
 import {
   ClubPickerModal,
@@ -35,6 +36,7 @@ type TeamSource = 'manual' | 'registration';
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function CreateTournamentPage({ navigate }: Props) {
   const { t } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const { user } = useAuth();
   const templates = useTemplatesStore(s => s.templates);
   const deleteTemplate = useTemplatesStore(s => s.deleteTemplate);
@@ -380,7 +382,7 @@ export function CreateTournamentPage({ navigate }: Props) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 800 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Club Picker Modal */}
       {clubPickerForTeam !== null && (
         <ClubPickerModal

@@ -8,6 +8,7 @@ import type { Exercise, PhaseType, SkillFocus, DifficultyLevel } from '../types/
 import type { AgeCategory } from '../types/category.types';
 import { useI18n } from '../i18n';
 import { generateId } from '../utils/id';
+import { useLayoutMode } from '../hooks/useLayoutMode';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -305,6 +306,7 @@ function EditExerciseModal({
 
 export function ExerciseLibraryPage({ navigate }: Props) {
   const { t } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const { customExercises, favoriteIds, addExercise, updateExercise, deleteExercise, toggleFavorite } = useExercisesStore();
   const [search, setSearch] = useState('');
   const [filterPhase, setFilterPhase] = useState<PhaseType | null>(null);
@@ -347,7 +349,7 @@ export function ExerciseLibraryPage({ navigate }: Props) {
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{ padding: '12px 20px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
         <button onClick={() => navigate({ name: 'home' })}

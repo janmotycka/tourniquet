@@ -5,11 +5,13 @@ import { CATEGORY_CONFIGS } from '../data/categories.data';
 import { formatMinutes, formatDate } from '../utils/time';
 import type { TrainingUnit } from '../types/training.types';
 import { useI18n } from '../i18n';
+import { useLayoutMode } from '../hooks/useLayoutMode';
 
 interface Props { navigate: (p: Page) => void; }
 
 export function SavedPage({ navigate }: Props) {
   const { t, locale } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const savedTrainings = useTrainingsStore(s => s.savedTrainings);
   const deleteTraining = useTrainingsStore(s => s.deleteTraining);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -19,7 +21,7 @@ export function SavedPage({ navigate }: Props) {
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px 12px' }}>
         <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>

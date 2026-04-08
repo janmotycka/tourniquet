@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n';
 import type { MatchLineupPlayer, SubstitutionSettings } from '../../types/match.types';
 import type { Club, AgeCategory } from '../../types/club.types';
 import { useToastStore } from '../../store/toast.store';
+import { useLayoutMode } from '../../hooks/useLayoutMode';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -134,6 +135,7 @@ function OpponentInput({ value, onChange, clubs, t }: {
 
 export function CreateMatchPage({ navigate }: Props) {
   const { t } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const clubs = useClubsStore(s => s.clubs);
   const createMatch = useMatchesStore(s => s.createMatch);
   const allMatches = useMatchesStore(s => s.matches);
@@ -754,7 +756,7 @@ export function CreateMatchPage({ navigate }: Props) {
   );
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh', width: '100%', maxWidth: isDesktop ? 800 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{
         padding: '16px 20px 12px', background: 'var(--surface)',

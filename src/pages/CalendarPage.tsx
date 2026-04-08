@@ -8,6 +8,7 @@ import { useI18n, getDateLocale } from '../i18n';
 import type { Locale } from '../i18n';
 import { copyToClipboard } from '../utils/training-share';
 import { useToastStore } from '../store/toast.store';
+import { useLayoutMode } from '../hooks/useLayoutMode';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -283,6 +284,7 @@ function AgendaView({
 // ─── Main CalendarPage ────────────────────────────────────────────────────────
 export function CalendarPage({ navigate }: Props) {
   const { t, locale } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const { savedTrainings, scheduleTraining } = useTrainingsStore(s => ({
     savedTrainings: s.savedTrainings,
     scheduleTraining: s.scheduleTraining,
@@ -385,7 +387,7 @@ export function CalendarPage({ navigate }: Props) {
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px' }}>
         <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>

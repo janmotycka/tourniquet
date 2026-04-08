@@ -16,6 +16,7 @@ import { formatMinutes, formatDate } from '../utils/time';
 import { formatTrainingForShare, shareToWhatsApp, copyToClipboard } from '../utils/training-share';
 import { useI18n } from '../i18n';
 import { safeClone } from '../utils/clone';
+import { useLayoutMode } from '../hooks/useLayoutMode';
 
 const PHASE_COLORS: Record<PhaseType, { bg: string; text: string; bar: string; label: string }> = {
   warmup: { bg: 'var(--warmup-light)', text: 'var(--warmup-text)', bar: 'var(--warmup)', label: 'phase.warmup' },
@@ -637,6 +638,7 @@ function PhaseBlock({ phase, onExerciseClick, numberOfPlayers, coachNames }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export function TrainingDetailPage({ training, navigate }: Props) {
   const { t, locale } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const [saved, setSaved] = useState(training.isSaved);
   const [selectedEx, setSelectedEx] = useState<Exercise | null>(null);
   const [showShare, setShowShare] = useState(false);
@@ -690,7 +692,7 @@ export function TrainingDetailPage({ training, navigate }: Props) {
   const uLabelText = training.input.selectedULabel ? `${training.input.selectedULabel} – ` : '';
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'var(--bg)' }}>
         <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>

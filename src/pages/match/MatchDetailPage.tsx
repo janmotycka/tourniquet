@@ -7,6 +7,7 @@ import { LiveTab } from '../../components/match/LiveTab';
 import { LineupTab } from '../../components/match/LineupTab';
 import { RatingsTab } from '../../components/match/RatingsTab';
 import { getMatchPublicUrl, generateMatchQRCodeDataUrl } from '../../utils/qr-code';
+import { useLayoutMode } from '../../hooks/useLayoutMode';
 
 interface Props { matchId: string; navigate: (p: Page) => void; }
 
@@ -28,6 +29,7 @@ function MatchDetailSkeleton() {
 
 export function MatchDetailPage({ matchId, navigate }: Props) {
   const { t } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const match = useMatchesStore(s => s.getMatchById(matchId));
   const matches = useMatchesStore(s => s.matches); // Subscribe for reactivity
   const togglePublicMatch = useMatchesStore(s => s.togglePublicMatch);
@@ -105,7 +107,7 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
   const isPublic = !!currentMatch.isPublic;
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{
         padding: '14px 16px 10px', background: 'var(--surface)',

@@ -12,6 +12,7 @@ import type { AgeCategory, SubCategory, CategoryGroup } from '../types/category.
 import type { Exercise, PhaseType, SkillFocus } from '../types/exercise.types';
 import type { GeneratorInput } from '../types/training.types';
 import { useI18n } from '../i18n';
+import { useLayoutMode } from '../hooks/useLayoutMode';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -85,6 +86,7 @@ function ExercisePicker({ forPhase, category, onSelect, onClose }: {
 // ─── Main page ────────────────────────────────────────────────────────────────
 export function ManualBuilderPage({ navigate }: Props) {
   const { t } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const [builderStep, setBuilderStep] = useState<'setup' | 'build'>('setup');
 
   // Setup state
@@ -157,7 +159,7 @@ export function ManualBuilderPage({ navigate }: Props) {
   // ── SETUP STEP ──────────────────────────────────────────────────────────────
   if (builderStep === 'setup') {
     return (
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px' }}>
           <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
@@ -283,7 +285,7 @@ export function ManualBuilderPage({ navigate }: Props) {
   const activeExercises = exercisesByPhase[activePhase] ?? [];
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px' }}>
         <button onClick={() => setBuilderStep('setup')} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLayoutMode } from '../../hooks/useLayoutMode';
 import type { Tournament, RegistrationSubmission, BillingProfile, RosterSubmission } from '../../types/tournament.types';
 import type { Page } from '../../App';
 import { useI18n, getDateLocale } from '../../i18n';
@@ -29,6 +30,7 @@ interface Props {
 
 export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreated }: Props) {
   const { t, locale } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const [copied, setCopied] = useState(false);
   const [registrations, setRegistrations] = useState<Record<string, RegistrationSubmission>>({});
   const approveRegistration = useTournamentStore(s => s.approveRegistration);
@@ -218,7 +220,13 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
   ];
 
   return (
-    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{
+      padding: isDesktop ? '24px 16px 40px' : '16px',
+      display: 'flex', flexDirection: 'column', gap: 14,
+      maxWidth: isDesktop ? 820 : undefined,
+      margin: isDesktop ? '0 auto' : undefined,
+      width: '100%',
+    }}>
 
       {/* Welcome banner — only after creation */}
       {justCreated && (
@@ -265,9 +273,18 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
       {/* Summary + PDF */}
       <div style={{
         background: 'var(--surface)', borderRadius: 14, padding: '12px 16px',
-        boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10,
+        boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+        display: 'flex',
+        flexDirection: isDesktop ? 'row' : 'column',
+        alignItems: isDesktop ? 'center' : undefined,
+        gap: isDesktop ? 16 : 10,
       }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 14px', fontSize: 13, color: 'var(--text-muted)', justifyContent: 'center' }}>
+        <div style={{
+          flex: isDesktop ? 1 : undefined,
+          display: 'flex', flexWrap: 'wrap', gap: '2px 14px',
+          fontSize: 13, color: 'var(--text-muted)',
+          justifyContent: isDesktop ? 'flex-start' : 'center',
+        }}>
           <span>📅 <b style={{ color: 'var(--text)' }}>{(() => { const d = new Date(tournament.settings.startDate + 'T00:00:00'); return `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`; })()}</b></span>
           <span>⏰ <b style={{ color: 'var(--text)' }}>{tournament.settings.startTime}</b></span>
           <span>👥 <b style={{ color: 'var(--text)' }}>{tournament.teams.length}{hasExplicitMax ? `/${maxTeams}` : ''}</b></span>
@@ -291,12 +308,15 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
           }}
           disabled={pdfExporting}
           style={{
-            padding: '10px', borderRadius: 10, fontSize: 14, fontWeight: 700,
+            padding: isDesktop ? '10px 18px' : '10px',
+            borderRadius: 10, fontSize: 14, fontWeight: 700,
             background: pdfExporting ? 'var(--border)' : 'var(--primary)',
             color: pdfExporting ? 'var(--text-muted)' : '#fff',
             border: 'none', cursor: pdfExporting ? 'wait' : 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             transition: 'background .2s',
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
           }}
         >
           {pdfExporting ? `⏳ ${t('pdf.generating')}` : `📄 ${t('pdf.downloadPdf')}`}
@@ -602,6 +622,12 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
           )}
 
           {/* Approved teams with roster status */}
+          <div style={{
+            display: isDesktop && tournament.teams.length > 1 ? 'grid' : 'flex',
+            gridTemplateColumns: isDesktop && tournament.teams.length > 1 ? 'repeat(auto-fill, minmax(340px, 1fr))' : undefined,
+            flexDirection: 'column',
+            gap: 10,
+          }}>
           {tournament.teams.map(team => {
             const submission = rosterMap[team.id];
             const isAccepted = !!team.rosterSubmittedAt;
@@ -787,6 +813,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
               </div>
             );
           })}
+          </div>
 
           {/* Add team manually */}
           {isAdmin && (

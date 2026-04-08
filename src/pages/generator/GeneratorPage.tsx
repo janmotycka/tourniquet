@@ -15,6 +15,7 @@ import { useI18n } from '../../i18n';
 import type { PhaseStructure, CategoryGroup } from '../../types/category.types';
 import type { SkillFocus, PhaseType } from '../../types/exercise.types';
 import type { GeneratorInput } from '../../types/training.types';
+import { useLayoutMode } from '../../hooks/useLayoutMode';
 
 const TOTAL_STEPS = 5;
 
@@ -252,6 +253,7 @@ interface Props { navigate: (p: Page) => void; }
 
 export function GeneratorPage({ navigate }: Props) {
   const { t } = useI18n();
+  const { isDesktop } = useLayoutMode();
   const [step, setStep] = useState(0);
   const [expandedGroup, setExpandedGroup] = useState<CategoryGroup | null>(null);
   const [newCoachName, setNewCoachName] = useState('');
@@ -380,7 +382,7 @@ export function GeneratorPage({ navigate }: Props) {
   const recommendedDuration = subCatCfg?.recommendedDuration ?? 90;
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       <NavBar onBack={goBack} step={step} />
 
       <div style={{ flex: 1, overflowY: 'auto' }}>
