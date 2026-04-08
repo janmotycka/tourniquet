@@ -20,14 +20,9 @@ export async function hashPin(pin: string, salt?: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/**
- * Ověří PIN proti uloženému hashi.
- * @param salt — pokud prázdný/undefined, ověřuje bez soli (zpětná kompatibilita starých turnajů)
- */
-export async function verifyPin(pin: string, hash: string, salt?: string): Promise<boolean> {
-  const computed = await hashPin(pin, salt);
-  return computed === hash;
-}
+// PIN ověření probíhá server-side přes Cloud Function `verifyTournamentPin`
+// (viz src/services/tournament-functions.ts). Klient PIN nikdy nehashuje
+// ani nečte pin-auth uzel — to dělá pouze admin SDK na serveru.
 
 // Session storage klíč pro ověřený PIN organizátora
 const SESSION_KEY = (tournamentId: string) => `pin-verified-${tournamentId}`;

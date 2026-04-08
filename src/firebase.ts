@@ -23,25 +23,26 @@ export const functions = getFunctions(app, 'europe-west1');
 export const googleProvider = new GoogleAuthProvider();
 
 // ─── App Check (reCAPTCHA v3) ────────────────────────────────────────────────
-// Chrání Firebase RTDB a Cloud Functions před zneužitím z neautorizovaných klientů.
-// V development mode používáme debug token (nastavit v Firebase Console → App Check).
-// V incognito mode může reCAPTCHA selhat — App Check je proto "non-blocking"
-// (enforcement se nastavuje v Firebase Console, ne zde na klientu).
+// Chrání Firebase RTDB, Cloud Functions a Auth před zneužitím z neautorizovaných
+// klientů. Enforcement se nastavuje v Firebase Console → App Check → APIs.
+//
+// Aktivace: VITE_ENABLE_APP_CHECK=true + VITE_RECAPTCHA_SITE_KEY (GitHub Secrets).
+// Site key musí být zaregistrovaný v https://www.google.com/recaptcha/admin
+// (typ reCAPTCHA v3) s povolenými doménami torq.cz, www.torq.cz, *.web.app, localhost.
+// Odpovídající secret key je nastavený v Firebase Console → App Check → Apps.
+//
+// V development mode použij debug token (Firebase Console → App Check → Manage
+// debug tokens) přes VITE_APPCHECK_DEBUG_TOKEN.
+//
+// Inicializace je obalená v try/catch — pokud reCAPTCHA selže (incognito,
+// ad-blocker), app pokračuje bez App Check tokenu. Enforcement na serveru pak
+// rozhodne, jestli request projde.
 
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
-
-// ⚠️ App Check DOČASNĚ VYPNUT (2026-04-08)
-// reCAPTCHA klíč není správně zaregistrovaný v Firebase Console pro torq.cz/web.app,
-// backend vrací 403 → App Check přejde do 24h initial-throttle → blokuje všechna
-// Firebase volání → aplikace visí na "Loading…".
-// FIX: zaregistrovat reCAPTCHA klíč v Firebase Console → App Check → Apps,
-// ověřit allowed domains v https://www.google.com/recaptcha/admin,
-// pak nastavit VITE_ENABLE_APP_CHECK=true v GitHub Secrets.
 const appCheckEnabled = import.meta.env.VITE_ENABLE_APP_CHECK === 'true';
 
 if (appCheckEnabled && recaptchaSiteKey) {
   try {
-    // Debug token pro localhost — Firebase Console → App Check → Apps → Manage debug tokens
     if (import.meta.env.DEV) {
       // @ts-expect-error — Firebase App Check debug token pro development
       self.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
@@ -53,12 +54,10 @@ if (appCheckEnabled && recaptchaSiteKey) {
     });
     logger.debug('[AppCheck] Initialized with reCAPTCHA v3');
   } catch (err) {
-    // Graceful fallback — pokud reCAPTCHA selže (incognito, ad-blocker),
-    // app funguje dál. Enforcement je na straně serveru (Firebase Console).
     logger.warn('[AppCheck] Initialization failed (incognito/ad-blocker?):', err);
   }
 } else {
-  logger.debug('[AppCheck] Skipped — temporarily disabled (see comment above)');
+  logger.debug('[AppCheck] Skipped (VITE_ENABLE_APP_CHECK !== "true")');
 }
 
 // ─── Connection monitoring & keepalive ───────────────────────────────────────

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   hashPin,
-  verifyPin,
   generatePinSalt,
   markPinVerified,
   isPinVerified,
@@ -41,35 +40,8 @@ describe('hashPin', () => {
   });
 });
 
-// ─── verifyPin ───────────────────────────────────────────────────────────────
-
-describe('verifyPin', () => {
-  it('returns true for correct PIN without salt', async () => {
-    const hash = await hashPin('123456');
-    expect(await verifyPin('123456', hash)).toBe(true);
-  });
-
-  it('returns false for wrong PIN', async () => {
-    const hash = await hashPin('123456');
-    expect(await verifyPin('000000', hash)).toBe(false);
-  });
-
-  it('returns true for correct PIN with salt', async () => {
-    const salt = 'test-salt';
-    const hash = await hashPin('123456', salt);
-    expect(await verifyPin('123456', hash, salt)).toBe(true);
-  });
-
-  it('returns false when salt is different', async () => {
-    const hash = await hashPin('123456', 'salt-a');
-    expect(await verifyPin('123456', hash, 'salt-b')).toBe(false);
-  });
-
-  it('returns false for correct PIN but missing salt', async () => {
-    const hash = await hashPin('123456', 'mysalt');
-    expect(await verifyPin('123456', hash)).toBe(false);
-  });
-});
+// PIN ověření je server-side (Cloud Function `verifyTournamentPin`).
+// Klient pouze hashuje PIN při ZÁPISU nového turnaje (hashPin).
 
 // ─── generatePinSalt ─────────────────────────────────────────────────────────
 

@@ -192,12 +192,6 @@ export async function savePublicTournament(tournament: Tournament): Promise<void
   await update(publicRef(tournament.id), publicData);
 }
 
-/** Zapíše joinedUsers/{uid}: true|'admin' do public mirror (pro Firebase security rules) */
-export async function writeJoinedUser(tournamentId: string, uid: string, role?: 'admin'): Promise<void> {
-  const joinedUserRef = ref(db, `public/${tournamentId}/joinedUsers/${uid}`);
-  await set(joinedUserRef, role ?? true);
-}
-
 /** Smaže turnaj z DB (včetně katalogu) */
 export async function deleteTournamentFromFirebase(uid: string, tournamentId: string): Promise<void> {
   await Promise.all([
@@ -207,20 +201,10 @@ export async function deleteTournamentFromFirebase(uid: string, tournamentId: st
   ]);
 }
 
-// ─── PIN auth ────────────────────────────────────────────────────────────────
-
-/** Načte PIN hash/salt ze zabezpečené cesty (vyžaduje auth) */
-export async function loadPinAuth(tournamentId: string): Promise<{ pinHash: string; pinSalt?: string } | null> {
-  try {
-    const snapshot = await get(pinAuthRef(tournamentId));
-    if (!snapshot.exists()) return null;
-    const data = snapshot.val();
-    return { pinHash: data.pinHash, pinSalt: data.pinSalt ?? undefined };
-  } catch {
-    // Fallback: starší turnaje mohou mít pinHash v public mirror
-    return null;
-  }
-}
+// PIN ověření a zápis do joinedUsers probíhá výhradně server-side přes Cloud
+// Functions `verifyTournamentPin` a `joinTournamentByPin` (admin SDK obejde
+// security rules). Klient nikdy nečte pin-auth uzel ani nezapisuje do
+// joinedUsers — security rules to navíc explicitně zakazují.
 
 // ─── Čtení ────────────────────────────────────────────────────────────────────
 
