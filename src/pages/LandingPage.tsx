@@ -22,7 +22,7 @@ type FeedItem =
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function LandingPage({ navigate, onLogin }: Props) {
-  const { t } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const [tournaments, setTournaments] = useState<CatalogEntry[]>([]);
   const [matches, setMatches] = useState<MatchCatalogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -316,7 +316,32 @@ export function LandingPage({ navigate, onLogin }: Props) {
       <div style={{
         textAlign: 'center', padding: '16px 24px 24px',
         fontSize: 12, color: 'var(--text-muted)',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
       }}>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {(['cs', 'en', 'de'] as const).map(loc => (
+            <button
+              key={loc}
+              onClick={() => setLocale(loc)}
+              aria-label={`Language: ${loc.toUpperCase()}`}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: '4px 8px',
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: locale === loc ? 700 : 500,
+                color: locale === loc ? 'var(--text)' : 'var(--text-muted)',
+                opacity: locale === loc ? 1 : 0.6,
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              {loc}
+            </button>
+          ))}
+        </div>
         <span>TORQ · torq.cz</span>
       </div>
     </div>
