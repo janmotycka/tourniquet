@@ -282,12 +282,22 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
             // Clicking to expand sets it; navigating to a page also sets it.
             // Only one module is ever highlighted at a time.
             const headerHighlighted = highlightedKey === mod.key;
+            // Is the user currently viewing a page inside this module?
+            const isActiveModule = currentModuleKey === mod.key;
             return (
               <div key={mod.key} {...wrapperProps}>
                 <button
                   onClick={() => {
                     setHighlightedKey(mod.key);
-                    setExpandedKey(expanded ? null : mod.key);
+                    // If switching to a different module, navigate to its first
+                    // sub-item (and expand it). If clicking the already-active
+                    // module, just toggle expansion.
+                    if (!isActiveModule && mod.items.length > 0) {
+                      setExpandedKey(mod.key);
+                      navigate(mod.items[0].target);
+                    } else {
+                      setExpandedKey(expanded ? null : mod.key);
+                    }
                   }}
                   style={moduleHeaderStyle(mod, headerHighlighted)}
                   aria-expanded={expanded}
