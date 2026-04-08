@@ -30,7 +30,16 @@ export const googleProvider = new GoogleAuthProvider();
 
 const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
-if (recaptchaSiteKey) {
+// ⚠️ App Check DOČASNĚ VYPNUT (2026-04-08)
+// reCAPTCHA klíč není správně zaregistrovaný v Firebase Console pro torq.cz/web.app,
+// backend vrací 403 → App Check přejde do 24h initial-throttle → blokuje všechna
+// Firebase volání → aplikace visí na "Loading…".
+// FIX: zaregistrovat reCAPTCHA klíč v Firebase Console → App Check → Apps,
+// ověřit allowed domains v https://www.google.com/recaptcha/admin,
+// pak nastavit VITE_ENABLE_APP_CHECK=true v GitHub Secrets.
+const appCheckEnabled = import.meta.env.VITE_ENABLE_APP_CHECK === 'true';
+
+if (appCheckEnabled && recaptchaSiteKey) {
   try {
     // Debug token pro localhost — Firebase Console → App Check → Apps → Manage debug tokens
     if (import.meta.env.DEV) {
@@ -49,7 +58,7 @@ if (recaptchaSiteKey) {
     logger.warn('[AppCheck] Initialization failed (incognito/ad-blocker?):', err);
   }
 } else {
-  logger.debug('[AppCheck] Skipped — VITE_RECAPTCHA_SITE_KEY not configured');
+  logger.debug('[AppCheck] Skipped — temporarily disabled (see comment above)');
 }
 
 // ─── Connection monitoring & keepalive ───────────────────────────────────────
