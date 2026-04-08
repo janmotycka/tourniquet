@@ -54,13 +54,14 @@
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128 && (!data.exists() || newData.val() === data.val())"
         },
 
-        // joinedUsers — každý přihlášený uživatel smí zapsat svůj vlastní záznam
-        // (PIN ověření probíhá na klientu; zde jen ověřujeme auth + self-write)
-        // POZN: admin role je client-controlled — PIN je sdílené tajemství, které uděluje důvěru.
-        // TODO: V budoucnu implementovat server-side admin invite tokeny pro silnější validaci.
+        // joinedUsers — žádný self-write rule. Zápis povolen pouze pokud jeden
+        // z ancestorových .write přechází (owner turnaje přes saveTournamentToFirebase,
+        // nebo existující joined-admin). Nový self-join probíhá VÝHRADNĚ přes
+        // Cloud Function joinTournamentByPin (admin SDK bypass), která ověří PIN.
+        // Bez této restrikce by útočník mohl obejít PIN a udělat si 'admin' roli
+        // zápisem `joinedUsers/{auth.uid} = 'admin'`.
         "joinedUsers": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid",
             ".validate": "newData.val() === true || newData.val() === 'admin'"
           }
         },
@@ -293,10 +294,12 @@
     },
 
     // ─── PIN autentizace (odděleno od public mirror — brání offline brute-force)
-    // Čtení: pouze přihlášení (anonymní auth OK). Zápis: pouze owner turnaje.
+    // Čtení: pouze admin SDK (Cloud Functions). Client NESMÍ číst — jinak by
+    // útočník stáhl pinHash+pinSalt a provedl offline brute-force 10^6 6-místných PINů.
+    // Zápis: pouze owner turnaje (při saveTournamentToFirebase).
     "pin-auth": {
       "$tournamentId": {
-        ".read": "auth != null",
+        ".read": false,
         ".write": "auth != null && (
           !data.exists() && newData.child('ownerUid').val() === auth.uid
           || data.exists() && data.child('ownerUid').val() === auth.uid
@@ -421,19 +424,21 @@
     // (rule samotný subtree definován níže v "users")
 
     // ─── Pozvánky do klubů (PIN-based, podobně jako tournament invites) ─────
-    // Write: pouze CF (vytváří invite + PIN)
-    // Read: přihlášení uživatelé (pro verifikaci PIN při joinu)
+    // Write i Read: pouze admin SDK (createClubInvite / joinClubByInvite /
+    // listClubInvites CF). Client NEČTE přímo — listování pozvánek jde přes CF.
     "clubInvites": {
       "$inviteId": {
-        ".read":  "auth != null",
+        ".read":  false,
         ".write": false
       }
     },
 
     // ─── PIN hashe pro klubové invites (oddělené úložiště) ──────────────────
+    // Čtení: pouze admin SDK (joinClubByInvite CF). Client NESMÍ číst — brání
+    // offline brute-force 6-místného PINu.
     "clubPinAuth": {
       "$inviteId": {
-        ".read":  "auth != null",
+        ".read":  false,
         ".write": false
       }
     },

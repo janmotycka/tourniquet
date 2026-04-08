@@ -12,9 +12,7 @@ import {
   deleteTournamentFromFirebase,
   loadTournamentsFromFirebase,
   loadPublicTournament,
-  loadPinAuth,
   subscribeToPublicTournament,
-  writeJoinedUser,
 } from '../services/tournament.firebase';
 import { saveCatalogEntry } from '../services/catalog.firebase';
 import {
@@ -22,7 +20,7 @@ import {
   removeJoinedTournament,
   loadJoinedTournaments,
 } from '../services/user.firebase';
-import { verifyPin } from '../utils/pin-hash';
+import { joinTournamentByPin as joinTournamentByPinCF } from '../services/tournament-functions';
 import { useToastStore } from './toast.store';
 import { auth } from '../firebase';
 
@@ -351,28 +349,32 @@ export const useTournamentStore = create<TournamentState>()(
         }
         if (!tournament) return { success: false, error: 'Turnaj nenalezen.' };
 
-        // Načti PIN z oddělené cesty (bezpečnější), fallback na public mirror (starší turnaje)
-        let pinData: { pinHash: string; pinSalt?: string } | null = null;
+        // Server-side PIN ověření přes Cloud Function.
+        // CF verifikuje PIN (admin SDK čte /pin-auth) a zapíše joinedUsers/{uid} do
+        // public mirror. Client už NEMÁ read přístup k /pin-auth ani write na joinedUsers.
         try {
-          pinData = await loadPinAuth(tournamentId);
-        } catch (err) {
-          logger.error('[Firebase] loadPinAuth failed:', err);
+          await joinTournamentByPinCF({ tournamentId, pin, role });
+        } catch (err: unknown) {
+          const code = (err as { code?: string })?.code ?? '';
+          logger.error('[CF] joinTournamentByPin failed:', code, err);
+          if (code === 'functions/permission-denied') {
+            return { success: false, error: 'Nesprávný PIN.' };
+          }
+          if (code === 'functions/not-found') {
+            return { success: false, error: 'Turnaj nenalezen.' };
+          }
+          if (code === 'functions/failed-precondition') {
+            return { success: false, error: 'Turnaj nemá nastavený PIN.' };
+          }
           return { success: false, error: 'Nepodařilo se ověřit PIN — zkuste to znovu.' };
         }
-        const pinHash = pinData?.pinHash ?? (tournament as Tournament & { pinHash?: string }).pinHash;
-        const pinSalt = pinData?.pinSalt ?? (tournament as Tournament & { pinSalt?: string }).pinSalt;
-        if (!pinHash) return { success: false, error: 'Turnaj nemá nastavený PIN.' };
 
-        // Ověř PIN (salt může chybět u starých turnajů → zpětná kompatibilita)
-        const ok = await verifyPin(pin, pinHash, pinSalt);
-        if (!ok) return { success: false, error: 'Nesprávný PIN.' };
-
-        // Přidej do joinnutých
+        // Přidej do joinnutých (optimistic)
         set(state => ({
           joinedTournaments: [tournament!, ...state.joinedTournaments],
         }));
 
-        // Ulož referenci do Firebase
+        // Ulož referenci do Firebase (vlastní uživatel → /users/{uid}/joinedTournaments)
         try {
           await addJoinedTournament(uid, tournamentId, tournament.ownerUid ?? '', tournament.name);
         } catch (err) {
@@ -382,18 +384,6 @@ export const useTournamentStore = create<TournamentState>()(
             joinedTournaments: state.joinedTournaments.filter(jt => jt.id !== tournamentId),
           }));
           return { success: false, error: 'Nepodařilo se uložit připojení — zkuste to znovu.' };
-        }
-
-        // Zapiš joinedUsers/{uid} do public mirror (potřebné pro Firebase security rules)
-        try {
-          await writeJoinedUser(tournamentId, uid, role);
-        } catch (err) {
-          logger.error('[Firebase] writeJoinedUser failed:', err);
-          // Rollback joinedTournaments — bez joinedUsers zápis nebude fungovat
-          set(state => ({
-            joinedTournaments: state.joinedTournaments.filter(jt => jt.id !== tournamentId),
-          }));
-          return { success: false, error: 'Nepodařilo se připojit — zkuste to znovu.' };
         }
 
         // Subscribe na real-time updates

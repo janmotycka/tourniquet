@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type { Tournament } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
-import { verifyPin, markPinVerified } from '../../utils/pin-hash';
+import { markPinVerified } from '../../utils/pin-hash';
 import { pinRateLimiter } from '../../utils/rate-limiter';
+import { verifyTournamentPin } from '../../services/tournament-functions';
+import { logger } from '../../utils/logger';
 
 export function PinGate({ tournament, onVerified, onClose }: { tournament: Tournament; onVerified: () => void; onClose?: () => void }) {
   const { t } = useI18n();
@@ -22,14 +24,23 @@ export function PinGate({ tournament, onVerified, onClose }: { tournament: Tourn
 
     setLoading(true);
     pinRateLimiter.record();
-    const ok = await verifyPin(input, tournament.pinHash, tournament.pinSalt);
-    setLoading(false);
-    if (ok) {
+    try {
+      await verifyTournamentPin({ tournamentId: tournament.id, pin: input });
       pinRateLimiter.reset();
       markPinVerified(tournament.id);
+      setLoading(false);
       onVerified();
-    } else {
-      setError(t('tournament.detail.pinWrong'));
+    } catch (err: unknown) {
+      setLoading(false);
+      const code = (err as { code?: string })?.code ?? '';
+      logger.error('[CF] verifyTournamentPin failed:', code);
+      if (code === 'functions/permission-denied') {
+        setError(t('tournament.detail.pinWrong'));
+      } else if (code === 'functions/failed-precondition') {
+        setError(t('tournament.detail.pinWrong'));
+      } else {
+        setError(t('tournament.detail.pinWrong'));
+      }
       setInput('');
     }
   };
