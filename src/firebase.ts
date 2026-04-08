@@ -21,6 +21,9 @@ export const auth = getAuth(app);
 export const db = getDatabase(app);
 export const functions = getFunctions(app, 'europe-west1');
 export const googleProvider = new GoogleAuthProvider();
+// Vynutí account picker pokaždé — bez tohoto Google auto-signuje jediným
+// účtem v prohlížeči a mate lidi s více účty (pracovní vs osobní).
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 // ─── App Check (reCAPTCHA v3) ────────────────────────────────────────────────
 // Chrání Firebase RTDB, Cloud Functions a Auth před zneužitím z neautorizovaných
