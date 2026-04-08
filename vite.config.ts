@@ -51,6 +51,11 @@ export default defineConfig({
         clientsClaim: true,
         cleanupOutdatedCaches: true,
 
+        // Firebase reserved URLs (auth handler, iframe) — NIKDY nesmí být zachycené
+        // SPA fallbackem na index.html, jinak se rozbije Google Sign-in popup.
+        // Bez tohoto denylistu Workbox vrátí cached index.html místo Firebase auth helper.
+        navigateFallbackDenylist: [/^\/__\//],
+
         // Firebase Realtime DB a Functions — vždy network-first (real-time data)
         runtimeCaching: [
           {
