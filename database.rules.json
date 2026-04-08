@@ -280,7 +280,9 @@
           || root.child('public').child($tournamentId).child('joinedUsers').child(auth.uid).exists()
         )",
         "$matchId": {
-          ".write": "auth != null",
+          // Povolit zápis jen pokud jde o inkrementaci (newData existuje),
+          // smazání celého match subtree smí pouze owner/joined (viz parent rule výše)
+          ".write": "auth != null && newData.exists()",
           "$teamId": {
             "$emoji": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999999"
@@ -496,6 +498,8 @@
 
     // ─── Uživatelská data ────────────────────────────────────────────────────
     "users": {
+      // Index pro Stripe webhook — findUidByCustomerId dotazuje subscription/stripeCustomerId
+      ".indexOn": ["subscription/stripeCustomerId"],
       "$uid": {
         // Číst může jen vlastník
         ".read": "auth != null && auth.uid === $uid",
