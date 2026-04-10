@@ -33,6 +33,7 @@ import { ref, onValue } from 'firebase/database';
 import { db } from '../firebase';
 import type { ClubRole, ClubMember } from '../types/club.types';
 import { logger } from '../utils/logger';
+import { PageHeader } from '../components/ui';
 
 interface Props {
   navigate: (p: Page) => void;
@@ -68,11 +69,11 @@ export function ClubMembersPage({ navigate }: Props) {
   const showToast = useToastStore(s => s.show);
   const askConfirm = useConfirmStore(s => s.ask);
 
-  const sharedClubs = useClubsStore(s => s.sharedClubs);
+  const clubs = useClubsStore(s => s.clubs);
   const activeClubId = useClubsStore(s => s.activeClubId);
   const memberOfClubs = useClubsStore(s => s.memberOfClubs);
 
-  const activeClub = sharedClubs.find(c => c.id === activeClubId);
+  const activeClub = clubs.find(c => c.id === activeClubId);
   const myRole = activeClubId ? memberOfClubs[activeClubId] ?? null : null;
   const isOwner = myRole === 'owner';
 
@@ -235,7 +236,7 @@ export function ClubMembersPage({ navigate }: Props) {
     background: 'var(--surface)',
     borderRadius: 14,
     padding: 18,
-    boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+    boxShadow: 'var(--shadow-sm)',
     display: 'flex' as const,
     flexDirection: 'column' as const,
     gap: 12,
@@ -246,16 +247,10 @@ export function ClubMembersPage({ navigate }: Props) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {!isDesktop && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px',
-            borderBottom: '1px solid var(--divider)', background: 'var(--surface)',
-          }}>
-            <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{
-              width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
-              fontSize: 18, color: 'var(--text-muted)',
-            }}>←</button>
-            <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('clubs.members.title')}</h1>
-          </div>
+          <PageHeader
+            title={t('clubs.members.title')}
+            onBack={() => navigate({ name: 'home' })}
+          />
         )}
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -266,7 +261,7 @@ export function ClubMembersPage({ navigate }: Props) {
           <button
             onClick={() => navigate({ name: 'clubs' })}
             style={{
-              padding: '12px 20px', borderRadius: 12, background: '#2E7D32', color: '#fff',
+              padding: '12px 20px', borderRadius: 12, background: 'var(--success)', color: '#fff',
               fontWeight: 700, fontSize: 14,
             }}
           >
@@ -281,21 +276,11 @@ export function ClubMembersPage({ navigate }: Props) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Mobile header */}
       {!isDesktop && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px',
-          borderBottom: '1px solid var(--divider)', background: 'var(--surface)',
-        }}>
-          <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{
-            width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
-            fontSize: 18, color: 'var(--text-muted)',
-          }}>←</button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ fontWeight: 800, fontSize: 18, marginBottom: 2 }}>{t('clubs.members.title')}</h1>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {activeClub.name}
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          title={t('clubs.members.title')}
+          subtitle={activeClub.name}
+          onBack={() => navigate({ name: 'clubs' })}
+        />
       )}
 
       <div style={{
@@ -314,7 +299,7 @@ export function ClubMembersPage({ navigate }: Props) {
               <button
                 onClick={() => { setInviteOpen(true); setInviteResult(null); }}
                 style={{
-                  padding: '8px 14px', borderRadius: 10, background: '#2E7D32', color: '#fff',
+                  padding: '8px 14px', borderRadius: 10, background: 'var(--success)', color: '#fff',
                   fontWeight: 700, fontSize: 13,
                 }}
               >
@@ -329,7 +314,7 @@ export function ClubMembersPage({ navigate }: Props) {
               const roleLabel = m.role === 'owner' ? t('clubs.shared.ownerBadge')
                 : m.role === 'coach' ? t('clubs.shared.coachBadge')
                 : t('clubs.shared.viewerBadge');
-              const roleBg = m.role === 'owner' ? '#2E7D32' : 'var(--surface-var)';
+              const roleBg = m.role === 'owner' ? 'var(--success)' : 'var(--surface-var)';
               const roleColor = m.role === 'owner' ? '#fff' : 'var(--text-muted)';
               return (
                 <div key={m.uid} style={{
@@ -516,7 +501,7 @@ export function ClubMembersPage({ navigate }: Props) {
                   disabled={busy}
                   onClick={handleCreateInvite}
                   style={{
-                    padding: '12px', borderRadius: 12, background: '#2E7D32', color: '#fff',
+                    padding: '12px', borderRadius: 12, background: 'var(--success)', color: '#fff',
                     fontWeight: 700, fontSize: 14, opacity: busy ? 0.6 : 1,
                   }}
                 >

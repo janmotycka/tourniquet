@@ -14,6 +14,21 @@
   --text-disabled: #9CA3AF;
   --error: #D32F2F;
 
+  /* Semantic colors — replaces hardcoded hex throughout the app. */
+  --danger: #C62828;
+  --danger-light: #FFEBEE;
+  --success: #2E7D32;
+  --success-light: #E8F5E9;
+  --warning: #E65100;
+  --warning-light: #FFF3E0;
+  --info: #1565C0;
+  --info-light: #E3F2FD;
+
+  /* Canonical shadow tokens. */
+  --shadow-sm: 0 1px 4px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.12);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.20);
+
   --pripravka: #FF6B35; --pripravka-light: #FFF0EB;
   --mladsi: #4CAF50;    --mladsi-light: #F0FBF0;
   --starsi: #2196F3;    --starsi-light: #EBF5FF;
@@ -44,6 +59,19 @@
   --text-muted: #8888A0;
   --text-disabled: #555566;
   --error: #EF5350;
+
+  --danger: #EF5350;
+  --danger-light: #3A1A1A;
+  --success: #66BB6A;
+  --success-light: #1A2A1A;
+  --warning: #FFA726;
+  --warning-light: #2A1A0D;
+  --info: #42A5F5;
+  --info-light: #0D1A2A;
+
+  --shadow-sm: 0 1px 4px rgba(0,0,0,.25);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.40);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.55);
 
   --pripravka: #FF8A50; --pripravka-light: #2A1A10;
   --mladsi: #66BB6A;    --mladsi-light: #1A2A1A;
@@ -131,6 +159,12 @@ body[data-layout-mode="desktop"] {
 
 
 button { cursor: pointer; border: none; font-family: inherit; }
+input, select, textarea {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;          /* prevent flex children from overflowing */
+  -webkit-appearance: none; /* normalize iOS input sizing */
+}
 a { text-decoration: none; color: inherit; }
 
 /* ─── Accessibility: keyboard-only focus ring ──────────────────────────────── */

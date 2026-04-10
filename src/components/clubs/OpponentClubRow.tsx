@@ -84,8 +84,8 @@ export function OpponentClubRow({
               href={`tel:${mainContact.phone}`}
               onClick={e => e.stopPropagation()}
               style={{
-                width: 32, height: 32, borderRadius: 8, background: '#E8F5E9',
-                color: '#2E7D32', fontSize: 15,
+                width: 32, height: 32, borderRadius: 8, background: 'var(--success-light)',
+                color: 'var(--success)', fontSize: 15,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 textDecoration: 'none',
               }}
@@ -140,7 +140,7 @@ export function OpponentClubRow({
               onClick={onDelete}
               style={{
                 padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                background: '#FFEBEE', color: '#C62828',
+                background: 'var(--danger-light)', color: 'var(--danger)',
                 border: 'none', cursor: 'pointer',
               }}
             >

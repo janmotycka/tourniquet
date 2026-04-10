@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { ref as dbRef, onValue } from 'firebase/database';
+import { ref as dbRef, onValue, set as dbSet } from 'firebase/database';
 import { functions, auth, db } from '../firebase';
 import { useI18n } from '../i18n';
 import { usePageStore } from '../store/page.store';
@@ -70,6 +70,7 @@ interface CatalogClub {
   city?: string;
   founded?: number;
   logoUrl?: string;
+  logoBase64?: string;
   wikidataId?: string;
   source: 'wikidata' | 'manual' | 'user';
   verified: boolean;
@@ -138,8 +139,6 @@ export function AdminPage() {
   const [search, setSearch] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [clubRequests, setClubRequests] = useState<ClubRequestItem[]>([]);
-  const [migrationLog, setMigrationLog] = useState<string | null>(null);
-  const [migrationBusy, setMigrationBusy] = useState(false);
 
   const currentUid = auth.currentUser?.uid;
   const isAdmin = currentUid === ADMIN_UID;
@@ -154,7 +153,9 @@ export function AdminPage() {
       const result = await fn({});
       setUsers(result.data.users);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load users');
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Admin] loadUsers failed:', msg);
+      setError(`Users: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -166,7 +167,9 @@ export function AdminPage() {
       const result = await fn({});
       setStats(result.data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load stats');
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Admin] loadStats failed:', msg);
+      setError(`Stats: ${msg}`);
     }
   }, []);
 
@@ -176,7 +179,9 @@ export function AdminPage() {
       const res = await fn({});
       setClubRequests(res.data.requests || []);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load club requests');
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[Admin] loadClubRequests failed:', msg);
+      // Non-critical — don't overwrite existing error
     }
   }, []);
 
@@ -339,35 +344,6 @@ export function AdminPage() {
     }
   };
 
-  const runMigration = async (dryRun: boolean) => {
-    const targetUid = window.prompt(t('admin.migration.targetUid')) ?? '';
-    try {
-      setMigrationBusy(true);
-      setMigrationLog(null);
-      const fn = httpsCallable<unknown, {
-        success: boolean;
-        migrated?: number;
-        dryRun?: boolean;
-        wouldMigrate?: number;
-        idMap?: Record<string, string>;
-        message?: string;
-      }>(functions, 'migrateUserClubs');
-      const res = await fn({ targetUid: targetUid || undefined, dryRun });
-      const data = res.data;
-      if (data.dryRun) {
-        setMigrationLog(`DRY RUN: would migrate ${data.wouldMigrate} clubs\n` + JSON.stringify(data.idMap, null, 2));
-      } else if (data.migrated === 0 || data.message) {
-        setMigrationLog(data.message || t('admin.migration.noData'));
-      } else {
-        setMigrationLog(t('admin.migration.success', { count: String(data.migrated ?? 0) }) + '\n' + JSON.stringify(data.idMap, null, 2));
-      }
-    } catch (err: unknown) {
-      setMigrationLog('ERROR: ' + (err instanceof Error ? err.message : 'Failed'));
-    } finally {
-      setMigrationBusy(false);
-    }
-  };
-
   // ─── Filtered users ───────────────────────────────────────────────────────
 
   const filteredUsers = useMemo(() => {
@@ -467,9 +443,6 @@ export function AdminPage() {
           onApprove={approveClubRequest}
           onReject={rejectClubRequest}
           onRefresh={loadClubRequests}
-          migrationBusy={migrationBusy}
-          migrationLog={migrationLog}
-          onRunMigration={runMigration}
         />
       );
     }
@@ -501,7 +474,7 @@ export function AdminPage() {
         filters={tabBar}
       >
         {error && (
-          <div style={{ padding: 12, borderRadius: 10, background: '#FFEBEE', color: '#C62828', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
+          <div style={{ padding: 12, borderRadius: 10, background: 'var(--danger-light)', color: 'var(--danger)', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
             {error}
           </div>
         )}
@@ -573,7 +546,7 @@ export function AdminPage() {
       )}
 
       {error && (
-        <div style={{ padding: 12, borderRadius: 10, background: '#FFEBEE', color: '#C62828', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
+        <div style={{ padding: 12, borderRadius: 10, background: 'var(--danger-light)', color: 'var(--danger)', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
           {error}
         </div>
       )}
@@ -611,7 +584,7 @@ function UsersList({
             key={user.uid}
             style={{
               padding: '12px 14px', borderRadius: 14,
-              background: isBlocked ? '#FFF3E0' : 'var(--surface)',
+              background: isBlocked ? 'var(--warning-light)' : 'var(--surface)',
               border: isCurrentAdmin
                 ? '1.5px solid var(--primary)'
                 : isBlocked
@@ -636,7 +609,7 @@ function UsersList({
                 <div style={{ fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.displayName || 'Anonymous'}
                   {isCurrentAdmin && <span style={{ fontSize: 10, marginLeft: 6, color: 'var(--primary)' }}>ADMIN</span>}
-                  {isBlocked && <span style={{ fontSize: 10, marginLeft: 6, color: '#E65100' }}>⛔ {t('admin.user.blocked')}</span>}
+                  {isBlocked && <span style={{ fontSize: 10, marginLeft: 6, color: 'var(--warning)' }}>⛔ {t('admin.user.blocked')}</span>}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.email || user.uid.substring(0, 12) + '...'}
@@ -644,8 +617,8 @@ function UsersList({
               </div>
               <span style={{
                 padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
-                background: isPremium ? '#E8F5E9' : 'var(--surface-var)',
-                color: isPremium ? '#2E7D32' : 'var(--text-muted)',
+                background: isPremium ? 'var(--success-light)' : 'var(--surface-var)',
+                color: isPremium ? 'var(--success)' : 'var(--text-muted)',
                 border: isPremium ? '1px solid #2E7D32' : '1px solid var(--border)',
               }}>{isPremium ? '★' : 'Free'}</span>
             </div>
@@ -709,8 +682,8 @@ function UsersList({
 
 const actionBtnStyle = (variant: 'primary' | 'neutral' | 'danger'): React.CSSProperties => ({
   padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer',
-  background: variant === 'primary' ? 'var(--primary)' : variant === 'danger' ? '#FFEBEE' : 'var(--surface-var)',
-  color: variant === 'primary' ? '#fff' : variant === 'danger' ? '#C62828' : 'var(--text)',
+  background: variant === 'primary' ? 'var(--primary)' : variant === 'danger' ? 'var(--danger-light)' : 'var(--surface-var)',
+  color: variant === 'primary' ? '#fff' : variant === 'danger' ? 'var(--danger)' : 'var(--text)',
   border: variant === 'danger' ? '1px solid #C62828' : '1px solid var(--border)',
 });
 
@@ -742,8 +715,8 @@ function SuspiciousList({ users, onToggleBlock, updating }: {
       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>{t('admin.suspicious.subtitle')}</p>
       {users.map((u) => {
         const severity = u.suspicionScore >= 60 ? 'high' : u.suspicionScore >= 40 ? 'mid' : 'low';
-        const color = severity === 'high' ? '#C62828' : severity === 'mid' ? '#E65100' : '#F57F17';
-        const bg = severity === 'high' ? '#FFEBEE' : severity === 'mid' ? '#FFF3E0' : '#FFFDE7';
+        const color = severity === 'high' ? 'var(--danger)' : severity === 'mid' ? 'var(--warning)' : '#F57F17';
+        const bg = severity === 'high' ? 'var(--danger-light)' : severity === 'mid' ? 'var(--warning-light)' : '#FFFDE7';
         return (
           <div key={u.uid} style={{
             padding: 14, borderRadius: 14, background: bg, border: `1.5px solid ${color}`,
@@ -864,11 +837,36 @@ function ClubsCatalogTab({
             padding: 10, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)',
             display: 'flex', gap: 10, alignItems: 'center',
           }}>
-            {c.logoUrl ? (
-              <img src={c.logoUrl} alt="" style={{ width: 36, height: 36, objectFit: 'contain', flexShrink: 0 }} />
-            ) : (
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--surface-var)', flexShrink: 0 }} />
-            )}
+            <label style={{ cursor: 'pointer', flexShrink: 0, position: 'relative' }}>
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  // Resize to max 128×128 and convert to base64
+                  const canvas = document.createElement('canvas');
+                  const img = new Image();
+                  img.onload = async () => {
+                    const size = 128;
+                    const scale = Math.min(size / img.width, size / img.height, 1);
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d')!;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const base64 = canvas.toDataURL('image/png', 0.8);
+                    await dbSet(dbRef(db, `clubsCatalog/${c.id}/logoBase64`), base64);
+                  };
+                  img.src = URL.createObjectURL(file);
+                }}
+              />
+              {(c.logoBase64 || c.logoUrl) ? (
+                <img src={c.logoBase64 || c.logoUrl} alt="" style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 6 }} />
+              ) : (
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--surface-var)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--text-muted)' }}>📷</div>
+              )}
+            </label>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {c.name}
@@ -924,7 +922,7 @@ function StatsTab({ stats, onRefresh }: { stats: SystemStats | null; onRefresh: 
         <div style={sectionTitle}>👥 {t('admin.stats.users')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
           <div><div style={bigNum}>{stats.users.total}</div><div style={smallLabel}>{t('admin.stats.totalUsers')}</div></div>
-          <div><div style={{ ...bigNum, color: '#2E7D32' }}>{stats.users.dau}</div><div style={smallLabel}>{t('admin.stats.dau')}</div></div>
+          <div><div style={{ ...bigNum, color: 'var(--success)' }}>{stats.users.dau}</div><div style={smallLabel}>{t('admin.stats.dau')}</div></div>
           <div><div style={bigNum}>{stats.users.wau}</div><div style={smallLabel}>{t('admin.stats.wau')}</div></div>
           <div><div style={bigNum}>{stats.users.mau}</div><div style={smallLabel}>{t('admin.stats.mau')}</div></div>
           <div><div style={{ ...bigNum, color: '#FFA000' }}>{stats.users.premium}</div><div style={smallLabel}>{t('admin.stats.premium')}</div></div>
@@ -939,8 +937,8 @@ function StatsTab({ stats, onRefresh }: { stats: SystemStats | null; onRefresh: 
         <div style={sectionTitle}>🏆 {t('admin.stats.tournaments')}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
           <div><div style={bigNum}>{stats.tournaments.total}</div><div style={smallLabel}>{t('admin.stats.tournamentsTotal')}</div></div>
-          <div><div style={{ ...bigNum, color: '#2E7D32' }}>{stats.tournaments.active}</div><div style={smallLabel}>{t('admin.stats.tournamentsActive')}</div></div>
-          <div><div style={{ ...bigNum, color: '#C62828' }}>● {stats.tournaments.liveNow}</div><div style={smallLabel}>{t('admin.stats.tournamentsLive')}</div></div>
+          <div><div style={{ ...bigNum, color: 'var(--success)' }}>{stats.tournaments.active}</div><div style={smallLabel}>{t('admin.stats.tournamentsActive')}</div></div>
+          <div><div style={{ ...bigNum, color: 'var(--danger)' }}>● {stats.tournaments.liveNow}</div><div style={smallLabel}>{t('admin.stats.tournamentsLive')}</div></div>
           <div><div style={bigNum}>{stats.tournaments.finished}</div><div style={smallLabel}>{t('admin.stats.tournamentsFinished')}</div></div>
         </div>
       </div>
@@ -1045,7 +1043,7 @@ function QuotaBar({
   measured?: boolean;
 }) {
   const pct = Math.min(100, (current / limit) * 100);
-  const color = pct >= 90 ? '#C62828' : pct >= 70 ? '#E65100' : pct >= 40 ? '#F9A825' : '#2E7D32';
+  const color = pct >= 90 ? 'var(--danger)' : pct >= 70 ? 'var(--warning)' : pct >= 40 ? '#F9A825' : 'var(--success)';
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
@@ -1077,9 +1075,6 @@ interface ClubRequestsTabProps {
   onApprove: (req: ClubRequestItem) => void;
   onReject: (req: ClubRequestItem) => void;
   onRefresh: () => void;
-  migrationBusy: boolean;
-  migrationLog: string | null;
-  onRunMigration: (dryRun: boolean) => void;
 }
 
 function ClubRequestsTab({
@@ -1088,9 +1083,6 @@ function ClubRequestsTab({
   onApprove,
   onReject,
   onRefresh,
-  migrationBusy,
-  migrationLog,
-  onRunMigration,
 }: ClubRequestsTabProps) {
   const { t } = useI18n();
   const pending = requests.filter(r => r.status === 'pending');
@@ -1098,52 +1090,6 @@ function ClubRequestsTab({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Migration panel */}
-      <div style={{
-        padding: 16, borderRadius: 12, background: 'var(--surface-var)',
-        border: '1px solid var(--divider)',
-      }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
-          🔄 {t('admin.migration.title')}
-        </div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-          {t('admin.migration.subtitle')}
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            onClick={() => onRunMigration(true)}
-            disabled={migrationBusy}
-            style={{
-              padding: '8px 14px', borderRadius: 8, fontWeight: 600, fontSize: 13,
-              background: 'var(--surface)', border: '1px solid var(--divider)',
-              cursor: migrationBusy ? 'wait' : 'pointer',
-            }}
-          >
-            {t('admin.migration.dryRun')}
-          </button>
-          <button
-            onClick={() => onRunMigration(false)}
-            disabled={migrationBusy}
-            style={{
-              padding: '8px 14px', borderRadius: 8, fontWeight: 700, fontSize: 13,
-              background: '#E65100', color: '#fff', border: 'none',
-              cursor: migrationBusy ? 'wait' : 'pointer',
-            }}
-          >
-            {migrationBusy ? '...' : t('admin.migration.run')}
-          </button>
-        </div>
-        {migrationLog && (
-          <pre style={{
-            marginTop: 12, padding: 10, borderRadius: 8,
-            background: 'var(--surface)', border: '1px solid var(--divider)',
-            fontSize: 11, maxHeight: 240, overflow: 'auto', whiteSpace: 'pre-wrap',
-          }}>
-            {migrationLog}
-          </pre>
-        )}
-      </div>
-
       {/* Pending requests */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -1196,7 +1142,7 @@ function ClubRequestsTab({
                     disabled={updating === req.id}
                     style={{
                       padding: '8px 14px', borderRadius: 8, fontWeight: 700, fontSize: 13,
-                      background: '#2E7D32', color: '#fff', border: 'none', cursor: 'pointer',
+                      background: 'var(--success)', color: '#fff', border: 'none', cursor: 'pointer',
                     }}
                   >
                     ✓ {t('admin.clubRequests.approve')}
@@ -1206,7 +1152,7 @@ function ClubRequestsTab({
                     disabled={updating === req.id}
                     style={{
                       padding: '8px 14px', borderRadius: 8, fontWeight: 700, fontSize: 13,
-                      background: '#C62828', color: '#fff', border: 'none', cursor: 'pointer',
+                      background: 'var(--danger)', color: '#fff', border: 'none', cursor: 'pointer',
                     }}
                   >
                     ✗ {t('admin.clubRequests.reject')}

@@ -6,6 +6,7 @@ import { formatMinutes, formatDate } from '../utils/time';
 import type { TrainingUnit } from '../types/training.types';
 import { useI18n } from '../i18n';
 import { useLayoutMode } from '../hooks/useLayoutMode';
+import { PageHeader } from '../components/ui';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -23,13 +24,12 @@ export function SavedPage({ navigate }: Props) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px 12px' }}>
-        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
-        <h1 style={{ fontWeight: 800, fontSize: 22, flex: 1 }}>{t('saved.title')}</h1>
-        {savedTrainings.length > 0 && (
-          <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{savedTrainings.length}</span>
-        )}
-      </div>
+      <PageHeader
+        title={t('saved.title')}
+        onBack={() => navigate({ name: 'home' })}
+        variant="inset"
+        action={savedTrainings.length > 0 ? <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{savedTrainings.length}</span> : undefined}
+      />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 40px' }}>
         {savedTrainings.length === 0 ? (
@@ -50,7 +50,7 @@ export function SavedPage({ navigate }: Props) {
               return (
                 <div key={tr.id} style={{
                   display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
-                  background: 'var(--surface)', borderRadius: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+                  background: 'var(--surface)', borderRadius: 14, boxShadow: 'var(--shadow-sm)',
                 }}>
                   <button onClick={() => navigate({ name: 'training', training: tr })}
                     style={{ flex: 1, textAlign: 'left', background: 'none', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -58,7 +58,7 @@ export function SavedPage({ navigate }: Props) {
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                       <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tr.title}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, display: 'flex', gap: 8 }}>
-                        <span>{cfg.label}</span>
+                        <span>{t(cfg.label)}</span>
                         <span>•</span>
                         <span>{formatMinutes(tr.totalDuration)}</span>
                         <span>•</span>

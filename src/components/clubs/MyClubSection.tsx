@@ -60,7 +60,7 @@ export function MyClubSection({
   return (
     <div style={{
       background: 'var(--surface)', borderRadius: 18, padding: '16px',
-      boxShadow: '0 2px 8px rgba(0,0,0,.08)',
+      boxShadow: 'var(--shadow-sm)',
       border: '2px solid var(--primary)',
     }}>
       {/* Header */}
@@ -116,8 +116,8 @@ export function MyClubSection({
           <button
             onClick={onDeleteClub}
             style={{
-              width: 36, height: 36, borderRadius: 10, background: '#FFEBEE',
-              color: '#C62828', fontSize: 16,
+              width: 36, height: 36, borderRadius: 10, background: 'var(--danger-light)',
+              color: 'var(--danger)', fontSize: 16,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >🗑</button>

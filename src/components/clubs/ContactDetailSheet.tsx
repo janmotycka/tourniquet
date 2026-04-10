@@ -149,7 +149,7 @@ export function ContactDetailSheet({
                 }
               }}
               style={{
-                background: '#FFEBEE', color: '#C62828', fontWeight: 700, fontSize: 14,
+                background: 'var(--danger-light)', color: 'var(--danger)', fontWeight: 700, fontSize: 14,
                 padding: '12px', borderRadius: 12, border: '1.5px solid #FFCDD2',
               }}
             >

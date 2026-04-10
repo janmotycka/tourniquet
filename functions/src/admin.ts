@@ -17,7 +17,10 @@ if (!admin.apps.length) {
 const db = admin.database();
 
 const requireAdmin = (context: functions.https.CallableContext) => {
-  if (!context.auth || context.auth.uid !== ADMIN_UID) {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Not authenticated — no auth context');
+  }
+  if (context.auth.uid !== ADMIN_UID) {
     throw new functions.https.HttpsError('permission-denied', 'Admin only');
   }
 };
@@ -341,19 +344,25 @@ export const adminGetStats = functions
   .region('europe-west1')
   .runWith({ memory: '512MB', timeoutSeconds: 60 })
   .https.onCall(async (_data, context) => {
+    console.log('[adminGetStats] called by:', context.auth?.uid ?? 'anonymous');
     requireAdmin(context);
 
     const now = Date.now();
     const day = 86400_000;
 
-    // Auth users (paginated)
+    // Auth users (paginated) — wrapped in try/catch for IAM issues
     const allUsers: admin.auth.UserRecord[] = [];
-    let pageToken: string | undefined;
-    do {
-      const p = await admin.auth().listUsers(1000, pageToken);
-      allUsers.push(...p.users);
-      pageToken = p.pageToken;
-    } while (pageToken);
+    try {
+      let pageToken: string | undefined;
+      do {
+        const p = await admin.auth().listUsers(1000, pageToken);
+        allUsers.push(...p.users);
+        pageToken = p.pageToken;
+      } while (pageToken);
+    } catch (authErr: unknown) {
+      const msg = authErr instanceof Error ? authErr.message : String(authErr);
+      throw new functions.https.HttpsError('internal', `Auth listUsers failed: ${msg}`);
+    }
 
     const totalUsers = allUsers.length;
     let dau = 0;
@@ -441,7 +450,7 @@ export const adminGetStats = functions
       functionsInvocationsMonth: 125_000,
       functionsGbSecondsMonth: 40_000,
       functionsOutboundMonthBytes: 5_368_709_120, // 5 GB
-      authMauFree: Infinity,                   // unlimited
+      authMauFree: -1,                          // unlimited (-1 = no limit)
     };
 
     return {
@@ -500,21 +509,30 @@ interface WikidataBinding {
 
 export const adminSyncClubsCatalog = functions
   .region('europe-west1')
-  .runWith({ memory: '512MB', timeoutSeconds: 120 })
+  .runWith({ memory: '1GB', timeoutSeconds: 300 })
   .https.onCall(async (_data, context) => {
     requireAdmin(context);
 
+    console.log('[adminSyncClubsCatalog] called by:', context.auth?.uid ?? 'anonymous');
     const url = `${WIKIDATA_SPARQL}?format=json&query=${encodeURIComponent(SPARQL_QUERY)}`;
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Tourniquet/1.0 (https://tourniquet-7a123.web.app; admin@tourniquet.app)',
-        Accept: 'application/sparql-results+json',
-      },
-    });
-    if (!res.ok) {
-      throw new functions.https.HttpsError('unavailable', `Wikidata HTTP ${res.status}`);
+    let json: { results: { bindings: WikidataBinding[] } };
+    try {
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Tourniquet/1.0 (https://tourniquet-7a123.web.app; admin@tourniquet.app)',
+          Accept: 'application/sparql-results+json',
+        },
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!res.ok) {
+        throw new functions.https.HttpsError('unavailable', `Wikidata HTTP ${res.status}: ${await res.text().catch(() => 'no body')}`);
+      }
+      json = (await res.json()) as { results: { bindings: WikidataBinding[] } };
+    } catch (err: unknown) {
+      if (err instanceof functions.https.HttpsError) throw err;
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new functions.https.HttpsError('internal', `Wikidata fetch failed: ${msg}`);
     }
-    const json = (await res.json()) as { results: { bindings: WikidataBinding[] } };
 
     const existingSnap = await db.ref('clubsCatalog').once('value');
     const existing: Record<string, CatalogClub> = existingSnap.val() || {};

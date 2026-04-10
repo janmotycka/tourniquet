@@ -21,8 +21,8 @@ interface Props {
 const STATUS_ORDER: AttendanceStatus[] = ['present', 'absent', 'excused'];
 
 const STATUS_STYLE: Record<AttendanceStatus, { bg: string; color: string; icon: string }> = {
-  present: { bg: '#E8F5E9', color: '#2E7D32', icon: '✅' },
-  absent:  { bg: '#FFEBEE', color: '#C62828', icon: '❌' },
+  present: { bg: 'var(--success-light)', color: 'var(--success)', icon: '✅' },
+  absent:  { bg: 'var(--danger-light)', color: 'var(--danger)', icon: '❌' },
   excused: { bg: '#FFF8E1', color: '#F9A825', icon: '🟡' },
 };
 
@@ -114,13 +114,13 @@ export function AttendanceSheet({ players, ageCategory, initial, onSave, onClose
           display: 'flex', gap: 8, padding: '12px 20px',
           borderBottom: '1px solid var(--border)',
         }}>
-          <div style={{ flex: 1, textAlign: 'center', padding: 8, borderRadius: 10, background: '#E8F5E9' }}>
-            <div style={{ fontWeight: 800, fontSize: 18, color: '#2E7D32' }}>{counts.present}</div>
-            <div style={{ fontSize: 10, color: '#2E7D32' }}>{t('training.attendance.present')}</div>
+          <div style={{ flex: 1, textAlign: 'center', padding: 8, borderRadius: 10, background: 'var(--success-light)' }}>
+            <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--success)' }}>{counts.present}</div>
+            <div style={{ fontSize: 10, color: 'var(--success)' }}>{t('training.attendance.present')}</div>
           </div>
-          <div style={{ flex: 1, textAlign: 'center', padding: 8, borderRadius: 10, background: '#FFEBEE' }}>
-            <div style={{ fontWeight: 800, fontSize: 18, color: '#C62828' }}>{counts.absent}</div>
-            <div style={{ fontSize: 10, color: '#C62828' }}>{t('training.attendance.absent')}</div>
+          <div style={{ flex: 1, textAlign: 'center', padding: 8, borderRadius: 10, background: 'var(--danger-light)' }}>
+            <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--danger)' }}>{counts.absent}</div>
+            <div style={{ fontSize: 10, color: 'var(--danger)' }}>{t('training.attendance.absent')}</div>
           </div>
           <div style={{ flex: 1, textAlign: 'center', padding: 8, borderRadius: 10, background: '#FFF8E1' }}>
             <div style={{ fontWeight: 800, fontSize: 18, color: '#F9A825' }}>{counts.excused}</div>

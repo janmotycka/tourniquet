@@ -246,7 +246,7 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
               </label>
               {error && (
                 <div style={{
-                  background: '#FFEBEE', color: '#B71C1C', padding: '10px 14px',
+                  background: 'var(--danger-light)', color: '#B71C1C', padding: '10px 14px',
                   borderRadius: 10, fontSize: 13, fontWeight: 600,
                 }}>{error}</div>
               )}

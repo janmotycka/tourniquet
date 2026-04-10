@@ -111,8 +111,8 @@ export function PlayerRosterEditor({
                     <button
                       onClick={() => onRemove(player.id)}
                       style={{
-                        padding: '6px 14px', borderRadius: 8, background: '#FFEBEE',
-                        color: '#C62828', fontSize: 12, fontWeight: 600,
+                        padding: '6px 14px', borderRadius: 8, background: 'var(--danger-light)',
+                        color: 'var(--danger)', fontSize: 12, fontWeight: 600,
                       }}
                     >🗑 {t('common.delete')}</button>
                     <button

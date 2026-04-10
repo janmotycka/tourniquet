@@ -153,7 +153,7 @@ export const panelStyle: CSSProperties = {
   background: 'var(--surface)',
   borderRadius: 14,
   border: '1px solid var(--border)',
-  boxShadow: '0 8px 32px rgba(0,0,0,.15)',
+  boxShadow: 'var(--shadow-lg)',
   minWidth: 200,
   overflow: 'hidden',
 };

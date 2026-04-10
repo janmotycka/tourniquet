@@ -58,7 +58,7 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
           width: 80, height: 80, borderRadius: 24,
           background: 'var(--primary-light)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 44, boxShadow: '0 8px 32px rgba(0,0,0,.10)',
+          fontSize: 44, boxShadow: 'var(--shadow-lg)',
         }}>⚽</div>
         <div style={{ textAlign: 'center' }}>
           <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)', lineHeight: 1.1 }}>TORQ</h1>
@@ -84,10 +84,10 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
             padding: '14px 20px', borderRadius: 16,
             background: 'var(--surface)', border: '1.5px solid var(--border)',
             fontSize: 15, fontWeight: 700, color: 'var(--text)',
-            cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.06)',
+            cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
           }}
         >
-          📺 {t('login.browseLiveEvents')}
+          📡 {t('login.browseLiveEvents')}
         </button>
       )}
 
@@ -95,7 +95,7 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
       <div style={{
         width: '100%', maxWidth: 380,
         background: 'var(--surface)', borderRadius: 24, padding: '28px 24px',
-        boxShadow: '0 4px 24px rgba(0,0,0,.08)', border: '1px solid var(--border)',
+        boxShadow: 'var(--shadow-md)', border: '1px solid var(--border)',
         display: 'flex', flexDirection: 'column', gap: 16,
       }}>
         {/* Title */}
@@ -128,8 +128,8 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
         {/* Reset success */}
         {mode === 'reset' && resetSent && (
           <div style={{
-            background: '#E8F5E9', borderRadius: 12, padding: '12px 14px',
-            fontSize: 14, color: '#2E7D32', fontWeight: 600, lineHeight: 1.5,
+            background: 'var(--success-light)', borderRadius: 12, padding: '12px 14px',
+            fontSize: 14, color: 'var(--success)', fontWeight: 600, lineHeight: 1.5,
           }}>
             ✅ {t('login.resetSent', { email })}
           </div>
@@ -183,7 +183,7 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
         {/* Blocked banner */}
         {blocked && (
           <div style={{
-            background: '#FFF3E0', border: '2px solid #E65100', borderRadius: 12, padding: '14px 16px',
+            background: 'var(--warning-light)', border: '2px solid #E65100', borderRadius: 12, padding: '14px 16px',
             fontSize: 13, color: '#BF360C', fontWeight: 600,
           }}>
             <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>⛔ {t('auth.accountBlocked')}</div>
@@ -195,8 +195,8 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
         {/* Error */}
         {(error || authError) && !blocked && (
           <div style={{
-            background: '#FFEBEE', borderRadius: 10, padding: '10px 14px',
-            fontSize: 13, color: '#C62828', fontWeight: 600,
+            background: 'var(--danger-light)', borderRadius: 10, padding: '10px 14px',
+            fontSize: 13, color: 'var(--danger)', fontWeight: 600,
           }}>
             {error || authError}
           </div>
@@ -257,7 +257,7 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
               padding: '12px 20px', borderRadius: 14, width: '100%',
               background: '#fff', border: '2px solid var(--border)',
               fontWeight: 700, fontSize: 14, color: '#333',
-              boxShadow: '0 2px 8px rgba(0,0,0,.08)',
+              boxShadow: 'var(--shadow-sm)',
             }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24">

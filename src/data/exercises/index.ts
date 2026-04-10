@@ -4,6 +4,7 @@ import { mladsiZaciExercises } from './mladsizaci.exercises';
 import { starsiZaciExercises } from './starsizaci.exercises';
 import { dorostExercises } from './dorost.exercises';
 import { stretchingExercises } from './stretching.exercises';
+import { freePlayExercises } from './freeplay.exercises';
 
 export const ALL_EXERCISES: Exercise[] = [
   ...pripravkaExercises,
@@ -11,6 +12,7 @@ export const ALL_EXERCISES: Exercise[] = [
   ...starsiZaciExercises,
   ...dorostExercises,
   ...stretchingExercises,
+  ...freePlayExercises,
 ];
 
 export {
@@ -19,4 +21,5 @@ export {
   starsiZaciExercises,
   dorostExercises,
   stretchingExercises,
+  freePlayExercises,
 };

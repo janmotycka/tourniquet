@@ -4,6 +4,7 @@ import { useGeneratorStore } from '../store/generator.store';
 import { CATEGORY_CONFIGS } from '../data/categories.data';
 import { formatMinutes } from '../utils/time';
 import { useI18n } from '../i18n';
+import { PageHeader } from '../components/ui';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -21,21 +22,12 @@ export function TrainingHomePage({ navigate }: Props) {
     <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px', paddingBottom: '40px' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{
-          width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
-          fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>←</button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
-            ⚽
-          </div>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{t('trainingHome.title')}</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2 }}>{t('trainingHome.subtitle')}</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title={t('trainingHome.title')}
+        subtitle={t('trainingHome.subtitle')}
+        onBack={() => navigate({ name: 'home' })}
+        variant="inset"
+      />
 
       {/* Main CTA */}
       <div style={{
@@ -67,7 +59,7 @@ export function TrainingHomePage({ navigate }: Props) {
             <div key={i} style={{
               flex: 1, background: 'var(--surface)', borderRadius: 14, padding: '14px 10px',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-              boxShadow: '0 1px 4px rgba(0,0,0,.05)'
+              boxShadow: 'var(--shadow-sm)'
             }}>
               <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>{s.n}</span>
               <span style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', whiteSpace: 'pre-line', lineHeight: 1.4 }}>{s.label}</span>
@@ -81,7 +73,7 @@ export function TrainingHomePage({ navigate }: Props) {
         <button onClick={() => navigate({ name: 'saved' })} style={{
           flex: 1, background: 'var(--surface)', borderRadius: 14, padding: '16px',
           display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
-          boxShadow: '0 1px 4px rgba(0,0,0,.05)', color: 'var(--text)'
+          boxShadow: 'var(--shadow-sm)', color: 'var(--text)'
         }}>
           <span style={{ fontSize: 22 }}>🔖</span>
           <div style={{ flex: 1 }}>
@@ -96,7 +88,7 @@ export function TrainingHomePage({ navigate }: Props) {
         <button onClick={() => navigate({ name: 'library' })} style={{
           flex: 1, background: 'var(--surface)', borderRadius: 14, padding: '16px',
           display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
-          boxShadow: '0 1px 4px rgba(0,0,0,.05)', color: 'var(--text)'
+          boxShadow: 'var(--shadow-sm)', color: 'var(--text)'
         }}>
           <span style={{ fontSize: 22 }}>📚</span>
           <div style={{ flex: 1 }}>
@@ -112,7 +104,7 @@ export function TrainingHomePage({ navigate }: Props) {
         <button onClick={() => navigate({ name: 'manual-builder' })} style={{
           flex: 1, background: 'var(--surface)', borderRadius: 14, padding: '16px',
           display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
-          boxShadow: '0 1px 4px rgba(0,0,0,.05)', color: 'var(--text)'
+          boxShadow: 'var(--shadow-sm)', color: 'var(--text)'
         }}>
           <span style={{ fontSize: 22 }}>🖊</span>
           <div style={{ flex: 1 }}>
@@ -125,7 +117,7 @@ export function TrainingHomePage({ navigate }: Props) {
         <button onClick={() => navigate({ name: 'calendar' })} style={{
           flex: 1, background: 'var(--surface)', borderRadius: 14, padding: '16px',
           display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
-          boxShadow: '0 1px 4px rgba(0,0,0,.05)', color: 'var(--text)'
+          boxShadow: 'var(--shadow-sm)', color: 'var(--text)'
         }}>
           <span style={{ fontSize: 22 }}>📅</span>
           <div style={{ flex: 1 }}>
@@ -137,7 +129,7 @@ export function TrainingHomePage({ navigate }: Props) {
       </div>
 
       {/* How it works */}
-      <div style={{ background: 'var(--surface)', borderRadius: 20, padding: '20px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 20, padding: '20px', boxShadow: 'var(--shadow-sm)' }}>
         <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>{t('trainingHome.howItWorks')}</h3>
         {[
           { icon: '👥', text: t('trainingHome.step1') },
@@ -160,19 +152,19 @@ export function TrainingHomePage({ navigate }: Props) {
         <div>
           <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 12 }}>{t('trainingHome.recentTrainings')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {savedTrainings.slice(0, 3).map(t => {
-              const cfg = CATEGORY_CONFIGS[t.input.category];
+            {savedTrainings.slice(0, 3).map(tr => {
+              const cfg = CATEGORY_CONFIGS[tr.input.category];
               return (
-                <button key={t.id} onClick={() => navigate({ name: 'training', training: t })}
+                <button key={tr.id} onClick={() => navigate({ name: 'training', training: tr })}
                   style={{
                     background: 'var(--surface)', borderRadius: 14, padding: '14px 16px',
                     display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', width: '100%',
-                    boxShadow: '0 1px 4px rgba(0,0,0,.05)', color: 'var(--text)'
+                    boxShadow: 'var(--shadow-sm)', color: 'var(--text)'
                   }}>
                   <div style={{ width: 10, height: 10, borderRadius: 5, background: cfg.color, flexShrink: 0 }} />
                   <div style={{ flex: 1, overflow: 'hidden' }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{cfg.label} • {formatMinutes(t.totalDuration)}</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tr.title}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t(cfg.label)} • {formatMinutes(tr.totalDuration)}</div>
                   </div>
                   <span style={{ color: 'var(--text-muted)' }}>›</span>
                 </button>

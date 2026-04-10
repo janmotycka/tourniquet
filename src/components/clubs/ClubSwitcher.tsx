@@ -23,7 +23,7 @@ interface Props {
 
 export function ClubSwitcher({ navigate, compact = false }: Props) {
   const { t } = useI18n();
-  const sharedClubs = useClubsStore(s => s.sharedClubs);
+  const clubs = useClubsStore(s => s.clubs);
   const activeClubId = useClubsStore(s => s.activeClubId);
   const setActiveClubId = useClubsStore(s => s.setActiveClubId);
   const memberOfClubs = useClubsStore(s => s.memberOfClubs);
@@ -44,35 +44,13 @@ export function ClubSwitcher({ navigate, compact = false }: Props) {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
-  const activeClub = sharedClubs.find(c => c.id === activeClubId);
+  const activeClub = clubs.find(c => c.id === activeClubId);
   const myRole = activeClubId ? memberOfClubs[activeClubId] : null;
 
-  // 0 clubs — visible only if user is signed in and has nothing
-  if (sharedClubs.length === 0) {
-    return (
-      <>
-      <button
-        onClick={() => setCreateOpen(true)}
-        style={{
-          padding: compact ? '6px 10px' : '8px 14px',
-          borderRadius: 10,
-          background: 'var(--surface)',
-          border: '1px dashed var(--divider)',
-          fontSize: 13,
-          fontWeight: 600,
-          color: 'var(--text-muted)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}
-        title={t('clubs.shared.noActiveClub')}
-      >
-        🏟 {!compact && t('clubs.shared.createPersonalTitle')}
-      </button>
-      {createOpen && <CreateClubModal onClose={() => setCreateOpen(false)} />}
-      </>
-    );
+  // 0 clubs — nic nerenderujeme. Přepínač bez klubů nedává smysl a tvorba
+  // klubu patří do onboarding wizardu nebo na Clubs stránku, ne na home.
+  if (clubs.length === 0) {
+    return null;
   }
 
   const handlePick = async (clubId: string) => {
@@ -111,7 +89,7 @@ export function ClubSwitcher({ navigate, compact = false }: Props) {
         ) : (
           <span style={{
             width: 20, height: 20, borderRadius: 4,
-            background: activeClub?.color || '#2E7D32',
+            background: activeClub?.color || 'var(--success)',
             display: 'inline-block',
           }} />
         )}
@@ -124,7 +102,7 @@ export function ClubSwitcher({ navigate, compact = false }: Props) {
         {myRole === 'owner' && (
           <span style={{
             fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
-            background: '#2E7D32', color: '#fff', marginLeft: 4,
+            background: 'var(--success)', color: '#fff', marginLeft: 4,
           }}>
             {t('clubs.shared.ownerBadge')}
           </span>
@@ -146,7 +124,7 @@ export function ClubSwitcher({ navigate, compact = false }: Props) {
           boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
           zIndex: 1000,
         }}>
-          {sharedClubs.map(club => {
+          {clubs.map(club => {
             const role = memberOfClubs[club.id];
             const isActive = club.id === activeClubId;
             return (
@@ -177,7 +155,7 @@ export function ClubSwitcher({ navigate, compact = false }: Props) {
                 ) : (
                   <span style={{
                     width: 24, height: 24, borderRadius: 4,
-                    background: club.color || '#2E7D32',
+                    background: club.color || 'var(--success)',
                     flexShrink: 0,
                   }} />
                 )}
@@ -188,14 +166,14 @@ export function ClubSwitcher({ navigate, compact = false }: Props) {
                 </span>
                 <span style={{
                   fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
-                  background: role === 'owner' ? '#2E7D32' : 'var(--surface-var)',
+                  background: role === 'owner' ? 'var(--success)' : 'var(--surface-var)',
                   color: role === 'owner' ? '#fff' : 'var(--text-muted)',
                 }}>
                   {role === 'owner' ? t('clubs.shared.ownerBadge')
                     : role === 'coach' ? t('clubs.shared.coachBadge')
                     : t('clubs.shared.viewerBadge')}
                 </span>
-                {isActive && <span style={{ color: '#2E7D32', fontWeight: 900 }}>✓</span>}
+                {isActive && <span style={{ color: 'var(--success)', fontWeight: 900 }}>✓</span>}
               </button>
             );
           })}

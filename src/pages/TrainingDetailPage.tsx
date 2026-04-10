@@ -17,6 +17,7 @@ import { formatTrainingForShare, shareToWhatsApp, copyToClipboard } from '../uti
 import { useI18n } from '../i18n';
 import { safeClone } from '../utils/clone';
 import { useLayoutMode } from '../hooks/useLayoutMode';
+import { PageHeader } from '../components/ui';
 
 const PHASE_COLORS: Record<PhaseType, { bg: string; text: string; bar: string; label: string }> = {
   warmup: { bg: 'var(--warmup-light)', text: 'var(--warmup-text)', bar: 'var(--warmup)', label: 'phase.warmup' },
@@ -386,7 +387,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
 
   return (
     <div
-      style={{ background: 'var(--surface)', borderRadius: 14, borderLeft: `4px solid ${colors.bar}`, boxShadow: '0 1px 4px rgba(0,0,0,.05)', overflow: 'visible',
+      style={{ background: 'var(--surface)', borderRadius: 14, borderLeft: `4px solid ${colors.bar}`, boxShadow: 'var(--shadow-sm)', overflow: 'visible',
         outline: isDropTarget ? `2px dashed ${colors.bar}` : 'none',
       }}
       onDragOver={isDropTarget ? e => { e.preventDefault(); } : undefined}
@@ -394,7 +395,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' }}>
         <span style={{ background: colors.bg, color: colors.text, fontWeight: 700, fontSize: 11, padding: '4px 10px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: .5 }}>
-          {colors.label}
+          {t(colors.label)}
         </span>
         <span style={{ color: colors.text, fontWeight: 700, fontSize: 14 }}>
           ⏱ {computedDuration > 0 ? computedDuration : phase.durationMinutes} min
@@ -494,7 +495,7 @@ function EditPhaseBlock({ phase, allPhases, setEditPhases, coaches, category, dr
             textAlign: 'center', border: `1.5px dashed ${isDropTarget ? colors.bar : 'var(--border)'}`,
             borderRadius: 10, background: isDropTarget ? colors.bg : 'transparent',
           }}>
-            {isDropTarget ? `${t('training.detail.dropHere')} ${colors.label}` : t('training.detail.noExercises')}
+            {isDropTarget ? `${t('training.detail.dropHere')} ${t(colors.label)}` : t('training.detail.noExercises')}
           </div>
         )}
       </div>
@@ -579,13 +580,13 @@ function PhaseBlock({ phase, onExerciseClick, numberOfPlayers, coachNames }: {
   const exercises = hasStations ? phase.stations!.map(s => s.exercise) : phase.exercises;
 
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 14, borderLeft: `4px solid ${colors.bar}`, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 14, borderLeft: `4px solid ${colors.bar}`, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
       <button onClick={() => setOpen(o => !o)} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px',
         width: '100%', background: 'none', color: 'var(--text)',
       }}>
         <span style={{ background: colors.bg, color: colors.text, fontWeight: 700, fontSize: 11, padding: '4px 10px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: .5 }}>
-          {colors.label}
+          {t(colors.label)}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ color: colors.text, fontWeight: 700, fontSize: 14 }}>⏱ {phase.durationMinutes} min</span>
@@ -694,23 +695,26 @@ export function TrainingDetailPage({ training, navigate }: Props) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', background: 'var(--bg)' }}>
-        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
-        <span style={{ fontWeight: 700, fontSize: 15 }}>{editMode ? `✏️ ${t('training.detail.editing')}` : t('training.detail.trainingLabel')}</span>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {!editMode && <>
-            <button onClick={enterEditMode} style={{ background: 'none', fontSize: 20 }} title={t('training.detail.editTrainingTitle')}>✏️</button>
-            <button onClick={() => setShowShare(true)} style={{ background: 'none', fontSize: 20 }}>📤</button>
-            {!saved
-              ? <button onClick={handleSave} style={{ background: 'none', fontSize: 22, color: 'var(--primary)' }}>🔖</button>
-              : <span style={{ fontSize: 20 }}>✅</span>
-            }
-          </>}
-          {editMode && (
-            <button onClick={() => setEditMode(false)} style={{ background: 'none', fontSize: 20, color: 'var(--text-muted)' }}>✕</button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title={editMode ? `✏️ ${t('training.detail.editing')}` : t('training.detail.trainingLabel')}
+        onBack={() => navigate({ name: 'home' })}
+        variant="inset"
+        action={
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {!editMode && <>
+              <button onClick={enterEditMode} style={{ background: 'none', fontSize: 20 }} title={t('training.detail.editTrainingTitle')}>✏️</button>
+              <button onClick={() => setShowShare(true)} style={{ background: 'none', fontSize: 20 }}>📤</button>
+              {!saved
+                ? <button onClick={handleSave} style={{ background: 'none', fontSize: 22, color: 'var(--primary)' }}>🔖</button>
+                : <span style={{ fontSize: 20 }}>✅</span>
+              }
+            </>}
+            {editMode && (
+              <button onClick={() => setEditMode(false)} style={{ background: 'none', fontSize: 20, color: 'var(--text-muted)' }}>✕</button>
+            )}
+          </div>
+        }
+      />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px', paddingBottom: 40 }}>
         {/* Info card */}
@@ -721,14 +725,14 @@ export function TrainingDetailPage({ training, navigate }: Props) {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ background: cfg.lightColor, color: cfg.color, fontWeight: 700, fontSize: 11, padding: '4px 10px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: .5 }}>
-              {uLabelText}{cfg.label} • {cfg.ageRange}
+              {uLabelText}{t(cfg.label)} • {t(cfg.ageRange)}
             </span>
             <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>⏱ {formatMinutes(training.totalDuration)}</span>
           </div>
           <h1 style={{ fontWeight: 800, fontSize: 20, lineHeight: 1.2 }}>{training.title}</h1>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>🔲 {training.input.numberOfCoaches} {t('training.detail.stations')}</span>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>🎯 {training.input.skillFocus.map(sf => SKILL_FOCUS_CONFIGS[sf]?.label ?? sf).join(', ')}</span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>🎯 {training.input.skillFocus.map(sf => t(SKILL_FOCUS_CONFIGS[sf]?.label ?? sf)).join(', ')}</span>
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>📅 {formatDate(training.createdAt, locale)}</span>
           </div>
           {/* Player count control */}
@@ -811,7 +815,7 @@ export function TrainingDetailPage({ training, navigate }: Props) {
                     }}
                     style={{
                       padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      background: '#FFEBEE', color: '#C62828',
+                      background: 'var(--danger-light)', color: 'var(--danger)',
                     }}
                   >✕ {t('common.remove')}</button>
                 )}

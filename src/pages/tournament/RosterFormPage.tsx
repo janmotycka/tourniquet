@@ -72,7 +72,7 @@ const cardStyle: React.CSSProperties = {
   background: 'var(--surface)',
   borderRadius: 16,
   padding: '20px',
-  boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+  boxShadow: 'var(--shadow-sm)',
 };
 
 // ─── Main export ────────────────────────────────────────────────────────────
@@ -545,7 +545,7 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
         <div style={{ width: '100%', maxWidth: 480, padding: '20px' }}>
           <Header tournament={tournament} team={team} />
 
-          <div style={{ background: '#FFF3E0', borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 14, color: '#E65100' }}>
+          <div style={{ background: 'var(--warning-light)', borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 14, color: 'var(--warning)' }}>
             ⚠️ {t('roster.readOnly')}
           </div>
 
@@ -609,13 +609,13 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
           </h4>
 
           {existingRoster && (
-            <div style={{ background: '#E8F5E9', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#2E7D32', marginBottom: 10 }}>
+            <div style={{ background: 'var(--success-light)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--success)', marginBottom: 10 }}>
               ✅ {t('roster.alreadySubmitted')}
             </div>
           )}
 
           {isReadOnly && (
-            <div style={{ background: '#FFF3E0', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: '#E65100', marginBottom: 10 }}>
+            <div style={{ background: 'var(--warning-light)', borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--warning)', marginBottom: 10 }}>
               ⚠️ {t('roster.readOnly')}
             </div>
           )}
@@ -893,11 +893,11 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
 
           {/* Info banners inside players section */}
           {tournament.settings.maxBirthYear && (
-            <div style={{ background: '#FFF3E0', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#E65100', lineHeight: 1.5, marginBottom: 8 }}>
+            <div style={{ background: 'var(--warning-light)', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: 'var(--warning)', lineHeight: 1.5, marginBottom: 8 }}>
               🎂 {t('roster.birthYearRequirement', { year: String(tournament.settings.maxBirthYear) })}
             </div>
           )}
-          <div style={{ background: '#E3F2FD', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: '#1565C0', lineHeight: 1.5, marginBottom: 10 }}>
+          <div style={{ background: 'var(--info-light)', borderRadius: 10, padding: '8px 12px', fontSize: 12, color: 'var(--info)', lineHeight: 1.5, marginBottom: 10 }}>
             ℹ️ {t('roster.jerseyInfo')}
           </div>
 
@@ -982,7 +982,7 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
           const validCount = players.filter(p => p.name.trim()).length;
           if (maxPlayers && maxPlayers > 0 && validCount > maxPlayers) {
             return (
-              <div style={{ background: '#FFF3E0', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#E65100' }}>
+              <div style={{ background: 'var(--warning-light)', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: 'var(--warning)' }}>
                 ⚠️ {t('roster.warnTooManyPlayers', { count: validCount, max: maxPlayers })}
               </div>
             );
@@ -992,7 +992,7 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
 
         {/* Error */}
         {submitError && (
-          <div style={{ background: '#FFEBEE', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#C62828' }}>
+          <div style={{ background: 'var(--danger-light)', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: 'var(--danger)' }}>
             ⚠️ {submitError}
           </div>
         )}

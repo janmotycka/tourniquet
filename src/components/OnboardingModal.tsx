@@ -31,7 +31,7 @@ const MODULES: ModuleCard[] = [
     emoji: '🏆',
     titleKey: 'onboarding.tournamentTitle',
     descKey: 'onboarding.tournamentDesc',
-    color: '#E65100',
+    color: 'var(--warning)',
     bg: 'linear-gradient(135deg, #FFF3E0, #FFE0B2)',
     page: { name: 'tournament-list' },
   },
@@ -125,7 +125,7 @@ export function OnboardingModal({ navigate }: Props) {
                 background: card.bg, borderRadius: 16, padding: '16px 18px',
                 display: 'flex', alignItems: 'center', gap: 16,
                 textAlign: 'left', width: '100%',
-                boxShadow: '0 2px 8px rgba(0,0,0,.08)',
+                boxShadow: 'var(--shadow-sm)',
                 transition: 'transform .12s, box-shadow .12s',
               }}
               onMouseEnter={e => {

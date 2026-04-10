@@ -11,8 +11,8 @@ import type { Locale } from '../i18n';
 import { useTheme } from '../theme/ThemeContext';
 import type { ThemePreference } from '../theme/ThemeContext';
 import { useLayoutMode } from '../hooks/useLayoutMode';
-import type { LayoutModePreference } from '../hooks/useLayoutMode';
 import { ADMIN_UID } from '../constants/admin';
+import { PageHeader } from '../components/ui';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -28,7 +28,7 @@ export function SettingsPage({ navigate }: Props) {
   const showToast = useToastStore(s => s.show);
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useTheme();
-  const { preference: layoutPreference, setPreference: setLayoutPreference, isDesktop } = useLayoutMode();
+  const { isDesktop } = useLayoutMode();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -73,9 +73,9 @@ export function SettingsPage({ navigate }: Props) {
 
   const statusLabels: Record<string, { label: string; color: string; bg: string }> = {
     free:      { label: t('settings.statusFree'),      color: '#5D4037', bg: '#EFEBE9' },
-    active:    { label: t('settings.statusActive'),    color: '#1B5E20', bg: '#E8F5E9' },
-    past_due:  { label: t('settings.statusPastDue'),   color: '#E65100', bg: '#FFF3E0' },
-    cancelled: { label: t('settings.statusCancelled'), color: '#B71C1C', bg: '#FFEBEE' },
+    active:    { label: t('settings.statusActive'),    color: '#1B5E20', bg: 'var(--success-light)' },
+    past_due:  { label: t('settings.statusPastDue'),   color: 'var(--warning)', bg: 'var(--warning-light)' },
+    cancelled: { label: t('settings.statusCancelled'), color: '#B71C1C', bg: 'var(--danger-light)' },
   };
   const st = statusLabels[subscription.status] ?? statusLabels.free;
 
@@ -83,7 +83,7 @@ export function SettingsPage({ navigate }: Props) {
 
   const cardStyle = {
     background: 'var(--surface)', borderRadius: isDesktop ? 12 : 14, padding: isDesktop ? 16 : 20,
-    boxShadow: '0 1px 4px rgba(0,0,0,.06)',
+    boxShadow: 'var(--shadow-sm)',
     display: 'flex' as const, flexDirection: 'column' as const, gap: isDesktop ? 10 : 12,
   };
 
@@ -91,16 +91,10 @@ export function SettingsPage({ navigate }: Props) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header — only mobile (desktop already has shell breadcrumb) */}
       {!isDesktop && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px',
-          borderBottom: '1px solid var(--border)', background: 'var(--surface)',
-        }}>
-          <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{
-            width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
-            fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>←</button>
-          <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('settings.title')}</h1>
-        </div>
+        <PageHeader
+          title={t('settings.title')}
+          onBack={() => navigate({ name: 'home' })}
+        />
       )}
 
       {/* Content */}
@@ -155,7 +149,7 @@ export function SettingsPage({ navigate }: Props) {
                 <div style={{ fontWeight: 700, fontSize: 15, color: '#1B5E20' }}>
                   {t('settings.premiumActive')}
                 </div>
-                <div style={{ fontSize: 13, color: '#2E7D32', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 13, color: 'var(--success)', lineHeight: 1.5 }}>
                   {t('settings.premiumDesc')}
                 </div>
                 {subscription.currentPeriodEnd && (
@@ -184,13 +178,13 @@ export function SettingsPage({ navigate }: Props) {
                 background: 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)',
                 borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 8,
               }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: '#E65100' }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--warning)' }}>
                   {t('settings.freePlan')}
                 </div>
                 <div style={{ fontSize: 13, color: '#BF360C', lineHeight: 1.5 }}>
                   {t('settings.freePlanDesc')}
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#E65100', marginTop: 4 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--warning)', marginTop: 4 }}>
                   {t('settings.premiumOffer', { price: t('subscription.price') })}
                 </div>
                 <button
@@ -238,7 +232,7 @@ export function SettingsPage({ navigate }: Props) {
 
           {error && (
             <div style={{
-              background: '#FFEBEE', color: '#B71C1C', fontSize: 13, fontWeight: 600,
+              background: 'var(--danger-light)', color: '#B71C1C', fontSize: 13, fontWeight: 600,
               padding: '8px 12px', borderRadius: 8, textAlign: 'center',
             }}>
               {error}
@@ -294,31 +288,6 @@ export function SettingsPage({ navigate }: Props) {
             </div>
           </div>
 
-          {/* Layout */}
-          <div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{t('layout.title')}</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {([
-                ['auto', '🔄 ' + t('layout.auto')],
-                ['mobile', '📱 ' + t('layout.mobile')],
-                ['desktop', '🖥 ' + t('layout.desktop')],
-              ] as [LayoutModePreference, string][]).map(([val, label]) => (
-                <button
-                  key={val}
-                  onClick={() => setLayoutPreference(val)}
-                  style={{
-                    flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 13,
-                    background: layoutPreference === val ? 'var(--primary)' : 'var(--surface-var)',
-                    color: layoutPreference === val ? '#fff' : 'var(--text)',
-                    border: layoutPreference === val ? 'none' : '1.5px solid var(--border)',
-                    transition: 'all .15s',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* 4. Feedback */}
@@ -409,10 +378,10 @@ export function SettingsPage({ navigate }: Props) {
 
               {/* Smazani uctu */}
               <div style={{
-                background: '#FFF3E0', borderRadius: 12, padding: 14,
+                background: 'var(--warning-light)', borderRadius: 12, padding: 14,
                 display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4,
               }}>
-                <div style={{ fontWeight: 600, fontSize: 14, color: '#E65100' }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--warning)' }}>
                   {t('settings.deleteAccount')}
                 </div>
                 <p style={{ fontSize: 12, color: '#BF360C', lineHeight: 1.5, margin: 0 }}>
@@ -421,7 +390,7 @@ export function SettingsPage({ navigate }: Props) {
                 <a
                   href={`mailto:privacy@torq.cz?subject=${encodeURIComponent(t('settings.deleteAccountSubject'))}`}
                   style={{
-                    background: '#FFF', color: '#E65100', fontWeight: 600,
+                    background: '#FFF', color: 'var(--warning)', fontWeight: 600,
                     fontSize: 13, padding: '10px', borderRadius: 10, textAlign: 'center',
                     textDecoration: 'none', border: '1.5px solid #FFCC80',
                     display: 'block',

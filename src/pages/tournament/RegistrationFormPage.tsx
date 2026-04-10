@@ -45,7 +45,7 @@ const cardStyle: React.CSSProperties = {
   background: 'var(--surface)',
   borderRadius: 16,
   padding: '20px',
-  boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+  boxShadow: 'var(--shadow-sm)',
 };
 
 // ─── Props ──────────────────────────────────────────────────────────────────
@@ -293,7 +293,7 @@ export function RegistrationFormPage({ tournamentId }: Props) {
         </div>
 
         {/* Teams count badge */}
-        <div style={{ background: '#E3F2FD', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#1565C0', textAlign: 'center' }}>
+        <div style={{ background: 'var(--info-light)', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: 'var(--info)', textAlign: 'center' }}>
           🏟️ {maxTeams > 0
             ? t('registration.teamsCount', { current: currentTeams, max: maxTeams })
             : t('registration.teamsCountNoLimit', { current: currentTeams })}
@@ -436,7 +436,7 @@ export function RegistrationFormPage({ tournamentId }: Props) {
 
         {/* Error */}
         {submitError && (
-          <div style={{ background: '#FFEBEE', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: '#C62828' }}>
+          <div style={{ background: 'var(--danger-light)', borderRadius: 12, padding: '10px 14px', fontSize: 14, color: 'var(--danger)' }}>
             ⚠️ {submitError}
           </div>
         )}

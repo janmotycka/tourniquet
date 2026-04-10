@@ -8,7 +8,7 @@ import { AGE_CATEGORIES, type AgeCategory } from '../../types/club.types';
 import { resizeLogoToBase64 } from '../clubs/resize-logo';
 import { useToastStore } from '../../store/toast.store';
 import { logger } from '../../utils/logger';
-import { createPersonalClub, requestOfficialClub } from '../../services/club-functions';
+import { requestOfficialClub } from '../../services/club-functions';
 import { useAuth } from '../../context/AuthContext';
 
 interface CatalogClub {
@@ -65,7 +65,6 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   const { user } = useAuth();
   const createClub = useClubsStore(s => s.createClub);
   const addPlayer = useClubsStore(s => s.addPlayer);
-  const loadSharedClubs = useClubsStore(s => s.loadSharedClubs);
 
   const [step, setStep] = useState<Step>('welcome');
 
@@ -153,8 +152,9 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
     if (!clubName.trim() || creatingClub) return;
     setCreatingClub(true);
     try {
-      // 1) Vytvoř shared club (Cloud Function — single source of truth pro nový model)
       if (catalogPickedFrom) {
+        // Verified club — žádost schvaluje admin. Nevytváří se klub hned,
+        // wizard v tomto případě končí po potvrzení podaného requestu.
         await requestOfficialClub({
           catalogId: catalogPickedFrom,
           catalogName: clubName.trim(),
@@ -162,28 +162,20 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
           requesterRole: 'Coach',
         });
         useToastStore.getState().show('info', t('clubs.shared.requestForm.sent'));
-      } else {
-        const res = await createPersonalClub({
-          name: clubName.trim(),
-          color: clubColor,
-          logoBase64,
-        });
-        if (user?.uid) {
-          await loadSharedClubs(user.uid);
-        }
-        logger.debug('[Onboarding] Created shared club:', res.clubId);
+        setStep('done');
+        return;
       }
 
-      // 2) Mirror do legacy clubs store kvůli "players" step v tomto wizardu —
-      //    legacy addPlayer() píše do localStorage + /users/{uid}/clubs/{id}.
-      //    TODO: až bude addPlayer migrován na shared scope, tenhle mirror odstranit.
-      const localClub = createClub({
+      // Personal club — vytvoří se přes createClub() (CF createPersonalClub)
+      // a vrátí plný Club, který rovnou použijeme pro navazující player step.
+      const newClub = await createClub({
         name: clubName.trim(),
         color: clubColor,
         logoBase64,
         ageCategories: selectedCategories.length > 0 ? selectedCategories : ['U10'],
       });
-      setCreatedClubId(localClub.id);
+      logger.debug('[Onboarding] Created personal club:', newClub.id);
+      setCreatedClubId(newClub.id);
 
       setStep('players');
     } catch (err) {
@@ -201,12 +193,12 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
     }
   };
 
-  const handleSavePlayers = () => {
+  const handleSavePlayers = async () => {
     if (!createdClubId) { setStep('done'); return; }
     const category = selectedCategories[0] ?? 'U10';
     for (const p of players) {
       if (p.name.trim()) {
-        addPlayer(createdClubId, {
+        await addPlayer(createdClubId, {
           name: p.name.trim(),
           jerseyNumber: parseInt(p.jersey) || 0,
           birthYear: null,
@@ -366,7 +358,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                 <button
                   onClick={() => setLogoBase64(null)}
                   style={{
-                    fontSize: 11, color: '#C62828', background: 'transparent',
+                    fontSize: 11, color: 'var(--danger)', background: 'transparent',
                     border: 'none', padding: '4px 0', marginTop: 2, cursor: 'pointer',
                   }}
                 >

@@ -51,7 +51,8 @@ export interface ClubPlayer {
 // ─── Klub ──────────────────────────────────────────────────────────────────
 export interface Club {
   id: string;
-  name: string;
+  name: string;             // zkrácený zobrazovaný název (pro tabulky, rozpis)
+  officialName?: string;    // plný oficiální název (pro PDF, dokumenty). Pokud chybí = name.
   color: string;            // hex barva
   logoBase64: string | null; // null = bez loga
   defaultPlayers: Array<{ name: string; jerseyNumber: number }>; // zpětná kompatibilita

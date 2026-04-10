@@ -13,6 +13,7 @@ import type { Exercise, PhaseType, SkillFocus } from '../types/exercise.types';
 import type { GeneratorInput } from '../types/training.types';
 import { useI18n } from '../i18n';
 import { useLayoutMode } from '../hooks/useLayoutMode';
+import { PageHeader } from '../components/ui';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -115,6 +116,17 @@ export function ManualBuilderPage({ navigate }: Props) {
     }));
   };
 
+  const setExDuration = (phase: PhaseType, idx: number, mins: number) => {
+    setExercisesByPhase(prev => ({
+      ...prev,
+      [phase]: (prev[phase] ?? []).map((ex, i) =>
+        i === idx
+          ? { ...ex, duration: { ...ex.duration, recommended: mins } }
+          : ex,
+      ),
+    }));
+  };
+
   const moveEx = (phase: PhaseType, idx: number, dir: -1 | 1) => {
     setExercisesByPhase(prev => {
       const arr = [...(prev[phase] ?? [])];
@@ -161,10 +173,11 @@ export function ManualBuilderPage({ navigate }: Props) {
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px' }}>
-          <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
-          <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('manual.title')}</h1>
-        </div>
+        <PageHeader
+          title={t('manual.title')}
+          onBack={() => navigate({ name: 'home' })}
+          variant="inset"
+        />
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Category groups */}
@@ -287,13 +300,12 @@ export function ManualBuilderPage({ navigate }: Props) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px' }}>
-        <button onClick={() => setBuilderStep('setup')} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
-        <h1 style={{ fontWeight: 800, fontSize: 18, flex: 1 }}>
-          {subCatCfg ? t(subCatCfg.label) : ''}
-        </h1>
-        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{totalExMinutes}/{totalDuration} min</span>
-      </div>
+      <PageHeader
+        title={subCatCfg ? t(subCatCfg.label) : ''}
+        onBack={() => setBuilderStep('setup')}
+        variant="inset"
+        action={<span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{totalExMinutes}/{totalDuration} min</span>}
+      />
 
       {/* Progress bar */}
       <div style={{ height: 6, background: 'var(--border)', margin: '0 20px 0' }}>
@@ -346,7 +358,20 @@ export function ManualBuilderPage({ navigate }: Props) {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{ex.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{ex.duration.recommended} min</div>
+              </div>
+              {/* Inline duration stepper */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                <button
+                  onClick={() => setExDuration(activePhase, idx, Math.max(1, ex.duration.recommended - 5))}
+                  style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--surface-var)', fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}
+                >−</button>
+                <span style={{ fontSize: 13, fontWeight: 700, minWidth: 36, textAlign: 'center' }}>
+                  {ex.duration.recommended}′
+                </span>
+                <button
+                  onClick={() => setExDuration(activePhase, idx, Math.min(60, ex.duration.recommended + 5))}
+                  style={{ width: 24, height: 24, borderRadius: 6, background: 'var(--surface-var)', fontSize: 14, fontWeight: 700, color: 'var(--text-muted)' }}
+                >+</button>
               </div>
               <button onClick={() => removeEx(activePhase, idx)}
                 style={{ fontSize: 14, padding: '5px 8px', background: '#FFEAEA', borderRadius: 8, color: '#dc3545' }}>✕</button>

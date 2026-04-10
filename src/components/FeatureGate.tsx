@@ -33,7 +33,7 @@ export function FeatureGate({ currentCount, maxAllowed, children, onUpgrade, fea
       border: '1.5px solid #FFB74D',
     }}>
       <div style={{ fontSize: 36 }}>🔒</div>
-      <div style={{ fontWeight: 700, fontSize: 16, color: '#E65100', textAlign: 'center' }}>
+      <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--warning)', textAlign: 'center' }}>
         {t('gate.limitReached')}
       </div>
       <div style={{ fontSize: 14, color: '#BF360C', textAlign: 'center', lineHeight: 1.5 }}>

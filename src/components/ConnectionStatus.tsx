@@ -54,7 +54,7 @@ export function ConnectionStatus() {
   if (!showBanner) return null;
 
   // Priority: offline > reconnecting > sync error > pending
-  const bg = isOffline ? '#E65100' : isReconnecting ? '#F57F17' : syncError ? '#C62828' : '#E65100';
+  const bg = isOffline ? 'var(--warning)' : isReconnecting ? '#F57F17' : syncError ? 'var(--danger)' : 'var(--warning)';
   const message = isOffline
     ? `📡 ${t('app.offline')}`
     : isReconnecting

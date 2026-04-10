@@ -9,6 +9,7 @@ import type { Locale } from '../i18n';
 import { copyToClipboard } from '../utils/training-share';
 import { useToastStore } from '../store/toast.store';
 import { useLayoutMode } from '../hooks/useLayoutMode';
+import { PageHeader } from '../components/ui';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -75,7 +76,7 @@ function ScheduleModal({ date, savedTrainings, onSchedule, onClose }: {
                   <div style={{ width: 10, height: 10, borderRadius: 5, background: cfg.color, flexShrink: 0 }} />
                   <div style={{ flex: 1, overflow: 'hidden' }}>
                     <div style={{ fontWeight: 600, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tr.title}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{cfg.label} · {formatMinutes(tr.totalDuration)}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t(cfg.label)} · {formatMinutes(tr.totalDuration)}</div>
                   </div>
                   <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: 16 }}>+</span>
                 </button>
@@ -211,7 +212,7 @@ function AgendaView({
         display: 'flex', alignItems: 'center', gap: 10, padding: '13px 14px',
         background: sel ? 'var(--primary-light)' : 'var(--surface)',
         borderRadius: 14, border: sel ? '1.5px solid var(--primary)' : '1px solid transparent',
-        boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+        boxShadow: 'var(--shadow-sm)',
       }}>
         {multiSelect && (
           <button onClick={() => onToggleSelect(tr.id)} style={{
@@ -228,7 +229,7 @@ function AgendaView({
             <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tr.title}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
               {showDate && tr.scheduledDate && <span>{formatScheduledDate(tr.scheduledDate, locale)} · </span>}
-              {cfg.label} · {formatMinutes(tr.totalDuration)}
+              {t(cfg.label)} · {formatMinutes(tr.totalDuration)}
             </div>
           </div>
         </button>
@@ -389,22 +390,25 @@ export function CalendarPage({ navigate }: Props) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 20px' }}>
-        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
-        <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('calendar.title')}</h1>
-        <button onClick={() => {
-          setMultiSelect(s => {
-            if (s) setSelectedIds(new Set());
-            return !s;
-          });
-        }} style={{
-          background: multiSelect ? 'var(--primary)' : 'var(--surface-var)',
-          color: multiSelect ? '#fff' : 'var(--text)',
-          padding: '7px 12px', borderRadius: 10, fontWeight: 700, fontSize: 12,
-        }}>
-          {multiSelect ? t('calendar.cancelSelect') : t('calendar.select')}
-        </button>
-      </div>
+      <PageHeader
+        title={t('calendar.title')}
+        onBack={() => navigate({ name: 'home' })}
+        variant="inset"
+        action={
+          <button onClick={() => {
+            setMultiSelect(s => {
+              if (s) setSelectedIds(new Set());
+              return !s;
+            });
+          }} style={{
+            background: multiSelect ? 'var(--primary)' : 'var(--surface-var)',
+            color: multiSelect ? '#fff' : 'var(--text)',
+            padding: '7px 12px', borderRadius: 10, fontWeight: 700, fontSize: 12,
+          }}>
+            {multiSelect ? t('calendar.cancelSelect') : t('calendar.select')}
+          </button>
+        }
+      />
 
       {/* Tab bar */}
       <div style={{ display: 'flex', margin: '0 20px 16px', background: 'var(--surface-var)', borderRadius: 14, padding: 4, gap: 4 }}>
@@ -564,7 +568,7 @@ export function CalendarPage({ navigate }: Props) {
                     <div style={{ width: 10, height: 10, borderRadius: 5, background: cfg.color, flexShrink: 0 }} />
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                       <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tr.title}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{cfg.label} · {formatMinutes(tr.totalDuration)}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t(cfg.label)} · {formatMinutes(tr.totalDuration)}</div>
                     </div>
                     <span style={{ color: 'var(--text-muted)' }}>›</span>
                   </button>

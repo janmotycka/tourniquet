@@ -318,8 +318,12 @@ export function LandingPage({ navigate, onLogin }: Props) {
         fontSize: 12, color: 'var(--text-muted)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
       }}>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {(['cs', 'en', 'de'] as const).map(loc => (
+        <div style={{ display: 'flex', gap: 6 }}>
+          {([
+            { loc: 'cs' as const, flag: '🇨🇿' },
+            { loc: 'en' as const, flag: '🇬🇧' },
+            { loc: 'de' as const, flag: '🇩🇪' },
+          ]).map(({ loc, flag }) => (
             <button
               key={loc}
               onClick={() => setLocale(loc)}
@@ -327,18 +331,15 @@ export function LandingPage({ navigate, onLogin }: Props) {
               style={{
                 background: 'transparent',
                 border: 'none',
-                padding: '4px 8px',
+                padding: '4px 6px',
                 borderRadius: 6,
-                fontSize: 11,
-                fontWeight: locale === loc ? 700 : 500,
-                color: locale === loc ? 'var(--text)' : 'var(--text-muted)',
-                opacity: locale === loc ? 1 : 0.6,
+                fontSize: 20,
+                opacity: locale === loc ? 1 : 0.4,
                 cursor: 'pointer',
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
+                transition: 'opacity .15s',
               }}
             >
-              {loc}
+              {flag}
             </button>
           ))}
         </div>
@@ -446,7 +447,7 @@ function TournamentCard({
         }}>
           <span style={{
             fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-            background: '#FFF3E0', color: '#E65100', flexShrink: 0,
+            background: 'var(--warning-light)', color: 'var(--warning)', flexShrink: 0,
           }}>🏆</span>
           <span style={{
             fontSize: 14, fontWeight: 700, color: 'var(--text)',
@@ -520,7 +521,7 @@ function MatchCard({
       {/* Score or ball icon */}
       <div style={{
         width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-        background: goalFlash ? '#2E7D32' : variant === 'live' ? '#C62828' : 'var(--surface-var)',
+        background: goalFlash ? 'var(--success)' : variant === 'live' ? 'var(--danger)' : 'var(--surface-var)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontWeight: 900, fontSize: variant !== 'upcoming' ? 15 : 20,
         color: goalFlash || variant === 'live' ? '#fff' : 'var(--text)',
@@ -538,7 +539,7 @@ function MatchCard({
         }}>
           <span style={{
             fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-            background: '#E3F2FD', color: '#1565C0', flexShrink: 0,
+            background: 'var(--info-light)', color: 'var(--info)', flexShrink: 0,
           }}>⚽</span>
           <span style={{
             fontSize: 14, fontWeight: 700, color: 'var(--text)',
@@ -591,7 +592,7 @@ function StatusBadge({ variant, t }: { variant: 'live' | 'upcoming' | 'finished'
   }
   return (
     <span style={{
-      background: '#E3F2FD', color: '#1565C0',
+      background: 'var(--info-light)', color: 'var(--info)',
       padding: '4px 10px', borderRadius: 8,
       fontSize: 11, fontWeight: 600, flexShrink: 0,
     }}>

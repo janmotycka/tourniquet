@@ -1,5 +1,6 @@
 import type { Page } from '../App';
 import { useI18n } from '../i18n';
+import { PageHeader } from '../components/ui';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -28,16 +29,10 @@ export function PrivacyPolicyPage({ navigate }: Props) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px',
-        borderBottom: '1px solid var(--border)', background: 'var(--surface)',
-      }}>
-        <button onClick={() => navigate({ name: 'settings' })} aria-label="Back" style={{
-          width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
-          fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>←</button>
-        <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('privacy.title')}</h1>
-      </div>
+      <PageHeader
+        title={t('privacy.title')}
+        onBack={() => navigate({ name: 'settings' })}
+      />
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px', maxWidth: 700 }}>

@@ -1,44 +1,83 @@
 import type { Page } from '../../App';
 import { useI18n } from '../../i18n';
-import { useLayoutMode } from '../../hooks/useLayoutMode';
-import { DesktopPage } from '../../components/desktop/DesktopPage';
+import { PageHeader } from '../../components/ui';
+import { radius, fontSize, fontWeight, spacing } from '../../theme/tokens';
 
 interface Props { navigate: (p: Page) => void; }
 
 /**
  * Rozcestník mezi ručním vytvořením turnaje a Plánovačem.
- * Zobrazuje se po kliknutí na "+ Nový turnaj" v TournamentListPage.
  *
- * 2 karty:
- *   - Vytvořit ručně  (CreateTournamentPage — beze změn)
- *   - Navrhnout formát (TournamentPlannerPage — nový wizard)
+ * Design: kompaktní mobile-first — obě varianty musí padnout na jeden screen.
+ * Používá `<PageHeader variant="inset">` pro konzistentní back button + title.
  */
 export function TournamentCreateChoicePage({ navigate }: Props) {
   const { t } = useI18n();
-  const { isDesktop } = useLayoutMode();
 
-  // Shared card content — same markup for mobile + desktop, different layout container
-  const cards = (
-    <>
-      {/* Navrhnout formát — recommended card (zvýrazněná) */}
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      padding: `${spacing.lg}px ${spacing.lg}px ${spacing.xl}px`,
+      gap: spacing.md,
+      minHeight: '100dvh',
+      boxSizing: 'border-box',
+    }}>
+      <PageHeader
+        title={t('tournament.choice.title')}
+        subtitle={t('tournament.choice.subtitle')}
+        onBack={() => navigate({ name: 'tournament-list' })}
+        backLabel={t('common.back')}
+        variant="inset"
+      />
+
+      {/* ── Navrhnout formát — recommended ── */}
       <button
         onClick={() => navigate({ name: 'tournament-planner' })}
-        style={recommendedCardStyle}
+        style={{
+          position: 'relative',
+          display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+          padding: `${spacing.md + 2}px ${spacing.lg}px`,
+          borderRadius: radius.xl,
+          background: 'var(--surface)',
+          border: '2px solid var(--warning)',
+          boxShadow: 'var(--shadow-sm)',
+          textAlign: 'left',
+          cursor: 'pointer',
+          width: '100%',
+          gap: 6,
+        }}
       >
-        <div style={{
-          position: 'absolute', top: 12, right: 12,
-          fontSize: 10, fontWeight: 800,
-          background: '#E65100', color: '#fff',
-          padding: '4px 10px', borderRadius: 20,
-          textTransform: 'uppercase', letterSpacing: 0.6,
-        }}>
-          ⭐ {t('tournament.choice.recommended')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+          <span style={{ fontSize: 20 }}>✨</span>
+          <h2 style={{
+            fontSize: fontSize.lg - 2, // 16 — slightly smaller than PageHeader h1
+            fontWeight: fontWeight.extrabold,
+            color: 'var(--text)',
+            margin: 0,
+            flex: 1,
+          }}>
+            {t('tournament.choice.plannerTitle')}
+          </h2>
+          <span style={{
+            fontSize: 9,
+            fontWeight: fontWeight.extrabold,
+            background: 'var(--warning)',
+            color: '#fff',
+            padding: '3px 7px',
+            borderRadius: radius.xxl,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+            flexShrink: 0,
+          }}>
+            ⭐ {t('tournament.choice.recommended')}
+          </span>
         </div>
-        <div style={{ fontSize: 56, marginBottom: 12 }}>✨</div>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>
-          {t('tournament.choice.plannerTitle')}
-        </h2>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 20 }}>
+        <p style={{
+          fontSize: fontSize.sm,
+          color: 'var(--text-muted)',
+          lineHeight: 1.4,
+          margin: 0,
+        }}>
           {t('tournament.choice.plannerDesc')}
         </p>
         <ul style={bulletListStyle}>
@@ -46,21 +85,52 @@ export function TournamentCreateChoicePage({ navigate }: Props) {
           <li>{t('tournament.choice.plannerBullet2')}</li>
           <li>{t('tournament.choice.plannerBullet3')}</li>
         </ul>
-        <div style={ctaButtonStyle('#E65100')}>
+        <div style={{
+          marginTop: spacing.xs,
+          padding: `10px ${spacing.md + 2}px`,
+          borderRadius: radius.md,
+          background: 'var(--warning)',
+          color: '#fff',
+          fontWeight: fontWeight.bold,
+          fontSize: fontSize.base,
+          textAlign: 'center',
+        }}>
           {t('tournament.choice.plannerCta')} →
         </div>
       </button>
 
-      {/* Vytvořit ručně */}
+      {/* ── Vytvořit ručně ── */}
       <button
         onClick={() => navigate({ name: 'tournament-create' })}
-        style={standardCardStyle}
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+          padding: `${spacing.md + 2}px ${spacing.lg}px`,
+          borderRadius: radius.xl,
+          background: 'var(--surface)',
+          border: '1.5px solid var(--border)',
+          textAlign: 'left',
+          cursor: 'pointer',
+          width: '100%',
+          gap: 6,
+        }}
       >
-        <div style={{ fontSize: 56, marginBottom: 12 }}>✏️</div>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>
-          {t('tournament.choice.manualTitle')}
-        </h2>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+          <span style={{ fontSize: 20 }}>✏️</span>
+          <h2 style={{
+            fontSize: fontSize.lg - 2,
+            fontWeight: fontWeight.extrabold,
+            color: 'var(--text)',
+            margin: 0,
+          }}>
+            {t('tournament.choice.manualTitle')}
+          </h2>
+        </div>
+        <p style={{
+          fontSize: fontSize.sm,
+          color: 'var(--text-muted)',
+          lineHeight: 1.4,
+          margin: 0,
+        }}>
           {t('tournament.choice.manualDesc')}
         </p>
         <ul style={bulletListStyle}>
@@ -68,118 +138,27 @@ export function TournamentCreateChoicePage({ navigate }: Props) {
           <li>{t('tournament.choice.manualBullet2')}</li>
           <li>{t('tournament.choice.manualBullet3')}</li>
         </ul>
-        <div style={ctaButtonStyle('var(--primary)')}>
+        <div style={{
+          marginTop: spacing.xs,
+          padding: `10px ${spacing.md + 2}px`,
+          borderRadius: radius.md,
+          background: 'var(--primary)',
+          color: '#fff',
+          fontWeight: fontWeight.bold,
+          fontSize: fontSize.base,
+          textAlign: 'center',
+        }}>
           {t('tournament.choice.manualCta')} →
         </div>
       </button>
-    </>
-  );
-
-  if (isDesktop) {
-    return (
-      <DesktopPage
-        title={t('tournament.choice.title')}
-        subtitle={t('tournament.choice.subtitle')}
-      >
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
-          gap: 20,
-          maxWidth: 900,
-        }}>
-          {cards}
-        </div>
-        <button
-          onClick={() => navigate({ name: 'tournament-list' })}
-          style={backLinkStyle}
-        >
-          {t('common.back')}
-        </button>
-      </DesktopPage>
-    );
-  }
-
-  // Mobile — header + stacked cards
-  return (
-    <div style={{ padding: '20px 16px 40px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-        <button
-          onClick={() => navigate({ name: 'tournament-list' })}
-          aria-label={t('common.back')}
-          style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: 'var(--surface)', border: '1.5px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, cursor: 'pointer', flexShrink: 0,
-          }}
-        >
-          ←
-        </button>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>
-            {t('tournament.choice.title')}
-          </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
-            {t('tournament.choice.subtitle')}
-          </p>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
-        {cards}
-      </div>
     </div>
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
-const baseCardStyle: React.CSSProperties = {
-  position: 'relative',
-  display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
-  padding: '28px 24px',
-  borderRadius: 18,
-  background: 'var(--surface)',
-  textAlign: 'left',
-  cursor: 'pointer',
-  width: '100%',
-  minHeight: 280,
-  transition: 'transform .15s, box-shadow .15s, border-color .15s',
-};
-
-const recommendedCardStyle: React.CSSProperties = {
-  ...baseCardStyle,
-  border: '2px solid #E65100',
-  boxShadow: '0 4px 20px rgba(230, 81, 0, 0.12)',
-};
-
-const standardCardStyle: React.CSSProperties = {
-  ...baseCardStyle,
-  border: '1.5px solid var(--border)',
-};
-
 const bulletListStyle: React.CSSProperties = {
-  fontSize: 13, color: 'var(--text-sub)', lineHeight: 1.7,
-  paddingLeft: 18, margin: '0 0 20px',
-  flex: 1,
-};
-
-function ctaButtonStyle(color: string): React.CSSProperties {
-  return {
-    marginTop: 'auto',
-    padding: '12px 20px',
-    borderRadius: 10,
-    background: color,
-    color: '#fff',
-    fontWeight: 700,
-    fontSize: 14,
-    alignSelf: 'stretch',
-    textAlign: 'center',
-  };
-}
-
-const backLinkStyle: React.CSSProperties = {
-  marginTop: 24,
-  background: 'transparent', border: 'none',
-  color: 'var(--text-muted)', fontSize: 14, fontWeight: 600,
-  cursor: 'pointer', padding: '8px 0',
+  margin: '2px 0 0',
+  paddingLeft: 18,
+  fontSize: fontSize.xs,
+  color: 'var(--text-sub)',
+  lineHeight: 1.5,
 };

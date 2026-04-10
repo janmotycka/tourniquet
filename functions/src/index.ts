@@ -42,5 +42,4 @@ export {
   adminAddClubMember,
   adminTransferClubOwnership,
   adminDeleteClub,
-  migrateUserClubs,
 } from './clubs';

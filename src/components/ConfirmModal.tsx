@@ -54,7 +54,7 @@ export function ConfirmModal() {
         style={{
           background: 'var(--surface)', borderRadius: 14,
           padding: 24, maxWidth: 380, width: '90%',
-          boxShadow: '0 8px 32px rgba(0,0,0,.18)',
+          boxShadow: 'var(--shadow-lg)',
           animation: 'scaleIn .15s ease-out',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -84,7 +84,7 @@ export function ConfirmModal() {
             onClick={() => close(true)}
             style={{
               padding: '10px 18px', borderRadius: 10, fontWeight: 700, fontSize: 14,
-              background: destructive ? '#C62828' : 'var(--primary)',
+              background: destructive ? 'var(--danger)' : 'var(--primary)',
               color: '#fff', border: 'none', cursor: 'pointer',
             }}
           >

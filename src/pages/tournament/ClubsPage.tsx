@@ -6,7 +6,7 @@ import { useTournamentStore } from '../../store/tournament.store';
 import { useMatchesStore } from '../../store/matches.store';
 import { useTrainingsStore } from '../../store/trainings.store';
 import { useConfirmStore } from '../../store/confirm.store';
-import type { Club, AgeCategory, ClubPlayer } from '../../types/club.types';
+import type { AgeCategory, ClubPlayer } from '../../types/club.types';
 import type { Contact } from '../../types/contact.types';
 import { PlayerDetailSheet } from '../../components/PlayerDetailSheet';
 import { aggregatePlayerStats } from '../../utils/player-stats';
@@ -17,11 +17,22 @@ import { ClubForm } from '../../components/clubs/ClubForm';
 import { ContactRow } from '../../components/clubs/ContactRow';
 import { ContactDetailSheet } from '../../components/clubs/ContactDetailSheet';
 import { MyClubSection } from '../../components/clubs/MyClubSection';
-import { OpponentClubRow } from '../../components/clubs/OpponentClubRow';
+import { PageHeader, Button, Card } from '../../components/ui';
+import { spacing, fontSize, fontWeight } from '../../theme/tokens';
 
 interface Props { navigate: (p: Page) => void; }
 
-// ─── Main ──────────────────────────────────────────────────────────────────────
+/**
+ * ClubsPage (zjednodušená verze — sustaining mode 2026-04).
+ *
+ * Jeden aktivní vlastní klub + plochý seznam kontaktů na trenéry jiných
+ * klubů. Žádné "soupeřské kluby" jako entity — soupeři se reference-ují
+ * jen v turnajích/zápasech (volný text nebo výběr z /clubsCatalog).
+ *
+ * Kontakty nesou `clubName` jako volný text (ne reference na existující
+ * klubový workspace), takže se kontakty dají přidávat pro kterýkoli klub,
+ * který trenér potká během sezóny.
+ */
 export function ClubsPage({ navigate }: Props) {
   const { t } = useI18n();
   const ask = useConfirmStore(s => s.ask);
@@ -44,8 +55,7 @@ export function ClubsPage({ navigate }: Props) {
   const deleteContactStore = useContactsStore(s => s.deleteContact);
 
   const [showCreate, setShowCreate] = useState(false);
-  const [editingClub, setEditingClub] = useState<Club | null>(null);
-  const [createMode, setCreateMode] = useState<'myclub' | 'opponent' | null>(null);
+  const [editingClub, setEditingClub] = useState(false);
 
   // Player detail sheet
   const [selectedPlayer, setSelectedPlayer] = useState<ClubPlayer | null>(null);
@@ -54,17 +64,11 @@ export function ClubsPage({ navigate }: Props) {
   // Contact detail sheet
   const [viewingContact, setViewingContact] = useState<Contact | null>(null);
   const [showContactSheet, setShowContactSheet] = useState(false);
-  const [contactSheetClubId, setContactSheetClubId] = useState<string | null>(null);
 
-  // Split: první klub s ageCategories.length > 0 je "Můj Klub", zbytek = soupeři
-  const myClub = useMemo(() =>
-    clubs.find(c => (c.ageCategories ?? []).length > 0),
-    [clubs],
-  );
-  const opponentClubs = useMemo(() =>
-    clubs.filter(c => c.id !== myClub?.id),
-    [clubs, myClub],
-  );
+  // Můj klub = aktivní workspace. V sustaining mode má uživatel právě jeden
+  // klub (multiple clubs jsou povolené pro Shared Clubs, ale UI tady jich
+  // stejně neukazuje víc).
+  const myClub = useMemo(() => clubs[0], [clubs]);
 
   // Statistiky hráčů — memoizované pro celý klub
   const getPlayerStats = useCallback((player: ClubPlayer): PlayerStats | null => {
@@ -83,42 +87,47 @@ export function ClubsPage({ navigate }: Props) {
     setSelectedPlayer(null);
   }, []);
 
-  // Helpers
-  const contactsForClub = (clubId: string) => contacts.filter(c => c.clubId === clubId);
-  const orphanContacts = contacts.filter(c => !c.clubId);
+  // Všechny kontakty — bez rozlišení klubu (flat list). Kontakt má
+  // `clubName` jako metadata, ale už nelinkujeme na entity.
+  const allContacts = contacts;
 
-  const handleCreate = (data: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[] }) => {
-    createClub({ name: data.name, color: data.color, logoBase64: data.logoBase64, ageCategories: data.ageCategories });
-    setShowCreate(false);
-    setCreateMode(null);
-  };
-
-  const handleEdit = (data: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[] }) => {
-    if (!editingClub) return;
-    updateClub(editingClub.id, { name: data.name, color: data.color, logoBase64: data.logoBase64 });
-    // Sync age categories separately (triggers player migration if needed)
-    if (data.ageCategories.join(',') !== (editingClub.ageCategories ?? []).join(',')) {
-      setAgeCategories(editingClub.id, data.ageCategories);
+  const handleCreate = async (data: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[] }) => {
+    try {
+      await createClub({ name: data.name, color: data.color, logoBase64: data.logoBase64, ageCategories: data.ageCategories });
+    } catch {
+      // chyby zpracovává clubs.store přes toasty
     }
-    setEditingClub(null);
+    setShowCreate(false);
   };
 
-  const handleDelete = async (club: Club) => {
-    const ok = await ask({ title: t('common.delete'), message: t('clubs.deleteConfirm', { name: club.name }), destructive: true });
+  const handleEdit = async (data: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[] }) => {
+    if (!myClub) return;
+    await updateClub(myClub.id, { name: data.name, color: data.color, logoBase64: data.logoBase64 });
+    if (data.ageCategories.join(',') !== (myClub.ageCategories ?? []).join(',')) {
+      await setAgeCategories(myClub.id, data.ageCategories);
+    }
+    setEditingClub(false);
+  };
+
+  const handleDeleteMyClub = async () => {
+    if (!myClub) return;
+    const ok = await ask({
+      title: t('common.delete'),
+      message: t('clubs.deleteConfirm', { name: myClub.name }),
+      destructive: true,
+    });
     if (ok) {
-      deleteClub(club.id);
+      await deleteClub(myClub.id);
     }
   };
 
   const handleOpenContactDetail = (contact: Contact) => {
     setViewingContact(contact);
-    setContactSheetClubId(contact.clubId);
     setShowContactSheet(true);
   };
 
-  const handleAddContact = (clubId: string | null) => {
+  const handleAddContact = () => {
     setViewingContact(null);
-    setContactSheetClubId(clubId);
     setShowContactSheet(true);
   };
 
@@ -152,176 +161,142 @@ export function ClubsPage({ navigate }: Props) {
     setViewingContact(null);
   };
 
-  const openCreateMyClub = () => {
-    setCreateMode('myclub');
-    setShowCreate(true);
-  };
+  // ── Page mode — create nebo edit klubu (místo list content) ─────────────
+  if (showCreate) {
+    return (
+      <ClubForm
+        mode="page"
+        initial={{ name: '', color: '#E53935', logoBase64: null, ageCategories: [] }}
+        onSave={handleCreate}
+        onCancel={() => setShowCreate(false)}
+        title={t('clubs.createMyClubTitle')}
+        t={t}
+        showCategories
+      />
+    );
+  }
 
-  const openCreateOpponent = () => {
-    setCreateMode('opponent');
-    setShowCreate(true);
-  };
+  if (editingClub && myClub) {
+    return (
+      <ClubForm
+        mode="page"
+        initial={{
+          name: myClub.name,
+          color: myClub.color,
+          logoBase64: myClub.logoBase64,
+          ageCategories: myClub.ageCategories ?? [],
+        }}
+        onSave={handleEdit}
+        onCancel={() => setEditingClub(false)}
+        title={t('clubs.editClub')}
+        t={t}
+        showCategories
+      />
+    );
+  }
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px',
-        borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0,
-      }}>
-        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{
-          width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
-          fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>←</button>
-        <div style={{ flex: 1 }}>
-          <h1 style={{ fontWeight: 800, fontSize: 20 }}>{t('clubs.title')}</h1>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
-            {t('clubs.moduleDesc')}
-          </div>
-        </div>
-        <button onClick={openCreateOpponent} style={{
-          background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 14,
-          padding: '8px 16px', borderRadius: 12,
-        }}>{t('clubs.new')}</button>
-      </div>
+      <PageHeader
+        title={t('clubs.title')}
+        subtitle={t('clubs.moduleDesc')}
+        onBack={() => navigate({ name: 'home' })}
+        backLabel={t('common.back')}
+      />
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {clubs.length === 0 && orphanContacts.length === 0 ? (
-          // Empty state
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '40px 20px' }}>
-            <div style={{ fontSize: 56 }}>🏟</div>
-            <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center' }}>{t('clubs.empty')}</h2>
-            <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 15, lineHeight: 1.5 }}>
-              {t('clubs.emptyDescNew')}
-            </p>
-            <button onClick={openCreateMyClub} style={{
-              background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 16,
-              padding: '14px 32px', borderRadius: 12,
-            }}>
-              {t('clubs.createMyClub')}
-            </button>
-            <button onClick={openCreateOpponent} style={{
-              background: 'var(--surface-var)', color: 'var(--text-muted)', fontWeight: 600, fontSize: 14,
-              padding: '10px 20px', borderRadius: 10, marginTop: -4,
-            }}>
-              {t('clubs.addFirst')}
-            </button>
-          </div>
+      <div style={{
+        flex: 1, overflowY: 'auto',
+        padding: `${spacing.lg}px ${spacing.lg}px ${spacing.xl}px`,
+        display: 'flex', flexDirection: 'column', gap: spacing.lg,
+      }}>
+        {/* ── Můj klub ── */}
+        {myClub ? (
+          <MyClubSection
+            club={myClub}
+            contacts={[]} /* kontakty se nyní zobrazují v samostatné sekci níže */
+            onEditClub={() => setEditingClub(true)}
+            onDeleteClub={handleDeleteMyClub}
+            onContactTap={handleOpenContactDetail}
+            onAddContact={handleAddContact}
+            onPlayerTap={handlePlayerTap}
+            getPlayerStats={getPlayerStats}
+            t={t}
+          />
         ) : (
-          <>
-            {/* ── Můj Klub ── */}
-            {myClub ? (
-              <MyClubSection
-                club={myClub}
-                contacts={contactsForClub(myClub.id)}
-                onEditClub={() => setEditingClub(myClub)}
-                onDeleteClub={() => handleDelete(myClub)}
-                onContactTap={handleOpenContactDetail}
-                onAddContact={() => handleAddContact(myClub.id)}
-                onPlayerTap={handlePlayerTap}
-                getPlayerStats={getPlayerStats}
-                t={t}
-              />
-            ) : (
-              <button onClick={openCreateMyClub} style={{
-                background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700, fontSize: 15,
-                padding: '14px', borderRadius: 14, border: '2px dashed var(--primary)',
-                textAlign: 'center',
-              }}>
-                🏟 {t('clubs.createMyClub')}
-              </button>
-            )}
-
-            {/* ── Soupeři ── */}
-            {opponentClubs.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
-                  {t('clubs.opponents')} ({opponentClubs.length})
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {opponentClubs.map(club => (
-                    <OpponentClubRow
-                      key={club.id}
-                      club={club}
-                      contacts={contactsForClub(club.id)}
-                      onEdit={() => setEditingClub(club)}
-                      onDelete={() => handleDelete(club)}
-                      onContactTap={handleOpenContactDetail}
-                      onAddContact={() => handleAddContact(club.id)}
-                      t={t}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Add opponent */}
-            <button onClick={openCreateOpponent} style={{
-              background: 'var(--surface-var)', color: 'var(--text-muted)', fontWeight: 600, fontSize: 13,
-              padding: '12px', borderRadius: 12, border: '1.5px dashed var(--border)',
-              marginTop: 4, textAlign: 'center',
-            }}>
-              ➕ {t('clubs.addOpponent')}
-            </button>
-
-            {/* Orphan contacts */}
-            {orphanContacts.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>
-                  👤 {t('clubs.orphanContacts')}
-                </div>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, lineHeight: 1.4 }}>
-                  {t('clubs.orphanContactsDesc')}
-                </p>
-                <div style={{
-                  background: 'var(--surface)', borderRadius: 14, padding: '10px 14px',
-                  boxShadow: '0 1px 4px rgba(0,0,0,.06)',
-                }}>
-                  {orphanContacts.map(contact => (
-                    <ContactRow key={contact.id} contact={contact} onTap={() => handleOpenContactDetail(contact)} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
+          <Card
+            variant="dashed"
+            padding="lg"
+            onClick={() => setShowCreate(true)}
+            style={{
+              background: 'var(--primary-light)',
+              borderColor: 'var(--primary)',
+              color: 'var(--primary)',
+              fontWeight: fontWeight.bold,
+              fontSize: fontSize.md,
+              textAlign: 'center',
+            }}
+          >
+            {t('clubs.createMyClub')}
+          </Card>
         )}
+
+        {/* ── Kontakty trenérů ── */}
+        <section>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginBottom: spacing.sm,
+          }}>
+            <h2 style={{
+              fontSize: fontSize.base,
+              fontWeight: fontWeight.bold,
+              color: 'var(--text-muted)',
+              margin: 0,
+            }}>
+              👤 {t('clubs.contactsTitle')}
+              {allContacts.length > 0 && (
+                <span style={{ marginLeft: 6, color: 'var(--text-muted)' }}>
+                  ({allContacts.length})
+                </span>
+              )}
+            </h2>
+            <Button variant="primary" size="sm" onClick={handleAddContact}>
+              {t('clubs.addContact')}
+            </Button>
+          </div>
+
+          {allContacts.length === 0 ? (
+            <Card
+              variant="dashed"
+              padding="lg"
+              style={{
+                textAlign: 'center',
+                fontSize: fontSize.sm,
+                color: 'var(--text-muted)',
+                lineHeight: 1.5,
+              }}
+            >
+              {t('clubs.contactsEmpty')}
+            </Card>
+          ) : (
+            <Card variant="default" padding="none" style={{ padding: `6px ${spacing.md + 2}px` }}>
+              {allContacts.map(contact => (
+                <ContactRow
+                  key={contact.id}
+                  contact={contact}
+                  onTap={() => handleOpenContactDetail(contact)}
+                />
+              ))}
+            </Card>
+          )}
+        </section>
       </div>
-
-      {/* Create club modal */}
-      {showCreate && (
-        <ClubForm
-          initial={{ name: '', color: '#E53935', logoBase64: null, ageCategories: [] }}
-          onSave={handleCreate}
-          onCancel={() => { setShowCreate(false); setCreateMode(null); }}
-          title={createMode === 'myclub' ? t('clubs.createMyClubTitle') : t('clubs.newClub')}
-          t={t}
-          showCategories={createMode === 'myclub'}
-        />
-      )}
-
-      {/* Edit club modal */}
-      {editingClub && (
-        <ClubForm
-          initial={{
-            name: editingClub.name,
-            color: editingClub.color,
-            logoBase64: editingClub.logoBase64,
-            ageCategories: editingClub.ageCategories ?? [],
-          }}
-          onSave={handleEdit}
-          onCancel={() => setEditingClub(null)}
-          title={t('clubs.editClub')}
-          t={t}
-          showCategories={editingClub.id === myClub?.id || (editingClub.ageCategories ?? []).length > 0}
-        />
-      )}
 
       {/* Contact detail sheet */}
       {showContactSheet && (
         <ContactDetailSheet
           contact={viewingContact}
-          defaultClubId={contactSheetClubId}
+          defaultClubId={null}
           clubs={clubs}
           onSave={handleSaveContact}
           onDelete={handleDeleteContact}
@@ -345,9 +320,8 @@ export function ClubsPage({ navigate }: Props) {
           }}
           onClose={() => setSelectedPlayer(null)}
           onEdit={handlePlayerEditFromDetail}
-          onMoveCategory={(newCat) => {
-            movePlayerToCategory(myClub.id, selectedPlayer.id, newCat);
-            // Refresh local selection so UI re-renders with new category
+          onMoveCategory={async (newCat) => {
+            await movePlayerToCategory(myClub.id, selectedPlayer.id, newCat);
             const updated = useClubsStore.getState().clubs
               .find(c => c.id === myClub.id)?.players
               .find(p => p.id === selectedPlayer.id);

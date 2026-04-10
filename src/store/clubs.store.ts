@@ -1,376 +1,372 @@
 /**
- * Zustand store pro správu klubů s Firebase sync.
+ * Zustand store pro správu klubů.
  *
- * Podporuje:
- * - Hlavní klub ("Můj Klub") se správou hráčů dle věkových kategorií
- * - Soupeřské kluby jako jednoduchý kontaktní seznam
- * - Migrace ze starého localStorage-only formátu do Firebase
+ * Jediný datový model: sdílené kluby na `/clubs/{clubId}` s členstvím
+ * přes `/users/{uid}/memberOfClubs/{clubId} = role`.
+ *
+ * - Čtení: `loadFromFirebase(uid)` natáhne memberOfClubs + plné kluby
+ *   a nasetuje realtime listener na přírůstky/úbytky členstev.
+ * - Zápis: tvorba/mazání klubů přes Cloud Functions
+ *   (`createPersonalClub`, `adminDeleteClub`/`leaveClub`),
+ *   úpravy obsahu (players, name, color, ageCategories...) přes přímý
+ *   write do `/clubs/{clubId}` (DB rules povolují owner/coach).
+ *
+ * Žádný localStorage persist — pravda je vždy v Firebase.
  */
 
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { safeStorage } from '../utils/safe-storage';
-import type { Club, ClubPlayer, CreateClubInput, AgeCategory, MemberOfClubs } from '../types/club.types';
+import type {
+  Club,
+  ClubPlayer,
+  CreateClubInput,
+  AgeCategory,
+  MemberOfClubs,
+  ClubRole,
+} from '../types/club.types';
 import { generateId } from '../utils/id';
-import {
-  saveClub as saveClubFb,
-  loadClubs as loadClubsFb,
-  deleteClubFb,
-} from '../services/club.firebase';
 import {
   loadMemberOfClubs,
   loadAllSharedClubsForUser,
   loadActiveClubId,
   setActiveClubId as setActiveClubIdFb,
   subscribeToMemberOfClubs,
+  loadSharedClub,
+  updateSharedClub,
 } from '../services/shared-club.firebase';
+import { createPersonalClub, leaveClub } from '../services/club-functions';
 import { logger } from '../utils/logger';
 
 interface ClubsState {
+  /** Jediný zdroj pravdy — kluby, kterých je uživatel členem. */
   clubs: Club[];
   firebaseUid: string | null;
 
-  // ─── Shared Club Workspaces (nový model, paralelně s legacy) ────────────
   /** Mapa clubId → role pro všechny sdílené kluby, jichž je uživatel členem */
   memberOfClubs: MemberOfClubs;
   /** Aktuálně vybraný klub (pro workspace UI). Null pokud uživatel nemá žádný. */
   activeClubId: string | null;
-  /** Loaded sdílené kluby (z /clubs/{clubId}) — plný obsah pro všechny členstvy */
-  sharedClubs: Club[];
   /** Unsubscribe handle pro memberOfClubs listener */
   _memberOfClubsUnsub: (() => void) | null;
 
-  loadSharedClubs: (uid: string) => Promise<void>;
-  setActiveClubId: (clubId: string | null) => Promise<void>;
-  /** Vrátí aktuálně aktivní sdílený klub (nebo undefined). */
-  getActiveClub: () => Club | undefined;
-  /** Vrátí roli aktuálního uživatele v daném klubu. */
-  getMyRoleInClub: (clubId: string) => 'owner' | 'coach' | 'viewer' | null;
-
-  // Firebase sync
+  // ─── Loading ─────────────────────────────────────────────────────────────
   loadFromFirebase: (uid: string) => Promise<void>;
   setFirebaseUid: (uid: string | null) => void;
 
-  // CRUD klubu
-  createClub: (input: CreateClubInput) => Club;
-  updateClub: (id: string, patch: Partial<Omit<Club, 'id' | 'createdAt'>>) => void;
-  deleteClub: (id: string) => void;
+  // ─── Active club selection ───────────────────────────────────────────────
+  setActiveClubId: (clubId: string | null) => Promise<void>;
+  getActiveClub: () => Club | undefined;
+  getMyRoleInClub: (clubId: string) => ClubRole | null;
+
+  // ─── CRUD klubu ──────────────────────────────────────────────────────────
+  /**
+   * Vytvoří osobní klub přes Cloud Function `createPersonalClub`.
+   * Po úspěchu reload memberOfClubs + sharedClubs, vrátí nový Club.
+   */
+  createClub: (input: CreateClubInput) => Promise<Club>;
+  /** Patchne meta klubu (name, color, logo...). Přímý write do /clubs/{id}. */
+  updateClub: (id: string, patch: Partial<Omit<Club, 'id' | 'createdAt'>>) => Promise<void>;
+  /**
+   * Odejde z klubu přes `leaveClub` CF. Pro osobní kluby s jediným ownerem
+   * je to efektivní smazání. Pro sdílené kluby odstranění členství.
+   */
+  deleteClub: (id: string) => Promise<void>;
   getClubById: (id: string) => Club | undefined;
 
-  // Správa hráčů
-  addPlayer: (clubId: string, player: Omit<ClubPlayer, 'id'>) => void;
-  addPlayersBulk: (clubId: string, players: Omit<ClubPlayer, 'id'>[]) => void;
-  updatePlayer: (clubId: string, playerId: string, patch: Partial<Omit<ClubPlayer, 'id'>>) => void;
-  removePlayer: (clubId: string, playerId: string) => void;
-  movePlayerToCategory: (clubId: string, playerId: string, newCategory: AgeCategory) => void;
+  // ─── Správa hráčů (přímý write do /clubs/{id}/players) ──────────────────
+  addPlayer: (clubId: string, player: Omit<ClubPlayer, 'id'>) => Promise<void>;
+  addPlayersBulk: (clubId: string, players: Omit<ClubPlayer, 'id'>[]) => Promise<void>;
+  updatePlayer: (clubId: string, playerId: string, patch: Partial<Omit<ClubPlayer, 'id'>>) => Promise<void>;
+  removePlayer: (clubId: string, playerId: string) => Promise<void>;
+  movePlayerToCategory: (clubId: string, playerId: string, newCategory: AgeCategory) => Promise<void>;
 
-  // Kategorie
-  setAgeCategories: (clubId: string, categories: AgeCategory[]) => void;
+  // ─── Kategorie ────────────────────────────────────────────────────────────
+  setAgeCategories: (clubId: string, categories: AgeCategory[]) => Promise<void>;
 }
 
-/** Migrace starého klubu bez `players`/`ageCategories` na nový formát */
-function migrateClub(club: Club): Club {
-  return {
-    ...club,
-    players: club.players ?? [],
-    ageCategories: club.ageCategories ?? [],
-  };
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Vrací mutovatelnou kopii klubu po aplikaci patch funkce + volá Firebase update.
+ * Updatuje lokální state optimisticky, sync selhání jen loguje.
+ */
+async function patchClubContent(
+  get: () => ClubsState,
+  set: (fn: (s: ClubsState) => Partial<ClubsState>) => void,
+  clubId: string,
+  mutate: (c: Club) => Partial<Club>,
+) {
+  const current = get().clubs.find(c => c.id === clubId);
+  if (!current) {
+    logger.warn('[Clubs] patchClubContent: club not found', clubId);
+    return;
+  }
+  const patch = mutate(current);
+  const updatedAt = new Date().toISOString();
+  const updated: Club = { ...current, ...patch, updatedAt };
+
+  set(s => ({
+    clubs: s.clubs.map(c => (c.id === clubId ? updated : c)),
+  }));
+
+  try {
+    await updateSharedClub(clubId, { ...patch, updatedAt });
+  } catch (err) {
+    logger.warn('[Clubs] updateSharedClub failed:', err);
+  }
 }
 
-/** Sync konkrétní klub na Firebase (fire & forget) */
-function syncClub(state: ClubsState, clubId: string) {
-  const uid = state.firebaseUid;
-  const club = state.clubs.find(c => c.id === clubId);
-  if (!uid || !club) return;
-  saveClubFb(uid, club).catch(err =>
-    logger.warn('[Clubs] Sync failed for', clubId, err),
-  );
-}
+// ─── Store ──────────────────────────────────────────────────────────────────
 
-export const useClubsStore = create<ClubsState>()(
-  persist(
-    (set, get) => ({
-      clubs: [],
-      firebaseUid: null,
+export const useClubsStore = create<ClubsState>((set, get) => ({
+  clubs: [],
+  firebaseUid: null,
+  memberOfClubs: {},
+  activeClubId: null,
+  _memberOfClubsUnsub: null,
 
-      // ─── Shared Club Workspaces state ────────────────────────────────
-      memberOfClubs: {},
-      activeClubId: null,
-      sharedClubs: [],
-      _memberOfClubsUnsub: null,
+  // ─── Loading ──────────────────────────────────────────────────────────────
 
-      loadSharedClubs: async (uid: string) => {
+  loadFromFirebase: async (uid: string) => {
+    set(() => ({ firebaseUid: uid }));
+    try {
+      const [memberOf, sharedClubs, activeId] = await Promise.all([
+        loadMemberOfClubs(uid),
+        loadAllSharedClubsForUser(uid),
+        loadActiveClubId(uid),
+      ]);
+
+      // Auto-vyber první klub, pokud není nastaven activeClubId a nějaký existuje
+      let finalActiveId = activeId;
+      if (!finalActiveId && sharedClubs.length > 0) {
+        finalActiveId = sharedClubs[0].id;
+        void setActiveClubIdFb(uid, finalActiveId).catch(err =>
+          logger.warn('[Clubs] Failed to auto-set activeClubId:', err),
+        );
+      }
+
+      set(() => ({
+        memberOfClubs: memberOf,
+        clubs: sharedClubs,
+        activeClubId: finalActiveId,
+      }));
+      logger.debug('[Clubs] Loaded', sharedClubs.length, 'clubs, active:', finalActiveId);
+
+      // Realtime listener na memberOfClubs — propaguje invite/remove
+      const prevUnsub = get()._memberOfClubsUnsub;
+      if (prevUnsub) prevUnsub();
+      const unsub = subscribeToMemberOfClubs(uid, async (newMemberOf) => {
+        set(() => ({ memberOfClubs: newMemberOf }));
+
+        // Pokud uživatel ztratil přístup k activeClubId, fallback na první dostupný
+        const current = get().activeClubId;
+        if (current && !newMemberOf[current]) {
+          const fallback = Object.keys(newMemberOf)[0] || null;
+          set(() => ({ activeClubId: fallback }));
+          if (fallback) void setActiveClubIdFb(uid, fallback);
+        }
+
+        // Reloaduj seznam klubů (mohl se změnit)
         try {
-          const [memberOf, sharedClubs, activeId] = await Promise.all([
-            loadMemberOfClubs(uid),
-            loadAllSharedClubsForUser(uid),
-            loadActiveClubId(uid),
-          ]);
-
-          // Pokud activeClubId neexistuje a máme nějaké kluby, vyber první
-          let finalActiveId = activeId;
-          if (!finalActiveId && sharedClubs.length > 0) {
-            finalActiveId = sharedClubs[0].id;
-            void setActiveClubIdFb(uid, finalActiveId).catch(err =>
-              logger.warn('[Clubs] Failed to auto-set activeClubId:', err),
-            );
-          }
-
-          set({
-            memberOfClubs: memberOf,
-            sharedClubs,
-            activeClubId: finalActiveId,
-          });
-          logger.debug('[Clubs] Loaded', sharedClubs.length, 'shared clubs, active:', finalActiveId);
-
-          // Attach realtime listener na memberOfClubs pro propagation invite/remove
-          const prevUnsub = get()._memberOfClubsUnsub;
-          if (prevUnsub) prevUnsub();
-          const unsub = subscribeToMemberOfClubs(uid, (newMemberOf) => {
-            set({ memberOfClubs: newMemberOf });
-            // Pokud uživatel ztratil přístup k activeClubId, reset
-            const current = get().activeClubId;
-            if (current && !newMemberOf[current]) {
-              const fallback = Object.keys(newMemberOf)[0] || null;
-              set({ activeClubId: fallback });
-              if (fallback) void setActiveClubIdFb(uid, fallback);
-            }
-          });
-          set({ _memberOfClubsUnsub: unsub });
+          const refreshed = await loadAllSharedClubsForUser(uid);
+          set(() => ({ clubs: refreshed }));
         } catch (err) {
-          logger.warn('[Clubs] loadSharedClubs failed:', err);
+          logger.warn('[Clubs] Refresh after memberOfClubs change failed:', err);
         }
-      },
+      });
+      set(() => ({ _memberOfClubsUnsub: unsub }));
+    } catch (err) {
+      logger.warn('[Clubs] loadFromFirebase failed:', err);
+    }
+  },
 
-      setActiveClubId: async (clubId) => {
-        const uid = get().firebaseUid;
-        set({ activeClubId: clubId });
-        if (uid) {
-          try {
-            await setActiveClubIdFb(uid, clubId);
-          } catch (err) {
-            logger.warn('[Clubs] setActiveClubId sync failed:', err);
-          }
-        }
-      },
+  setFirebaseUid: (uid) => {
+    const prevUnsub = get()._memberOfClubsUnsub;
+    if (!uid) {
+      if (prevUnsub) prevUnsub();
+      set(() => ({
+        firebaseUid: null,
+        memberOfClubs: {},
+        clubs: [],
+        activeClubId: null,
+        _memberOfClubsUnsub: null,
+      }));
+    } else {
+      set(() => ({ firebaseUid: uid }));
+    }
+  },
 
-      getActiveClub: () => {
-        const { activeClubId, sharedClubs, clubs } = get();
-        if (!activeClubId) return undefined;
-        return sharedClubs.find(c => c.id === activeClubId) ?? clubs.find(c => c.id === activeClubId);
-      },
+  // ─── Active club selection ────────────────────────────────────────────────
 
-      getMyRoleInClub: (clubId) => {
-        const role = get().memberOfClubs[clubId];
-        return role ?? null;
-      },
+  setActiveClubId: async (clubId) => {
+    const uid = get().firebaseUid;
+    set(() => ({ activeClubId: clubId }));
+    if (uid) {
+      try {
+        await setActiveClubIdFb(uid, clubId);
+      } catch (err) {
+        logger.warn('[Clubs] setActiveClubId sync failed:', err);
+      }
+    }
+  },
 
-      setFirebaseUid: (uid) => {
-        const prevUnsub = get()._memberOfClubsUnsub;
-        if (!uid && prevUnsub) {
-          prevUnsub();
-          set({
-            firebaseUid: null,
-            memberOfClubs: {},
-            sharedClubs: [],
-            activeClubId: null,
-            _memberOfClubsUnsub: null,
+  getActiveClub: () => {
+    const { activeClubId, clubs } = get();
+    if (!activeClubId) return undefined;
+    return clubs.find(c => c.id === activeClubId);
+  },
+
+  getMyRoleInClub: (clubId) => {
+    return get().memberOfClubs[clubId] ?? null;
+  },
+
+  // ─── CRUD klubu ──────────────────────────────────────────────────────────
+
+  createClub: async (input) => {
+    const uid = get().firebaseUid;
+    if (!uid) throw new Error('Not authenticated');
+
+    const res = await createPersonalClub({
+      name: input.name,
+      color: input.color,
+      logoBase64: input.logoBase64 ?? null,
+    });
+
+    // CF vytvořil klub — reload a najdi ho
+    const fresh = await loadSharedClub(res.clubId);
+    if (!fresh) throw new Error('Club created but not readable');
+
+    // Pokud přišly ageCategories v inputu, aplikuj je hned (jde přes rules = ok pro ownera)
+    if (input.ageCategories && input.ageCategories.length > 0) {
+      try {
+        await updateSharedClub(res.clubId, { ageCategories: input.ageCategories });
+        fresh.ageCategories = input.ageCategories;
+      } catch (err) {
+        logger.warn('[Clubs] Failed to set initial ageCategories:', err);
+      }
+    }
+
+    // Refresh state — memberOfClubs listener to zachytí taky, ale ať je UI okamžité
+    const [memberOf, sharedClubs] = await Promise.all([
+      loadMemberOfClubs(uid),
+      loadAllSharedClubsForUser(uid),
+    ]);
+
+    set(() => ({
+      memberOfClubs: memberOf,
+      clubs: sharedClubs,
+      activeClubId: get().activeClubId ?? res.clubId,
+    }));
+
+    // Pokud dosud nebyl aktivní klub, nastav nově vytvořený
+    if (!get().activeClubId) {
+      await get().setActiveClubId(res.clubId);
+    }
+
+    return fresh;
+  },
+
+  updateClub: async (id, patch) => {
+    await patchClubContent(get, set, id, () => patch);
+  },
+
+  deleteClub: async (id) => {
+    const uid = get().firebaseUid;
+    try {
+      await leaveClub(id);
+    } catch (err) {
+      logger.warn('[Clubs] leaveClub failed:', err);
+      throw err;
+    }
+
+    // Optimisticky odstraň z local state
+    set(s => ({
+      clubs: s.clubs.filter(c => c.id !== id),
+      activeClubId: s.activeClubId === id ? null : s.activeClubId,
+    }));
+
+    // Reload memberOfClubs (server cleanup)
+    if (uid) {
+      try {
+        const memberOf = await loadMemberOfClubs(uid);
+        set(() => ({ memberOfClubs: memberOf }));
+      } catch { /* silent */ }
+    }
+  },
+
+  getClubById: (id) => get().clubs.find(c => c.id === id),
+
+  // ─── Správa hráčů ─────────────────────────────────────────────────────────
+
+  addPlayer: async (clubId, playerData) => {
+    const player: ClubPlayer = { ...playerData, id: generateId() };
+    await patchClubContent(get, set, clubId, (c) => ({
+      players: [...(c.players ?? []), player],
+    }));
+  },
+
+  addPlayersBulk: async (clubId, playersData) => {
+    const newPlayers: ClubPlayer[] = playersData.map(p => ({ ...p, id: generateId() }));
+    await patchClubContent(get, set, clubId, (c) => ({
+      players: [...(c.players ?? []), ...newPlayers],
+      ageCategories: Array.from(new Set([
+        ...(c.ageCategories ?? []),
+        ...newPlayers.map(p => p.ageCategory),
+      ])),
+    }));
+  },
+
+  updatePlayer: async (clubId, playerId, patch) => {
+    await patchClubContent(get, set, clubId, (c) => ({
+      players: (c.players ?? []).map(p =>
+        p.id === playerId ? { ...p, ...patch } : p,
+      ),
+    }));
+  },
+
+  removePlayer: async (clubId, playerId) => {
+    await patchClubContent(get, set, clubId, (c) => ({
+      players: (c.players ?? []).filter(p => p.id !== playerId),
+    }));
+  },
+
+  movePlayerToCategory: async (clubId, playerId, newCategory) => {
+    const today = new Date().toISOString().slice(0, 10);
+    await patchClubContent(get, set, clubId, (c) => {
+      const ageCategories = (c.ageCategories ?? []).includes(newCategory)
+        ? c.ageCategories
+        : [...(c.ageCategories ?? []), newCategory];
+
+      const players = (c.players ?? []).map(p => {
+        if (p.id !== playerId) return p;
+        if (p.ageCategory === newCategory) return p; // no-op
+        const history = [...(p.categoryHistory ?? [])];
+        const openIdx = history.findIndex(h => !h.to);
+        if (openIdx >= 0) {
+          history[openIdx] = { ...history[openIdx], to: today };
+        } else if (history.length === 0) {
+          history.push({
+            category: p.ageCategory,
+            from: p.createdAt?.slice(0, 10) ?? today,
+            to: today,
           });
-        } else {
-          set({ firebaseUid: uid });
         }
-      },
-
-      loadFromFirebase: async (uid) => {
-        set({ firebaseUid: uid });
-        try {
-          const remote = await loadClubsFb(uid);
-          const local = get().clubs;
-
-          if (remote.length > 0) {
-            // Firebase má data → použij je (s migrací)
-            set({ clubs: remote.map(migrateClub) });
-            logger.debug('[Clubs] Loaded', remote.length, 'clubs from Firebase');
-          } else if (local.length > 0) {
-            // Firebase prázdný ale localStorage má kluby → push nahoru (migrace)
-            const migrated = local.map(migrateClub);
-            set({ clubs: migrated });
-            for (const club of migrated) {
-              await saveClubFb(uid, club);
-            }
-            logger.debug('[Clubs] Migrated', migrated.length, 'clubs to Firebase');
-          }
-        } catch (err) {
-          logger.warn('[Clubs] Load failed:', err);
-        }
-      },
-
-      createClub: (input) => {
-        const now = new Date().toISOString();
-        const club: Club = {
-          id: generateId(),
-          name: input.name,
-          color: input.color,
-          logoBase64: input.logoBase64 ?? null,
-          defaultPlayers: input.defaultPlayers ?? [],
-          players: [],
-          ageCategories: input.ageCategories ?? [],
-          createdAt: now,
-          updatedAt: now,
+        history.push({ category: newCategory, from: today });
+        return {
+          ...p,
+          ageCategory: newCategory,
+          categoryHistory: history,
+          updatedAt: new Date().toISOString(),
         };
-        set(s => ({ clubs: [...s.clubs, club] }));
-        // Sync na Firebase
-        const uid = get().firebaseUid;
-        if (uid) {
-          saveClubFb(uid, club).catch(err =>
-            logger.warn('[Clubs] Sync create failed:', err),
-          );
-        }
-        return club;
-      },
+      });
 
-      updateClub: (id, patch) => {
-        set(s => ({
-          clubs: s.clubs.map(c =>
-            c.id === id
-              ? { ...c, ...patch, updatedAt: new Date().toISOString() }
-              : c,
-          ),
-        }));
-        syncClub(get(), id);
-      },
+      return { ageCategories, players };
+    });
+  },
 
-      deleteClub: (id) => {
-        const uid = get().firebaseUid;
-        set(s => ({ clubs: s.clubs.filter(c => c.id !== id) }));
-        if (uid) {
-          deleteClubFb(uid, id).catch(err =>
-            logger.warn('[Clubs] Delete sync failed:', err),
-          );
-        }
-      },
+  // ─── Kategorie ────────────────────────────────────────────────────────────
 
-      getClubById: (id) => get().clubs.find(c => c.id === id),
+  setAgeCategories: async (clubId, categories) => {
+    await patchClubContent(get, set, clubId, () => ({ ageCategories: categories }));
+  },
+}));
 
-      // ─── Správa hráčů ───────────────────────────────────────────────
-      addPlayer: (clubId, playerData) => {
-        const player: ClubPlayer = { ...playerData, id: generateId() };
-        set(s => ({
-          clubs: s.clubs.map(c =>
-            c.id === clubId
-              ? { ...c, players: [...c.players, player], updatedAt: new Date().toISOString() }
-              : c,
-          ),
-        }));
-        syncClub(get(), clubId);
-      },
-
-      addPlayersBulk: (clubId, playersData) => {
-        const newPlayers: ClubPlayer[] = playersData.map(p => ({ ...p, id: generateId() }));
-        set(s => ({
-          clubs: s.clubs.map(c =>
-            c.id === clubId
-              ? {
-                  ...c,
-                  players: [...c.players, ...newPlayers],
-                  // Pokud kategorie hráče v klubu zatím nejsou aktivní, automaticky doplníme
-                  ageCategories: Array.from(new Set([
-                    ...c.ageCategories,
-                    ...newPlayers.map(p => p.ageCategory),
-                  ])),
-                  updatedAt: new Date().toISOString(),
-                }
-              : c,
-          ),
-        }));
-        syncClub(get(), clubId);
-      },
-
-      movePlayerToCategory: (clubId, playerId, newCategory) => {
-        const today = new Date().toISOString().slice(0, 10);
-        set(s => ({
-          clubs: s.clubs.map(c => {
-            if (c.id !== clubId) return c;
-            return {
-              ...c,
-              ageCategories: c.ageCategories.includes(newCategory)
-                ? c.ageCategories
-                : [...c.ageCategories, newCategory],
-              players: c.players.map(p => {
-                if (p.id !== playerId) return p;
-                if (p.ageCategory === newCategory) return p; // už je tam, no-op
-                const history = [...(p.categoryHistory ?? [])];
-                // Uzavři otevřený interval
-                const openIdx = history.findIndex(h => !h.to);
-                if (openIdx >= 0) {
-                  history[openIdx] = { ...history[openIdx], to: today };
-                } else if (history.length === 0) {
-                  // Žádná historie → seed pro starou kategorii
-                  history.push({
-                    category: p.ageCategory,
-                    from: p.createdAt?.slice(0, 10) ?? today,
-                    to: today,
-                  });
-                }
-                history.push({ category: newCategory, from: today });
-                return {
-                  ...p,
-                  ageCategory: newCategory,
-                  categoryHistory: history,
-                  updatedAt: new Date().toISOString(),
-                };
-              }),
-              updatedAt: new Date().toISOString(),
-            };
-          }),
-        }));
-        syncClub(get(), clubId);
-      },
-
-      updatePlayer: (clubId, playerId, patch) => {
-        set(s => ({
-          clubs: s.clubs.map(c =>
-            c.id === clubId
-              ? {
-                  ...c,
-                  players: c.players.map(p =>
-                    p.id === playerId ? { ...p, ...patch } : p,
-                  ),
-                  updatedAt: new Date().toISOString(),
-                }
-              : c,
-          ),
-        }));
-        syncClub(get(), clubId);
-      },
-
-      removePlayer: (clubId, playerId) => {
-        set(s => ({
-          clubs: s.clubs.map(c =>
-            c.id === clubId
-              ? {
-                  ...c,
-                  players: c.players.filter(p => p.id !== playerId),
-                  updatedAt: new Date().toISOString(),
-                }
-              : c,
-          ),
-        }));
-        syncClub(get(), clubId);
-      },
-
-      // ─── Kategorie ──────────────────────────────────────────────────
-      setAgeCategories: (clubId, categories) => {
-        set(s => ({
-          clubs: s.clubs.map(c =>
-            c.id === clubId
-              ? { ...c, ageCategories: categories, updatedAt: new Date().toISOString() }
-              : c,
-          ),
-        }));
-        syncClub(get(), clubId);
-      },
-    }),
-    { name: 'trenink-clubs', storage: createJSONStorage(() => safeStorage) },
-  ),
-);

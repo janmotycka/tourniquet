@@ -13,8 +13,6 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { JoinClubModal } from './components/clubs/JoinClubModal';
-import { useLayoutMode } from './hooks/useLayoutMode';
-import { DesktopShell } from './components/desktop/DesktopShell';
 import { useTournamentStore } from './store/tournament.store';
 import { useSubscriptionStore } from './store/subscription.store';
 import { useToastStore } from './store/toast.store';
@@ -113,12 +111,10 @@ function AppRouter() {
   const loadTemplates = useTemplatesStore(s => s.loadFromFirebase);
   const loadClubs = useClubsStore(s => s.loadFromFirebase);
   const setClubsFirebaseUid = useClubsStore(s => s.setFirebaseUid);
-  const loadSharedClubs = useClubsStore(s => s.loadSharedClubs);
   const loadTrainings = useTrainingsStore(s => s.loadFromFirebase);
   const setTrainingsFirebaseUid = useTrainingsStore(s => s.setFirebaseUid);
 
   const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin, adminJoinRole, setAdminJoinRole, clubJoinIntent } = usePageStore();
-  const { mode: layoutMode } = useLayoutMode();
 
   // Onboarding wizard state — MUST be before any early returns (React hooks rule)
   const [onboarded, setOnboarded] = useState(() => {
@@ -134,6 +130,8 @@ function AppRouter() {
       history.replaceState(null, '', window.location.pathname + window.location.search);
     }
     setPage(p);
+    // Scroll na začátek stránky při navigaci
+    window.scrollTo(0, 0);
   };
 
   // Po přihlášení načteme data z Firebase + subscription listener + kontakty
@@ -147,10 +145,7 @@ function AppRouter() {
         loadContacts(user.uid);
         loadMatches(user.uid);
         loadTemplates(user.uid);
-        loadClubs(user.uid);
-        // Shared Club Workspaces (Etapa 1): načti sdílené kluby + activeClubId
-        // Non-blocking — legacy clubs store dál funguje
-        void loadSharedClubs(user.uid);
+        void loadClubs(user.uid);
         loadTrainings(user.uid);
         const unsubscribe = subscribeToStatus(user.uid);
         return () => unsubscribe();
@@ -161,7 +156,7 @@ function AppRouter() {
       setClubsFirebaseUid(null);
       setTrainingsFirebaseUid(null);
     }
-  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, loadMatches, setMatchesFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, loadTrainings, setTrainingsFirebaseUid, loadSharedClubs]);
+  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, loadMatches, setMatchesFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, loadTrainings, setTrainingsFirebaseUid]);
 
   // Po přihlášení + existuje joinIntent → přesměrovat zpět na public view
   useEffect(() => {
@@ -184,13 +179,11 @@ function AppRouter() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync body[data-page] and body[data-layout-mode] for CSS hooks
+  // Sync body[data-page] for CSS hooks
   useEffect(() => {
     document.body.dataset.page = page.name;
+    document.body.dataset.layoutMode = 'mobile';
   }, [page.name]);
-  useEffect(() => {
-    document.body.dataset.layoutMode = layoutMode;
-  }, [layoutMode]);
 
   // Po přihlášení z login stránky přesměruj na home
   // (musí být PŘED early returns — React hooks nesmí měnit pořadí mezi rendery)
@@ -303,17 +296,6 @@ function AppRouter() {
       {page.name === 'terms-of-service' && <TermsOfServicePage navigate={navigate} />}
     </Suspense>
   );
-
-  if (layoutMode === 'desktop') {
-    return (
-      <>
-        <DesktopShell currentPage={page} navigate={navigate}>
-          {pageContent}
-        </DesktopShell>
-        {clubJoinIntent && <JoinClubModal inviteId={clubJoinIntent.inviteId} />}
-      </>
-    );
-  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>

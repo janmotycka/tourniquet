@@ -4,10 +4,10 @@ import { Z } from '../utils/z-index';
 // ─── Barvy a ikony podle typu ─────────────────────────────────────────────────
 
 const STYLE: Record<ToastType, { bg: string; border: string; color: string; icon: string }> = {
-  success: { bg: '#1B5E20', border: '#2E7D32', color: '#fff',     icon: '✓' },
-  error:   { bg: '#B71C1C', border: '#C62828', color: '#fff',     icon: '✕' },
-  warning: { bg: '#E65100', border: '#F57C00', color: '#fff',     icon: '⚠' },
-  info:    { bg: '#0D47A1', border: '#1565C0', color: '#fff',     icon: 'ℹ' },
+  success: { bg: '#1B5E20', border: 'var(--success)', color: '#fff',     icon: '✓' },
+  error:   { bg: '#B71C1C', border: 'var(--danger)', color: '#fff',     icon: '✕' },
+  warning: { bg: 'var(--warning)', border: '#F57C00', color: '#fff',     icon: '⚠' },
+  info:    { bg: '#0D47A1', border: 'var(--info)', color: '#fff',     icon: 'ℹ' },
 };
 
 // ─── Jeden toast ──────────────────────────────────────────────────────────────

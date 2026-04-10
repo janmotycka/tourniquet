@@ -74,7 +74,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
       key: 'tournament',
       labelKey: 'home.tournament',
       icon: '🏆',
-      color: '#E65100',
+      color: 'var(--warning)',
       colorBg: 'rgba(230, 81, 0, 0.10)',
       single: { icon: '🏆', labelKey: 'sidebar.tournaments', page: 'tournament-list', target: { name: 'tournament-list' } },
     },
@@ -82,7 +82,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
       key: 'match',
       labelKey: 'home.match',
       icon: '📋',
-      color: '#1565C0',
+      color: 'var(--info)',
       colorBg: 'rgba(21, 101, 192, 0.10)',
       items: [
         { icon: '📋', labelKey: 'sidebar.matches',    page: 'match-list',  target: { name: 'match-list' } },
@@ -375,7 +375,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
               }}
             >
               <span style={{ fontSize: 22 }}>⭐</span>
-              <span style={{ fontWeight: 700, fontSize: 13, color: '#E65100', lineHeight: 1.3 }}>
+              <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--warning)', lineHeight: 1.3 }}>
                 {t('sidebar.upgrade')}
               </span>
             </button>

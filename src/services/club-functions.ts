@@ -209,29 +209,3 @@ export async function adminDeleteClub(clubId: string): Promise<{ success: boolea
   return res.data;
 }
 
-// ─── Migration ────────────────────────────────────────────────────────────
-
-export async function migrateUserClubs(input?: {
-  targetUid?: string;
-  dryRun?: boolean;
-}): Promise<{
-  success: boolean;
-  migrated?: number;
-  dryRun?: boolean;
-  wouldMigrate?: number;
-  idMap?: Record<string, string>;
-  firstNewClubId?: string | null;
-  message?: string;
-}> {
-  const fn = httpsCallable<unknown, {
-    success: boolean;
-    migrated?: number;
-    dryRun?: boolean;
-    wouldMigrate?: number;
-    idMap?: Record<string, string>;
-    firstNewClubId?: string | null;
-    message?: string;
-  }>(functions, 'migrateUserClubs');
-  const res = await fn(input || {});
-  return res.data;
-}

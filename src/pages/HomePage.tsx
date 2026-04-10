@@ -50,10 +50,10 @@ export function HomePage({ navigate }: Props) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <span aria-hidden style={{
                 width: 10, height: 10, borderRadius: '50%',
-                background: '#C62828', animation: 'pulse 1.4s ease-in-out infinite',
+                background: 'var(--danger)', animation: 'pulse 1.4s ease-in-out infinite',
               }} />
               <h2 style={{
-                fontSize: 13, fontWeight: 800, color: '#C62828',
+                fontSize: 13, fontWeight: 800, color: 'var(--danger)',
                 textTransform: 'uppercase', letterSpacing: 0.5,
               }}>
                 {t('home.liveNow')}
@@ -77,7 +77,7 @@ export function HomePage({ navigate }: Props) {
                     onClick={() => navigate({ name: 'match-detail', matchId: m.id })}
                     style={liveCardStyle}
                   >
-                    <span style={liveBadgeStyle('#C62828')}>LIVE</span>
+                    <span style={liveBadgeStyle('var(--danger)')}>LIVE</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>
                         {ourName} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>vs</span> {m.opponent}
@@ -99,7 +99,7 @@ export function HomePage({ navigate }: Props) {
                     onClick={() => navigate({ name: 'tournament-detail', tournamentId: tt.id })}
                     style={liveCardStyle}
                   >
-                    <span style={liveBadgeStyle('#E65100')}>🏆</span>
+                    <span style={liveBadgeStyle('var(--warning)')}>🏆</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 14 }}>{tt.name}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
@@ -201,10 +201,10 @@ export function HomePage({ navigate }: Props) {
               >
                 <span style={{ fontSize: 22 }}>⭐</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: '#E65100' }}>{t('home.premiumBanner')}</div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--warning)' }}>{t('home.premiumBanner')}</div>
                   <div style={{ fontSize: 11, color: '#BF360C', marginTop: 2 }}>{t('subscription.price')}</div>
                 </div>
-                <span style={{ color: '#E65100' }}>→</span>
+                <span style={{ color: 'var(--warning)' }}>→</span>
               </button>
             )}
           </DashSection>
@@ -270,12 +270,12 @@ export function HomePage({ navigate }: Props) {
               aria-hidden
               style={{
                 width: 10, height: 10, borderRadius: '50%',
-                background: '#C62828',
+                background: 'var(--danger)',
                 animation: 'pulse 1.4s ease-in-out infinite',
                 flexShrink: 0,
               }}
             />
-            <h2 style={{ fontWeight: 800, fontSize: 14, color: '#C62828', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <h2 style={{ fontWeight: 800, fontSize: 14, color: 'var(--danger)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
               {t('home.liveNow')}
             </h2>
             <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -301,7 +301,7 @@ export function HomePage({ navigate }: Props) {
                   }}
                 >
                   <span style={{
-                    fontSize: 10, fontWeight: 800, color: '#fff', background: '#C62828',
+                    fontSize: 10, fontWeight: 800, color: '#fff', background: 'var(--danger)',
                     padding: '3px 8px', borderRadius: 6, letterSpacing: 0.5, flexShrink: 0,
                   }}>
                     LIVE
@@ -344,7 +344,7 @@ export function HomePage({ navigate }: Props) {
                   }}
                 >
                   <span style={{
-                    fontSize: 10, fontWeight: 800, color: '#fff', background: '#E65100',
+                    fontSize: 10, fontWeight: 800, color: '#fff', background: 'var(--warning)',
                     padding: '3px 8px', borderRadius: 6, letterSpacing: 0.5, flexShrink: 0,
                   }}>
                     🏆
@@ -401,14 +401,14 @@ export function HomePage({ navigate }: Props) {
         >
           <span style={{ fontSize: 28, flexShrink: 0 }}>⭐</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 14, color: '#E65100' }}>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--warning)' }}>
               {t('home.premiumBanner')}
             </div>
             <div style={{ fontSize: 12, color: '#BF360C', marginTop: 2, lineHeight: 1.4 }}>
               {t('home.premiumBannerSub')} {t('subscription.price')}
             </div>
           </div>
-          <span style={{ fontSize: 16, color: '#E65100' }}>→</span>
+          <span style={{ fontSize: 16, color: 'var(--warning)' }}>→</span>
         </button>
       )}
 

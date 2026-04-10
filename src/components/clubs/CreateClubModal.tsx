@@ -9,9 +9,8 @@ import { useState } from 'react';
 import { useI18n } from '../../i18n';
 import { useClubsStore } from '../../store/clubs.store';
 import { useToastStore } from '../../store/toast.store';
-import { useAuth } from '../../context/AuthContext';
-import { createPersonalClub } from '../../services/club-functions';
 import { logger } from '../../utils/logger';
+import { OpponentAutocomplete, type CatalogClub } from './OpponentAutocomplete';
 
 interface Props {
   onClose: () => void;
@@ -25,28 +24,33 @@ const CLUB_COLORS = [
 
 export function CreateClubModal({ onClose, onCreated }: Props) {
   const { t } = useI18n();
-  const { user } = useAuth();
   const showToast = useToastStore(s => s.show);
-  const loadSharedClubs = useClubsStore(s => s.loadSharedClubs);
-  const setActiveClubId = useClubsStore(s => s.setActiveClubId);
+  const createClub = useClubsStore(s => s.createClub);
 
   const [name, setName] = useState('');
+  const [officialName, setOfficialName] = useState('');
+  const [selectedCatalog, setSelectedCatalog] = useState<CatalogClub | null>(null);
   const [color, setColor] = useState(CLUB_COLORS[0]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleCatalogSelect = (club: CatalogClub) => {
+    setOfficialName(club.name);
+    if (!name) setName(club.name.length > 20 ? club.name.split(' ').slice(0, 3).join(' ') : club.name);
+    setSelectedCatalog(club);
+  };
 
   const handleCreate = async () => {
     if (!name.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await createPersonalClub({ name: name.trim(), color });
-      if (user?.uid) {
-        await loadSharedClubs(user.uid);
-        await setActiveClubId(res.clubId);
-      }
+      const newClub = await createClub({
+        name: name.trim(),
+        color,
+      });
       showToast('success', t('clubs.shared.createPersonalTitle'));
-      onCreated?.(res.clubId);
+      onCreated?.(newClub.id);
       onClose();
     } catch (err) {
       logger.warn('[CreateClubModal] failed:', err);
@@ -65,79 +69,147 @@ export function CreateClubModal({ onClose, onCreated }: Props) {
     <div
       onClick={onClose}
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1500, padding: 20,
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 2000,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: 'var(--surface)', borderRadius: 16, padding: 24,
-          maxWidth: 420, width: '100%', display: 'flex', flexDirection: 'column', gap: 14,
+          background: 'var(--surface)', borderRadius: '20px 20px 0 0',
+          width: '100%', maxWidth: 480, padding: '0 0 24px',
+          maxHeight: '90dvh', overflowY: 'auto',
         }}
       >
-        <h3 style={{ fontWeight: 800, fontSize: 20 }}>{t('clubs.shared.createPersonalTitle')}</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-          {t('clubs.shared.createPersonalHint')}
-        </p>
+        {/* Drag handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+        </div>
 
-        <input
-          autoFocus
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder={t('wizard.clubNamePlaceholder')}
-          style={{
-            padding: '12px 14px', borderRadius: 12, fontSize: 15, fontWeight: 600,
-            border: '1.5px solid var(--divider)', background: 'var(--surface)',
-          }}
-        />
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {CLUB_COLORS.map(c => (
+        <div style={{ padding: '6px 16px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ fontWeight: 800, fontSize: 17, margin: 0 }}>{t('clubs.shared.createPersonalTitle')}</h3>
             <button
-              key={c}
-              onClick={() => setColor(c)}
+              onClick={onClose}
+              aria-label={t('common.cancel')}
               style={{
-                width: 32, height: 32, borderRadius: 8, border: 'none', background: c,
-                outline: color === c ? '3px solid var(--text)' : '2px solid transparent',
-                outlineOffset: 2,
+                background: 'var(--surface-var)', width: 30, height: 30, borderRadius: 15,
+                fontSize: 14, color: 'var(--text-muted)', border: 'none', cursor: 'pointer',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+            Najdi svůj klub v katalogu nebo zadej název ručně.
+          </p>
+
+          {/* Vyhledání v katalogu */}
+          <div>
+            <label style={{
+              fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
+              display: 'block', marginBottom: 6,
+            }}>
+              🔍 Najít klub v katalogu
+            </label>
+            <OpponentAutocomplete
+              value={officialName}
+              onChange={setOfficialName}
+              onSelect={handleCatalogSelect}
+              placeholder="Začni psát název klubu..."
+              autoFocus
+            />
+            {selectedCatalog && (
+              <div style={{
+                marginTop: 6, padding: '6px 10px', borderRadius: 8,
+                background: 'var(--success-light)', fontSize: 11,
+                color: 'var(--success)', fontWeight: 600,
+              }}>
+                ✅ {selectedCatalog.name}{selectedCatalog.city ? ` · ${selectedCatalog.city}` : ''}
+              </div>
+            )}
+          </div>
+
+          {/* Zkrácený název (zobrazovaný) */}
+          <div>
+            <label style={{
+              fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
+              display: 'block', marginBottom: 6,
+            }}>
+              Zobrazovaný název <span style={{ fontWeight: 400 }}>(pro tabulky a rozpis)</span>
+            </label>
+            <input
+              value={name}
+              onChange={e => { setName(e.target.value); }}
+              placeholder="např. SFK Vrchovina"
+              style={{
+                width: '100%', padding: '10px 12px', borderRadius: 10,
+                border: '1.5px solid var(--border)', background: 'var(--bg)',
+                fontSize: 14, fontWeight: 600, color: 'var(--text)',
+                outline: 'none', boxSizing: 'border-box',
               }}
             />
-          ))}
-        </div>
-
-        {error && (
-          <div style={{
-            padding: '10px 12px', borderRadius: 10, background: '#ffebee', color: '#c62828',
-            fontSize: 12, fontWeight: 600,
-          }}>
-            {error}
+            {officialName && name && officialName !== name && (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                Oficiální: {officialName} → zobrazuje se jako: <strong>{name}</strong>
+              </div>
+            )}
           </div>
-        )}
 
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
-          ℹ️ {t('clubs.shared.createPersonalLimit')}
-        </div>
+          {/* Barva */}
+          <div>
+            <label style={{
+              fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
+              display: 'block', marginBottom: 6,
+            }}>
+              {t('wizard.clubColor')}
+            </label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {CLUB_COLORS.map(c => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  aria-label={`Barva ${c}`}
+                  style={{
+                    width: 32, height: 32, borderRadius: 10, background: c,
+                    border: color === c ? '3px solid var(--text)' : '3px solid transparent',
+                    outline: color === c ? '2px solid #fff' : 'none',
+                    outlineOffset: -4,
+                    cursor: 'pointer',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1, padding: '12px', borderRadius: 12, background: 'var(--surface-var)',
-              color: 'var(--text-muted)', fontWeight: 700, fontSize: 14,
-            }}
-          >
-            ✕
-          </button>
+          {error && (
+            <div style={{
+              padding: '10px 12px', borderRadius: 10, background: '#ffebee', color: '#c62828',
+              fontSize: 12, fontWeight: 600,
+            }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+            ℹ️ {t('clubs.shared.createPersonalLimit')}
+          </div>
+
+          {/* Save */}
           <button
             disabled={busy || !name.trim()}
             onClick={handleCreate}
             style={{
-              flex: 2, padding: '12px', borderRadius: 12, background: '#2E7D32', color: '#fff',
-              fontWeight: 700, fontSize: 14, opacity: busy || !name.trim() ? 0.6 : 1,
+              background: (busy || !name.trim()) ? 'var(--border)' : 'var(--primary)',
+              color: (busy || !name.trim()) ? 'var(--text-muted)' : '#fff',
+              fontWeight: 800, fontSize: 15, padding: '13px', borderRadius: 12,
+              marginTop: 4, border: 'none',
+              cursor: (busy || !name.trim()) ? 'not-allowed' : 'pointer',
             }}
           >
-            {busy ? '…' : t('clubs.shared.createPersonalTitle')}
+            {busy ? '…' : t('clubs.save')}
           </button>
         </div>
       </div>

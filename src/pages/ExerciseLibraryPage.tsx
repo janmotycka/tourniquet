@@ -9,6 +9,7 @@ import type { AgeCategory } from '../types/category.types';
 import { useI18n } from '../i18n';
 import { generateId } from '../utils/id';
 import { useLayoutMode } from '../hooks/useLayoutMode';
+import { PageHeader } from '../components/ui';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -351,12 +352,12 @@ export function ExerciseLibraryPage({ navigate }: Props) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
-      <div style={{ padding: '12px 20px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button onClick={() => navigate({ name: 'home' })}
-          aria-label="Back" style={{ background: 'none', fontSize: 22, padding: 4, color: 'var(--text)' }}>←</button>
-        <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('exercises.title')}</h1>
-        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{filtered.length} {t('exercises.exerciseCount')}</span>
-      </div>
+      <PageHeader
+        title={t('exercises.title')}
+        onBack={() => navigate({ name: 'home' })}
+        variant="inset"
+        action={<span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{filtered.length} {t('exercises.exerciseCount')}</span>}
+      />
 
       {/* Search */}
       <div style={{ padding: '12px 20px 0' }}>

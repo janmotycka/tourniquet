@@ -34,7 +34,7 @@ try {
   }
 } catch { /* localStorage může být nedostupný */ }
 
-// ─── Service Worker — force update on new version ───────────────────────────
+// ─── Service Worker — force update + auto-recovery ─────────────────────────
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.ready.then((registration) => {
     // Kontroluj novou verzi každých 60 sekund
@@ -48,10 +48,34 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!refreshing) {
       refreshing = true;
-      // Krátká prodleva aby SW stihl převzít kontrolu
       setTimeout(() => window.location.reload(), 500);
     }
   });
+
+  // Auto-recovery: pokud se app nenačte do 8 sekund (stale SW cache),
+  // automaticky odregistruj SW, vyčisti cache a reloadni.
+  // Ochrana proti loop: max 1× za 30 sekund.
+  const RECOVERY_KEY = 'torq_sw_recovery';
+  const lastRecovery = parseInt(sessionStorage.getItem(RECOVERY_KEY) ?? '0');
+  const now = Date.now();
+  if (now - lastRecovery > 30_000) {
+    const recoveryTimer = setTimeout(async () => {
+      // Pokud se do 8s nezobrazil #root obsah, app je zaseklá
+      const root = document.getElementById('root');
+      if (root && root.childElementCount <= 1) {
+        sessionStorage.setItem(RECOVERY_KEY, String(Date.now()));
+        try {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const r of regs) await r.unregister();
+          const keys = await caches.keys();
+          for (const k of keys) await caches.delete(k);
+        } catch { /* ignore */ }
+        window.location.reload();
+      }
+    }, 8_000);
+    // Pokud se app načte normálně, zruš recovery timer
+    window.addEventListener('load', () => clearTimeout(recoveryTimer));
+  }
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────────

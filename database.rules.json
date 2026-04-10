@@ -348,8 +348,7 @@
     },
 
     // ─── Zápasy sezóny (klubový scope — všichni členové klubu) ─────────────
-    // Legacy klíč {uid} je povolený pro backward compat během migrace.
-    // Nový klíč {clubId} vyžaduje členství v klubu.
+    // Scope key = clubId. Read = members, Write = non-viewer members.
     "matches": {
       "$scopeId": {
         ".read":  "auth != null && (auth.uid === $scopeId || root.child('clubs').child($scopeId).child('members').child(auth.uid).exists())",
@@ -519,12 +518,6 @@
         // Vlastník je smí číst (pro zobrazení blokovaného stavu v UI)
         "flags": {
           ".write": false
-        },
-
-        // Legacy kluby (před migrací na /clubs/{clubId}) — vlastník může číst i psát
-        // Po migraci tento uzel bude prázdný, ale rule zůstane pro backward compat
-        "clubs": {
-          ".write": "auth != null && auth.uid === $uid"
         },
 
         // Ukazatele na kluby, jejichž je uživatel členem — píše pouze CF
