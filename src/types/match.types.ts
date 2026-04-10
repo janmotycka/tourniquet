@@ -101,6 +101,7 @@ export interface SeasonMatch {
   cards: MatchCard[];
 
   substitutionSettings?: SubstitutionSettings;
+  trackAssists?: boolean;    // true = evidovat asistence u gólů (default true)
 
   ratings: PlayerRating[];   // hodnocení po zápase
   note?: string;             // trenérova poznámka k zápasu
@@ -176,4 +177,5 @@ export interface CreateSeasonMatchInput {
   ageCategory?: string;
   lineup: MatchLineupPlayer[];
   substitutionSettings?: SubstitutionSettings;
+  trackAssists?: boolean;
 }

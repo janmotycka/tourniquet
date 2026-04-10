@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import type { AgeCategory } from '../../types/club.types';
 import { AGE_CATEGORIES } from '../../types/club.types';
 import { TEAM_COLORS, colorSwatch } from '../../utils/team-colors';
@@ -6,6 +6,21 @@ import { resizeLogoToBase64 } from './resize-logo';
 import { useToastStore } from '../../store/toast.store';
 import { Field, Input, Button, IconButton, PageHeader } from '../ui';
 import { radius, fontSize, fontWeight, spacing, modal } from '../../theme/tokens';
+import { get as dbGet, ref as dbRef } from 'firebase/database';
+import { db } from '../../firebase';
+
+// ─── Catalog cache (shared with OpponentAutocomplete) ────────────────────────
+interface CatalogEntry { id: string; name: string; city?: string; logoUrl?: string; logoBase64?: string; torqClubId?: string; }
+let _catalogCache: CatalogEntry[] | null = null;
+async function loadCatalog(): Promise<CatalogEntry[]> {
+  if (_catalogCache) return _catalogCache;
+  try {
+    const snap = await dbGet(dbRef(db, 'clubsCatalog'));
+    const data = snap.val() as Record<string, CatalogEntry> | null;
+    _catalogCache = data ? Object.values(data) : [];
+  } catch { _catalogCache = []; }
+  return _catalogCache;
+}
 
 interface ClubFormProps {
   initial: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[] };
@@ -41,6 +56,38 @@ export function ClubForm({
   const [logoLoading, setLogoLoading] = useState(false);
   const [categories, setCategories] = useState<AgeCategory[]>(initial.ageCategories);
   const logoRef = useRef<HTMLInputElement>(null);
+
+  // Catalog autocomplete
+  const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
+  const [suggestions, setSuggestions] = useState<CatalogEntry[]>([]);
+  const [catalogMatch, setCatalogMatch] = useState<CatalogEntry | null>(null);
+
+  useEffect(() => { loadCatalog().then(setCatalog); }, []);
+
+  const handleNameChange = useCallback((v: string) => {
+    setName(v);
+    setCatalogMatch(null);
+    if (v.length < 2 || catalog.length === 0) { setSuggestions([]); return; }
+    const q = v.toLowerCase();
+    const matches = catalog
+      .filter(c => c.name.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const aStart = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+        const bStart = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+        return aStart - bStart || a.name.localeCompare(b.name);
+      })
+      .slice(0, 6);
+    setSuggestions(matches);
+  }, [catalog]);
+
+  const handleSelectCatalogClub = useCallback((club: CatalogEntry) => {
+    setName(club.name);
+    setSuggestions([]);
+    setCatalogMatch(club);
+    // Pre-fill logo from catalog if available
+    if (club.logoBase64 && !logoBase64) setLogoBase64(club.logoBase64);
+    else if (club.logoUrl && !logoBase64) setLogoBase64(null); // could fetch, but base64 is preferred
+  }, [logoBase64]);
 
   const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -107,15 +154,95 @@ export function ClubForm({
         </div>
       </Field>
 
-      {/* Název */}
+      {/* Název s katalogový našeptáváním */}
       <Field label={t('clubs.nameRequired')}>
-        <Input
-          value={name}
-          onChange={v => setName(v)}
-          placeholder={t('clubs.namePlaceholder')}
-          maxLength={40}
-        />
+        <div style={{ position: 'relative' }}>
+          <Input
+            value={name}
+            onChange={handleNameChange}
+            placeholder={t('clubs.namePlaceholder')}
+            maxLength={40}
+          />
+          {/* Suggestions dropdown */}
+          {suggestions.length > 0 && (
+            <div style={{
+              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+              background: 'var(--surface)', borderRadius: radius.md,
+              border: '1px solid var(--border)', boxShadow: 'var(--shadow-md)',
+              maxHeight: 220, overflowY: 'auto', marginTop: 4,
+            }}>
+              {suggestions.map(club => (
+                <button
+                  key={club.id}
+                  onClick={() => handleSelectCatalogClub(club)}
+                  style={{
+                    width: '100%', padding: '8px 12px', textAlign: 'left',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    borderBottom: '1px solid var(--border)',
+                    fontSize: fontSize.base, fontWeight: fontWeight.medium,
+                  }}
+                >
+                  {(club.logoBase64 || club.logoUrl) ? (
+                    <img src={club.logoBase64 || club.logoUrl} alt="" style={{ width: 24, height: 24, objectFit: 'contain', borderRadius: 4, flexShrink: 0 }} />
+                  ) : (
+                    <div style={{ width: 24, height: 24, borderRadius: 4, background: 'var(--surface-var)', flexShrink: 0 }} />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontWeight: fontWeight.bold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{club.name}</span>
+                      {club.torqClubId && (
+                        <span style={{
+                          fontSize: 8, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
+                          background: 'var(--success-light)', color: 'var(--success)',
+                        }}>TORQ</span>
+                      )}
+                    </div>
+                    {club.city && <div style={{ fontSize: fontSize.xs, color: 'var(--text-muted)' }}>{club.city}</div>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </Field>
+
+      {/* Info: klub z katalogu */}
+      {catalogMatch && !catalogMatch.torqClubId && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: spacing.sm,
+          padding: `${spacing.sm}px ${spacing.md}px`,
+          borderRadius: radius.md, background: 'var(--info-light)',
+          fontSize: fontSize.sm, color: 'var(--info)',
+        }}>
+          <span>ℹ️</span>
+          <span>
+            Klub <strong>{catalogMatch.name}</strong> je v katalogu FAČR.
+            {catalogMatch.city ? ` (${catalogMatch.city})` : ''}
+          </span>
+        </div>
+      )}
+
+      {/* Warning: klub už existuje v TORQ */}
+      {catalogMatch?.torqClubId && (
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', gap: spacing.sm,
+          padding: `${spacing.md}px`,
+          borderRadius: radius.md, background: 'var(--warning-light)',
+          fontSize: fontSize.sm, color: 'var(--warning)',
+        }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
+          <div>
+            <div style={{ fontWeight: fontWeight.bold, marginBottom: 2 }}>
+              Klub {catalogMatch.name} už existuje v TORQ
+            </div>
+            <div style={{ color: 'var(--text-muted)', fontSize: fontSize.xs }}>
+              Pokud chceš tento klub používat, požádej stávajícího správce o pozvánku.
+              Nebo vytvoř klub s jiným názvem.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Barva */}
       <Field label={t('clubs.colorLabel')}>

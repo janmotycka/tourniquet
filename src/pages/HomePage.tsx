@@ -9,6 +9,7 @@ import { useI18n } from '../i18n';
 import { useLayoutMode } from '../hooks/useLayoutMode';
 import { DesktopPage } from '../components/desktop/DesktopPage';
 import { ClubSwitcher } from '../components/clubs/ClubSwitcher';
+import { useClubsStore } from '../store/clubs.store';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -16,6 +17,11 @@ export function HomePage({ navigate }: Props) {
   const { user } = useAuth();
   const isPremium = useSubscriptionStore(s => s.isPremium);
   const { t } = useI18n();
+  const activeClub = useClubsStore(s => {
+    const id = s.activeClubId;
+    return id ? s.clubs.find(c => c.id === id) : s.clubs[0];
+  });
+  const clubCount = useClubsStore(s => s.clubs.length);
   const { canInstall, install } = usePWAInstall();
   const { isDesktop } = useLayoutMode();
 
@@ -222,10 +228,14 @@ export function HomePage({ navigate }: Props) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{
-          width: 56, height: 56, borderRadius: 16, background: 'var(--primary-light)',
+          width: 56, height: 56, borderRadius: 16,
+          background: activeClub?.logoBase64 ? 'transparent' : 'var(--primary-light)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0,
+          overflow: 'hidden',
         }}>
-          ⚽
+          {activeClub?.logoBase64 ? (
+            <img src={activeClub.logoBase64} alt="" style={{ width: 56, height: 56, objectFit: 'cover' }} />
+          ) : '⚽'}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{t('home.greeting')}</h1>
@@ -248,8 +258,8 @@ export function HomePage({ navigate }: Props) {
         </button>
       </div>
 
-      {/* Active club switcher (shared workspaces) */}
-      <ClubSwitcher navigate={navigate} compact />
+      {/* Active club switcher — only for multi-club users */}
+      {clubCount > 1 && <ClubSwitcher navigate={navigate} />}
 
 
       {/* ─── LIVE NOW — currently running matches & tournaments ──────────── */}

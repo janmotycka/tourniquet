@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { SeasonMatch, MatchLineupPlayer, MatchGoal } from '../../types/match.types';
 import { useMatchesStore } from '../../store/matches.store';
 import { useConfirmStore } from '../../store/confirm.store';
+import { useClubsStore } from '../../store/clubs.store';
 import { useI18n } from '../../i18n';
 import { computeElapsed, formatTime, computePlayingTime } from './match-utils';
 import { GoalModal } from './GoalModal';
@@ -52,6 +53,8 @@ function LandscapeScoreboard({ match, elapsed, onQuickGoal, onPause, onResume, t
   const ourScore = match.isHome ? match.homeScore : match.awayScore;
   const theirScore = match.isHome ? match.awayScore : match.homeScore;
   const isPaused = !!match.pausedAt;
+  const activeClubLS = useClubsStore(s => s.clubs.find(c => c.id === match.clubId));
+  const clubDisplayName = match.clubName || activeClubLS?.name || t('match.detail.us');
 
   const periods = match.periods ?? 2;
   const currentPeriod = match.currentPeriod ?? 1;
@@ -128,7 +131,7 @@ function LandscapeScoreboard({ match, elapsed, onQuickGoal, onPause, onResume, t
         }}
       >
         <div style={{ fontSize: 13, fontWeight: 700, opacity: .6, marginBottom: 8, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '90%', textAlign: 'center' }}>
-          {match.clubName || t('match.detail.us')}
+          {clubDisplayName}
         </div>
         <div style={{ fontSize: 'min(30vw, 160px)', fontWeight: 900, lineHeight: 1 }}>
           {ourScore}
@@ -323,42 +326,67 @@ function InlineGoalEdit({ match, goal, onClose }: {
         }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <h3 style={{ fontWeight: 800, fontSize: 16 }}>
-            ⚽ {t('match.field.assignScorer')} ({goal.minute}')
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '0 0 4px' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <h3 style={{ fontWeight: 800, fontSize: 17, margin: 0 }}>
+            ⚽ {t('match.field.assignScorer')}
           </h3>
-          <button onClick={onClose} aria-label="Close" style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 700 }}>×</button>
+          <button onClick={onClose} aria-label="Close" style={{
+            width: 32, height: 32, borderRadius: 10, background: 'var(--surface-var)',
+            fontSize: 15, color: 'var(--text-muted)', fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>✕</button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <button
-            onClick={() => handleAssignScorer(null)}
-            style={{
-              padding: '12px 14px', borderRadius: 12, fontSize: 14, fontWeight: 600,
-              background: 'var(--surface-var)', color: 'var(--text-muted)', textAlign: 'left',
-            }}
-          >
-            {t('match.detail.unknownScorer')}
-          </button>
+        {/* Minute badge */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          marginBottom: 14, fontSize: 12, color: 'var(--text-muted)',
+        }}>
+          <span style={{
+            padding: '2px 10px', borderRadius: 10, background: 'var(--primary-light)',
+            fontWeight: 700, color: 'var(--primary)',
+          }}>{goal.minute}'</span>
+          <span>Kdo dal gól?</span>
+        </div>
+
+        {/* Player grid — 2 columns for quick tapping */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 10 }}>
           {onFieldPlayers.map(p => (
             <button
               key={p.playerId}
               onClick={() => handleAssignScorer(p.playerId)}
               style={{
-                padding: '12px 14px', borderRadius: 12, fontSize: 14, fontWeight: 600,
-                background: 'var(--bg)', border: '1.5px solid var(--border)',
-                display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left',
+                padding: '10px 8px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                background: 'var(--surface-var)', border: '1.5px solid var(--border)',
+                display: 'flex', alignItems: 'center', gap: 8, textAlign: 'left',
+                cursor: 'pointer',
               }}
             >
               <span style={{
-                width: 30, height: 30, borderRadius: 8, background: 'var(--primary)',
+                width: 32, height: 32, borderRadius: 8, background: 'var(--primary)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0,
+                fontSize: 13, fontWeight: 800, color: '#fff', flexShrink: 0,
               }}>{p.jerseyNumber}</span>
-              {p.name}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
             </button>
           ))}
         </div>
+
+        {/* Unknown scorer — less prominent at bottom */}
+        <button
+          onClick={() => handleAssignScorer(null)}
+          style={{
+            width: '100%', padding: '10px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+            background: 'transparent', color: 'var(--text-muted)', textAlign: 'center',
+            border: '1px dashed var(--border)', cursor: 'pointer',
+          }}
+        >
+          {t('match.detail.unknownScorer')}
+        </button>
       </div>
     </div>
   );
@@ -393,6 +421,9 @@ function getPeriodLabel(t: (k: string, p?: Record<string, string | number>) => s
 
 export function LiveTab({ match }: { match: SeasonMatch }) {
   const { t } = useI18n();
+  // Název klubu — z match dat, nebo z aktivního klubu v store
+  const activeClub = useClubsStore(s => s.clubs.find(c => c.id === match.clubId));
+  const clubDisplayName = match.clubName || activeClub?.name || t('match.detail.us');
   const [elapsed, setElapsed] = useState(() => computeElapsed(match));
   const [goalModal, setGoalModal] = useState<'ours' | 'theirs' | null>(null);
   const [cardModal, setCardModal] = useState(false);
@@ -693,7 +724,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
           <div style={{ textAlign: 'center', flex: 1 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: match.status === 'live' ? 'rgba(255,255,255,.7)' : 'var(--text-muted)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {match.clubName || t('match.detail.us')}
+              {clubDisplayName}
             </div>
             <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1, color: match.status === 'live' ? '#fff' : 'var(--text)', animation: quickFlash === 'ours' ? 'scoreFlash .5s ease-out' : undefined }}>
               {ourScore}

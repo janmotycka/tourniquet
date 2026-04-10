@@ -111,6 +111,7 @@ export const useMatchesStore = create<MatchesState>()(
       },
 
       loadFromFirebase: async (uid) => {
+        logger.debug('[Matches] loadFromFirebase started, uid:', uid);
         let matches: SeasonMatch[] = [];
         for (let attempt = 1; attempt <= 3; attempt++) {
           try {
@@ -129,6 +130,7 @@ export const useMatchesStore = create<MatchesState>()(
         const localMatches = get().matches;
         const firebaseIds = new Set(matches.map(m => m.id));
         const localOnly = localMatches.filter(m => !firebaseIds.has(m.id));
+        console.log(`[Matches] Loaded ${matches.length} from Firebase, ${localOnly.length} local-only, total: ${matches.length + localOnly.length}`);
         set({ matches: [...matches, ...localOnly], firebaseUid: uid, pendingSync: [] });
       },
 
@@ -171,12 +173,14 @@ export const useMatchesStore = create<MatchesState>()(
           substitutions: [],
           cards: [],
           substitutionSettings: input.substitutionSettings,
+          trackAssists: input.trackAssists ?? true,
           ratings: [],
           note: undefined,
           createdAt: now(),
           updatedAt: now(),
         };
         set(state => ({ matches: [match, ...state.matches] }));
+        console.log(`[Matches] Created match ${match.id}, firebaseUid: ${get().firebaseUid}, total: ${get().matches.length}`);
         syncMatchAndTrack(get().firebaseUid, match, set);
         return match;
       },

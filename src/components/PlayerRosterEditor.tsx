@@ -255,7 +255,7 @@ export function PlayerRosterEditor({
                   }}
                   aria-label={t('common.edit')}
                 >
-                  \u270F\uFE0F
+                  ✏️
                 </button>
               </div>
             );

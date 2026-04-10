@@ -15,6 +15,7 @@
  */
 
 import { create } from 'zustand';
+import { useToastStore } from './toast.store';
 import type {
   Club,
   ClubPlayer,
@@ -111,7 +112,8 @@ async function patchClubContent(
   try {
     await updateSharedClub(clubId, { ...patch, updatedAt });
   } catch (err) {
-    logger.warn('[Clubs] updateSharedClub failed:', err);
+    console.error('[Clubs] updateSharedClub FAILED:', err);
+    useToastStore.getState().show('error', 'Nepodařilo se uložit do cloudu');
   }
 }
 

@@ -17,11 +17,9 @@ import { CreateClubModal } from './CreateClubModal';
 interface Props {
   /** Volitelná navigace (např. po vytvoření klubu otevřít members page) */
   navigate?: (p: Page) => void;
-  /** Kompaktní mód (jen ikona, bez textu) */
-  compact?: boolean;
 }
 
-export function ClubSwitcher({ navigate, compact = false }: Props) {
+export function ClubSwitcher({ navigate }: Props) {
   const { t } = useI18n();
   const clubs = useClubsStore(s => s.clubs);
   const activeClubId = useClubsStore(s => s.activeClubId);
@@ -60,15 +58,22 @@ export function ClubSwitcher({ navigate, compact = false }: Props) {
     setOpen(false);
   };
 
+  const isSingleClub = clubs.length === 1;
+
+  // Single club — just a clean static row, no dropdown
+  if (isSingleClub) {
+    return null; // Logo is already shown in the header avatar — no need to repeat
+  }
+
   return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={ref} style={{ position: 'relative', width: '100%' }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
-          padding: compact ? '6px 10px' : '8px 14px',
+          padding: '8px 14px',
           borderRadius: 10,
           background: 'var(--surface)',
-          border: '1px solid var(--divider)',
+          border: '1px solid var(--border)',
           fontSize: 13,
           fontWeight: 700,
           color: 'var(--text)',
@@ -76,7 +81,7 @@ export function ClubSwitcher({ navigate, compact = false }: Props) {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          maxWidth: compact ? 140 : 240,
+          width: '100%',
         }}
         title={activeClub?.name || t('clubs.shared.switchClub')}
       >

@@ -8,6 +8,7 @@ import { LineupTab } from '../../components/match/LineupTab';
 import { RatingsTab } from '../../components/match/RatingsTab';
 import { getMatchPublicUrl, generateMatchQRCodeDataUrl } from '../../utils/qr-code';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
+import { useClubsStore } from '../../store/clubs.store';
 import { PageHeader } from '../../components/ui';
 
 interface Props { matchId: string; navigate: (p: Page) => void; }
@@ -47,6 +48,8 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
 
   // Re-read match on any store change
   const currentMatch = matches.find(m => m.id === matchId) ?? match;
+  const activeClub = useClubsStore(s => s.clubs.find(c => c.id === currentMatch?.clubId));
+  const clubDisplayName = currentMatch?.clubName || activeClub?.name || t('match.detail.us');
 
   const handleTogglePublic = useCallback(() => {
     togglePublicMatch(matchId);
@@ -73,7 +76,7 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
     if (!currentMatch) return;
     const url = getMatchPublicUrl(matchId);
     const dateStr = formatDate(currentMatch.date);
-    const teamName = currentMatch.clubName || t('match.detail.us');
+    const teamName = clubDisplayName;
     const home = currentMatch.isHome ? teamName : currentMatch.opponent;
     const away = currentMatch.isHome ? currentMatch.opponent : teamName;
     const msg = t('matchShare.whatsappMessage', {
@@ -116,7 +119,7 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
         position: 'sticky', top: 0, zIndex: 10,
       }}>
         <PageHeader
-          title={`${currentMatch.clubName || t('match.detail.us')} ${t('match.detail.vs')} ${currentMatch.opponent}`}
+          title={`${clubDisplayName} ${t('match.detail.vs')} ${currentMatch.opponent}`}
           subtitle={`${formatDate(currentMatch.date)} · ${currentMatch.kickoffTime}${isLive ? ` ● ${t('match.live')}` : ''}`}
           onBack={() => navigate({ name: 'match-list' })}
           action={

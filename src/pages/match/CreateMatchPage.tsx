@@ -91,6 +91,7 @@ export function CreateMatchPage({ navigate }: Props) {
   // Auto-select myClub, fallback to first club
   const [selectedClubId, setSelectedClubId] = useState<string>(myClub?.id ?? clubs[0]?.id ?? '');
   const [selectedCategory, setSelectedCategory] = useState<AgeCategory | null>(null);
+  const [trackAssists, setTrackAssists] = useState(lastMatch?.trackAssists ?? true);
   // Step 1: lineup
   const [lineup, setLineup] = useState<MatchLineupPlayer[]>([]);
   const [subInterval, setSubInterval] = useState(15);
@@ -106,25 +107,22 @@ export function CreateMatchPage({ navigate }: Props) {
   }, [selectedClub]);
 
   const initLineupFromClub = (club: Club, category?: AgeCategory | null) => {
-    // Preferuj nový roster (players) nad starým (defaultPlayers)
-    let rosterPlayers: Array<{ name: string; jerseyNumber: number }>;
     const activePlayers = (club.players ?? []).filter(p => p.active);
 
+    let rosterPlayers: Array<{ id: string; name: string; jerseyNumber: number }>;
     if (activePlayers.length > 0 && category) {
-      // Filtruj hráče podle kategorie
       rosterPlayers = activePlayers
         .filter(p => p.ageCategory === category)
-        .map(p => ({ name: p.name, jerseyNumber: p.jerseyNumber }));
+        .map(p => ({ id: p.id, name: p.name, jerseyNumber: p.jerseyNumber }));
     } else if (activePlayers.length > 0) {
-      rosterPlayers = activePlayers.map(p => ({ name: p.name, jerseyNumber: p.jerseyNumber }));
+      rosterPlayers = activePlayers.map(p => ({ id: p.id, name: p.name, jerseyNumber: p.jerseyNumber }));
     } else {
-      rosterPlayers = [...(club.defaultPlayers ?? [])];
+      rosterPlayers = (club.defaultPlayers ?? []).map((p, i) => ({ id: `default-${i}`, name: p.name, jerseyNumber: p.jerseyNumber }));
     }
     const sorted = rosterPlayers.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
-    // Počet hráčů v základní sestavě řídí vybraný formát (např. 7+1 = 8).
     const maxStarters = starterCount;
     const newLineup: MatchLineupPlayer[] = sorted.map((p, idx) => ({
-      playerId: `${club.id}-${p.jerseyNumber}`,
+      playerId: p.id,
       jerseyNumber: p.jerseyNumber,
       name: p.name,
       isStarter: idx < maxStarters,
@@ -160,7 +158,7 @@ export function CreateMatchPage({ navigate }: Props) {
         );
       } else {
         // Move to starters (if < 11)
-        if (starters.length >= 11) return prev;
+        if (starters.length >= starterCount) return prev;
         return prev.map(p => p.playerId === playerId
           ? { ...p, isStarter: true, substituteOrder: 0 }
           : p
@@ -209,6 +207,7 @@ export function CreateMatchPage({ navigate }: Props) {
       ageCategory: selectedCategory ?? undefined,
       lineup,
       substitutionSettings: subSettings,
+      trackAssists,
     });
     useToastStore.getState().show('success', t('toast.matchCreated'));
     navigate({ name: 'match-list' });
@@ -366,34 +365,15 @@ export function CreateMatchPage({ navigate }: Props) {
           </div>
         </div>
 
-        {/* Period duration — slider */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
-              {t('match.create.periodDuration')}
-            </label>
-            <span style={{ fontSize: 20, fontWeight: 900, color: 'var(--primary)' }}>
-              {periodDuration}'
-            </span>
-          </div>
-          <input
-            type="range"
-            min={5}
-            max={45}
-            step={1}
-            value={periodDuration}
-            onChange={e => setPeriodDuration(Number(e.target.value))}
-            style={{
-              width: '100%', height: 6, borderRadius: 3,
-              accentColor: 'var(--primary)',
-              cursor: 'pointer',
-            }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
-            <span>5'</span>
-            <span>45'</span>
-          </div>
-        </div>
+        {/* Period duration — stepper */}
+        <Stepper
+          value={periodDuration}
+          onChange={setPeriodDuration}
+          min={5}
+          max={45}
+          label={t('match.create.periodDuration')}
+          unit="min"
+        />
 
         {/* Total duration summary */}
         <div style={{
@@ -403,6 +383,32 @@ export function CreateMatchPage({ navigate }: Props) {
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
             {periods === 1 ? `${periodDuration}` : `${periods}×${periodDuration}'`} = {durationMinutes} {t('common.min')}
           </span>
+        </div>
+
+        {/* Assist tracking toggle */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '2px 0',
+        }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+            Evidovat asistence
+          </label>
+          <button
+            onClick={() => setTrackAssists(v => !v)}
+            style={{
+              width: 44, height: 24, borderRadius: 12, padding: 2,
+              background: trackAssists ? 'var(--primary)' : 'var(--border)',
+              cursor: 'pointer', border: 'none',
+              display: 'flex', alignItems: 'center',
+              justifyContent: trackAssists ? 'flex-end' : 'flex-start',
+              transition: 'background .2s',
+            }}
+          >
+            <div style={{
+              width: 20, height: 20, borderRadius: 10, background: '#fff',
+              boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+            }} />
+          </button>
         </div>
       </div>
 
@@ -585,7 +591,7 @@ export function CreateMatchPage({ navigate }: Props) {
       {benchers.length > 0 && (
         <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.subAssistant')}</h3>
-          <Stepper label={t('match.create.subEvery')} value={subInterval} min={5} max={45} onChange={setSubInterval} unit={t('common.min')} />
+          <Stepper label={t('match.create.subEvery')} value={subInterval} min={1} max={45} onChange={setSubInterval} unit={t('common.min')} />
           <div style={{ height: 1, background: 'var(--border)' }} />
           <Stepper label={t('match.create.playersAtOnce')} value={subCount} min={1} max={4} onChange={setSubCount} unit={subCount === 1 ? t('match.create.playerSingular') : t('match.create.playerPlural')} />
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
@@ -600,10 +606,10 @@ export function CreateMatchPage({ navigate }: Props) {
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.startingLineup')}</h3>
           <span style={{
             fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8,
-            background: starters.length === 11 ? 'var(--success-light)' : 'var(--warning-light)',
-            color: starters.length === 11 ? 'var(--success)' : 'var(--warning)',
+            background: starters.length === starterCount ? 'var(--success-light)' : 'var(--warning-light)',
+            color: starters.length === starterCount ? 'var(--success)' : 'var(--warning)',
           }}>
-            {starters.length}/11
+            {starters.length}/{starterCount}
           </span>
         </div>
         {starters.length === 0 ? (
@@ -616,23 +622,36 @@ export function CreateMatchPage({ navigate }: Props) {
               display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
               borderBottom: '1px solid var(--border)',
             }}>
-              <div style={{
-                width: 30, height: 30, borderRadius: 8, background: 'var(--primary)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0,
-              }}>
-                {p.jerseyNumber}
-              </div>
+              <input
+                type="number"
+                value={p.jerseyNumber || ''}
+                onChange={e => {
+                  const num = parseInt(e.target.value) || 0;
+                  setLineup(prev => prev.map(x => x.playerId === p.playerId ? { ...x, jerseyNumber: num } : x));
+                }}
+                style={{
+                  width: 34, height: 34, borderRadius: 8, background: 'var(--primary)',
+                  color: '#fff', fontSize: 13, fontWeight: 800, textAlign: 'center',
+                  border: 'none', flexShrink: 0,
+                }}
+              />
               <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{p.name}</span>
               <button
                 onClick={() => toggleStarter(p.playerId)}
                 style={{
-                  fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 8,
-                  background: 'var(--danger-light)', color: 'var(--danger)',
+                  fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 8,
+                  background: 'var(--surface-var)', color: 'var(--text-muted)',
                 }}
               >
                 {t('match.create.toBench')}
               </button>
+              <button
+                onClick={() => { const id = p.playerId; setLineup(prev => prev.filter(x => x.playerId !== id)); }}
+                style={{
+                  width: 28, height: 28, borderRadius: 8, background: 'var(--danger-light)',
+                  color: 'var(--danger)', fontSize: 12, fontWeight: 700,
+                }}
+              >✕</button>
             </div>
           ))
         )}
@@ -659,13 +678,19 @@ export function CreateMatchPage({ navigate }: Props) {
                 }}>
                   {idx + 1}
                 </div>
-                <div style={{
-                  width: 30, height: 30, borderRadius: 8, background: 'var(--surface-var)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 800, color: 'var(--text)', flexShrink: 0,
-                }}>
-                  {p.jerseyNumber}
-                </div>
+                <input
+                  type="number"
+                  value={p.jerseyNumber || ''}
+                  onChange={e => {
+                    const num = parseInt(e.target.value) || 0;
+                    setLineup(prev => prev.map(x => x.playerId === p.playerId ? { ...x, jerseyNumber: num } : x));
+                  }}
+                  style={{
+                    width: 34, height: 34, borderRadius: 8, background: 'var(--surface-var)',
+                    color: 'var(--text)', fontSize: 13, fontWeight: 800, textAlign: 'center',
+                    border: '1px solid var(--border)', flexShrink: 0,
+                  }}
+                />
                 <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{p.name}</span>
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button
@@ -685,12 +710,19 @@ export function CreateMatchPage({ navigate }: Props) {
                     }}
                   >▼</button>
                   <button
+                    onClick={() => { const id = p.playerId; setLineup(prev => prev.filter(x => x.playerId !== id)); }}
+                    style={{
+                      width: 28, height: 28, borderRadius: 8, background: 'var(--danger-light)',
+                      color: 'var(--danger)', fontSize: 12, fontWeight: 700,
+                    }}
+                  >✕</button>
+                  <button
                     onClick={() => toggleStarter(p.playerId)}
-                    disabled={starters.length >= 11}
+                    disabled={starters.length >= starterCount}
                     style={{
                       fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 8,
-                      background: starters.length >= 11 ? 'var(--surface-var)' : 'var(--primary-light)',
-                      color: starters.length >= 11 ? 'var(--text-muted)' : 'var(--primary)',
+                      background: starters.length >= starterCount ? 'var(--surface-var)' : 'var(--primary-light)',
+                      color: starters.length >= starterCount ? 'var(--text-muted)' : 'var(--primary)',
                     }}
                   >
                     {t('match.create.toStart')}

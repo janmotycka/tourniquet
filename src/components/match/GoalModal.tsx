@@ -120,8 +120,8 @@ export function GoalModal({ match, isOpponentGoal, onAdd, onClose, t }: GoalModa
                   </div>
                 </div>
 
-                {/* Assist */}
-                {scorerId && (
+                {/* Assist — only if tracking enabled */}
+                {scorerId && match.trackAssists !== false && (
                   <div style={{ marginBottom: 12 }}>
                     <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
                       {t('match.detail.assist')}

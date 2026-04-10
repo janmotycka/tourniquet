@@ -143,6 +143,7 @@ function AppRouter() {
       } else {
         loadFromFirebase(user.uid);
         loadContacts(user.uid);
+        setMatchesFirebaseUid(user.uid); // set UID early so sync works even if load fails
         loadMatches(user.uid);
         loadTemplates(user.uid);
         void loadClubs(user.uid);

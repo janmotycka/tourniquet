@@ -1009,7 +1009,7 @@ export const cs = {
   'match.detail.tabMatch': '📋 Zápas',
   'match.detail.tabLineup': '👕 Sestava',
   'match.detail.tabRatings': '⭐ Hodnocení',
-  'match.detail.us': 'My',
+  'match.detail.us': 'Náš tým',
   'match.detail.vs': 'vs',
 
   // ─── Match Ratings ─────────────────────────────────────────────────────────

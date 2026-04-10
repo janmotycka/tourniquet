@@ -57,6 +57,7 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
   );
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState('');
+  const [categoryAutoDetected, setCategoryAutoDetected] = useState(false);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,11 +75,30 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
         /hr[áa][čc]/i.test(s.sheetName) || /player/i.test(s.sheetName),
       );
       const idx = playersIdx >= 0 ? playersIdx : 0;
+      // Debug: log column mapping
+      console.log('[Import] Columns:', wb.sheets[idx].columns.map(c => `${c.header} → ${c.field}`));
+      console.log('[Import] First row:', wb.sheets[idx].rows[0]);
       setWorkbook(wb);
       setActiveSheetIdx(idx);
       setActiveSheet(wb.sheets[idx]);
       // Pre-select všechny řádky
       setSelectedRows(new Set(wb.sheets[idx].rows.map(r => r._rawIndex)));
+
+      // Auto-detect category from birth years
+      const sheet = wb.sheets[idx];
+      const mapped = mapRows(sheet.rawRows, sheet.columns);
+      const years = mapped.map(r => r.birthYear).filter((y): y is number => !!y);
+      if (years.length > 0) {
+        const avgYear = Math.round(years.reduce((a, b) => a + b, 0) / years.length);
+        const currentYear = new Date().getFullYear();
+        const age = currentYear - avgYear;
+        const uAge = Math.min(19, Math.max(6, age));
+        const detected = `U${uAge}` as AgeCategory;
+        if (AGE_CATEGORIES.includes(detected)) {
+          setTargetCategory(detected);
+        }
+      }
+      setCategoryAutoDetected(years.length > 0);
     } catch (err) {
       console.error('[Import] Parse failed:', err);
       setError(t('clubs.import.errParse'));
@@ -176,26 +196,29 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
       style={{
         position: 'fixed', inset: 0, zIndex: 400,
         background: 'rgba(0,0,0,.55)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          background: 'var(--surface)', borderRadius: 18,
-          width: '100%', maxWidth: 720, maxHeight: '90dvh',
+          background: 'var(--surface)', borderRadius: '20px 20px 0 0',
+          width: '100%', maxWidth: 480, maxHeight: '92dvh',
           display: 'flex', flexDirection: 'column',
-          boxShadow: '0 20px 60px rgba(0,0,0,.3)',
+          boxShadow: '0 -4px 20px rgba(0,0,0,.15)',
         }}
       >
+        {/* Drag handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 0' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+        </div>
         {/* Header */}
         <div style={{
-          padding: '18px 22px', borderBottom: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', gap: 12,
+          padding: '10px 16px 12px', borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', gap: 10,
         }}>
-          <span style={{ fontSize: 22 }}>📥</span>
-          <h2 style={{ flex: 1, fontWeight: 800, fontSize: 17, margin: 0 }}>
+          <span style={{ fontSize: 18 }}>📥</span>
+          <h2 style={{ flex: 1, fontWeight: 800, fontSize: 16, margin: 0 }}>
             {t('clubs.import.title')}
           </h2>
           <button
@@ -208,7 +231,7 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px 32px' }}>
           {/* Krok 1: Vybrat soubor */}
           {!workbook && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -255,38 +278,43 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
 
           {/* Krok 2: Preview */}
           {workbook && activeSheet && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {/* Sheet selector + detected format */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* File info + format badge — compact row */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 12px', borderRadius: 10, background: 'var(--surface-var)',
+              }}>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
                   {workbook.fileName}
                 </span>
                 <span style={{
-                  background: 'var(--surface-var)', borderRadius: 6,
-                  padding: '3px 10px', fontSize: 11, fontWeight: 700,
-                  color: 'var(--text-muted)',
+                  background: 'var(--success-light)', borderRadius: 6,
+                  padding: '2px 8px', fontSize: 10, fontWeight: 800,
+                  color: 'var(--success)', flexShrink: 0, marginLeft: 8,
                 }}>{detectedLabel}</span>
-                {workbook.sheets.length > 1 && (
-                  <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
-                    {workbook.sheets.map((s, i) => (
-                      <button
-                        key={i}
-                        onClick={() => switchSheet(i)}
-                        style={{
-                          padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                          background: i === activeSheetIdx ? 'var(--primary)' : 'var(--surface-var)',
-                          color: i === activeSheetIdx ? '#fff' : 'var(--text-muted)',
-                          border: 'none', cursor: 'pointer',
-                        }}
-                      >{s.sheetName} ({s.rows.length})</button>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              {/* Cílová kategorie */}
+              {/* Sheet tabs — only if multiple sheets */}
+              {workbook.sheets.length > 1 && (
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {workbook.sheets.map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => switchSheet(i)}
+                      style={{
+                        flex: 1, padding: '8px 4px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                        background: i === activeSheetIdx ? 'var(--primary)' : 'var(--surface-var)',
+                        color: i === activeSheetIdx ? '#fff' : 'var(--text-muted)',
+                        border: 'none', cursor: 'pointer',
+                      }}
+                    >{s.sheetName} ({s.rows.length})</button>
+                  ))}
+                </div>
+              )}
+
+              {/* Cílová kategorie — horizontal scroll */}
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>
                   {t('clubs.import.targetCategory')}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -295,7 +323,7 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
                       key={cat}
                       onClick={() => setTargetCategory(cat)}
                       style={{
-                        padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                        padding: '5px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
                         background: targetCategory === cat ? 'var(--primary)' : 'var(--surface-var)',
                         color: targetCategory === cat ? '#fff' : 'var(--text-muted)',
                         border: 'none', cursor: 'pointer',
@@ -304,6 +332,18 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
                   ))}
                 </div>
               </div>
+
+              {/* Warning: no birth dates → manual category selection needed */}
+              {!categoryAutoDetected && workbook && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '8px 12px', borderRadius: 8,
+                  background: 'var(--warning-light)', fontSize: 11, color: 'var(--warning)',
+                  fontWeight: 600,
+                }}>
+                  ⚠️ Data narození chybí — vyber kategorii ručně
+                </div>
+              )}
 
               {/* Column mapping (collapsible) */}
               <details style={{ background: 'var(--surface-var)', borderRadius: 10, padding: '10px 14px' }}>

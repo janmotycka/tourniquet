@@ -63,7 +63,7 @@ export interface ParsedWorkbook {
 
 const HEADER_PATTERNS: Record<ImportField, RegExp[]> = {
   externalId: [/^id$/i, /^player.?id$/i, /^uuid$/i],
-  firstName: [/^j[mé]no$/i, /^first.?name$/i, /^vorname$/i, /^křestní/i],
+  firstName: [/^j[mé]no$/i, /^jm[eé]no$/i, /^first.?name$/i, /^vorname$/i, /^křestní/i, /^k[řr]estn[íi]/i],
   lastName: [/^p[řr][íi]jmen[íi]$/i, /^last.?name$/i, /^surname$/i, /^nachname$/i],
   fullName: [/^jm[ée]no.*p[řr]íjmen/i, /^full.?name$/i, /^name$/i, /^hr[áa][čc]/i],
   jerseyNumber: [/^[čc][íi]slo$/i, /^number$/i, /^dres/i, /^jersey/i, /^#$/],
@@ -80,7 +80,8 @@ const HEADER_PATTERNS: Record<ImportField, RegExp[]> = {
 };
 
 function detectField(header: string): ImportField {
-  const h = header.trim();
+  // Strip BOM, zero-width chars, trim whitespace
+  const h = header.replace(/[\uFEFF\u200B\u200C\u200D\u00A0]/g, '').trim();
   if (!h) return 'ignore';
   for (const [field, patterns] of Object.entries(HEADER_PATTERNS) as [ImportField, RegExp[]][]) {
     if (patterns.some(p => p.test(h))) return field;
@@ -206,6 +207,21 @@ export async function parseRosterFile(file: File): Promise<ParsedWorkbook> {
     });
 
     const detectedSource = detectSource(headerRow);
+
+    // EOS fixup: pokud detekováno jako EOS ale firstName chybí, zkus přiřadit ručně
+    if (detectedSource === 'eos') {
+      const hasFirstName = columns.some(c => c.field === 'firstName');
+      if (!hasFirstName) {
+        // Hledej sloupec jehož hlavička obsahuje "jm" a není lastName/fullName
+        for (const col of columns) {
+          const norm = col.header.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+          if ((norm === 'jmeno' || norm === 'jméno') && col.field === 'ignore') {
+            col.field = 'firstName';
+            break;
+          }
+        }
+      }
+    }
 
     // Pre-mapování řádků na ImportRow podle aktuálního column mappingu
     const rows = mapRows(dataRows, columns);

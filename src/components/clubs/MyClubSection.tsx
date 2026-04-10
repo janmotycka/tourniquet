@@ -3,6 +3,7 @@ import type { Club, AgeCategory, ClubPlayer } from '../../types/club.types';
 import type { Contact } from '../../types/contact.types';
 import type { PlayerStats } from '../../utils/player-stats';
 import { useClubsStore } from '../../store/clubs.store';
+import { useToastStore } from '../../store/toast.store';
 import { PlayerRosterEditor } from '../PlayerRosterEditor';
 import { colorSwatch } from '../../utils/team-colors';
 import { ContactRow } from './ContactRow';
@@ -238,7 +239,10 @@ export function MyClubSection({
           <ImportPlayersModal
             club={club}
             onClose={() => setImportOpen(false)}
-            onImport={(players) => addPlayersBulk(club.id, players)}
+            onImport={async (players) => {
+              await addPlayersBulk(club.id, players);
+              useToastStore.getState().show('success', `Naimportováno ${players.length} hráčů`);
+            }}
           />
         </Suspense>
       )}

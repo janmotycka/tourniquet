@@ -24,11 +24,30 @@ const activeClubIdRef = (uid: string) => ref(db, `users/${uid}/activeClubId`);
 // ─── Read ───────────────────────────────────────────────────────────────────
 
 /** Načte jeden sdílený klub. Vrací null pokud neexistuje nebo uživatel nemá přístup. */
+/** Firebase RTDB ukládá pole jako objekty — normalizujeme zpět na pole */
+function ensureArray(val: unknown): unknown[] {
+  if (Array.isArray(val)) return val;
+  if (val && typeof val === 'object') return Object.values(val);
+  return [];
+}
+
 export async function loadSharedClub(clubId: string): Promise<SharedClub | null> {
   try {
     const snap = await get(sharedClubRef(clubId));
     if (!snap.exists()) return null;
-    return snap.val() as SharedClub;
+    const raw = snap.val();
+    // Normalizuj players a ageCategories (Firebase může vrátit objekt místo pole)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const players = ensureArray(raw.players).map((p: any) => ({
+      ...p,
+      categoryHistory: ensureArray(p?.categoryHistory),
+    }));
+    return {
+      ...raw,
+      players,
+      ageCategories: ensureArray(raw.ageCategories),
+      defaultPlayers: ensureArray(raw.defaultPlayers),
+    } as SharedClub;
   } catch {
     return null;
   }
@@ -92,9 +111,22 @@ export async function saveSharedClub(club: SharedClub): Promise<void> {
   await set(sharedClubRef(club.id), club);
 }
 
+/** Rekurzivně odstraní undefined hodnoty (Firebase RTDB je neakceptuje) */
+function stripUndefined(obj: unknown): unknown {
+  if (obj === undefined) return null;
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(stripUndefined);
+  const clean: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+    if (v !== undefined) clean[k] = stripUndefined(v);
+  }
+  return clean;
+}
+
 /** Patchne konkrétní pole klubu (name, logo, players...). */
 export async function updateSharedClub(clubId: string, patch: Record<string, unknown>): Promise<void> {
-  await update(sharedClubRef(clubId), { ...patch, updatedAt: new Date().toISOString() });
+  const clean = stripUndefined({ ...patch, updatedAt: new Date().toISOString() }) as Record<string, unknown>;
+  await update(sharedClubRef(clubId), clean);
 }
 
 // ─── Realtime subscription ──────────────────────────────────────────────────
