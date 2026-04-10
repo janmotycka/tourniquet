@@ -743,7 +743,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
           <button
             onClick={() => setSubModal(true)}
             style={{
-              background: '#fff', color: '#E65100', borderRadius: 10,
+              background: '#fff', color: 'var(--warning)', borderRadius: 10,
               padding: '8px 14px', fontWeight: 800, fontSize: 13, flexShrink: 0,
             }}
           >
@@ -779,7 +779,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
           }}
           style={{
             width: '100%', padding: '18px', borderRadius: 16, fontWeight: 800, fontSize: 18,
-            background: '#2E7D32', color: '#fff', boxShadow: '0 4px 12px rgba(46,125,50,.30)',
+            background: 'var(--success)', color: '#fff', boxShadow: '0 4px 12px rgba(46,125,50,.30)',
           }}
         >
           {t('match.detail.startMatch')}
@@ -797,7 +797,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               onContextMenu={e => e.preventDefault()}
               style={{
                 flex: 1, padding: '24px 10px', borderRadius: 18, fontWeight: 900, fontSize: 20,
-                background: '#2E7D32', color: '#fff',
+                background: 'var(--success)', color: '#fff',
                 boxShadow: '0 4px 16px rgba(46,125,50,.35)',
                 userSelect: 'none', WebkitUserSelect: 'none',
                 touchAction: 'manipulation',
@@ -813,7 +813,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               onContextMenu={e => e.preventDefault()}
               style={{
                 flex: 1, padding: '24px 10px', borderRadius: 18, fontWeight: 900, fontSize: 20,
-                background: '#C62828', color: '#fff',
+                background: 'var(--danger)', color: '#fff',
                 boxShadow: '0 4px 16px rgba(198,40,40,.30)',
                 userSelect: 'none', WebkitUserSelect: 'none',
                 touchAction: 'manipulation',
@@ -886,7 +886,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                         }}
                         style={{
                           flex: 1, padding: '10px', borderRadius: 12, fontWeight: 700, fontSize: 12,
-                          background: '#FFF3E0', color: '#E65100',
+                          background: 'var(--warning-light)', color: 'var(--warning)',
                         }}
                       >
                         ⏱ {t('match.detail.halftimeBtn')}
@@ -896,7 +896,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                         onClick={() => { vibrate(); handleFinish(); }}
                         style={{
                           flex: 1, padding: '10px', borderRadius: 12, fontWeight: 700, fontSize: 12,
-                          background: '#FFEBEE', color: '#C62828',
+                          background: 'var(--danger-light)', color: 'var(--danger)',
                         }}
                       >
                         ■ {t('match.detail.finishBtn')}
@@ -922,7 +922,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div style={{
                     textAlign: 'center', padding: '8px', borderRadius: 10,
-                    background: '#FFF3E0', color: '#E65100', fontWeight: 700, fontSize: 13,
+                    background: 'var(--warning-light)', color: 'var(--warning)', fontWeight: 700, fontSize: 13,
                   }}>
                     ⏱ {t('match.detail.halftimeBreak')}
                   </div>
@@ -931,7 +931,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                       onClick={() => { vibrate(50); resumeMatch(match.id); }}
                       style={{
                         flex: 2, padding: '18px', borderRadius: 16, fontWeight: 800, fontSize: 18,
-                        background: '#2E7D32', color: '#fff',
+                        background: 'var(--success)', color: '#fff',
                         boxShadow: '0 4px 12px rgba(46,125,50,.30)',
                       }}
                     >
@@ -941,7 +941,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                       onClick={() => { vibrate(); handleFinish(); }}
                       style={{
                         flex: 1, padding: '18px', borderRadius: 16, fontWeight: 700, fontSize: 14,
-                        background: '#FFEBEE', color: '#C62828',
+                        background: 'var(--danger-light)', color: 'var(--danger)',
                       }}
                     >
                       ■ {t('match.detail.finishBtn')}
@@ -958,7 +958,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                   onClick={() => { vibrate(); resumeMatch(match.id); }}
                   style={{
                     flex: 1, padding: '16px', borderRadius: 14, fontWeight: 700, fontSize: 15,
-                    background: '#E8F5E9', color: '#2E7D32',
+                    background: 'var(--success-light)', color: 'var(--success)',
                   }}
                 >
                   ▶ {t('match.detail.resumeBtn')}
@@ -967,7 +967,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                   onClick={() => { vibrate(); handleFinish(); }}
                   style={{
                     flex: 1, padding: '16px', borderRadius: 14, fontWeight: 700, fontSize: 15,
-                    background: '#FFEBEE', color: '#C62828',
+                    background: 'var(--danger-light)', color: 'var(--danger)',
                   }}
                 >
                   ■ {t('match.detail.finishBtn')}
@@ -1060,7 +1060,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                       <div style={{
                         height: '100%', borderRadius: 4, transition: 'width .5s',
                         width: `${pct}%`,
-                        background: pct > 80 ? '#2E7D32' : pct > 40 ? 'var(--primary)' : pct > 0 ? '#FF9800' : 'transparent',
+                        background: pct > 80 ? 'var(--success)' : pct > 40 ? 'var(--primary)' : pct > 0 ? '#FF9800' : 'transparent',
                       }} />
                     </div>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', minWidth: 30, textAlign: 'right' }}>
@@ -1079,8 +1079,8 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                 return (
                   <div style={{
                     marginTop: 4, padding: '8px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700,
-                    background: isFair ? '#E8F5E9' : '#FFF3E0',
-                    color: isFair ? '#2E7D32' : '#E65100',
+                    background: isFair ? 'var(--success-light)' : 'var(--warning-light)',
+                    color: isFair ? 'var(--success)' : 'var(--warning)',
                     textAlign: 'center',
                   }}>
                     {isFair ? `✓ ${t('match.detail.fairPlayOk')}` : `⚠ ${t('match.detail.fairPlayWarn', { diff })}`}
@@ -1110,7 +1110,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                     }}
                     style={{
                       fontSize: 13, fontWeight: 600, flex: 1,
-                      color: g.isOpponentGoal ? '#C62828' : '#2E7D32',
+                      color: g.isOpponentGoal ? 'var(--danger)' : 'var(--success)',
                       cursor: match.status !== 'finished' && !g.isOpponentGoal ? 'pointer' : 'default',
                       textDecoration: isUnassigned ? 'underline dashed' : 'none',
                       textDecorationColor: 'var(--text-muted)',
@@ -1172,9 +1172,9 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               return (
                 <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', minWidth: 28 }}>{s.minute}'</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#2E7D32' }}>▲ {playerIn?.name ?? '?'}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--success)' }}>▲ {playerIn?.name ?? '?'}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>⇄</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#C62828' }}>▼ {playerOut?.name ?? '?'}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--danger)' }}>▼ {playerOut?.name ?? '?'}</span>
                 </div>
               );
             })}
@@ -1200,14 +1200,14 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{
                 padding: '4px 14px', borderRadius: 8, fontWeight: 800, fontSize: 14,
-                background: ourScore > theirScore ? '#E8F5E9' : ourScore < theirScore ? '#FFEBEE' : '#FFF3E0',
-                color: ourScore > theirScore ? '#2E7D32' : ourScore < theirScore ? '#C62828' : '#E65100',
+                background: ourScore > theirScore ? 'var(--success-light)' : ourScore < theirScore ? 'var(--danger-light)' : 'var(--warning-light)',
+                color: ourScore > theirScore ? 'var(--success)' : ourScore < theirScore ? 'var(--danger)' : 'var(--warning)',
               }}>
                 {ourScore > theirScore ? t('match.result.win') : ourScore < theirScore ? t('match.result.loss') : t('match.result.draw')}
               </span>
             </div>
             <div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: '#C62828' }}>{theirScore}</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--danger)' }}>{theirScore}</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{t('match.detail.goals')}</div>
             </div>
           </div>
@@ -1243,7 +1243,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                 minute: g.minute,
                 type: 'goal',
                 label: g.isOpponentGoal ? `${match.opponent}` : g.isOwnGoal ? t('match.detail.ownGoalLog') : scorer,
-                color: g.isOpponentGoal ? '#C62828' : '#2E7D32',
+                color: g.isOpponentGoal ? 'var(--danger)' : 'var(--success)',
                 icon: '⚽',
               });
             }
@@ -1252,7 +1252,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               events.push({
                 minute: c.minute, type: 'card',
                 label: player?.name ?? '?',
-                color: c.type === 'red' ? '#C62828' : '#F9A825',
+                color: c.type === 'red' ? 'var(--danger)' : '#F9A825',
                 icon: c.type === 'yellow' ? '🟨' : c.type === 'red' ? '🟥' : '🟨🟥',
               });
             }
@@ -1300,7 +1300,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                   updateMatch(match.id, { veoUrl: undefined });
                 }
               }}
-              style={{ fontSize: 11, fontWeight: 600, color: '#C62828', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+              style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
             >
               {t('veo.remove')}
             </button>
@@ -1311,7 +1311,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             rel="noopener noreferrer"
             style={{
               display: 'block', marginTop: 8, padding: '10px 14px', borderRadius: 10,
-              background: '#E3F2FD', color: 'var(--primary)', fontWeight: 700, fontSize: 13,
+              background: 'var(--info-light)', color: 'var(--primary)', fontWeight: 700, fontSize: 13,
               textDecoration: 'none', textAlign: 'center',
             }}
           >

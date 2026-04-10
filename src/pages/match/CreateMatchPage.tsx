@@ -3,10 +3,14 @@ import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useI18n } from '../../i18n';
-import type { MatchLineupPlayer, SubstitutionSettings } from '../../types/match.types';
+import type { MatchLineupPlayer, SubstitutionSettings, MatchFormat } from '../../types/match.types';
+import { MATCH_FORMATS, formatToStarterCount } from '../../types/match.types';
 import type { Club, AgeCategory } from '../../types/club.types';
 import { useToastStore } from '../../store/toast.store';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
+import { OpponentAutocomplete } from '../../components/clubs/OpponentAutocomplete';
+import { PageHeader } from '../../components/ui';
+import { radius, spacing as sp } from '../../theme/tokens';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -50,87 +54,6 @@ function ClubBadge({ club, size = 32 }: { club: Club; size?: number }) {
   );
 }
 
-// ─── Opponent searchable input ────────────────────────────────────────────────
-
-function OpponentInput({ value, onChange, clubs, t }: {
-  value: string;
-  onChange: (v: string) => void;
-  clubs: Club[];
-  t: (key: string, params?: Record<string, string | number>) => string;
-}) {
-  const [focused, setFocused] = useState(false);
-
-  const query = value.toLowerCase();
-  const filtered = clubs.filter(c => c.name.toLowerCase().includes(query));
-  const showDropdown = focused && filtered.length > 0 && value !== filtered[0]?.name;
-  const selectedClub = clubs.find(c => c.name === value);
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-        {t('match.create.opponent')}
-      </label>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '10px 12px', borderRadius: 10,
-        border: focused ? '2px solid var(--primary)' : '1.5px solid var(--border)',
-        background: 'var(--bg)', boxSizing: 'border-box',
-        transition: 'border .15s',
-      }}>
-        {selectedClub && <ClubBadge club={selectedClub} size={22} />}
-        <input
-          type="text"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setTimeout(() => setFocused(false), 150)}
-          placeholder={t('match.create.opponentPlaceholder')}
-          style={{
-            flex: 1, border: 'none', outline: 'none', fontSize: 15,
-            background: 'transparent', color: 'var(--text)', padding: 0,
-          }}
-        />
-        {value && (
-          <button
-            onClick={() => onChange('')}
-            aria-label="Clear"
-            style={{ fontSize: 16, color: 'var(--text-muted)', background: 'none', border: 'none', padding: '0 2px', cursor: 'pointer' }}
-          >
-            ×
-          </button>
-        )}
-      </div>
-
-      {/* Dropdown */}
-      {showDropdown && (
-        <div style={{
-          position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 20,
-          marginTop: 4, borderRadius: 12, background: 'var(--surface)',
-          boxShadow: '0 4px 16px rgba(0,0,0,.15)', border: '1px solid var(--border)',
-          maxHeight: 200, overflowY: 'auto',
-        }}>
-          {filtered.map(club => (
-            <button
-              key={club.id}
-              onMouseDown={e => e.preventDefault()}
-              onClick={() => { onChange(club.name); setFocused(false); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                width: '100%', padding: '10px 14px', border: 'none',
-                background: 'transparent', cursor: 'pointer', textAlign: 'left',
-                fontSize: 14, fontWeight: 600, color: 'var(--text)',
-              }}
-            >
-              <ClubBadge club={club} size={24} />
-              {club.name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─── CreateMatchPage ────────────────────────────────────────────────────────────
 
 export function CreateMatchPage({ navigate }: Props) {
@@ -145,10 +68,12 @@ export function CreateMatchPage({ navigate }: Props) {
     () => clubs.find(c => (c.ageCategories ?? []).length > 0),
     [clubs],
   );
-  const opponentClubs = useMemo(
-    () => clubs.filter(c => c.id !== myClub?.id),
-    [clubs, myClub],
-  );
+
+  // Smart defaults: pre-fill from the most recent match
+  const lastMatch = useMemo(() => {
+    if (allMatches.length === 0) return null;
+    return [...allMatches].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  }, [allMatches]);
 
   const [step, setStep] = useState(0);
 
@@ -157,10 +82,12 @@ export function CreateMatchPage({ navigate }: Props) {
   const [isHome, setIsHome] = useState(true);
   const [date, setDate] = useState(todayStr());
   const [kickoffTime, setKickoffTime] = useState(nowTimeStr());
-  const [competition, setCompetition] = useState('');
-  const [periods, setPeriods] = useState(2);
-  const [periodDuration, setPeriodDuration] = useState(20);
+  const [competition, setCompetition] = useState(lastMatch?.competition ?? '');
+  const [periods, setPeriods] = useState(lastMatch?.periods ?? 2);
+  const [periodDuration, setPeriodDuration] = useState(lastMatch?.periodDurationMinutes ?? 20);
+  const [matchFormat, setMatchFormat] = useState<MatchFormat>(lastMatch?.matchFormat ?? '7+1');
   const durationMinutes = periods * periodDuration;
+  const starterCount = formatToStarterCount(matchFormat);
   // Auto-select myClub, fallback to first club
   const [selectedClubId, setSelectedClubId] = useState<string>(myClub?.id ?? clubs[0]?.id ?? '');
   const [selectedCategory, setSelectedCategory] = useState<AgeCategory | null>(null);
@@ -194,7 +121,8 @@ export function CreateMatchPage({ navigate }: Props) {
       rosterPlayers = [...(club.defaultPlayers ?? [])];
     }
     const sorted = rosterPlayers.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
-    const maxStarters = 11;
+    // Počet hráčů v základní sestavě řídí vybraný formát (např. 7+1 = 8).
+    const maxStarters = starterCount;
     const newLineup: MatchLineupPlayer[] = sorted.map((p, idx) => ({
       playerId: `${club.id}-${p.jerseyNumber}`,
       jerseyNumber: p.jerseyNumber,
@@ -277,6 +205,8 @@ export function CreateMatchPage({ navigate }: Props) {
       durationMinutes,
       periods,
       periodDurationMinutes: periodDuration,
+      matchFormat,
+      ageCategory: selectedCategory ?? undefined,
       lineup,
       substitutionSettings: subSettings,
     });
@@ -294,13 +224,18 @@ export function CreateMatchPage({ navigate }: Props) {
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.basicInfo')}</h3>
 
-        {/* ── Soupeř: searchable input with dropdown ── */}
-        <OpponentInput
-          value={opponent}
-          onChange={setOpponent}
-          clubs={opponentClubs}
-          t={t}
-        />
+        {/* ── Soupeř: autocomplete z katalogu klubů ── */}
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+            {t('match.create.opponent')}
+          </label>
+          <OpponentAutocomplete
+            value={opponent}
+            onChange={setOpponent}
+            placeholder={t('match.create.opponentPlaceholder')}
+            label={t('match.create.opponent')}
+          />
+        </div>
 
         {/* Home/Away — subtle toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -375,9 +310,37 @@ export function CreateMatchPage({ navigate }: Props) {
         </div>
       </div>
 
-      {/* Match settings — halves & duration */}
+      {/* Match settings — format, halves & duration */}
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.settings')}</h3>
+
+        {/* Formát hry (X+1) */}
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+            {t('match.create.format') || 'Formát hry'}
+            <span style={{ fontWeight: 500, marginLeft: 6 }}>
+              ({starterCount} {t('match.create.startersLabel') || 'v základu'})
+            </span>
+          </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {MATCH_FORMATS.map(fmt => (
+              <button
+                key={fmt}
+                onClick={() => setMatchFormat(fmt)}
+                style={{
+                  padding: '8px 14px', borderRadius: 10, fontWeight: 700, fontSize: 13,
+                  background: matchFormat === fmt ? 'var(--primary)' : 'var(--surface-var)',
+                  color: matchFormat === fmt ? '#fff' : 'var(--text-muted)',
+                  border: `1.5px solid ${matchFormat === fmt ? 'var(--primary)' : 'var(--border)'}`,
+                  cursor: 'pointer',
+                  transition: 'all .15s',
+                }}
+              >
+                {fmt}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Halves: 1 or 2 */}
         <div>
@@ -523,7 +486,7 @@ export function CreateMatchPage({ navigate }: Props) {
                 })}
               </div>
               {!selectedCategory && (
-                <p style={{ fontSize: 11, color: '#E65100', margin: '6px 0 0', fontWeight: 600 }}>
+                <p style={{ fontSize: 11, color: 'var(--warning)', margin: '6px 0 0', fontWeight: 600 }}>
                   {t('match.create.categoryHint')}
                 </p>
               )}
@@ -637,8 +600,8 @@ export function CreateMatchPage({ navigate }: Props) {
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.startingLineup')}</h3>
           <span style={{
             fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8,
-            background: starters.length === 11 ? '#E8F5E9' : '#FFF3E0',
-            color: starters.length === 11 ? '#2E7D32' : '#E65100',
+            background: starters.length === 11 ? 'var(--success-light)' : 'var(--warning-light)',
+            color: starters.length === 11 ? 'var(--success)' : 'var(--warning)',
           }}>
             {starters.length}/11
           </span>
@@ -665,7 +628,7 @@ export function CreateMatchPage({ navigate }: Props) {
                 onClick={() => toggleStarter(p.playerId)}
                 style={{
                   fontSize: 12, fontWeight: 600, padding: '4px 10px', borderRadius: 8,
-                  background: '#FFEBEE', color: '#C62828',
+                  background: 'var(--danger-light)', color: 'var(--danger)',
                 }}
               >
                 {t('match.create.toBench')}
@@ -757,28 +720,24 @@ export function CreateMatchPage({ navigate }: Props) {
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh', width: '100%', maxWidth: isDesktop ? 800 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
-      {/* Header */}
+      {/* Header with step indicator */}
       <div style={{
-        padding: '16px 20px 12px', background: 'var(--surface)',
+        background: 'var(--surface)',
         boxShadow: '0 1px 0 var(--border)',
         position: 'sticky', top: 0, zIndex: 10,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-          <button
-            onClick={() => step === 0 ? navigate({ name: 'match-list' }) : setStep(0)}
-            style={{ background: 'var(--surface-var)', borderRadius: 10, padding: '8px 12px', fontWeight: 700, fontSize: 14 }}
-          >
-            ← {step === 0 ? t('match.create.cancel') : t('match.create.back')}
-          </button>
-          <h1 style={{ fontWeight: 800, fontSize: 18, flex: 1 }}>
-            {step === 0 ? t('match.create.newMatch') : t('match.create.lineupTitle')}
-          </h1>
-        </div>
+        <PageHeader
+          title={step === 0 ? t('match.create.newMatch') : t('match.create.lineupTitle')}
+          backLabel={step === 0 ? t('match.create.cancel') : t('match.create.back')}
+          onBack={() => step === 0 ? navigate({ name: 'match-list' }) : setStep(0)}
+        />
         {/* Step indicators */}
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, padding: `0 ${sp.lg + 4}px ${sp.md}px` }}>
           {[t('match.create.stepBasicInfo'), t('match.create.stepLineup')].map((_label, i) => (
             <div key={i} style={{
-              flex: 1, height: 4, borderRadius: 4,
+              flex: 1,
+              height: 4,
+              borderRadius: radius.sm / 2,
               background: i <= step ? 'var(--primary)' : 'var(--border)',
             }} />
           ))}

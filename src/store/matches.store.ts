@@ -156,6 +156,8 @@ export const useMatchesStore = create<MatchesState>()(
           durationMinutes: input.durationMinutes,
           periods: input.periods,
           periodDurationMinutes: input.periodDurationMinutes,
+          matchFormat: input.matchFormat,
+          ageCategory: input.ageCategory,
           currentPeriod: 0,
           status: 'planned',
           startedAt: null,

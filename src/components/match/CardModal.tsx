@@ -47,8 +47,8 @@ export function CardModal({ match, onAdd, onClose, t }: CardModalProps) {
             <button key={v} onClick={() => setType(v as 'yellow' | 'red' | 'yellow-red')}
               style={{
                 flex: 1, padding: '8px 4px', borderRadius: 10, fontSize: 12, fontWeight: 700,
-                background: type === v ? (v === 'yellow' ? '#FFF9C4' : v === 'red' ? '#FFEBEE' : '#FFF3E0') : 'var(--surface-var)',
-                color: type === v ? (v === 'yellow' ? '#F9A825' : v === 'red' ? '#C62828' : '#E65100') : 'var(--text-muted)',
+                background: type === v ? (v === 'yellow' ? '#FFF9C4' : v === 'red' ? 'var(--danger-light)' : 'var(--warning-light)') : 'var(--surface-var)',
+                color: type === v ? (v === 'yellow' ? '#F9A825' : v === 'red' ? 'var(--danger)' : 'var(--warning)') : 'var(--text-muted)',
                 border: `2px solid ${type === v ? 'currentColor' : 'transparent'}`,
               }}
             >{label}</button>

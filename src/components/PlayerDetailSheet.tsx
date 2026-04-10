@@ -247,14 +247,14 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
           <div style={{
             display: 'flex', gap: 8, marginBottom: 16,
           }}>
-            <StatBox value={stats.totalGoals} label={t('playerDetail.goals')} icon="⚽" color="#2E7D32" />
-            <StatBox value={stats.seasonAssists} label={t('playerDetail.assists')} icon="👟" color="#1565C0" />
-            <StatBox value={stats.totalMatches} label={t('playerDetail.matches')} icon="📋" color="#E65100" />
+            <StatBox value={stats.totalGoals} label={t('playerDetail.goals')} icon="⚽" color="var(--success)" />
+            <StatBox value={stats.seasonAssists} label={t('playerDetail.assists')} icon="👟" color="var(--info)" />
+            <StatBox value={stats.totalMatches} label={t('playerDetail.matches')} icon="📋" color="var(--warning)" />
             <StatBox
               value={stats.seasonAvgRating !== null ? stats.seasonAvgRating.toFixed(1) : '–'}
               label={t('playerDetail.rating')}
               icon="⭐"
-              color="#F9A825"
+              color="var(--warning)"
             />
           </div>
 
@@ -271,7 +271,7 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#E65100' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--warning)' }}>
                   {stats.tournamentsPlayed}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -280,7 +280,7 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
               </div>
               <div style={{ width: 1, background: 'var(--border)' }} />
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#E65100' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--warning)' }}>
                   {stats.tournamentMatches}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -289,7 +289,7 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
               </div>
               <div style={{ width: 1, background: 'var(--border)' }} />
               <div style={{ flex: 1, textAlign: 'center' }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#2E7D32' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--success)' }}>
                   {stats.tournamentGoals}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -312,7 +312,7 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 30%', textAlign: 'center', padding: '6px 0' }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#1565C0' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--info)' }}>
                   {stats.seasonMatches}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -320,7 +320,7 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
                 </div>
               </div>
               <div style={{ flex: '1 1 30%', textAlign: 'center', padding: '6px 0' }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#2E7D32' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--success)' }}>
                   {stats.seasonGoals}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -328,7 +328,7 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
                 </div>
               </div>
               <div style={{ flex: '1 1 30%', textAlign: 'center', padding: '6px 0' }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#1565C0' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--info)' }}>
                   {stats.seasonAssists}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -383,7 +383,7 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#2E7D32' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--success)' }}>
                     {stats.trainingsPresent}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -392,7 +392,7 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
                 </div>
                 <div style={{ width: 1, background: 'var(--border)' }} />
                 <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#C62828' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--danger)' }}>
                     {stats.trainingsAbsent}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -401,7 +401,7 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
                 </div>
                 <div style={{ width: 1, background: 'var(--border)' }} />
                 <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#F9A825' }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--warning)' }}>
                     {stats.trainingsExcused}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>

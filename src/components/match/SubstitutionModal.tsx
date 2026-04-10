@@ -58,7 +58,7 @@ export function SubstitutionModal({ match, onAdd, onClose, suggestedIn, suggeste
 
         {/* Player OUT */}
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: '#C62828', display: 'block', marginBottom: 6 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', display: 'block', marginBottom: 6 }}>
             {t('match.detail.playerOut')}
           </label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -69,19 +69,19 @@ export function SubstitutionModal({ match, onAdd, onClose, suggestedIn, suggeste
                 style={{
                   padding: '8px 12px', borderRadius: 10, fontSize: 13, fontWeight: 600, textAlign: 'left',
                   display: 'flex', alignItems: 'center', gap: 10,
-                  background: playerOutId === p.playerId ? '#FFEBEE' : 'var(--bg)',
-                  border: `1.5px solid ${playerOutId === p.playerId ? '#C62828' : 'var(--border)'}`,
-                  color: playerOutId === p.playerId ? '#C62828' : 'var(--text)',
+                  background: playerOutId === p.playerId ? 'var(--danger-light)' : 'var(--bg)',
+                  border: `1.5px solid ${playerOutId === p.playerId ? 'var(--danger)' : 'var(--border)'}`,
+                  color: playerOutId === p.playerId ? 'var(--danger)' : 'var(--text)',
                 }}
               >
                 <span style={{
-                  width: 26, height: 26, borderRadius: 7, background: '#C62828',
+                  width: 26, height: 26, borderRadius: 7, background: 'var(--danger)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 11, fontWeight: 800, color: '#fff', flexShrink: 0,
                 }}>{p.jerseyNumber}</span>
                 {p.name}
                 {suggestedOut.some(s => s.playerId === p.playerId) && (
-                  <span style={{ marginLeft: 'auto', fontSize: 11, color: '#C62828', fontWeight: 700 }}>{t('match.detail.recommended')}</span>
+                  <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--danger)', fontWeight: 700 }}>{t('match.detail.recommended')}</span>
                 )}
               </button>
             ))}
@@ -91,7 +91,7 @@ export function SubstitutionModal({ match, onAdd, onClose, suggestedIn, suggeste
         {/* Player IN */}
         {bench.length > 0 && (
           <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#2E7D32', display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--success)', display: 'block', marginBottom: 6 }}>
               {t('match.detail.playerIn')}
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -102,20 +102,20 @@ export function SubstitutionModal({ match, onAdd, onClose, suggestedIn, suggeste
                   style={{
                     padding: '8px 12px', borderRadius: 10, fontSize: 13, fontWeight: 600, textAlign: 'left',
                     display: 'flex', alignItems: 'center', gap: 10,
-                    background: playerInId === p.playerId ? '#E8F5E9' : 'var(--bg)',
-                    border: `1.5px solid ${playerInId === p.playerId ? '#2E7D32' : 'var(--border)'}`,
-                    color: playerInId === p.playerId ? '#2E7D32' : 'var(--text)',
+                    background: playerInId === p.playerId ? 'var(--success-light)' : 'var(--bg)',
+                    border: `1.5px solid ${playerInId === p.playerId ? 'var(--success)' : 'var(--border)'}`,
+                    color: playerInId === p.playerId ? 'var(--success)' : 'var(--text)',
                   }}
                 >
                   <span style={{
-                    width: 26, height: 26, borderRadius: 7, background: '#2E7D32',
+                    width: 26, height: 26, borderRadius: 7, background: 'var(--success)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 11, fontWeight: 800, color: '#fff', flexShrink: 0,
                   }}>{p.jerseyNumber}</span>
                   <span style={{ flex: 1 }}>{p.name}</span>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>#{p.substituteOrder}</span>
                   {suggestedIn.some(s => s.playerId === p.playerId) && (
-                    <span style={{ fontSize: 11, color: '#2E7D32', fontWeight: 700 }}>{t('match.detail.recommended')}</span>
+                    <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700 }}>{t('match.detail.recommended')}</span>
                   )}
                 </button>
               ))}

@@ -69,8 +69,8 @@ export function GoalModal({ match, isOpponentGoal, onAdd, onClose, t }: GoalModa
               onClick={() => setIsOwnGoal(v => !v)}
               style={{
                 marginBottom: 14, padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                background: isOwnGoal ? '#FFEBEE' : 'var(--surface-var)',
-                color: isOwnGoal ? '#C62828' : 'var(--text-muted)',
+                background: isOwnGoal ? 'var(--danger-light)' : 'var(--surface-var)',
+                color: isOwnGoal ? 'var(--danger)' : 'var(--text-muted)',
                 border: `1.5px solid ${isOwnGoal ? '#FFCDD2' : 'var(--border)'}`,
               }}
             >

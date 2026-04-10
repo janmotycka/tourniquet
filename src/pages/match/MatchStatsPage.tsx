@@ -6,6 +6,8 @@ import { useI18n } from '../../i18n';
 import { computePlayerStats, computeTeamStats } from '../../utils/match-stats';
 import { exportSeasonPlayerStatsCSV } from '../../utils/export-csv';
 import type { PlayerSeasonStats } from '../../utils/match-stats';
+import { PageHeader } from '../../components/ui';
+import { radius, fontSize, fontWeight } from '../../theme/tokens';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -26,8 +28,8 @@ function sortPlayers(stats: PlayerSeasonStats[], key: SortKey): PlayerSeasonStat
 // ─── FormBadge ──────────────────────────────────────────────────────────────
 
 function FormBadge({ result }: { result: 'W' | 'D' | 'L' }) {
-  const colors = { W: '#2E7D32', D: '#E65100', L: '#C62828' };
-  const bgs = { W: '#E8F5E9', D: '#FFF3E0', L: '#FFEBEE' };
+  const colors = { W: 'var(--success)', D: 'var(--warning)', L: 'var(--danger)' };
+  const bgs = { W: 'var(--success-light)', D: 'var(--warning-light)', L: 'var(--danger-light)' };
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -60,16 +62,34 @@ export function MatchStatsPage({ navigate }: Props) {
   const matches = useMatchesStore(s => s.matches);
   const clubs = useClubsStore(s => s.clubs);
   const [clubFilter, setClubFilter] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('goals');
 
+  // Extract unique age categories
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    matches.forEach(m => { if (m.ageCategory) cats.add(m.ageCategory); });
+    return [...cats].sort((a, b) => {
+      const na = parseInt(a.replace(/\D/g, ''), 10) || 0;
+      const nb = parseInt(b.replace(/\D/g, ''), 10) || 0;
+      return na - nb;
+    });
+  }, [matches]);
+
+  // Pre-filter matches by category before stats computation
+  const filteredMatches = useMemo(() => {
+    if (!categoryFilter) return matches;
+    return matches.filter(m => m.ageCategory === categoryFilter);
+  }, [matches, categoryFilter]);
+
   const teamStats = useMemo(
-    () => computeTeamStats(matches, clubFilter ?? undefined),
-    [matches, clubFilter]
+    () => computeTeamStats(filteredMatches, clubFilter ?? undefined),
+    [filteredMatches, clubFilter]
   );
 
   const playerStats = useMemo(
-    () => sortPlayers(computePlayerStats(matches, clubFilter ?? undefined), sortKey),
-    [matches, clubFilter, sortKey]
+    () => sortPlayers(computePlayerStats(filteredMatches, clubFilter ?? undefined), sortKey),
+    [filteredMatches, clubFilter, sortKey]
   );
 
   const hasData = teamStats.totalMatches > 0;
@@ -78,19 +98,14 @@ export function MatchStatsPage({ navigate }: Props) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
       {/* Header */}
       <div style={{
-        padding: '16px 20px 12px', background: 'var(--surface)',
+        background: 'var(--surface)',
         boxShadow: '0 1px 0 var(--border)',
         position: 'sticky', top: 0, zIndex: 10,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button
-            onClick={() => navigate({ name: 'match-list' })}
-            style={{ background: 'var(--surface-var)', borderRadius: 10, padding: '8px 12px', fontWeight: 700, fontSize: 14 }}
-          >
-            {t('common.back')}
-          </button>
-          <h1 style={{ fontWeight: 800, fontSize: 20, flex: 1 }}>{t('matchStats.title')}</h1>
-          {hasData && (
+        <PageHeader
+          title={t('matchStats.title')}
+          onBack={() => navigate({ name: 'match-list' })}
+          action={hasData ? (
             <button
               onClick={() => exportSeasonPlayerStatsCSV(playerStats, t)}
               style={{
@@ -100,16 +115,16 @@ export function MatchStatsPage({ navigate }: Props) {
             >
               📥 {t('csv.exportPlayerStats')}
             </button>
-          )}
-        </div>
+          ) : undefined}
+        />
 
-        {/* Filtr klubu (pokud je víc než 1) */}
+        {/* Filtr klubu (pokud je vic nez 1) */}
         {clubs.length > 1 && (
-          <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, padding: '0 20px 12px', flexWrap: 'wrap' }}>
             <button
               onClick={() => setClubFilter(null)}
               style={{
-                fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 8,
+                fontSize: fontSize.sm, fontWeight: fontWeight.medium, padding: '5px 11px', borderRadius: radius.sm,
                 background: !clubFilter ? 'var(--primary)' : 'var(--surface-var)',
                 color: !clubFilter ? '#fff' : 'var(--text-muted)',
               }}
@@ -121,12 +136,52 @@ export function MatchStatsPage({ navigate }: Props) {
                 key={c.id}
                 onClick={() => setClubFilter(c.id)}
                 style={{
-                  fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: 8,
+                  fontSize: fontSize.sm, fontWeight: fontWeight.medium, padding: '5px 11px', borderRadius: radius.sm,
                   background: clubFilter === c.id ? 'var(--primary)' : 'var(--surface-var)',
                   color: clubFilter === c.id ? '#fff' : 'var(--text-muted)',
                 }}
               >
                 {c.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Filtr kategorie */}
+        {categories.length > 1 && (
+          <div style={{
+            display: 'flex', gap: 6, padding: '0 20px 12px',
+            overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+          }}>
+            <button
+              onClick={() => setCategoryFilter(null)}
+              style={{
+                fontSize: fontSize.sm, fontWeight: !categoryFilter ? fontWeight.bold : fontWeight.medium,
+                padding: '5px 11px', borderRadius: radius.sm,
+                background: !categoryFilter ? 'var(--primary)' : 'var(--surface)',
+                color: !categoryFilter ? '#fff' : 'var(--text-muted)',
+                border: !categoryFilter ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+                whiteSpace: 'nowrap',
+                transition: 'all .15s',
+              }}
+            >
+              {t('match.list.filterCategoryAll')}
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                style={{
+                  fontSize: fontSize.sm, fontWeight: categoryFilter === cat ? fontWeight.bold : fontWeight.medium,
+                  padding: '5px 11px', borderRadius: radius.sm,
+                  background: categoryFilter === cat ? 'var(--primary)' : 'var(--surface)',
+                  color: categoryFilter === cat ? '#fff' : 'var(--text-muted)',
+                  border: categoryFilter === cat ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+                  whiteSpace: 'nowrap',
+                  transition: 'all .15s',
+                }}
+              >
+                {cat}
               </button>
             ))}
           </div>
@@ -153,9 +208,9 @@ export function MatchStatsPage({ navigate }: Props) {
               {/* W / D / L + matches */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                 <StatBox label={t('matchStats.matches')} value={teamStats.totalMatches} />
-                <StatBox label={t('matchStats.wins')} value={teamStats.wins} color="#2E7D32" />
-                <StatBox label={t('matchStats.draws')} value={teamStats.draws} color="#E65100" />
-                <StatBox label={t('matchStats.losses')} value={teamStats.losses} color="#C62828" />
+                <StatBox label={t('matchStats.wins')} value={teamStats.wins} color="var(--success)" />
+                <StatBox label={t('matchStats.draws')} value={teamStats.draws} color="var(--warning)" />
+                <StatBox label={t('matchStats.losses')} value={teamStats.losses} color="var(--danger)" />
               </div>
 
               {/* Goals + clean sheets */}
@@ -210,7 +265,7 @@ export function MatchStatsPage({ navigate }: Props) {
               </div>
 
               {/* Table */}
-              <div style={{ overflowX: 'auto', borderRadius: 14, background: 'var(--surface)', boxShadow: '0 1px 4px rgba(0,0,0,.07)' }}>
+              <div style={{ overflowX: 'auto', borderRadius: 14, background: 'var(--surface)', boxShadow: 'var(--shadow-sm)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid var(--border)' }}>
@@ -231,16 +286,16 @@ export function MatchStatsPage({ navigate }: Props) {
                         <td style={tdStyle}>{p.jerseyNumber}</td>
                         <td style={{ ...tdStyle, textAlign: 'left', fontWeight: 700 }}>{p.name}</td>
                         <td style={tdStyle}>{p.matchesPlayed}</td>
-                        <td style={{ ...tdStyle, fontWeight: p.goals > 0 ? 800 : 400, color: p.goals > 0 ? '#2E7D32' : 'var(--text-muted)' }}>
+                        <td style={{ ...tdStyle, fontWeight: p.goals > 0 ? 800 : 400, color: p.goals > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
                           {p.goals}
                         </td>
                         <td style={{ ...tdStyle, color: p.assists > 0 ? 'var(--text)' : 'var(--text-muted)' }}>
                           {p.assists}
                         </td>
-                        <td style={{ ...tdStyle, color: p.yellowCards > 0 ? '#E65100' : 'var(--text-muted)' }}>
+                        <td style={{ ...tdStyle, color: p.yellowCards > 0 ? 'var(--warning)' : 'var(--text-muted)' }}>
                           {p.yellowCards}
                         </td>
-                        <td style={{ ...tdStyle, color: p.redCards + p.yellowRedCards > 0 ? '#C62828' : 'var(--text-muted)' }}>
+                        <td style={{ ...tdStyle, color: p.redCards + p.yellowRedCards > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
                           {p.redCards + p.yellowRedCards}
                         </td>
                         <td style={{ ...tdStyle, color: p.avgRating > 0 ? 'var(--text)' : 'var(--text-muted)' }}>
@@ -269,8 +324,8 @@ export function MatchStatsPage({ navigate }: Props) {
                     >
                       <span style={{
                         width: 26, height: 26, borderRadius: 8,
-                        background: i === 0 ? '#FFF8E1' : 'var(--surface-var)',
-                        color: i === 0 ? '#F57F17' : 'var(--text-muted)',
+                        background: i === 0 ? 'var(--warning-light)' : 'var(--surface-var)',
+                        color: i === 0 ? 'var(--warning)' : 'var(--text-muted)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontWeight: 800, fontSize: 13,
                       }}>
@@ -282,7 +337,7 @@ export function MatchStatsPage({ navigate }: Props) {
                           #{p.jerseyNumber}
                         </span>
                       </span>
-                      <span style={{ fontWeight: 900, fontSize: 18, color: '#2E7D32' }}>
+                      <span style={{ fontWeight: 900, fontSize: 18, color: 'var(--success)' }}>
                         {p.goals}
                       </span>
                       {p.assists > 0 && (

@@ -62,8 +62,8 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>👕 {t('match.create.startingLineup')}</h3>
           <span style={{
             fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8,
-            background: starters.length === 11 ? '#E8F5E9' : '#FFF3E0',
-            color: starters.length === 11 ? '#2E7D32' : '#E65100',
+            background: starters.length === 11 ? 'var(--success-light)' : 'var(--warning-light)',
+            color: starters.length === 11 ? 'var(--success)' : 'var(--warning)',
           }}>
             {starters.length}/11
           </span>
@@ -87,11 +87,11 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
             {match.status !== 'finished' && (
               <div style={{ display: 'flex', gap: 4 }}>
                 <button onClick={() => toggleStarter(p.playerId)}
-                  style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, background: '#FFF3E0', color: '#E65100', border: 'none', cursor: 'pointer' }}>
+                  style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, background: 'var(--warning-light)', color: 'var(--warning)', border: 'none', cursor: 'pointer' }}>
                   → {t('match.lineup.toBench')}
                 </button>
                 <button onClick={() => handleRemove(p.playerId)}
-                  style={{ fontSize: 13, fontWeight: 700, padding: '4px 8px', borderRadius: 6, background: '#FFEBEE', color: '#C62828', border: 'none', cursor: 'pointer' }}>
+                  style={{ fontSize: 13, fontWeight: 700, padding: '4px 8px', borderRadius: 6, background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', cursor: 'pointer' }}>
                   ×
                 </button>
               </div>
@@ -125,13 +125,13 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
                   disabled={starters.length >= 11}
                   style={{
                     fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                    background: starters.length >= 11 ? 'var(--surface-var)' : '#E8F5E9',
-                    color: starters.length >= 11 ? 'var(--text-muted)' : '#2E7D32',
+                    background: starters.length >= 11 ? 'var(--surface-var)' : 'var(--success-light)',
+                    color: starters.length >= 11 ? 'var(--text-muted)' : 'var(--success)',
                   }}>
                   → {t('match.lineup.toStart')}
                 </button>
                 <button onClick={() => handleRemove(p.playerId)}
-                  style={{ fontSize: 13, fontWeight: 700, padding: '4px 8px', borderRadius: 6, background: '#FFEBEE', color: '#C62828', border: 'none', cursor: 'pointer' }}>
+                  style={{ fontSize: 13, fontWeight: 700, padding: '4px 8px', borderRadius: 6, background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', cursor: 'pointer' }}>
                   ×
                 </button>
               </div>
@@ -267,8 +267,8 @@ export function LineupTab({ match }: { match: SeasonMatch }) {
               {c.type === 'yellow' ? '🟨' : c.type === 'red' ? '🟥' : '🟨🟥'}
             </span>
           ))}
-          {subbedOff && <span style={{ fontSize: 11, color: '#C62828', fontWeight: 700 }}>↓{offMin}'</span>}
-          {subbedOn && <span style={{ fontSize: 11, color: '#2E7D32', fontWeight: 700 }}>↑{onMin}'</span>}
+          {subbedOff && <span style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 700 }}>↓{offMin}'</span>}
+          {subbedOn && <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700 }}>↑{onMin}'</span>}
           {isBench && !subbedOn && (
             <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--surface-var)', padding: '2px 6px', borderRadius: 6 }}>
               #{p.substituteOrder}
@@ -317,9 +317,9 @@ export function LineupTab({ match }: { match: SeasonMatch }) {
             return (
               <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
                 <span style={{ fontWeight: 700, color: 'var(--text-muted)', minWidth: 28 }}>{s.minute}'</span>
-                <span style={{ color: '#C62828', fontWeight: 600 }}>↓ {out?.name ?? '?'}</span>
+                <span style={{ color: 'var(--danger)', fontWeight: 600 }}>↓ {out?.name ?? '?'}</span>
                 <span style={{ color: 'var(--text-muted)' }}>→</span>
-                <span style={{ color: '#2E7D32', fontWeight: 600 }}>↑ {inn?.name ?? '?'}</span>
+                <span style={{ color: 'var(--success)', fontWeight: 600 }}>↑ {inn?.name ?? '?'}</span>
               </div>
             );
           })}

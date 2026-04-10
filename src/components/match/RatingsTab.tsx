@@ -44,8 +44,8 @@ export function RatingsTab({ match }: { match: SeasonMatch }) {
     <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       {match.status !== 'finished' && (
         <div style={{
-          background: '#FFF3E0', borderRadius: 12, padding: '10px 14px',
-          fontSize: 13, color: '#E65100', fontWeight: 600,
+          background: 'var(--warning-light)', borderRadius: 12, padding: '10px 14px',
+          fontSize: 13, color: 'var(--warning)', fontWeight: 600,
         }}>
           💡 {t('match.ratings.availableAfter')}
         </div>
@@ -96,7 +96,7 @@ export function RatingsTab({ match }: { match: SeasonMatch }) {
         <button
           onClick={handleSave}
           style={{
-            background: saved ? '#2E7D32' : 'var(--primary)', color: '#fff',
+            background: saved ? 'var(--success)' : 'var(--primary)', color: '#fff',
             fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 10,
             alignSelf: 'flex-start', transition: 'background .2s',
           }}

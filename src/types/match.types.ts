@@ -2,6 +2,18 @@
 
 export type SeasonMatchStatus = 'planned' | 'live' | 'finished';
 
+// ─── Match format (počet hráčů v poli + brankář) ─────────────────────────────
+// Typické formáty mládežnického fotbalu v ČR. Číslo = hráči v poli + brankář.
+export type MatchFormat = '3+1' | '4+1' | '5+1' | '7+1' | '8+1' | '11+1';
+
+export const MATCH_FORMATS: MatchFormat[] = ['3+1', '4+1', '5+1', '7+1', '8+1', '11+1'];
+
+/** Počet hráčů v základní sestavě pro daný formát (včetně brankáře). */
+export function formatToStarterCount(format: MatchFormat): number {
+  const [field, keeper] = format.split('+').map(Number);
+  return field + keeper;
+}
+
 // ─── Lineup ───────────────────────────────────────────────────────────────────
 
 export interface MatchLineupPlayer {
@@ -70,6 +82,8 @@ export interface SeasonMatch {
   durationMinutes: number;   // celková délka zápasu v minutách (periods × periodDurationMinutes)
   periods: number;            // počet period (1–4, default 2 = poločasy)
   periodDurationMinutes: number; // délka jedné periody v minutách
+  matchFormat?: MatchFormat;  // "4+1", "7+1", ... určuje počet hráčů v základní sestavě
+  ageCategory?: string;       // věková kategorie (U6–U19), volitelná
 
   currentPeriod: number;      // aktuální perioda (1-based, 0 = nezačal)
   status: SeasonMatchStatus;
@@ -158,6 +172,8 @@ export interface CreateSeasonMatchInput {
   durationMinutes: number;
   periods: number;
   periodDurationMinutes: number;
+  matchFormat?: MatchFormat;
+  ageCategory?: string;
   lineup: MatchLineupPlayer[];
   substitutionSettings?: SubstitutionSettings;
 }

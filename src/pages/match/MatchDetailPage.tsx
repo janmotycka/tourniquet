@@ -8,6 +8,7 @@ import { LineupTab } from '../../components/match/LineupTab';
 import { RatingsTab } from '../../components/match/RatingsTab';
 import { getMatchPublicUrl, generateMatchQRCodeDataUrl } from '../../utils/qr-code';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
+import { PageHeader } from '../../components/ui';
 
 interface Props { matchId: string; navigate: (p: Page) => void; }
 
@@ -110,49 +111,38 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{
-        padding: '14px 16px 10px', background: 'var(--surface)',
-        boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+        background: 'var(--surface)',
+        boxShadow: 'var(--shadow-sm)',
         position: 'sticky', top: 0, zIndex: 10,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <button
-            onClick={() => navigate({ name: 'match-list' })}
-            style={{
-              width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, color: 'var(--text-muted)', flexShrink: 0,
-            }}
-          >
-            ←
-          </button>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 800, fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {currentMatch.clubName || t('match.detail.us')} {t('match.detail.vs')} {currentMatch.opponent}
+        <PageHeader
+          title={`${currentMatch.clubName || t('match.detail.us')} ${t('match.detail.vs')} ${currentMatch.opponent}`}
+          subtitle={`${formatDate(currentMatch.date)} · ${currentMatch.kickoffTime}${isLive ? ` ● ${t('match.live')}` : ''}`}
+          onBack={() => navigate({ name: 'match-list' })}
+          action={
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={isPublic ? () => setShowShare(s => !s) : handleTogglePublic}
+                style={{
+                  background: isPublic ? 'var(--primary-light)' : 'var(--surface-var)',
+                  borderRadius: 10, padding: '7px 10px', fontWeight: 700, fontSize: 12,
+                  color: isPublic ? 'var(--primary)' : 'var(--text-muted)', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+                title={t('matchShare.shareTitle')}
+              >
+                <span style={{ fontSize: 14 }}>📡</span> {t('matchShare.shareBtn')}
+              </button>
+              <div style={{
+                fontWeight: 900, fontSize: 20, color: isLive ? 'var(--primary)' : 'var(--text)',
+                letterSpacing: 1, flexShrink: 0,
+              }}>
+                {currentMatch.isHome ? currentMatch.homeScore : currentMatch.awayScore}:{currentMatch.isHome ? currentMatch.awayScore : currentMatch.homeScore}
+              </div>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {formatDate(currentMatch.date)} · {currentMatch.kickoffTime}
-              {isLive && <span style={{ color: '#C62828', fontWeight: 700, marginLeft: 6 }}>● {t('match.live')}</span>}
-            </div>
-          </div>
-          <button
-            onClick={isPublic ? () => setShowShare(s => !s) : handleTogglePublic}
-            style={{
-              background: isPublic ? 'var(--primary-light)' : 'var(--surface-var)',
-              borderRadius: 10, padding: '7px 10px', fontWeight: 700, fontSize: 12,
-              color: isPublic ? 'var(--primary)' : 'var(--text-muted)', flexShrink: 0,
-              display: 'flex', alignItems: 'center', gap: 4,
-            }}
-            title={t('matchShare.shareTitle')}
-          >
-            <span style={{ fontSize: 14 }}>📡</span> {t('matchShare.shareBtn')}
-          </button>
-          <div style={{
-            fontWeight: 900, fontSize: 20, color: isLive ? 'var(--primary)' : 'var(--text)',
-            letterSpacing: 1, flexShrink: 0,
-          }}>
-            {currentMatch.isHome ? currentMatch.homeScore : currentMatch.awayScore}:{currentMatch.isHome ? currentMatch.awayScore : currentMatch.homeScore}
-          </div>
-        </div>
+          }
+        />
+        <div style={{ padding: '0 16px 10px' }}>
 
         {/* Share panel */}
         {isPublic && showShare && (
@@ -164,7 +154,7 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
               <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--primary)' }}>📡 {t('matchShare.liveSharing')}</span>
               <button
                 onClick={handleTogglePublic}
-                style={{ fontSize: 11, fontWeight: 600, color: '#C62828', background: 'none', border: 'none', cursor: 'pointer' }}
+                style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}
               >
                 {t('matchShare.stopSharing')}
               </button>
@@ -207,6 +197,7 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
             </button>
           ))}
         </div>
+        </div>
       </div>
 
       {/* Content */}
@@ -221,5 +212,5 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
 
 const shareBtn: React.CSSProperties = {
   padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-  background: '#fff', color: 'var(--primary)', border: '1px solid #BBDEFB', cursor: 'pointer',
+  background: 'var(--surface)', color: 'var(--primary)', border: '1px solid var(--primary-light)', cursor: 'pointer',
 };

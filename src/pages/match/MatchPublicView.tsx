@@ -647,9 +647,9 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
                   }}>
                     <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 28 }}>{g.minute}'</span>
                     <span style={{ fontSize: 15 }}>⚽</span>
-                    <span style={{ fontWeight: 600, flex: 1, color: isOpp ? '#C62828' : '#2E7D32' }}>
+                    <span style={{ fontWeight: 600, flex: 1, color: isOpp ? 'var(--danger)' : 'var(--success)' }}>
                       {isOpp ? t('matchPublic.opponentGoal') : playerName(g.scorerId)}
-                      {isOG && <span style={{ color: '#C62828', marginLeft: 4, fontSize: 11 }}>({t('matchPublic.ownGoal')})</span>}
+                      {isOG && <span style={{ color: 'var(--danger)', marginLeft: 4, fontSize: 11 }}>({t('matchPublic.ownGoal')})</span>}
                     </span>
                     {g.assistId && (
                       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -691,8 +691,8 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
                 }}>
                   <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 28 }}>{s.minute}'</span>
                   <span style={{ fontSize: 15 }}>🔄</span>
-                  <span style={{ color: '#2E7D32', fontWeight: 600 }}>↑ {playerName(s.playerInId)}</span>
-                  <span style={{ color: '#C62828', fontWeight: 600 }}>↓ {playerName(s.playerOutId)}</span>
+                  <span style={{ color: 'var(--success)', fontWeight: 600 }}>↑ {playerName(s.playerInId)}</span>
+                  <span style={{ color: 'var(--danger)', fontWeight: 600 }}>↓ {playerName(s.playerOutId)}</span>
                 </div>
               );
             });
@@ -724,7 +724,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
 
         {/* ── VEO recording link ── */}
         {match.veoUrl && (
-          <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
             <a
               href={match.veoUrl}
               target="_blank"
@@ -859,7 +859,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
 
 function EventSection({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
       <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: 15 }}>{icon}</span>
         <span style={{ fontWeight: 800, fontSize: 14 }}>{title}</span>
