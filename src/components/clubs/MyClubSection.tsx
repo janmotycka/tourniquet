@@ -6,6 +6,7 @@ import { useClubsStore } from '../../store/clubs.store';
 import { PlayerRosterEditor } from '../PlayerRosterEditor';
 import { colorSwatch } from '../../utils/team-colors';
 import { ContactRow } from './ContactRow';
+import { spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
 // Lazy: xlsx (~250 kB) se načte až v okamžiku, kdy uživatel klikne na Import
 const ImportPlayersModal = lazy(() =>
@@ -57,78 +58,81 @@ export function MyClubSection({
   // Celkový počet aktivních hráčů
   const totalPlayers = (club.players ?? []).filter(p => p.active).length;
 
+  /** Action icon button style */
+  const actionBtn = (bg: string, fg: string): React.CSSProperties => ({
+    width: 36, height: 36, borderRadius: radius.md,
+    background: bg, color: fg, fontSize: fontSize.lg - 2,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    border: 'none', cursor: 'pointer', flexShrink: 0,
+  });
+
   return (
     <div style={{
-      background: 'var(--surface)', borderRadius: 18, padding: '16px',
+      background: 'var(--surface)', borderRadius: radius.xl + 4,
+      padding: spacing.lg,
       boxShadow: 'var(--shadow-sm)',
-      border: '2px solid var(--primary)',
+      border: `2px solid ${club.color}`,
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
         <div style={{
-          width: 52, height: 52, borderRadius: 14, overflow: 'hidden', flexShrink: 0,
+          width: 52, height: 52, borderRadius: radius.xl, overflow: 'hidden', flexShrink: 0,
           border: '2px solid var(--border)',
           background: club.logoBase64 ? 'transparent' : club.color,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {club.logoBase64
             ? <img src={club.logoBase64} alt={club.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <span style={{ fontSize: 22 }}>🏟</span>
+            : <span style={{ fontSize: fontSize.xl }}>&#127967;</span>
           }
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontWeight: 800, fontSize: 17, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing.xs + 2 }}>
+            <span style={{
+              fontWeight: fontWeight.extrabold, fontSize: fontSize.md + 2,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
               {club.name}
             </span>
             <span style={{
-              background: 'var(--primary)', color: '#fff', fontSize: 10, fontWeight: 700,
-              padding: '2px 8px', borderRadius: 6, flexShrink: 0,
+              background: club.color, color: '#fff',
+              fontSize: fontSize.xs - 1, fontWeight: fontWeight.bold,
+              padding: '2px 8px', borderRadius: radius.sm - 2, flexShrink: 0,
+              letterSpacing: 0.3,
             }}>
               {t('clubs.myClubBadge')}
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm, marginTop: 3 }}>
             <div style={colorSwatch(club.color, 10)} />
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: fontSize.sm, color: 'var(--text-muted)' }}>
               {totalPlayers} {t('clubs.playersLabel')}
             </span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: spacing.xs + 2, flexShrink: 0 }}>
           <button
             onClick={() => setImportOpen(true)}
             title={t('clubs.import.title')}
-            style={{
-              width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)',
-              color: 'var(--primary)', fontSize: 16,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >📥</button>
+            style={actionBtn('var(--primary-light)', 'var(--primary)')}
+          >&#128229;</button>
           <button
             onClick={onEditClub}
-            style={{
-              width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)',
-              color: 'var(--primary)', fontSize: 16,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >✏️</button>
+            style={actionBtn('var(--primary-light)', 'var(--primary)')}
+          >&#9998;&#65039;</button>
           <button
             onClick={onDeleteClub}
-            style={{
-              width: 36, height: 36, borderRadius: 10, background: 'var(--danger-light)',
-              color: 'var(--danger)', fontSize: 16,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >🗑</button>
+            style={actionBtn('var(--danger-light)', 'var(--danger)')}
+          >&#128465;</button>
         </div>
       </div>
 
-      {/* Category tabs — scrollovatelné horizontálně, ale bez nutnosti scrollovat */}
+      {/* Category tabs */}
       {club.ageCategories.length > 0 && (
         <div style={{
-          display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 14,
-          paddingBottom: 8, borderBottom: '1px solid var(--border)',
+          display: 'flex', flexWrap: 'wrap', gap: spacing.xs,
+          marginTop: spacing.lg - 2, paddingBottom: spacing.sm,
+          borderBottom: '1px solid var(--border)',
         }}>
           {club.ageCategories.map(cat => {
             const isActive = activeTab === cat;
@@ -138,8 +142,10 @@ export function MyClubSection({
                 key={cat}
                 onClick={() => setActiveTab(cat)}
                 style={{
-                  padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                  background: isActive ? 'var(--primary)' : 'var(--surface-var)',
+                  padding: `${spacing.xs + 2}px ${spacing.md}px`,
+                  borderRadius: radius.sm, fontSize: fontSize.sm + 1,
+                  fontWeight: fontWeight.medium,
+                  background: isActive ? club.color : 'var(--surface-var)',
                   color: isActive ? '#fff' : 'var(--text-muted)',
                   border: 'none', cursor: 'pointer',
                   transition: 'all .15s',
@@ -154,10 +160,11 @@ export function MyClubSection({
 
       {/* Player roster for active tab */}
       {activeTab && club.ageCategories.includes(activeTab) && (
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: spacing.sm }}>
           <PlayerRosterEditor
             players={playersByCategory[activeTab] ?? []}
             ageCategory={activeTab}
+            clubColor={club.color}
             onAdd={(p) => addPlayer(club.id, p)}
             onRemove={(pid) => removePlayer(club.id, pid)}
             onUpdate={(pid, patch) => updatePlayer(club.id, pid, patch)}
@@ -170,17 +177,23 @@ export function MyClubSection({
       {/* No categories hint */}
       {club.ageCategories.length === 0 && (
         <div style={{
-          marginTop: 12, padding: '14px', borderRadius: 10,
-          background: 'var(--primary-light)', textAlign: 'center',
+          marginTop: spacing.md, padding: spacing.lg,
+          borderRadius: radius.lg, background: 'var(--primary-light)',
+          textAlign: 'center',
         }}>
-          <div style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>
+          <div style={{
+            fontSize: fontSize.sm + 1, color: 'var(--primary)',
+            fontWeight: fontWeight.medium,
+          }}>
             {t('clubs.noCategoriesHint')}
           </div>
           <button
             onClick={onEditClub}
             style={{
-              marginTop: 8, padding: '8px 16px', borderRadius: 8,
-              background: 'var(--primary)', color: '#fff', fontWeight: 600, fontSize: 13,
+              marginTop: spacing.sm, padding: `${spacing.sm}px ${spacing.lg}px`,
+              borderRadius: radius.sm, border: 'none', cursor: 'pointer',
+              background: 'var(--primary)', color: '#fff',
+              fontWeight: fontWeight.medium, fontSize: fontSize.sm + 1,
             }}
           >
             {t('clubs.setupCategories')}
@@ -190,8 +203,14 @@ export function MyClubSection({
 
       {/* Contacts section */}
       {contacts.length > 0 && (
-        <div style={{ borderTop: '1px solid var(--border)', marginTop: 12, paddingTop: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>
+        <div style={{
+          borderTop: '1px solid var(--border)',
+          marginTop: spacing.md, paddingTop: spacing.sm,
+        }}>
+          <div style={{
+            fontSize: fontSize.sm, fontWeight: fontWeight.medium,
+            color: 'var(--text-muted)', marginBottom: spacing.xs,
+          }}>
             {t('clubs.contacts')}
           </div>
           {contacts.map(contact => (
@@ -203,13 +222,14 @@ export function MyClubSection({
       <button
         onClick={onAddContact}
         style={{
-          marginTop: contacts.length > 0 ? 4 : 12,
-          padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+          marginTop: contacts.length > 0 ? spacing.xs : spacing.md,
+          padding: `${spacing.xs}px 10px`, borderRadius: radius.sm,
+          fontSize: fontSize.sm, fontWeight: fontWeight.medium,
           background: 'var(--primary-light)', color: 'var(--primary)',
           border: 'none', cursor: 'pointer',
         }}
       >
-        + 👤
+        + &#128100;
       </button>
 
       {/* Import modal */}

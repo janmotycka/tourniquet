@@ -283,7 +283,11 @@ function useSubstitutionAlert(match: SeasonMatch, elapsed: number): {
   const bench = match.lineup.filter(p => !p.isStarter).sort((a, b) => a.substituteOrder - b.substituteOrder);
   const suggestedIn = bench.slice(0, playersAtOnce);
   const onField = match.lineup.filter(p => p.isStarter);
-  const suggestedOut = onField.slice(0, playersAtOnce);
+  // Sort by playing time descending — suggest longest-playing players first
+  const playingTime = computePlayingTime(match, elapsedMinutes);
+  const suggestedOut = [...onField]
+    .sort((a, b) => (playingTime.get(b.playerId) ?? 0) - (playingTime.get(a.playerId) ?? 0))
+    .slice(0, playersAtOnce);
 
   return { alertActive, nextAlertMinute, suggestedIn, suggestedOut };
 }
@@ -650,6 +654,15 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
         {/* Timer — compact inline layout for live */}
         {match.status === 'live' && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
+            {/* LIVE / PAUSED badge */}
+            <span style={{
+              padding: '2px 10px', borderRadius: 6, fontSize: 10, fontWeight: 800, letterSpacing: 1,
+              background: match.pausedAt ? 'rgba(255,152,0,.3)' : 'rgba(76,175,80,.3)',
+              color: match.pausedAt ? '#FFD54F' : '#A5D6A7',
+              animation: match.pausedAt ? undefined : 'pulse 2s infinite',
+            }}>
+              {match.pausedAt ? '⏸ PAUSED' : 'LIVE'}
+            </span>
             {periods > 1 && (
               <span style={{
                 padding: '2px 10px', borderRadius: 6,
@@ -715,11 +728,6 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             <div style={{ height: 3, background: 'rgba(255,255,255,.2)', borderRadius: 3, marginTop: 12, overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${periodProgress * 100}%`, background: isPeriodOvertime ? '#FFD54F' : '#fff', borderRadius: 3, transition: 'width .5s' }} />
             </div>
-            {match.pausedAt && (
-              <div style={{ textAlign: 'center', marginTop: 6, fontSize: 12, color: 'rgba(255,255,255,.7)', fontWeight: 600 }}>
-                ⏸ {t('match.detail.paused')}
-              </div>
-            )}
           </>
         )}
       </div>
@@ -844,7 +852,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                   background: '#FFF9C4', color: '#F9A825',
                 }}
               >
-                🟨 {t('match.detail.cardBtn')}
+                {t('match.detail.cardBtn')}
               </button>
             )}
             {showSubs && (
@@ -855,7 +863,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                   background: 'var(--primary-light)', color: 'var(--primary)',
                 }}
               >
-                🔄 {t('match.detail.subBtn')}
+                {t('match.detail.subBtn')}
               </button>
             )}
 
@@ -911,13 +919,15 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
 
           {/* ── Halftime break / Pause state — clear, large buttons ── */}
           {(() => {
-            const isLastPeriod = currentPeriod >= periods;
-            const canGoNextPeriod = periods > 1 && !isLastPeriod;
             const isPaused = !!match.pausedAt;
             if (!isPaused) return null;
 
-            // Halftime break
-            if ((canGoNextPeriod || currentPeriod > 1) && currentPeriod > 1 && !isPeriodOvertime && periodElapsed <= 0) {
+            // Halftime break — detect when period just transitioned (periodElapsed near zero or negative).
+            // Threshold accounts for overtime spillover from the previous period (coach pressed
+            // halftime after playing into overtime, so elapsed may exceed the period boundary).
+            // 120s covers up to 2 minutes of overtime before halftime was pressed.
+            const halftimeThreshold = Math.min(120, periodSeconds * 0.1);
+            if (currentPeriod > 1 && periodElapsed <= halftimeThreshold) {
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div style={{
@@ -1295,10 +1305,9 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             <span style={{ fontSize: 15 }}>🎥</span>
             <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{t('veo.title')}</span>
             <button
-              onClick={() => {
-                if (confirm(t('veo.removeConfirm'))) {
-                  updateMatch(match.id, { veoUrl: undefined });
-                }
+              onClick={async () => {
+                const ok = await ask({ title: t('veo.removeConfirm'), message: '' });
+                if (ok) updateMatch(match.id, { veoUrl: undefined });
               }}
               style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
             >

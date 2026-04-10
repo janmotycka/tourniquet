@@ -3,6 +3,7 @@ import type { PublicSeasonMatch, MatchGoal, MatchCard, MatchSubstitution, MatchL
 import { subscribeToPublicMatch } from '../../services/match.firebase';
 import { useI18n } from '../../i18n';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
+import { spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
 // ─── Wake Lock hook ─────────────────────────────────────────────────────────
 
@@ -104,7 +105,7 @@ function GoalCelebration({ isOurGoal, scorerName, minute, ts }: {
   return (
     <div key={ts} style={{
       position: 'fixed', inset: 0, zIndex: 200,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
       background: isOurGoal
         ? 'linear-gradient(135deg, rgba(46,125,50,.92) 0%, rgba(27,94,32,.92) 100%)'
         : 'linear-gradient(135deg, rgba(198,40,40,.85) 0%, rgba(183,28,28,.85) 100%)',
@@ -116,11 +117,11 @@ function GoalCelebration({ isOurGoal, scorerName, minute, ts }: {
         {t('matchPublic.goal')}
       </div>
       {scorerName && (
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,.9)', marginTop: 4 }}>
+        <div style={{ fontSize: 16, fontWeight: fontWeight.bold, color: 'rgba(255,255,255,.9)', marginTop: spacing.xs }}>
           {scorerName}
         </div>
       )}
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>
+      <div style={{ fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: 'rgba(255,255,255,.6)', marginTop: 2 }}>
         {minute}'
       </div>
     </div>
@@ -134,31 +135,69 @@ function FullTimeCelebration({ match, ts }: { match: PublicSeasonMatch; ts: numb
   return (
     <div key={ts} style={{
       position: 'fixed', inset: 0, zIndex: 200,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: spacing.md,
       background: 'linear-gradient(135deg, rgba(27,94,32,.94) 0%, rgba(46,125,50,.94) 100%)',
       animation: `matchFinishCelebration ${FINISH_CELEBRATION_DURATION}ms ease-out forwards`,
       pointerEvents: 'none',
     }}>
-      <div style={{ fontSize: 14, fontWeight: 800, color: '#A5D6A7', letterSpacing: 3, textTransform: 'uppercase' }}>
+      <div style={{ fontSize: fontSize.base, fontWeight: fontWeight.extrabold, color: '#A5D6A7', letterSpacing: 3, textTransform: 'uppercase' }}>
         🏁 {t('matchPublic.finished')}
       </div>
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 16, fontSize: 56, fontWeight: 900, color: '#fff',
+        display: 'flex', alignItems: 'center', gap: spacing.lg, fontSize: 56, fontWeight: 900, color: '#fff',
         letterSpacing: 3,
       }}>
         <span>{match.homeScore}</span>
         <span style={{ fontSize: 32, opacity: 0.5 }}>:</span>
         <span>{match.awayScore}</span>
       </div>
-      <div style={{ fontSize: 16, fontWeight: 700, color: 'rgba(255,255,255,.85)' }}>
+      <div style={{ fontSize: 16, fontWeight: fontWeight.bold, color: 'rgba(255,255,255,.85)' }}>
         {match.isHome
           ? `${match.clubName || t('matchPublic.us')} vs ${match.opponent}`
           : `${match.opponent} vs ${match.clubName || t('matchPublic.us')}`}
       </div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#81C784', letterSpacing: 2, marginTop: 4 }}>
+      <div style={{ fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#81C784', letterSpacing: 2, marginTop: spacing.xs }}>
         ✓ {t('matchPublic.fullTime')}
       </div>
     </div>
+  );
+}
+
+// ─── W/D/L result badge ────────────────────────────────────────────────────
+
+function ResultBadge({ match, t: tFn }: { match: PublicSeasonMatch; t: (key: string) => string }) {
+  const ourScore = match.isHome ? match.homeScore : match.awayScore;
+  const theirScore = match.isHome ? match.awayScore : match.homeScore;
+
+  let label: string;
+  let bg: string;
+  let color: string;
+
+  if (ourScore > theirScore) {
+    label = tFn('matchPublic.win');
+    bg = 'var(--success)';
+    color = '#fff';
+  } else if (ourScore === theirScore) {
+    label = tFn('matchPublic.draw');
+    bg = 'var(--warning)';
+    color = '#fff';
+  } else {
+    label = tFn('matchPublic.loss');
+    bg = 'var(--danger)';
+    color = '#fff';
+  }
+
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      width: 28, height: 28, borderRadius: radius.sm,
+      background: bg, color,
+      fontWeight: fontWeight.extrabold, fontSize: fontSize.sm,
+      letterSpacing: 0.5,
+      boxShadow: 'var(--shadow-sm)',
+    }}>
+      {label}
+    </span>
   );
 }
 
@@ -295,19 +334,19 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
 
   if (loading) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', flexDirection: 'column', gap: spacing.lg }}>
         <div style={{ fontSize: 48 }}>⚽</div>
-        <p style={{ color: 'var(--text-muted)', fontSize: 15 }}>{t('app.loading')}</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: fontSize.md }}>{t('app.loading')}</p>
       </div>
     );
   }
 
   if (!match) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', flexDirection: 'column', gap: 16 }}>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh', flexDirection: 'column', gap: spacing.lg }}>
         <div style={{ fontSize: 48 }}>❓</div>
-        <div style={{ fontWeight: 700, fontSize: 17 }}>{t('matchPublic.notFound')}</div>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', maxWidth: 280 }}>
+        <div style={{ fontWeight: fontWeight.bold, fontSize: 17 }}>{t('matchPublic.notFound')}</div>
+        <p style={{ color: 'var(--text-muted)', fontSize: fontSize.base, textAlign: 'center', maxWidth: 280 }}>
           {t('matchPublic.notFoundDesc')}
         </p>
       </div>
@@ -353,6 +392,15 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
   const starters = match.lineup.filter(p => p.isStarter);
   const bench = match.lineup.filter(p => !p.isStarter);
 
+  // Header background: gradient based on status
+  const headerBg = isLive
+    ? 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)'
+    : isFinished
+      ? 'linear-gradient(135deg, #263238 0%, #37474F 100%)'
+      : 'var(--surface)';
+
+  const headerTextColor = (isLive || isFinished) ? '#fff' : 'var(--text)';
+
   return (
     <div style={{
       minHeight: '100dvh',
@@ -362,7 +410,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
       width: '100%',
       maxWidth: isDesktop ? 560 : undefined,
       alignSelf: isDesktop ? 'center' : undefined,
-      boxShadow: isDesktop ? '0 0 40px rgba(0,0,0,.08)' : undefined,
+      boxShadow: isDesktop ? 'var(--shadow-lg)' : undefined,
     }}>
       <style>{`
         @keyframes matchGoalCelebration {
@@ -390,6 +438,10 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           0%, 100% { opacity: 1; }
           50% { opacity: .4; }
         }
+        @keyframes liveBadgePulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255,82,82,.4); }
+          50% { box-shadow: 0 0 0 6px rgba(255,82,82,0); }
+        }
         @keyframes scoreChange {
           0% { transform: scale(1); }
           30% { transform: scale(1.15); }
@@ -413,20 +465,16 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
 
       {/* ── Header ── */}
       <div style={{
-        background: isLive
-          ? 'linear-gradient(135deg, var(--primary), #0D47A1)'
-          : isFinished
-            ? 'linear-gradient(135deg, #1B5E20, #2E7D32)'
-            : 'var(--surface)',
-        color: (isLive || isFinished) ? '#fff' : 'var(--text)',
-        padding: '20px 16px 16px',
+        background: headerBg,
+        color: headerTextColor,
+        padding: `${spacing.xl}px ${spacing.lg}px ${spacing.lg}px`,
         textAlign: 'center',
         position: 'relative',
       }}>
         {/* Back button */}
         <button
           type="button"
-          aria-label={t('common.back') || 'Zpět'}
+          aria-label={t('common.back') || 'Back'}
           onClick={() => {
             window.location.hash = '';
             window.location.reload();
@@ -435,15 +483,17 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
             (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,.35)';
           }}
           onMouseLeave={e => {
-            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,.2)';
+            (e.currentTarget as HTMLButtonElement).style.background = (isLive || isFinished)
+              ? 'rgba(255,255,255,.15)' : 'var(--surface-var)';
           }}
           style={{
-            position: 'absolute', left: 12, top: 12, zIndex: 5,
-            width: 40, height: 40,
+            position: 'absolute', left: spacing.md, top: spacing.md, zIndex: 5,
+            width: 36, height: 36,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(255,255,255,.2)', borderRadius: 12,
-            fontWeight: 700, fontSize: 18, lineHeight: 1,
-            color: (isLive || isFinished) ? '#fff' : 'var(--text-muted)',
+            background: (isLive || isFinished) ? 'rgba(255,255,255,.15)' : 'var(--surface-var)',
+            borderRadius: radius.md,
+            fontWeight: fontWeight.bold, fontSize: fontSize.lg, lineHeight: 1,
+            color: headerTextColor,
             border: 'none', cursor: 'pointer', backdropFilter: 'blur(4px)',
             transition: 'background .15s',
           }}
@@ -467,13 +517,14 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               }
             }}
             style={{
-              position: 'absolute', right: 12, top: 14,
-              background: notificationsOn ? 'rgba(255,255,255,.3)' : 'rgba(255,255,255,.15)',
-              borderRadius: 10, padding: '6px 10px',
-              fontWeight: 700, fontSize: 14, color: '#fff',
-              border: notificationsOn ? '1.5px solid rgba(255,255,255,.5)' : '1.5px solid transparent',
+              position: 'absolute', right: spacing.md, top: spacing.md,
+              background: notificationsOn ? 'rgba(255,255,255,.25)' : 'rgba(255,255,255,.12)',
+              borderRadius: radius.md, padding: `${spacing.xs + 2}px ${spacing.sm + 2}px`,
+              fontWeight: fontWeight.bold, fontSize: fontSize.base, color: '#fff',
+              border: notificationsOn ? '1.5px solid rgba(255,255,255,.4)' : '1.5px solid transparent',
               cursor: 'pointer', backdropFilter: 'blur(4px)',
-              display: 'flex', alignItems: 'center', gap: 4,
+              display: 'flex', alignItems: 'center', gap: spacing.xs,
+              transition: 'all .15s',
             }}
             title={t(notificationsOn ? 'matchPublic.notifOff' : 'matchPublic.notifOn')}
           >
@@ -481,90 +532,129 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           </button>
         )}
 
-        {/* Competition + date */}
-        <div style={{ fontSize: 11, fontWeight: 600, opacity: 0.7, marginBottom: 10, letterSpacing: 0.5 }}>
+        {/* Competition + date bar */}
+        <div style={{
+          fontSize: fontSize.xs, fontWeight: fontWeight.medium,
+          opacity: 0.7, marginBottom: spacing.md, letterSpacing: 0.5,
+        }}>
           {match.competition && <span>{match.competition} · </span>}
           {formatDate(match.date)} · {match.kickoffTime}
         </div>
 
-        {/* Score — TV style: Team  Score : Score  Team */}
+        {/* ── Score display ── */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           {/* Home team */}
-          <div style={{ flex: 1, textAlign: 'right', paddingRight: 12, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ flex: 1, textAlign: 'right', paddingRight: spacing.md, minWidth: 0 }}>
+            <div style={{
+              fontSize: fontSize.base, fontWeight: fontWeight.extrabold,
+              lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
               {match.isHome ? (match.clubName || t('matchPublic.us')) : match.opponent}
             </div>
-            <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.6, marginTop: 2 }}>
+            <div style={{ fontSize: 10, fontWeight: fontWeight.medium, opacity: 0.55, marginTop: 2 }}>
               {t('matchPublic.home')}
             </div>
           </div>
 
-          {/* Score */}
+          {/* Score box */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            fontSize: 48, fontWeight: 900, letterSpacing: 2,
-            minWidth: 120, justifyContent: 'center', flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: spacing.sm,
+            background: (isLive || isFinished) ? 'rgba(0,0,0,.2)' : 'var(--surface-var)',
+            borderRadius: radius.lg, padding: `${spacing.sm}px ${spacing.xl}px`,
+            minWidth: 130, justifyContent: 'center', flexShrink: 0,
           }}>
-            <span key={`h-${match.homeScore}`} style={{ animation: 'scoreChange .4s ease-out' }}>{match.homeScore}</span>
-            <span style={{ fontSize: 24, opacity: 0.4 }}>:</span>
-            <span key={`a-${match.awayScore}`} style={{ animation: 'scoreChange .4s ease-out' }}>{match.awayScore}</span>
+            <span
+              key={`h-${match.homeScore}`}
+              style={{
+                fontSize: 48, fontWeight: 900, letterSpacing: 2,
+                animation: 'scoreChange .4s ease-out',
+              }}
+            >
+              {match.homeScore}
+            </span>
+            <span style={{ fontSize: 28, opacity: 0.35, fontWeight: fontWeight.bold }}>:</span>
+            <span
+              key={`a-${match.awayScore}`}
+              style={{
+                fontSize: 48, fontWeight: 900, letterSpacing: 2,
+                animation: 'scoreChange .4s ease-out',
+              }}
+            >
+              {match.awayScore}
+            </span>
           </div>
 
           {/* Away team */}
-          <div style={{ flex: 1, textAlign: 'left', paddingLeft: 12, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ flex: 1, textAlign: 'left', paddingLeft: spacing.md, minWidth: 0 }}>
+            <div style={{
+              fontSize: fontSize.base, fontWeight: fontWeight.extrabold,
+              lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>
               {match.isHome ? match.opponent : (match.clubName || t('matchPublic.us'))}
             </div>
-            <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.6, marginTop: 2 }}>
+            <div style={{ fontSize: 10, fontWeight: fontWeight.medium, opacity: 0.55, marginTop: 2 }}>
               {t('matchPublic.away')}
             </div>
           </div>
         </div>
 
-        {/* Status / Timer + Progress bar */}
-        <div style={{ marginTop: 8 }}>
+        {/* ── Status / Timer + Progress bar ── */}
+        <div style={{ marginTop: spacing.sm }}>
           {isLive && !isPaused && (
             <>
               {/* Period label */}
               {periods > 1 && (
-                <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
+                <div style={{ marginBottom: spacing.xs + 2, fontSize: fontSize.sm, fontWeight: fontWeight.bold, opacity: 0.8 }}>
                   {periodLabel}
                 </div>
               )}
               <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '5px 16px',
-                fontSize: 16, fontWeight: 800, letterSpacing: 1,
+                display: 'inline-flex', alignItems: 'center', gap: spacing.sm,
+                background: 'rgba(255,255,255,0.15)', borderRadius: 20,
+                padding: `${spacing.xs + 1}px ${spacing.lg}px`,
+                fontSize: 16, fontWeight: fontWeight.extrabold, letterSpacing: 1,
+                backdropFilter: 'blur(4px)',
               }}>
+                {/* Pulsing LIVE dot */}
                 <span style={{
                   display: 'inline-block', width: 10, height: 10, borderRadius: '50%',
-                  background: '#FF5252', animation: 'livePulse 1.2s infinite',
-                  boxShadow: '0 0 8px rgba(255,82,82,.6)',
+                  background: '#FF5252',
+                  animation: 'livePulse 1.2s infinite, liveBadgePulse 2s infinite',
                 }} />
-                {formatTime(elapsed)}
-                {isPeriodOvertime && <span style={{ fontSize: 11, background: 'rgba(255,82,82,.3)', borderRadius: 8, padding: '1px 6px' }}>{t('matchPublic.overtime')}</span>}
+                <span>{formatTime(elapsed)}</span>
+                {isPeriodOvertime && (
+                  <span style={{
+                    fontSize: fontSize.xs, fontWeight: fontWeight.bold,
+                    background: 'rgba(255,82,82,.3)', borderRadius: radius.sm,
+                    padding: '1px 6px',
+                  }}>
+                    {t('matchPublic.overtime')}
+                  </span>
+                )}
               </div>
               {/* Progress bar */}
               <div style={{
-                height: 3, background: 'rgba(255,255,255,.2)', borderRadius: 3,
-                marginTop: 10, overflow: 'hidden', maxWidth: 240, margin: '10px auto 0',
+                height: 3, background: 'rgba(255,255,255,.15)', borderRadius: 3,
+                marginTop: spacing.sm + 2, overflow: 'hidden', maxWidth: 240,
+                margin: `${spacing.sm + 2}px auto 0`,
               }}>
                 <div style={{
                   height: '100%', width: `${progress * 100}%`,
-                  background: isOvertime ? '#FF5252' : '#fff',
+                  background: isOvertime ? '#FF5252' : 'rgba(255,255,255,.8)',
                   borderRadius: 3, transition: 'width 1s linear',
                 }} />
               </div>
               {/* Period dots */}
               {periods > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: spacing.sm }}>
                   {Array.from({ length: periods }, (_, i) => (
                     <div key={i} style={{
                       width: 7, height: 7, borderRadius: '50%',
-                      background: i + 1 < currentPeriod ? '#fff' : i + 1 === currentPeriod ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.3)',
+                      background: i + 1 < currentPeriod ? '#fff' : i + 1 === currentPeriod ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.25)',
                       boxShadow: i + 1 === currentPeriod ? '0 0 6px rgba(255,255,255,.5)' : 'none',
+                      transition: 'all .3s',
                     }} />
                   ))}
                 </div>
@@ -576,15 +666,16 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
             return (
               <>
                 {periods > 1 && (
-                  <div style={{ marginBottom: 6, fontSize: 12, fontWeight: 700, opacity: 0.8 }}>
+                  <div style={{ marginBottom: spacing.xs + 2, fontSize: fontSize.sm, fontWeight: fontWeight.bold, opacity: 0.8 }}>
                     {periodLabel}
                   </div>
                 )}
                 <div style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  background: inHalftimeBreak ? 'rgba(255,152,0,.3)' : 'rgba(255,255,255,0.2)',
-                  borderRadius: 20, padding: '4px 14px',
-                  fontSize: 14, fontWeight: 700,
+                  background: inHalftimeBreak ? 'rgba(255,152,0,.3)' : 'rgba(255,255,255,0.15)',
+                  borderRadius: 20, padding: `${spacing.xs}px ${spacing.md + 2}px`,
+                  fontSize: fontSize.base, fontWeight: fontWeight.bold,
+                  backdropFilter: 'blur(4px)',
                 }}>
                   {inHalftimeBreak ? `⏱ ${t('matchPublic.halftimeBreak')}` : `⏸ ${formatTime(elapsed)} · ${t('matchPublic.paused')}`}
                 </div>
@@ -593,18 +684,27 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           })()}
           {isFinished && (
             <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'rgba(255,255,255,.2)', borderRadius: 20, padding: '4px 14px',
-              fontSize: 13, fontWeight: 700, color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+              marginTop: spacing.xs,
             }}>
-              ✓ {t('matchPublic.fullTime')}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'rgba(255,255,255,.15)', borderRadius: 20,
+                padding: `${spacing.xs}px ${spacing.md + 2}px`,
+                fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: '#fff',
+                backdropFilter: 'blur(4px)',
+              }}>
+                ✓ {t('matchPublic.fullTime')}
+              </div>
+              <ResultBadge match={match} t={t} />
             </div>
           )}
           {match.status === 'planned' && (
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'var(--surface-var)', borderRadius: 20, padding: '4px 14px',
-              fontSize: 13, fontWeight: 600, color: 'var(--text-muted)',
+              background: 'var(--surface-var)', borderRadius: 20,
+              padding: `${spacing.xs}px ${spacing.md + 2}px`,
+              fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: 'var(--text-muted)',
             }}>
               {t('matchPublic.notStarted')}
             </div>
@@ -612,8 +712,25 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         </div>
       </div>
 
+      {/* ── Auto-refresh hint for live matches ── */}
+      {isLive && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
+          padding: `${spacing.xs + 2}px ${spacing.lg}px`,
+          background: 'var(--success-light)',
+          fontSize: fontSize.xs, fontWeight: fontWeight.medium,
+          color: 'var(--success)',
+        }}>
+          <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', animation: 'livePulse 2s infinite' }} />
+          {t('matchPublic.autoRefresh')}
+        </div>
+      )}
+
       {/* ── Content ── */}
-      <div style={{ flex: 1, padding: '12px 16px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{
+        flex: 1, padding: `${spacing.md}px ${spacing.lg}px ${spacing.xl}px`,
+        display: 'flex', flexDirection: 'column', gap: spacing.md,
+      }}>
 
         {/* ── Combined timeline ── */}
         {timeline.length > 0 && (
@@ -634,7 +751,8 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
                 }
                 goalScoreMap.set(g.id, `${runHome}:${runAway}`);
               }
-              return timeline.map((ev) => {
+              return timeline.map((ev, idx) => {
+              const isLast = idx === timeline.length - 1;
               if (ev.type === 'goal') {
                 const g = ev.data as MatchGoal;
                 const isOpp = g.isOpponentGoal;
@@ -642,25 +760,34 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
                 const runningScore = goalScoreMap.get(g.id);
                 return (
                   <div key={g.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
-                    fontSize: 13, borderBottom: '1px solid var(--border)',
+                    display: 'flex', alignItems: 'center', gap: spacing.sm,
+                    padding: `${spacing.xs + 2}px 0`,
+                    fontSize: fontSize.sm,
+                    borderBottom: isLast ? 'none' : '1px solid var(--border)',
                   }}>
-                    <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 28 }}>{g.minute}'</span>
-                    <span style={{ fontSize: 15 }}>⚽</span>
-                    <span style={{ fontWeight: 600, flex: 1, color: isOpp ? 'var(--danger)' : 'var(--success)' }}>
+                    <MinuteBadge minute={g.minute} color="var(--primary)" />
+                    <span style={{ fontSize: fontSize.md }}>⚽</span>
+                    <span style={{
+                      fontWeight: fontWeight.medium, flex: 1,
+                      color: isOpp ? 'var(--danger)' : 'var(--success)',
+                    }}>
                       {isOpp ? t('matchPublic.opponentGoal') : playerName(g.scorerId)}
-                      {isOG && <span style={{ color: 'var(--danger)', marginLeft: 4, fontSize: 11 }}>({t('matchPublic.ownGoal')})</span>}
+                      {isOG && (
+                        <span style={{ color: 'var(--danger)', marginLeft: spacing.xs, fontSize: fontSize.xs }}>
+                          ({t('matchPublic.ownGoal')})
+                        </span>
+                      )}
                     </span>
                     {g.assistId && (
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      <span style={{ fontSize: fontSize.xs, color: 'var(--text-muted)' }}>
                         {playerName(g.assistId)}
                       </span>
                     )}
                     {runningScore && (
                       <span style={{
-                        fontSize: 11, fontWeight: 800, color: 'var(--text-muted)',
-                        background: 'var(--surface-var)', borderRadius: 6, padding: '2px 6px',
-                        letterSpacing: 1,
+                        fontSize: fontSize.xs, fontWeight: fontWeight.extrabold,
+                        color: 'var(--primary)', background: 'var(--primary-light)',
+                        borderRadius: radius.sm, padding: '2px 7px', letterSpacing: 1,
                       }}>
                         {runningScore}
                       </span>
@@ -673,12 +800,14 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
                 const icon = c.type === 'red' ? '🟥' : c.type === 'yellow-red' ? '🟨🟥' : '🟨';
                 return (
                   <div key={c.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
-                    fontSize: 13, borderBottom: '1px solid var(--border)',
+                    display: 'flex', alignItems: 'center', gap: spacing.sm,
+                    padding: `${spacing.xs + 2}px 0`,
+                    fontSize: fontSize.sm,
+                    borderBottom: isLast ? 'none' : '1px solid var(--border)',
                   }}>
-                    <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 28 }}>{c.minute}'</span>
-                    <span style={{ fontSize: 15 }}>{icon}</span>
-                    <span style={{ fontWeight: 600, flex: 1 }}>{playerName(c.playerId)}</span>
+                    <MinuteBadge minute={c.minute} color="var(--primary)" />
+                    <span style={{ fontSize: fontSize.md }}>{icon}</span>
+                    <span style={{ fontWeight: fontWeight.medium, flex: 1 }}>{playerName(c.playerId)}</span>
                   </div>
                 );
               }
@@ -686,13 +815,21 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               const s = ev.data as MatchSubstitution;
               return (
                 <div key={s.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
-                  fontSize: 13, borderBottom: '1px solid var(--border)',
+                  display: 'flex', alignItems: 'center', gap: spacing.sm,
+                  padding: `${spacing.xs + 2}px 0`,
+                  fontSize: fontSize.sm,
+                  borderBottom: isLast ? 'none' : '1px solid var(--border)',
                 }}>
-                  <span style={{ fontWeight: 700, color: 'var(--primary)', minWidth: 28 }}>{s.minute}'</span>
-                  <span style={{ fontSize: 15 }}>🔄</span>
-                  <span style={{ color: 'var(--success)', fontWeight: 600 }}>↑ {playerName(s.playerInId)}</span>
-                  <span style={{ color: 'var(--danger)', fontWeight: 600 }}>↓ {playerName(s.playerOutId)}</span>
+                  <MinuteBadge minute={s.minute} color="var(--primary)" />
+                  <span style={{ fontSize: fontSize.md }}>🔄</span>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <span style={{ color: 'var(--success)', fontWeight: fontWeight.medium, fontSize: fontSize.sm }}>
+                      ↑ {playerName(s.playerInId)}
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: fontWeight.medium, fontSize: fontSize.xs }}>
+                      ↓ {playerName(s.playerOutId)}
+                    </span>
+                  </div>
                 </div>
               );
             });
@@ -704,19 +841,31 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         {match.lineup.length > 0 && (
           <EventSection title={t('matchPublic.lineup')} icon="👕">
             {starters.length > 0 && (
-              <div style={{ marginBottom: 6 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>
+              <div style={{ marginBottom: spacing.xs + 2 }}>
+                <div style={{
+                  fontSize: fontSize.xs, fontWeight: fontWeight.bold,
+                  color: 'var(--text-muted)', marginBottom: spacing.xs,
+                  textTransform: 'uppercase', letterSpacing: 0.5,
+                }}>
                   {t('matchPublic.starters')}
                 </div>
-                {starters.map(p => <PlayerRow key={p.playerId} player={p} />)}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing.xs }}>
+                  {starters.map(p => <PlayerChip key={p.playerId} player={p} />)}
+                </div>
               </div>
             )}
             {bench.length > 0 && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>
+                <div style={{
+                  fontSize: fontSize.xs, fontWeight: fontWeight.bold,
+                  color: 'var(--text-muted)', marginBottom: spacing.xs,
+                  textTransform: 'uppercase', letterSpacing: 0.5,
+                }}>
                   {t('matchPublic.bench')}
                 </div>
-                {bench.map(p => <PlayerRow key={p.playerId} player={p} />)}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: spacing.xs }}>
+                  {bench.map(p => <PlayerChip key={p.playerId} player={p} muted />)}
+                </div>
               </div>
             )}
           </EventSection>
@@ -724,16 +873,19 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
 
         {/* ── VEO recording link ── */}
         {match.veoUrl && (
-          <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{
+            background: 'var(--surface)', borderRadius: radius.xl,
+            overflow: 'hidden', boxShadow: 'var(--shadow-sm)',
+          }}>
             <a
               href={match.veoUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                padding: '14px 16px', textDecoration: 'none',
-                background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
-                color: '#fff', fontWeight: 700, fontSize: 14,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+                padding: `${spacing.md + 2}px ${spacing.lg}px`, textDecoration: 'none',
+                background: 'linear-gradient(135deg, var(--info) 0%, #0D47A1 100%)',
+                color: '#fff', fontWeight: fontWeight.bold, fontSize: fontSize.base,
               }}
             >
               {t('veo.watch')}
@@ -745,26 +897,29 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         {isFinished && (match.goals.length > 0 || match.cards.length > 0 || match.substitutions.length > 0) && (
           <EventSection title={t('matchPublic.matchStats')} icon="📊">
             <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
-              padding: '4px 0',
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: spacing.sm,
+              padding: `${spacing.xs}px 0`,
             }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--primary)' }}>{match.goals.length}</div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{t('matchPublic.goals')}</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: match.cards.length > 0 ? '#F9A825' : 'var(--text-muted)' }}>{match.cards.length}</div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{t('matchPublic.cards')}</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-muted)' }}>{match.substitutions.length}</div>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{t('matchPublic.substitutions')}</div>
-              </div>
+              <StatBox
+                value={match.goals.length}
+                label={t('matchPublic.goals')}
+                color="var(--primary)"
+              />
+              <StatBox
+                value={match.cards.length}
+                label={t('matchPublic.cards')}
+                color={match.cards.length > 0 ? 'var(--warning)' : 'var(--text-muted)'}
+              />
+              <StatBox
+                value={match.substitutions.length}
+                label={t('matchPublic.substitutions')}
+                color="var(--text-muted)"
+              />
             </div>
             {elapsed > 0 && (
               <div style={{
-                textAlign: 'center', fontSize: 12, color: 'var(--text-muted)',
-                borderTop: '1px solid var(--border)', paddingTop: 8, marginTop: 4,
+                textAlign: 'center', fontSize: fontSize.sm, color: 'var(--text-muted)',
+                borderTop: '1px solid var(--border)', paddingTop: spacing.sm, marginTop: spacing.xs,
               }}>
                 {t('matchPublic.duration')}: <strong>{Math.floor(elapsed / 60)} min</strong>
               </div>
@@ -775,14 +930,14 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         {/* Finished match promo banner */}
         {isFinished && (
           <div style={{
-            padding: '14px 16px', borderRadius: 14,
-            background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
+            padding: `${spacing.md + 2}px ${spacing.lg}px`, borderRadius: radius.xl,
+            background: 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)',
             color: '#fff', textAlign: 'center',
           }}>
-            <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 4 }}>
+            <div style={{ fontWeight: fontWeight.extrabold, fontSize: fontSize.base, marginBottom: spacing.xs }}>
               ⚽ {t('promo.finishedTitle')}
             </div>
-            <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 10, lineHeight: 1.4 }}>
+            <div style={{ fontSize: fontSize.sm, opacity: 0.85, marginBottom: spacing.sm + 2, lineHeight: 1.4 }}>
               {t('promo.finishedDesc')}
             </div>
             <a
@@ -790,8 +945,9 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               target="_blank"
               rel="noopener noreferrer"
               style={{
-                display: 'inline-block', padding: '8px 20px', borderRadius: 10,
-                background: '#fff', color: '#0D47A1', fontWeight: 700, fontSize: 13,
+                display: 'inline-block', padding: `${spacing.sm}px ${spacing.xl}px`,
+                borderRadius: radius.md,
+                background: '#fff', color: 'var(--primary)', fontWeight: fontWeight.bold, fontSize: fontSize.sm,
                 textDecoration: 'none',
               }}
             >
@@ -803,23 +959,25 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         {/* Empty state — planned match */}
         {match.status === 'planned' && timeline.length === 0 && match.lineup.length === 0 && (
           <div style={{
-            padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)',
-            background: 'var(--surface)', borderRadius: 14,
+            padding: `${spacing.xxl}px ${spacing.xl}px`, textAlign: 'center',
+            color: 'var(--text-muted)', background: 'var(--surface)', borderRadius: radius.xl,
           }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🏟️</div>
-            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
+            <div style={{ fontSize: 48, marginBottom: spacing.md }}>🏟️</div>
+            <p style={{ fontSize: fontSize.md, fontWeight: fontWeight.bold, color: 'var(--text)', marginBottom: spacing.xs }}>
               {match.isHome
                 ? `${match.clubName || t('matchPublic.us')} vs ${match.opponent}`
                 : `${match.opponent} vs ${match.clubName || t('matchPublic.us')}`}
             </p>
-            <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 2 }}>
+            <p style={{ fontSize: fontSize.sm, fontWeight: fontWeight.medium, marginBottom: 2 }}>
               {t('matchPublic.plannedKickoff')}
             </p>
             <p style={{ fontSize: 20, fontWeight: 900, color: 'var(--primary)' }}>
               {formatDate(match.date)} · {match.kickoffTime}
             </p>
             {match.competition && (
-              <p style={{ fontSize: 12, fontWeight: 600, marginTop: 8, opacity: 0.7 }}>{match.competition}</p>
+              <p style={{ fontSize: fontSize.sm, fontWeight: fontWeight.medium, marginTop: spacing.sm, opacity: 0.7 }}>
+                {match.competition}
+              </p>
             )}
           </div>
         )}
@@ -827,19 +985,23 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         {/* Empty state — live/finished with no events */}
         {match.status !== 'planned' && timeline.length === 0 && match.lineup.length === 0 && (
           <div style={{
-            padding: '32px 20px', textAlign: 'center', color: 'var(--text-muted)',
-            background: 'var(--surface)', borderRadius: 14,
+            padding: `${spacing.xxl}px ${spacing.xl}px`, textAlign: 'center',
+            color: 'var(--text-muted)', background: 'var(--surface)', borderRadius: radius.xl,
           }}>
-            <div style={{ fontSize: 36, marginBottom: 8 }}>⚽</div>
-            <p style={{ fontSize: 14, fontWeight: 600 }}>{t('matchPublic.noEvents')}</p>
+            <div style={{ fontSize: 36, marginBottom: spacing.sm }}>⚽</div>
+            <p style={{ fontSize: fontSize.base, fontWeight: fontWeight.medium }}>
+              {t('matchPublic.noEvents')}
+            </p>
           </div>
         )}
       </div>
 
       {/* Footer */}
       <div style={{
-        padding: '12px 16px', textAlign: 'center', fontSize: 11, color: 'var(--text-muted)',
-        borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 6,
+        padding: `${spacing.md}px ${spacing.lg}px`,
+        textAlign: 'center', fontSize: fontSize.xs, color: 'var(--text-muted)',
+        borderTop: '1px solid var(--border)',
+        display: 'flex', flexDirection: 'column', gap: spacing.xs + 2,
       }}>
         <span>{t('matchPublic.footer')}</span>
         <a
@@ -848,7 +1010,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           rel="noopener noreferrer"
           style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
         >
-          ⚡ Powered by <strong style={{ color: 'var(--primary)' }}>TORQ</strong> · torq.cz
+          Powered by <strong style={{ color: 'var(--primary)' }}>TORQ</strong> · torq.cz
         </a>
       </div>
     </div>
@@ -859,22 +1021,83 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
 
 function EventSection({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 15 }}>{icon}</span>
-        <span style={{ fontWeight: 800, fontSize: 14 }}>{title}</span>
+    <div style={{
+      background: 'var(--surface)', borderRadius: radius.xl,
+      overflow: 'hidden', boxShadow: 'var(--shadow-sm)',
+    }}>
+      <div style={{
+        padding: `${spacing.sm + 2}px ${spacing.md + 2}px`,
+        borderBottom: '1px solid var(--border)',
+        display: 'flex', alignItems: 'center', gap: spacing.xs + 2,
+      }}>
+        <span style={{ fontSize: fontSize.md }}>{icon}</span>
+        <span style={{ fontWeight: fontWeight.extrabold, fontSize: fontSize.base }}>{title}</span>
       </div>
-      <div style={{ padding: '8px 14px' }}>{children}</div>
+      <div style={{ padding: `${spacing.sm}px ${spacing.md + 2}px` }}>{children}</div>
     </div>
   );
 }
 
-function PlayerRow({ player }: { player: MatchLineupPlayer }) {
+/** Compact minute badge used in timeline rows */
+function MinuteBadge({ minute, color }: { minute: number; color: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', fontSize: 13 }}>
-      <span style={{ fontWeight: 700, color: 'var(--text-muted)', minWidth: 24, fontSize: 12 }}>#{player.jerseyNumber}</span>
-      <span style={{ fontWeight: 600 }}>{player.name}</span>
-      {player.position && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{player.position}</span>}
+    <span style={{
+      fontWeight: fontWeight.bold, color,
+      minWidth: 30, textAlign: 'center',
+      fontSize: fontSize.xs,
+      background: 'var(--primary-light)',
+      borderRadius: radius.sm,
+      padding: '2px 4px',
+    }}>
+      {minute}'
+    </span>
+  );
+}
+
+/** Stat box for finished match stats grid */
+function StatBox({ value, label, color }: { value: number; label: string; color: string }) {
+  return (
+    <div style={{
+      textAlign: 'center', padding: `${spacing.sm}px ${spacing.xs}px`,
+      background: 'var(--surface-var)', borderRadius: radius.md,
+    }}>
+      <div style={{ fontSize: fontSize.xl, fontWeight: 900, color }}>{value}</div>
+      <div style={{ fontSize: fontSize.xs, fontWeight: fontWeight.medium, color: 'var(--text-muted)' }}>{label}</div>
+    </div>
+  );
+}
+
+/** Player chip for lineup display (compact, wrappable) */
+function PlayerChip({ player, muted }: { player: MatchLineupPlayer; muted?: boolean }) {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: spacing.xs,
+      padding: `3px ${spacing.sm}px`,
+      background: muted ? 'var(--bg)' : 'var(--surface-var)',
+      borderRadius: radius.sm,
+      fontSize: fontSize.sm,
+    }}>
+      <span style={{
+        fontWeight: fontWeight.bold,
+        color: muted ? 'var(--text-disabled)' : 'var(--primary)',
+        fontSize: fontSize.xs,
+      }}>
+        #{player.jerseyNumber}
+      </span>
+      <span style={{
+        fontWeight: fontWeight.medium,
+        color: muted ? 'var(--text-muted)' : 'var(--text)',
+      }}>
+        {player.name}
+      </span>
+      {player.position && (
+        <span style={{
+          fontSize: 10, color: 'var(--text-disabled)',
+          fontWeight: fontWeight.medium,
+        }}>
+          {player.position}
+        </span>
+      )}
     </div>
   );
 }

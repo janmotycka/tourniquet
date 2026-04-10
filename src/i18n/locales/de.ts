@@ -1084,6 +1084,7 @@ export const de: Record<TranslationKey, string> = {
   'clubs.playersLabel': 'Spieler',
   'clubs.createMyClub': '🏟 Meinen Verein erstellen',
   'clubs.createMyClubTitle': '🏟 Mein Verein',
+  'clubs.createMyClubHint': 'Kader, Altersgruppen und Spielerstatistiken verwalten',
   'clubs.emptyDescNew': 'Erstellen Sie Ihren Verein mit Altersgruppen und Spielern, oder fügen Sie Gegnervereine mit Kontakten hinzu.',
   'clubs.opponents': 'Gegner',
   'clubs.addOpponent': 'Gegnerverein hinzufügen',
@@ -1958,6 +1959,11 @@ export const de: Record<TranslationKey, string> = {
   'matchPublic.plannedKickoff': 'Geplanter Anstoß',
   'matchPublic.shareMatch': 'Spiel teilen',
   'matchPublic.footer': 'Live-Spielübertragung',
+  'matchPublic.autoRefresh': 'Diese Seite wird automatisch aktualisiert',
+  'matchPublic.win': 'S',
+  'matchPublic.draw': 'U',
+  'matchPublic.loss': 'N',
+  'matchPublic.live': 'LIVE',
 
   // ─── Landing / Catalog ──────────────────────────────────────────────────────
   'landing.hero': 'Trainieren. Organisieren. Entwickeln.',

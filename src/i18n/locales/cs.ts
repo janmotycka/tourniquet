@@ -1082,6 +1082,7 @@ export const cs = {
   'clubs.playersLabel': 'hráčů',
   'clubs.createMyClub': '🏟 Vytvořit Můj Klub',
   'clubs.createMyClubTitle': '🏟 Můj Klub',
+  'clubs.createMyClubHint': 'Spravujte roster, kategorie a statistiky hráčů',
   'clubs.emptyDescNew': 'Vytvořte svůj klub s kategoriemi a hráči, nebo přidejte soupeřské kluby s kontakty.',
   'clubs.opponents': 'Soupeři',
   'clubs.addOpponent': 'Přidat soupeřský klub',
@@ -1960,6 +1961,11 @@ export const cs = {
   'matchPublic.plannedKickoff': 'Plánovaný výkop',
   'matchPublic.shareMatch': 'Sdílet zápas',
   'matchPublic.footer': 'Živý přenos zápasu',
+  'matchPublic.autoRefresh': 'Stránka se aktualizuje automaticky',
+  'matchPublic.win': 'V',
+  'matchPublic.draw': 'R',
+  'matchPublic.loss': 'P',
+  'matchPublic.live': 'LIVE',
 
   // ─── Landing / Catalog ──────────────────────────────────────────────────────
   'landing.hero': 'Trénuj. Organizuj. Rozvíjej.',

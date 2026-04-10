@@ -231,13 +231,31 @@ export function ClubsPage({ navigate }: Props) {
             style={{
               background: 'var(--primary-light)',
               borderColor: 'var(--primary)',
-              color: 'var(--primary)',
-              fontWeight: fontWeight.bold,
-              fontSize: fontSize.md,
+              cursor: 'pointer',
               textAlign: 'center',
+              padding: spacing.xl,
             }}
           >
-            {t('clubs.createMyClub')}
+            <div style={{
+              fontSize: spacing.xxl, lineHeight: 1, marginBottom: spacing.sm,
+            }}>
+              &#127967;
+            </div>
+            <div style={{
+              fontWeight: fontWeight.bold,
+              fontSize: fontSize.md,
+              color: 'var(--primary)',
+            }}>
+              {t('clubs.createMyClub')}
+            </div>
+            <div style={{
+              fontSize: fontSize.sm,
+              color: 'var(--text-muted)',
+              marginTop: spacing.xs,
+              lineHeight: 1.4,
+            }}>
+              {t('clubs.createMyClubHint')}
+            </div>
           </Card>
         )}
 

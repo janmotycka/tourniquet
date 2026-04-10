@@ -21,6 +21,7 @@ export function GoalModal({ match, isOpponentGoal, onAdd, onClose, t }: GoalModa
   const onFieldPlayers = match.lineup.filter(p => p.isStarter);
 
   const handleAdd = () => {
+    try { navigator.vibrate?.(isOpponentGoal ? [30, 30, 30] : 50); } catch { /* not supported */ }
     onAdd({
       scorerId: isOwnGoal || isOpponentGoal ? null : scorerId,
       assistId: isOwnGoal || isOpponentGoal ? null : assistId,
