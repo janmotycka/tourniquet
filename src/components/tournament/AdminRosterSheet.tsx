@@ -261,8 +261,8 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
                         <button
                           onClick={() => removePlayer(player.id)}
                           style={{
-                            padding: '4px 10px', borderRadius: 6, background: '#FFEBEE',
-                            color: '#C62828', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
+                            padding: '4px 10px', borderRadius: 6, background: 'var(--danger-light)',
+                            color: 'var(--danger)', fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer',
                           }}
                         >🗑 {t('common.delete')}</button>
                         <button
@@ -311,7 +311,7 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
 
             {/* Birth year limit info */}
             {maxBY && (
-              <div style={{ background: '#FFF3E0', borderRadius: 8, padding: '5px 10px', fontSize: 11, color: '#E65100', lineHeight: 1.4, marginTop: 4 }}>
+              <div style={{ background: 'var(--warning-light)', borderRadius: 8, padding: '5px 10px', fontSize: 11, color: 'var(--warning)', lineHeight: 1.4, marginTop: 4 }}>
                 🎂 {t('roster.birthYearRequirement', { year: String(maxBY) })}
               </div>
             )}
@@ -324,7 +324,7 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
             }}>
               <div style={{
                 padding: '5px 10px',
-                background: (birthYearTooOld || jerseyDuplicate) ? '#C62828' : canAdd ? 'var(--primary)' : teamColor,
+                background: (birthYearTooOld || jerseyDuplicate) ? 'var(--danger)' : canAdd ? 'var(--primary)' : teamColor,
                 color: (birthYearTooOld || jerseyDuplicate || canAdd) ? '#fff' : textOnColor(teamColor),
                 boxShadow: (!birthYearTooOld && !jerseyDuplicate && !canAdd && isLightColor(teamColor)) ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
                 display: 'flex', alignItems: 'center', gap: 5,
@@ -342,7 +342,7 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
                     onKeyDown={e => e.key === 'Enter' && addPlayer()}
                     placeholder="#"
                     min={1} max={99}
-                    style={{ ...inp, width: 44, textAlign: 'center', padding: '6px 2px', flexShrink: 0, borderColor: jerseyDuplicate ? '#C62828' : 'var(--border)' }}
+                    style={{ ...inp, width: 44, textAlign: 'center', padding: '6px 2px', flexShrink: 0, borderColor: jerseyDuplicate ? 'var(--danger)' : 'var(--border)' }}
                   />
                   <input
                     value={addName}
@@ -359,16 +359,16 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
                     onKeyDown={e => e.key === 'Enter' && addPlayer()}
                     placeholder="Rok"
                     min={ADMIN_BIRTH_MIN} max={ADMIN_BIRTH_MAX}
-                    style={{ ...inp, width: 54, textAlign: 'center', padding: '6px 2px', flexShrink: 0, borderColor: birthYearTooOld ? '#C62828' : 'var(--border)' }}
+                    style={{ ...inp, width: 54, textAlign: 'center', padding: '6px 2px', flexShrink: 0, borderColor: birthYearTooOld ? 'var(--danger)' : 'var(--border)' }}
                   />
                 </div>
                 {jerseyDuplicate && (
-                  <div style={{ fontSize: 10, color: '#C62828', fontWeight: 600 }}>
+                  <div style={{ fontSize: 10, color: 'var(--danger)', fontWeight: 600 }}>
                     ⚠️ {t('roster.errorDuplicateJersey')}
                   </div>
                 )}
                 {birthYearTooOld && (
-                  <div style={{ fontSize: 10, color: '#C62828', fontWeight: 600 }}>
+                  <div style={{ fontSize: 10, color: 'var(--danger)', fontWeight: 600 }}>
                     ⚠️ {t('roster.errorBirthYearTooOld', { name: addName.trim() || t('tournament.create.playerName'), year: addBirthYear, limit: String(maxBY) })}
                   </div>
                 )}
@@ -396,7 +396,7 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
             const maxPlayers = tournament.settings.maxPlayersPerRoster;
             if (maxPlayers && maxPlayers > 0 && validCount > maxPlayers) {
               return (
-                <div style={{ background: '#FFF3E0', borderRadius: 10, padding: '7px 10px', fontSize: 12, color: '#E65100' }}>
+                <div style={{ background: 'var(--warning-light)', borderRadius: 10, padding: '7px 10px', fontSize: 12, color: 'var(--warning)' }}>
                   ⚠️ {t('roster.warnTooManyPlayers', { count: validCount, max: maxPlayers })}
                 </div>
               );
@@ -409,7 +409,7 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
         {/* Fixed bottom — error + save */}
         <div style={{ padding: '8px 14px 0', flexShrink: 0 }}>
           {error && (
-            <div style={{ background: '#FFEBEE', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: '#C62828', marginBottom: 6 }}>
+            <div style={{ background: 'var(--danger-light)', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: 'var(--danger)', marginBottom: 6 }}>
               ⚠️ {error}
             </div>
           )}

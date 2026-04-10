@@ -78,7 +78,7 @@ export function MvpAdminBanner({ tournamentId, teams, mvpVotingEnabled, settings
             onClick={handleStop}
             style={{
               padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-              background: '#FFEBEE', color: '#C62828', border: '1px solid #FFCDD2',
+              background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid #FFCDD2',
               cursor: 'pointer', flexShrink: 0,
             }}
           >{t('tournament.mvp.stop')}</button>

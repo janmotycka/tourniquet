@@ -18,7 +18,7 @@ export function LeaveConfirmModal({ onLeave, onCancel }: LeaveConfirmModalProps)
       <div style={{
         background: 'var(--surface)', borderRadius: 20, padding: '28px 24px',
         width: '100%', maxWidth: 340,
-        boxShadow: '0 8px 32px rgba(0,0,0,.18)',
+        boxShadow: 'var(--shadow-lg)',
         display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'center',
       }}>
         <div style={{ fontSize: 36 }}>🚪</div>
@@ -45,7 +45,7 @@ export function LeaveConfirmModal({ onLeave, onCancel }: LeaveConfirmModalProps)
             style={{
               flex: 1, padding: '13px 12px', borderRadius: 12,
               fontWeight: 700, fontSize: 15, cursor: 'pointer',
-              background: '#C62828', color: '#fff', border: 'none',
+              background: 'var(--danger)', color: '#fff', border: 'none',
             }}
           >
             {t('tournament.public.leaveConfirm')}

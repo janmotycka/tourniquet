@@ -52,7 +52,7 @@ export function TemplatePickerModal({ templates, onSelect, onDelete, onClose }: 
                     <button
                       onClick={() => { onDelete(tpl.id); setConfirmDeleteId(null); }}
                       style={{
-                        background: '#FFEBEE', color: '#C62828', border: '1px solid #EF9A9A',
+                        background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid #EF9A9A',
                         borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 700,
                         flexShrink: 0, whiteSpace: 'nowrap',
                       }}

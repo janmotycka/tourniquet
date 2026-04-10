@@ -6,6 +6,7 @@ import { FeatureGate } from '../../components/FeatureGate';
 import { useI18n, getDateLocale } from '../../i18n';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
 import { DesktopPage, desktopPrimaryButtonStyle, desktopSecondaryButtonStyle } from '../../components/desktop/DesktopPage';
+import { PageHeader } from '../../components/ui';
 import type { Page } from '../../App';
 import type { Tournament } from '../../types/tournament.types';
 import { colorSwatch } from '../../utils/team-colors';
@@ -14,8 +15,8 @@ interface Props { navigate: (p: Page) => void; }
 
 function getStatusLabels(t: (key: string, params?: Record<string, string | number>) => string): Record<string, { label: string; color: string; bg: string }> {
   return {
-    draft:    { label: t('tournament.statusDraft'),    color: '#5D4037', bg: '#FFF3E0' },
-    active:   { label: t('tournament.statusActive'),   color: '#1B5E20', bg: '#E8F5E9' },
+    draft:    { label: t('tournament.statusDraft'),    color: '#5D4037', bg: 'var(--warning-light)' },
+    active:   { label: t('tournament.statusActive'),   color: '#1B5E20', bg: 'var(--success-light)' },
     finished: { label: t('tournament.statusFinished'), color: '#4A148C', bg: '#F3E5F5' },
   };
 }
@@ -39,7 +40,7 @@ function TournamentCard({ t, onClick, isJoined, statusLabels }: { t: Tournament;
     <button onClick={onClick} style={{
       background: 'var(--surface)', borderRadius: 14, padding: '16px',
       display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'left',
-      boxShadow: '0 1px 4px rgba(0,0,0,.06)', width: '100%', color: 'var(--text)',
+      boxShadow: 'var(--shadow-sm)', width: '100%', color: 'var(--text)',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1, paddingRight: 8 }}>
@@ -53,7 +54,7 @@ function TournamentCard({ t, onClick, isJoined, statusLabels }: { t: Tournament;
           }}>{st.label}</span>
           {isJoined && (
             <span style={{
-              background: '#E3F2FD', color: '#1565C0', fontSize: 10, fontWeight: 700,
+              background: 'var(--info-light)', color: 'var(--info)', fontSize: 10, fontWeight: 700,
               padding: '2px 8px', borderRadius: 6,
             }}>{tr('tournament.list.shared')}</span>
           )}
@@ -240,7 +241,7 @@ export function TournamentListPage({ navigate }: Props) {
       <div style={{
         background: 'var(--surface)', borderRadius: 20, padding: 24,
         width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', gap: 16,
-        boxShadow: '0 8px 32px rgba(0,0,0,.18)',
+        boxShadow: 'var(--shadow-lg)',
       }} onClick={e => e.stopPropagation()}>
         <h2 style={{ fontWeight: 800, fontSize: 18, textAlign: 'center' }}>
           {t('tournament.list.joinTitle')}
@@ -285,7 +286,7 @@ export function TournamentListPage({ navigate }: Props) {
         </div>
         {joinError && (
           <div style={{
-            background: '#FFF3E0', color: '#E65100', fontSize: 13, fontWeight: 600,
+            background: 'var(--warning-light)', color: 'var(--warning)', fontSize: 13, fontWeight: 600,
             padding: '8px 12px', borderRadius: 8, textAlign: 'center',
           }}>
             {joinError}
@@ -435,52 +436,43 @@ export function TournamentListPage({ navigate }: Props) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px',
-        borderBottom: '1px solid var(--border)', background: 'var(--surface)',
-      }}>
-        <button onClick={() => navigate({ name: 'home' })} aria-label="Back" style={{
-          width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
-          fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>←</button>
-        <div style={{ flex: 1 }}>
-          <h1 style={{ fontWeight: 800, fontSize: 20 }}>🏆 {t('tournament.list.pageTitle')}</h1>
-        </div>
-        <button onClick={() => navigate({ name: 'clubs' })} style={{
-          background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600, fontSize: 13,
-          padding: '8px 12px', borderRadius: 10,
-        }}>🏟 {t('tournament.list.clubsBtn')}</button>
-        <button onClick={() => setShowJoinModal(true)} style={{
-          background: '#E3F2FD', color: '#1565C0', fontWeight: 700, fontSize: 14,
-          padding: '8px 14px', borderRadius: 10,
-        }}>🔗 {t('tournament.list.joinBtn')}</button>
-        <button onClick={() => navigate({ name: 'tournament-create-choice' })} style={{
-          background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 14,
-          padding: '8px 16px', borderRadius: 12,
-        }}>+ {t('common.new')}</button>
-      </div>
+      <PageHeader
+        title={`🏆 ${t('tournament.list.pageTitle')}`}
+        onBack={() => navigate({ name: 'home' })}
+        action={
+          <button
+            onClick={() => navigate({ name: 'tournament-create-choice' })}
+            style={{
+              background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 14,
+              padding: '8px 16px', borderRadius: 12,
+            }}
+          >
+            + {t('common.new')}
+          </button>
+        }
+      />
 
       {/* Sync error banner */}
       {syncError && (
         <div style={{
           margin: '12px 20px 0', padding: '12px 16px', borderRadius: 12,
-          background: '#FFF3E0', border: '1px solid #FFB74D',
+          background: 'var(--warning-light)', border: '1px solid #FFB74D',
           display: 'flex', alignItems: 'flex-start', gap: 10,
         }}>
           <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: 13, color: '#E65100' }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--warning)' }}>
               {t('tournament.list.syncFailed')}
             </div>
             <div style={{ fontSize: 12, color: '#BF360C', marginTop: 4, lineHeight: 1.4 }}>
               {syncError}
             </div>
-            <div style={{ fontSize: 11, color: '#E65100', marginTop: 6, lineHeight: 1.4 }}>
+            <div style={{ fontSize: 11, color: 'var(--warning)', marginTop: 6, lineHeight: 1.4 }}>
               {t('tournament.list.syncHint')}<br />
               {t('tournament.list.syncHintPaths')}
             </div>
           </div>
-          <button onClick={clearSyncError} style={{ fontSize: 16, color: '#E65100', padding: 4 }}>✕</button>
+          <button onClick={clearSyncError} style={{ fontSize: 16, color: 'var(--warning)', padding: 4 }}>✕</button>
         </div>
       )}
 
@@ -584,6 +576,21 @@ export function TournamentListPage({ navigate }: Props) {
         )}
       </div>
 
+      {/* Připojit se jako co-host (sekundární akce) */}
+      <div style={{ padding: '0 20px 16px' }}>
+        <button
+          onClick={() => setShowJoinModal(true)}
+          style={{
+            width: '100%', padding: '10px', borderRadius: 10,
+            background: 'transparent', color: 'var(--text-muted)',
+            fontWeight: 600, fontSize: 13,
+            border: '1.5px dashed var(--border)',
+          }}
+        >
+          🔗 {t('tournament.list.joinBtn')}
+        </button>
+      </div>
+
       {joinModal}
     </div>
   );
@@ -640,7 +647,7 @@ function TournamentsTable({ rows, statusLabels, t, onRowClick }: {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {tt._isJoined && (
                       <span title="Joined" style={{
-                        fontSize: 10, fontWeight: 800, color: '#1565C0', background: '#E3F2FD',
+                        fontSize: 10, fontWeight: 800, color: 'var(--info)', background: 'var(--info-light)',
                         padding: '2px 8px', borderRadius: 6,
                       }}>JOINED</span>
                     )}

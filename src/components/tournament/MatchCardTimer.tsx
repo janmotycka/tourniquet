@@ -44,7 +44,7 @@ export function MatchCardTimer({ match, variant = 'card' }: { match: Match; vari
   }
 
   // Velká verze pro ScoreModal
-  const color = isPaused ? '#FF8F00' : isOvertime ? '#C62828' : nearEnd ? '#E65100' : 'var(--text)';
+  const color = isPaused ? '#FF8F00' : isOvertime ? 'var(--danger)' : nearEnd ? 'var(--warning)' : 'var(--text)';
   return (
     <span style={{ fontSize: 32, fontWeight: 900, fontVariantNumeric: 'tabular-nums', color, letterSpacing: -1 }}>
       {isPaused ? '⏸ ' : ''}{isOvertime ? `+${mm}:${ss}` : `${mm}:${ss}`}

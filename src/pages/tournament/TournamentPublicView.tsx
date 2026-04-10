@@ -234,11 +234,11 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '40px 20px' }}>
         <div style={{ fontSize: 48 }}>⚠️</div>
-        <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center', color: '#C62828' }}>{t('tournament.public.connectionError')}</h2>
+        <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center', color: 'var(--danger)' }}>{t('tournament.public.connectionError')}</h2>
         <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 14, lineHeight: 1.5 }}>
           {t('publicView.loadFailed')}
         </p>
-        <pre style={{ fontSize: 11, color: '#C62828', background: '#FFEBEE', padding: '8px 12px', borderRadius: 8, maxWidth: '100%', overflow: 'auto', textAlign: 'left' }}>
+        <pre style={{ fontSize: 11, color: 'var(--danger)', background: 'var(--danger-light)', padding: '8px 12px', borderRadius: 8, maxWidth: '100%', overflow: 'auto', textAlign: 'left' }}>
           {firebaseError}
         </pre>
         <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 11 }}>ID: {tournamentId}</p>
@@ -268,7 +268,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
 
   // ── Render tournament view ────────────────────────────────────────────────
   const liveMatch = tournament.matches.find(m => m.status === 'live');
-  const scorersVisible = tournament.settings.scorersVisible ?? true;
+  const scorersVisible = tournament.settings.scorersVisible ?? false;
   const chatEnabled = tournament.settings.chatEnabled ?? false;
 
   const chatLabel = unreadCount > 0
@@ -509,7 +509,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
           </div>
         ) : (
           <div style={{ flex: 1 }}>
-            {tab === 'standings' && <PublicStandings tournament={tournament} selectedTeamId={null} />}
+            {tab === 'standings' && <PublicStandings tournament={tournament} selectedTeamId={null} onSwitchToResults={() => { setTab('results'); window.scrollTo(0, 0); }} />}
             {tab === 'results' && <PublicResults tournament={tournament} selectedTeamId={selectedTeamId} />}
             {tab === 'scorers' && scorersVisible && <PublicScorers tournament={tournament} />}
           </div>

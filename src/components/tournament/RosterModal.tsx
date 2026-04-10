@@ -201,10 +201,10 @@ export function RosterModal({ tournament, teamId, onClose, readOnly = false, onA
                     />
                   </div>
                   <div style={{ display: 'flex', gap: 4 }}>
-                    <button onClick={() => saveEdit(p.id)} style={{ flex: 1, padding: '6px', borderRadius: 7, background: '#E65100', color: '#fff', fontWeight: 700, fontSize: 12, border: 'none' }}>
+                    <button onClick={() => saveEdit(p.id)} style={{ flex: 1, padding: '6px', borderRadius: 7, background: 'var(--warning)', color: '#fff', fontWeight: 700, fontSize: 12, border: 'none' }}>
                       ✓ {t('common.save')}
                     </button>
-                    <button onClick={async () => { const ok = await ask({ title: t('common.delete'), message: t('tournament.detail.deletePlayer', { name: p.name }), destructive: true }); if (ok) { onRemovePlayer?.(teamId, p.id); setEditingId(null); } }} style={{ padding: '6px 10px', borderRadius: 7, background: '#FFEBEE', color: '#C62828', fontWeight: 700, fontSize: 12, border: 'none' }}>
+                    <button onClick={async () => { const ok = await ask({ title: t('common.delete'), message: t('tournament.detail.deletePlayer', { name: p.name }), destructive: true }); if (ok) { onRemovePlayer?.(teamId, p.id); setEditingId(null); } }} style={{ padding: '6px 10px', borderRadius: 7, background: 'var(--danger-light)', color: 'var(--danger)', fontWeight: 700, fontSize: 12, border: 'none' }}>
                       🗑
                     </button>
                     <button onClick={() => { setEditingId(null); setEditError(''); }} style={{ padding: '6px 10px', borderRadius: 7, background: 'var(--surface-var)', color: 'var(--text-muted)', fontSize: 12, border: 'none' }}>
@@ -212,7 +212,7 @@ export function RosterModal({ tournament, teamId, onClose, readOnly = false, onA
                     </button>
                   </div>
                   {editError && (
-                    <div style={{ marginTop: 4, fontSize: 11, color: '#C62828', fontWeight: 600 }}>
+                    <div style={{ marginTop: 4, fontSize: 11, color: 'var(--danger)', fontWeight: 600 }}>
                       ⚠️ {editError}
                     </div>
                   )}
@@ -263,7 +263,7 @@ export function RosterModal({ tournament, teamId, onClose, readOnly = false, onA
                 type="number" min={1} max={99} value={newJersey}
                 onChange={e => { setNewJersey(e.target.value); setAddError(''); }}
                 placeholder="#"
-                style={{ ...inp, width: 44, textAlign: 'center', borderColor: addError ? '#C62828' : 'var(--border)' }}
+                style={{ ...inp, width: 44, textAlign: 'center', borderColor: addError ? 'var(--danger)' : 'var(--border)' }}
               />
               <input
                 value={newName} onChange={e => setNewName(e.target.value)}
@@ -279,7 +279,7 @@ export function RosterModal({ tournament, teamId, onClose, readOnly = false, onA
               />
             </div>
             {addError && (
-              <div style={{ marginBottom: 4, fontSize: 11, color: '#C62828', fontWeight: 600 }}>
+              <div style={{ marginBottom: 4, fontSize: 11, color: 'var(--danger)', fontWeight: 600 }}>
                 ⚠️ {addError}
               </div>
             )}

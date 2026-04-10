@@ -3,11 +3,12 @@ import { useI18n } from '../../../i18n';
 import type { Club, AgeCategory } from '../../../types/club.types';
 import { TEAM_COLORS, colorSwatch } from '../../../utils/team-colors';
 import { resizeLogoToBase64 } from './helpers';
+import { OpponentAutocomplete } from '../../clubs/OpponentAutocomplete';
 
 interface ClubPickerModalProps {
   clubs: Club[];
   onSelect: (club: Club, category?: AgeCategory) => void;
-  onCreateClub: (name: string, color: string, logoBase64: string | null) => Club;
+  onCreateClub: (name: string, color: string, logoBase64: string | null) => Promise<Club>;
   onClose: () => void;
 }
 
@@ -33,10 +34,14 @@ export function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: Club
     }
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!newClubName.trim()) return;
-    const club = onCreateClub(newClubName.trim(), newClubColor, newClubLogo);
-    onSelect(club);
+    try {
+      const club = await onCreateClub(newClubName.trim(), newClubColor, newClubLogo);
+      onSelect(club);
+    } catch {
+      // chyba bublá výš přes toast v clubs.store (pokud to implementujeme)
+    }
   };
 
   const handleClubClick = (club: Club) => {
@@ -84,6 +89,31 @@ export function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: Club
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* "Všechny kategorie" — vezme hráče napříč kategoriemi jednoho klubu.
+                Trenér to ocení, když sestavuje tým z několika ročníků současně
+                (např. mladší + starší přípravka sdílí klíčové hráče). */}
+            {cats.length > 1 && (() => {
+              const totalCount = (categoryStep.players ?? []).filter(p => p.active).length;
+              return (
+                <button
+                  onClick={() => onSelect(categoryStep, undefined)}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    background: 'var(--primary-light)', borderRadius: 12, padding: '14px 16px',
+                    textAlign: 'left', color: 'var(--primary)', width: '100%',
+                    border: '1.5px solid var(--primary)',
+                  }}
+                >
+                  <span style={{ fontWeight: 700, fontSize: 16 }}>
+                    ⭐ {t('clubs.allCategories') || 'Všechny kategorie'}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>
+                    {totalCount} {t('clubs.playersLabel')}
+                  </span>
+                </button>
+              );
+            })()}
+
             {cats.map(cat => {
               const count = (categoryStep.players ?? []).filter(p => p.ageCategory === cat && p.active).length;
               return (
@@ -100,15 +130,6 @@ export function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: Club
               );
             })}
           </div>
-
-          {/* Moznost bez kategorie (defaultPlayers) */}
-          <button onClick={() => onSelect(categoryStep)} style={{
-            background: 'var(--surface-var)', borderRadius: 12, padding: '10px 14px',
-            fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center',
-            border: '1.5px dashed var(--border)', width: '100%',
-          }}>
-            {t('tournament.create.withoutCategory')}
-          </button>
         </div>
       </div>
     );
@@ -161,14 +182,10 @@ export function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: Club
         ) : (
           <div style={{ background: 'var(--surface-var)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             <h4 style={{ fontWeight: 700, fontSize: 14 }}>{t('tournament.create.newClub')}</h4>
-            <input
-              placeholder={t('tournament.create.clubName')}
+            <OpponentAutocomplete
               value={newClubName}
-              onChange={e => setNewClubName(e.target.value)}
-              style={{
-                width: '100%', padding: '10px', borderRadius: 8, border: '1.5px solid var(--border)',
-                fontSize: 14, background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box',
-              }}
+              onChange={setNewClubName}
+              placeholder={t('tournament.create.clubName')}
             />
             <div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('tournament.create.colorLabel')}</div>

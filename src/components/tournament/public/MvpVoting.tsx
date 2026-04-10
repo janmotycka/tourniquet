@@ -41,7 +41,7 @@ export function MvpVoting({ tournamentId, teams }: Props) {
     return (
       <div style={{
         background: 'var(--surface)', borderRadius: 14, padding: '14px',
-        boxShadow: '0 1px 4px rgba(0,0,0,.05)', marginBottom: 8,
+        boxShadow: 'var(--shadow-sm)', marginBottom: 8,
         textAlign: 'center',
       }}>
         <div style={{ fontSize: 24, marginBottom: 4 }}>⭐</div>
@@ -79,7 +79,7 @@ export function MvpVoting({ tournamentId, teams }: Props) {
   return (
     <div style={{
       background: 'var(--surface)', borderRadius: 14, padding: '12px 14px',
-      boxShadow: '0 1px 4px rgba(0,0,0,.05)', marginBottom: 8,
+      boxShadow: 'var(--shadow-sm)', marginBottom: 8,
       boxSizing: 'border-box', overflow: 'hidden', maxWidth: '100%', minWidth: 0,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>

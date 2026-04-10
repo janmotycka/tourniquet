@@ -87,7 +87,7 @@ export function PublicHeader({
                 style={{
                   width: 32, height: 32, borderRadius: 8,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: '#FFEBEE', border: '1.5px solid #FFCDD2',
+                  background: 'var(--danger-light)', border: '1.5px solid #FFCDD2',
                   cursor: 'pointer', fontSize: 16, lineHeight: 1,
                 }}
               >
@@ -205,7 +205,7 @@ function ShareDropdownButton({ tournamentId, tournament }: { tournamentId: strin
       trigger={<span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700, lineHeight: 1 }}><span style={{ fontSize: 14 }}>{copied ? '✅' : '📤'}</span> {t('common.share')}</span>}
       triggerStyle={{
         height: 32, borderRadius: 8, padding: '0 10px',
-        background: copied ? '#E8F5E9' : 'var(--surface-var)',
+        background: copied ? 'var(--success-light)' : 'var(--surface-var)',
         border: '1.5px solid var(--border)',
       }}
       items={items}

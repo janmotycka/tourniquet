@@ -32,7 +32,7 @@ function AdminFinishFlash({ status }: { status: string }) {
     <div style={{
       textAlign: 'center', padding: '5px 0',
       background: 'linear-gradient(90deg, transparent 0%, rgba(102,187,106,.25) 50%, transparent 100%)',
-      fontSize: 12, fontWeight: 900, color: '#2E7D32', letterSpacing: 1.5,
+      fontSize: 12, fontWeight: 900, color: 'var(--success)', letterSpacing: 1.5,
     }}>
       🏁 {t('tournament.public.matchFinished').toUpperCase()}
     </div>
@@ -55,6 +55,61 @@ function SortableMatchCardWrapper({ matchId, children }: { matchId: string; chil
   );
 }
 
+const STAGE_LABELS: Record<string, string> = {
+  group: 'Základní skupiny',
+  quarterfinal: 'Čtvrtfinále',
+  semifinal: 'Semifinále',
+  final: 'Finále',
+  'third-place': 'O 3. místo',
+  placement: 'O umístění',
+};
+
+function StageSeparator({ stage }: { stage: string }) {
+  const label = STAGE_LABELS[stage] ?? stage;
+  const emoji = stage === 'final' ? '🏆' : stage === 'third-place' ? '🥉' : stage === 'semifinal' ? '⚔️' : stage === 'quarterfinal' ? '⚔️' : '';
+  return (
+    <div style={{
+      padding: '8px 0 4px',
+      fontSize: 12, fontWeight: 700,
+      color: stage === 'final' ? 'var(--warning)' : 'var(--text-muted)',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      display: 'flex', alignItems: 'center', gap: 6,
+    }}>
+      {emoji} {label}
+    </div>
+  );
+}
+
+/** Renderuje seznam zápasů s oddělovači stage (semifinále, finále...) */
+function renderWithStageSeparators(
+  matches: Match[],
+  renderFn: (m: Match) => React.ReactNode,
+) {
+  let lastStage = '';
+  let lastPlacementLabel = '';
+  return matches.map(m => {
+    const stage = m.stage ?? 'group';
+    const placementLabel = m.placementLabel ?? '';
+
+    // Pro placement stage: nový separátor pro každý jiný placementLabel
+    const isNewPlacement = stage === 'placement' && placementLabel !== lastPlacementLabel;
+    const showSep = stage !== 'group' && (stage !== lastStage || isNewPlacement);
+
+    lastStage = stage;
+    lastPlacementLabel = placementLabel;
+
+    const sepLabel = stage === 'placement' && placementLabel ? placementLabel : stage;
+
+    return (
+      <React.Fragment key={m.id}>
+        {showSep && <StageSeparator stage={sepLabel} />}
+        {renderFn(m)}
+      </React.Fragment>
+    );
+  });
+}
+
 export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, onFinishMatchConfirm, onPauseMatch, onResumeMatch, onEditMatch, onCancelMatch, onReorderMatches }: {
   tournament: Tournament;
   isVerified: boolean;
@@ -74,6 +129,17 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
   const getTeam = (id: string) => tournament.teams.find(tm => tm.id === id);
 
   const toggleGoal = (matchId: string, side: 'home' | 'away') => {
+    const match = tournament.matches.find(m => m.id === matchId);
+    if (!match) return;
+    const teamId = side === 'home' ? match.homeTeamId : match.awayTeamId;
+    const team = getTeam(teamId);
+
+    // Tým bez hráčů → přidat gól rovnou bez panelu (školní turnaje apod.)
+    if (!team?.players?.length) {
+      onQuickGoal(matchId, teamId, null);
+      return;
+    }
+
     setOpenGoalPanel(prev =>
       prev?.matchId === matchId && prev.side === side ? null : { matchId, side }
     );
@@ -124,7 +190,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                 const panelTeamId = panelSide === 'home' ? match.homeTeamId : match.awayTeamId;
 
                 // Barva skóre
-                const scoreColor = isScheduled ? 'var(--text-muted)' : isLive ? (isPaused ? '#E65100' : '#C62828') : 'var(--text)';
+                const scoreColor = isScheduled ? 'var(--text-muted)' : isLive ? (isPaused ? 'var(--warning)' : 'var(--danger)') : 'var(--text)';
 
                 return (
                   <div>
@@ -134,7 +200,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                       background: 'var(--surface)',
                       borderRadius: panelOpen ? '14px 14px 0 0' : 14,
                       border: isLive
-                        ? `2px solid ${isPaused ? '#E65100' : '#C62828'}`
+                        ? `2px solid ${isPaused ? 'var(--warning)' : 'var(--danger)'}`
                         : isFinished
                         ? '1.5px solid #C8E6C9'
                         : '1.5px solid var(--border)',
@@ -162,8 +228,8 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                                 {`${match.homeScore}:${match.awayScore}`}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                                <div style={{ width: 5, height: 5, borderRadius: 3, background: isPaused ? '#E65100' : '#C62828' }} />
-                                <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.5, color: isPaused ? '#E65100' : '#C62828' }}>
+                                <div style={{ width: 5, height: 5, borderRadius: 3, background: isPaused ? 'var(--warning)' : 'var(--danger)' }} />
+                                <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.5, color: isPaused ? 'var(--warning)' : 'var(--danger)' }}>
                                   {isPaused ? t('tournament.detail.paused') : t('tournament.detail.live')}
                                 </span>
                               </div>
@@ -238,7 +304,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                                   onClick={() => onResumeMatch(match.id)}
                                   style={{
                                     padding: '6px 14px', borderRadius: 9,
-                                    background: '#FFF3E0', color: '#E65100',
+                                    background: 'var(--warning-light)', color: 'var(--warning)',
                                     fontWeight: 700, fontSize: 13,
                                     border: '1.5px solid #FFB74D',
                                   }}
@@ -248,7 +314,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                                   onClick={() => onPauseMatch(match.id)}
                                   style={{
                                     padding: '6px 14px', borderRadius: 9,
-                                    background: 'var(--surface-var)', color: '#E65100',
+                                    background: 'var(--surface-var)', color: 'var(--warning)',
                                     fontWeight: 700, fontSize: 13,
                                     border: '1px solid #FFB74D',
                                   }}
@@ -258,7 +324,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                                 onClick={() => onFinishMatchConfirm(match.id)}
                                 style={{
                                   flex: 1, padding: '6px 0', borderRadius: 9,
-                                  background: '#FFEBEE', color: '#C62828',
+                                  background: 'var(--danger-light)', color: 'var(--danger)',
                                   fontWeight: 700, fontSize: 13,
                                   border: '1px solid #FFCDD2',
                                 }}
@@ -305,14 +371,14 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                           {/* Status vlevo: ikonka + čas (jen plánované)/tlačítko */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 40, flexShrink: 0 }}>
                             {isFinished
-                              ? <span style={{ fontSize: 11, color: '#2E7D32', flexShrink: 0 }}>✓</span>
+                              ? <span style={{ fontSize: 11, color: 'var(--success)', flexShrink: 0 }}>✓</span>
                               : isVerified
                               ? (
                                 <button
                                   onClick={() => onStartMatch(match.id)}
                                   style={{
                                     width: 32, height: 32, borderRadius: 6,
-                                    background: '#FFF3E0', color: '#E65100',
+                                    background: 'var(--warning-light)', color: 'var(--warning)',
                                     fontWeight: 900, fontSize: 11,
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     flexShrink: 0,
@@ -347,18 +413,23 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                           {/* Skóre střed — podbarvené jako v PublicView */}
                           <div style={{
                             flexShrink: 0,
-                            background: isFinished ? '#E8F5E9' : 'transparent',
+                            background: isFinished ? 'var(--success-light)' : 'transparent',
                             borderRadius: 8,
                             padding: isFinished ? '3px 8px' : '3px 4px',
                             minWidth: 44, textAlign: 'center',
                           }}>
                             <span style={{
                               fontWeight: 900, fontSize: isFinished ? 15 : 16,
-                              color: isFinished ? '#2E7D32' : 'var(--text-muted)',
+                              color: isFinished ? 'var(--success)' : 'var(--text-muted)',
                               fontVariantNumeric: 'tabular-nums',
                             }}>
                               {isScheduled ? '— : —' : `${match.homeScore} : ${match.awayScore}`}
                             </span>
+                            {isFinished && match.homePenaltyScore != null && match.awayPenaltyScore != null && (
+                              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text-muted)' }}>
+                                pen {match.homePenaltyScore}:{match.awayPenaltyScore}
+                              </div>
+                            )}
                           </div>
 
                           {/* Tým B */}
@@ -385,16 +456,28 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
                           {isVerified && isScheduled && onCancelMatch && !reorderLocked && (
                             <button
                               onClick={async () => {
-                                const ok = await ask({ title: t('common.delete'), message: t('tournament.match.cancelConfirm'), destructive: true });
-                                if (ok) {
-                                  onCancelMatch(match.id);
-                                }
+                                const home = homeT?.name ?? '?';
+                                const away = awayT?.name ?? '?';
+                                const isGroupMatch = !match.stage || match.stage === 'group';
+                                const warnings = [
+                                  'Zápas bude trvale odstraněn z rozpisu.',
+                                  'Časy všech následujících zápasů se posunou.',
+                                  ...(isGroupMatch ? ['Výsledky ve skupinové tabulce se změní — týmy odehrají méně zápasů.'] : []),
+                                  'Tuto akci nelze vrátit zpět.',
+                                ];
+                                const ok = await ask({
+                                  title: `Zrušit zápas`,
+                                  message: `Opravdu zrušit ${home} vs ${away}?\n\n${warnings.join('\n')}`,
+                                  destructive: true,
+                                });
+                                if (ok) onCancelMatch(match.id);
                               }}
                               style={{
-                                flexShrink: 0, width: 34, height: 34, borderRadius: 8,
-                                background: '#FFEBEE', color: '#C62828',
+                                flexShrink: 0, width: 24, height: 24, borderRadius: 6,
+                                background: 'var(--danger-light)', color: 'var(--danger)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: 12, border: '1px solid #FFCDD2',
+                                fontSize: 10, fontWeight: 700, border: '1px solid #FFCDD2',
+                                opacity: 0.7,
                               }}
                             >✕</button>
                           )}
@@ -425,7 +508,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
       {/* 🔴 Live */}
       {liveMatches.length > 0 && (
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#C62828', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
             🔴 {t('tournament.detail.nowPlaying')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -470,7 +553,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
             </DndContext>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {scheduledMatches.map(m => <div key={m.id}>{renderMatchCard(m)}</div>)}
+              {renderWithStageSeparators(scheduledMatches, m => renderMatchCard(m))}
             </div>
           )}
         </div>
@@ -483,7 +566,7 @@ export function MatchesTab({ tournament, isVerified, onQuickGoal, onStartMatch, 
             ✅ {t('tournament.detail.finishedSection')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {finishedMatches.map(m => <div key={m.id}>{renderMatchCard(m)}</div>)}
+            {renderWithStageSeparators(finishedMatches, m => renderMatchCard(m))}
           </div>
         </div>
       )}

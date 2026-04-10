@@ -78,7 +78,7 @@ export function ChatPollCard({ tournamentId, poll, isAdmin }: Props) {
   return (
     <div style={{
       background: 'var(--surface)', borderRadius: 14, padding: '12px 14px',
-      boxShadow: '0 1px 4px rgba(0,0,0,.05)', marginBottom: 4,
+      boxShadow: 'var(--shadow-sm)', marginBottom: 4,
       border: '1.5px solid var(--border)',
       boxSizing: 'border-box', overflow: 'hidden',
     }}>
@@ -98,7 +98,7 @@ export function ChatPollCard({ tournamentId, poll, isAdmin }: Props) {
             onClick={handleDelete}
             style={{
               padding: '6px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-              background: '#FFEBEE', color: '#C62828', border: '1px solid #FFCDD2',
+              background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid #FFCDD2',
               cursor: 'pointer', flexShrink: 0,
             }}
           >🗑</button>

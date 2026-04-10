@@ -31,7 +31,7 @@ export function StandingsCriteriaBox({ tiebreakerOrder, penaltyResults, collapsi
   const isOpen = !collapsible || !collapsed;
 
   return (
-    <div style={{ background: 'var(--surface)', borderRadius: 14, padding: collapsible ? '12px 14px' : '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 14, padding: collapsible ? '12px 14px' : '16px', boxShadow: 'var(--shadow-sm)' }}>
       {collapsible ? (
         <div
           onClick={onToggle}
@@ -61,7 +61,7 @@ export function StandingsCriteriaBox({ tiebreakerOrder, penaltyResults, collapsi
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{item.label}</span>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 5 }}>— {item.desc}</span>
                   {item.pending && (
-                    <span style={{ fontSize: 11, color: '#E65100', marginLeft: 6, fontWeight: 600 }}>
+                    <span style={{ fontSize: 11, color: 'var(--warning)', marginLeft: 6, fontWeight: 600 }}>
                       ({t('tournament.tiebreaker.penaltyPending')})
                     </span>
                   )}

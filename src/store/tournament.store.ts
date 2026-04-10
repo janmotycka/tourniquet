@@ -86,6 +86,9 @@ interface TournamentState {
   resetMatch: (tournamentId: string, matchId: string) => Promise<void>;
   pauseMatch: (tournamentId: string, matchId: string) => Promise<void>;
   resumeMatch: (tournamentId: string, matchId: string) => Promise<void>;
+  setPenaltyScore: (tournamentId: string, matchId: string, homePenalty: number, awayPenalty: number) => Promise<void>;
+  addPenaltyKick: (tournamentId: string, matchId: string, side: 'home' | 'away', scored: boolean) => Promise<void>;
+  undoPenaltyKick: (tournamentId: string, matchId: string) => Promise<void>;
 
   // Hráči
   addPlayer: (tournamentId: string, teamId: string, player: { name: string; jerseyNumber: number; birthYear: number | null }) => Promise<void>;
@@ -622,15 +625,19 @@ export const useTournamentStore = create<TournamentState>()(
           const finishedMatch = updatedMatches.find(m => m.id === matchId);
 
           // ── Knockout advancement: vítěz postupuje do nextMatchId ──
-          // Při remíze nepostupuje nikdo — admin musí rozhodnout (přidat gól / penalty)
-          if (finishedMatch?.nextMatchId && finishedMatch.status === 'finished'
-              && finishedMatch.homeScore !== finishedMatch.awayScore) {
-            const winnerId = finishedMatch.homeScore > finishedMatch.awayScore
-              ? finishedMatch.homeTeamId
-              : finishedMatch.awayTeamId;
-            const loserId = finishedMatch.homeScore > finishedMatch.awayScore
-              ? finishedMatch.awayTeamId
-              : finishedMatch.homeTeamId;
+          // Vítěz se určí ze skóre, nebo z penaltového rozstřelu při remíze
+          const hasWinner = finishedMatch?.status === 'finished' && (
+            finishedMatch.homeScore !== finishedMatch.awayScore ||
+            (finishedMatch.homePenaltyScore != null && finishedMatch.awayPenaltyScore != null &&
+             finishedMatch.homePenaltyScore !== finishedMatch.awayPenaltyScore)
+          );
+          if (finishedMatch?.nextMatchId && hasWinner) {
+            const penaltyDecides = finishedMatch.homeScore === finishedMatch.awayScore;
+            const homeWins = penaltyDecides
+              ? (finishedMatch.homePenaltyScore ?? 0) > (finishedMatch.awayPenaltyScore ?? 0)
+              : finishedMatch.homeScore > finishedMatch.awayScore;
+            const winnerId = homeWins ? finishedMatch.homeTeamId : finishedMatch.awayTeamId;
+            const loserId = homeWins ? finishedMatch.awayTeamId : finishedMatch.homeTeamId;
 
             updatedMatches = updatedMatches.map(m => {
               if (m.id !== finishedMatch.nextMatchId) return m;
@@ -654,15 +661,9 @@ export const useTournamentStore = create<TournamentState>()(
             }
           }
 
-          // ── Groups-knockout: po dokončení skupinové fáze nasadit do bracketu ──
-          if (format === 'groups-knockout' && finishedMatch?.stage === 'group') {
-            const allGroupMatchesFinished = updatedMatches
-              .filter(m => m.stage === 'group')
-              .every(m => m.status === 'finished');
-
-            if (allGroupMatchesFinished) {
-              updatedMatches = advanceTeamsFromGroups(updatedMatches, t.teams, t.settings);
-            }
+          // ── Groups-knockout: průběžně nasazovat do bracketu po každém dohrání ──
+          if (format === 'groups-knockout') {
+            updatedMatches = advanceTeamsFromGroups(updatedMatches, t.teams, t.settings);
           }
 
           const allFinished = updatedMatches.every(m => m.status === 'finished');
@@ -673,6 +674,51 @@ export const useTournamentStore = create<TournamentState>()(
             matches: updatedMatches,
           };
         }));
+        await syncById(get, set, tournamentId);
+      },
+
+      setPenaltyScore: async (tournamentId, matchId, homePenalty, awayPenalty) => {
+        set(state => mutateBothArrays(state, tournamentId, t => ({
+          ...t,
+          updatedAt: new Date().toISOString(),
+          matches: t.matches.map((m): Match =>
+            m.id === matchId ? { ...m, homePenaltyScore: homePenalty, awayPenaltyScore: awayPenalty } : m,
+          ),
+        })));
+        await syncById(get, set, tournamentId);
+      },
+
+      addPenaltyKick: async (tournamentId, matchId, side, scored) => {
+        set(state => mutateBothArrays(state, tournamentId, t => ({
+          ...t,
+          updatedAt: new Date().toISOString(),
+          matches: t.matches.map((m): Match => {
+            if (m.id !== matchId) return m;
+            const kicks = [...(m.penaltyKicks ?? []), { side, scored }];
+            const homeScored = kicks.filter(k => k.side === 'home' && k.scored).length;
+            const awayScored = kicks.filter(k => k.side === 'away' && k.scored).length;
+            return { ...m, penaltyKicks: kicks, homePenaltyScore: homeScored, awayPenaltyScore: awayScored };
+          }),
+        })));
+        await syncById(get, set, tournamentId);
+      },
+
+      undoPenaltyKick: async (tournamentId, matchId) => {
+        set(state => mutateBothArrays(state, tournamentId, t => ({
+          ...t,
+          updatedAt: new Date().toISOString(),
+          matches: t.matches.map((m): Match => {
+            if (m.id !== matchId || !m.penaltyKicks?.length) return m;
+            const kicks = m.penaltyKicks.slice(0, -1);
+            const homeScored = kicks.filter(k => k.side === 'home' && k.scored).length;
+            const awayScored = kicks.filter(k => k.side === 'away' && k.scored).length;
+            return {
+              ...m, penaltyKicks: kicks,
+              homePenaltyScore: kicks.length > 0 ? homeScored : undefined,
+              awayPenaltyScore: kicks.length > 0 ? awayScored : undefined,
+            };
+          }),
+        })));
         await syncById(get, set, tournamentId);
       },
 
@@ -769,7 +815,7 @@ export const useTournamentStore = create<TournamentState>()(
             const priorElapsed = m.finishedAt && m.startedAt
               ? Math.floor((new Date(m.finishedAt).getTime() - new Date(m.startedAt).getTime()) / 1000) - (m.pausedElapsed ?? 0)
               : (m.pausedElapsed ?? 0);
-            return { ...m, status: 'live', startedAt: new Date().toISOString(), pausedAt: null, pausedElapsed: priorElapsed };
+            return { ...m, status: 'live', startedAt: new Date().toISOString(), pausedAt: null, pausedElapsed: priorElapsed, penaltyKicks: undefined, homePenaltyScore: undefined, awayPenaltyScore: undefined };
           }),
         })));
         await syncById(get, set, tournamentId);
@@ -789,6 +835,9 @@ export const useTournamentStore = create<TournamentState>()(
               finishedAt: null,
               pausedAt: null,
               pausedElapsed: 0,
+              penaltyKicks: undefined,
+              homePenaltyScore: undefined,
+              awayPenaltyScore: undefined,
             };
           });
           const allFinished = updatedMatches.every(m => m.status === 'finished');
@@ -913,15 +962,61 @@ export const useTournamentStore = create<TournamentState>()(
         const tournament = get().getTournamentById(tournamentId);
         if (!tournament) return;
 
-        // Odebrat tým, jeho zápasy a osiřelé penaltyResults; přepočítat časy zbylých
+        const hasPlayedMatches = tournament.matches.some(
+          m => m.status === 'finished' || m.status === 'live',
+        );
+
         set(state => mutateBothArrays(state, tournamentId, t => {
           const remainingTeams = t.teams.filter(tm => tm.id !== teamId);
-          const remainingMatches = t.matches.filter(
-            m => m.homeTeamId !== teamId && m.awayTeamId !== teamId,
-          );
           const cleanPenalties = (t.settings.penaltyResults ?? []).filter(
             pr => pr.teamAId !== teamId && pr.teamBId !== teamId,
           );
+
+          if (!hasPlayedMatches && remainingTeams.length >= 2) {
+            // Před zahájením: přegenerovat celý rozpis se zbylými týmy
+            const newSettings = { ...t.settings, penaltyResults: cleanPenalties };
+            // Aktualizovat skupiny pokud existují (odebrat tým z groups)
+            if (newSettings.groups) {
+              newSettings.groups = newSettings.groups
+                .map(g => ({
+                  ...g,
+                  teamIds: g.teamIds.filter(id => id !== teamId),
+                }))
+                .filter(g => g.teamIds.length >= 2); // odebrat prázdné skupiny
+            }
+            const format = newSettings.format ?? 'round-robin';
+            let newMatches: import('../types/tournament.types').Match[];
+            try {
+              if (format === 'groups-knockout' && newSettings.groups) {
+                newMatches = generateGroupsKnockoutSchedule(remainingTeams, newSettings);
+              } else {
+                newMatches = generateRoundRobinSchedule(remainingTeams, newSettings);
+              }
+            } catch {
+              // Fallback: jen odebrat zápasy odstraněného týmu
+              newMatches = recalculateMatchTimes(
+                t.matches.filter(m => m.homeTeamId !== teamId && m.awayTeamId !== teamId),
+                newSettings,
+              );
+            }
+            return {
+              ...t,
+              teams: remainingTeams,
+              matches: newMatches,
+              settings: newSettings,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+
+          // Po zahájení: odebrat tým + jeho neplánované zápasy,
+          // odehrané zápasy nechat (pro historii/tabulku)
+          const remainingMatches = t.matches.filter(m => {
+            const isTeamMatch = m.homeTeamId === teamId || m.awayTeamId === teamId;
+            if (!isTeamMatch) return true;
+            // Odehrané zápasy nechat (kontumace se řeší ručně)
+            return m.status === 'finished';
+          });
+
           return {
             ...t,
             teams: remainingTeams,
@@ -1000,45 +1095,122 @@ export const useTournamentStore = create<TournamentState>()(
       },
 
       addManualTeam: async (tournamentId, team) => {
+        const tournament = get().getTournamentById(tournamentId);
+        if (!tournament) return;
+
+        const hasPlayedMatches = tournament.matches.some(
+          m => m.status === 'finished' || m.status === 'live',
+        );
+
+        if (hasPlayedMatches) {
+          useToastStore.getState().show(
+            'error',
+            'Nelze přidat tým po zahájení turnaje. Vytvořte nový turnaj.',
+            5000,
+          );
+          return;
+        }
+
         const rosterToken = generateId();
-        set(state => mutateBothArrays(state, tournamentId, t => ({
-          ...t,
-          updatedAt: new Date().toISOString(),
-          teams: [...t.teams, {
-            id: generateId(),
-            name: team.name,
-            color: team.color,
-            players: team.players,
-            clubId: team.clubId ?? null,
-            logoBase64: team.logoBase64 ?? null,
-            rosterToken,
-          }],
-        })));
+        const newTeam = {
+          id: generateId(),
+          name: team.name,
+          color: team.color,
+          players: team.players,
+          clubId: team.clubId ?? null,
+          logoBase64: team.logoBase64 ?? null,
+          rosterToken,
+        };
+
+        set(state => mutateBothArrays(state, tournamentId, t => {
+          const updatedTeams = [...t.teams, newTeam];
+          const newSettings = { ...t.settings };
+
+          // Přidat tým do první skupiny (pokud groups existují)
+          if (newSettings.groups && newSettings.groups.length > 0) {
+            // Najdi nejmenší skupinu a přidej tam
+            const smallest = newSettings.groups.reduce((min, g) =>
+              g.teamIds.length < min.teamIds.length ? g : min,
+            );
+            smallest.teamIds.push(newTeam.id);
+          }
+
+          // Přegenerovat rozpis se všemi týmy
+          const format = newSettings.format ?? 'round-robin';
+          let newMatches: import('../types/tournament.types').Match[];
+          try {
+            if (format === 'groups-knockout' && newSettings.groups) {
+              newMatches = generateGroupsKnockoutSchedule(updatedTeams, newSettings);
+            } else {
+              newMatches = generateRoundRobinSchedule(updatedTeams, newSettings);
+            }
+          } catch {
+            // Fallback: přidat tým bez přegenerování (staré chování)
+            newMatches = t.matches;
+          }
+
+          return {
+            ...t,
+            teams: updatedTeams,
+            matches: newMatches,
+            settings: newSettings,
+            updatedAt: new Date().toISOString(),
+          };
+        }));
         await syncById(get, set, tournamentId);
       },
 
       approveRegistration: async (tournamentId, registrationId, registration) => {
         const tournament = get().getTournamentById(tournamentId);
+        if (!tournament) return;
+        const hasPlayedMatches = tournament.matches.some(
+          m => m.status === 'finished' || m.status === 'live',
+        );
         const usedColors = (tournament?.teams ?? []).map(t => t.color);
         const availableColor = TEAM_COLORS.find(c => !usedColors.includes(c)) ?? '#9E9E9E';
         const rosterToken = generateId();
+        const newTeamId = generateId();
 
-        set(state => mutateBothArrays(state, tournamentId, t => ({
-          ...t,
-          updatedAt: new Date().toISOString(),
-          teams: [...t.teams, {
-            id: generateId(),
+        set(state => mutateBothArrays(state, tournamentId, t => {
+          const newTeam = {
+            id: newTeamId,
             name: registration.teamName,
             color: availableColor,
-            players: [],
+            players: [] as import('../types/tournament.types').Player[],
             rosterToken,
             coach: {
               name: registration.coachName,
               phone: registration.coachPhone,
               email: registration.coachEmail,
             },
-          }],
-        })));
+          };
+          const updatedTeams = [...t.teams, newTeam];
+
+          // Pokud se ještě nehrálo, přegenerovat rozpis s novým týmem
+          if (!hasPlayedMatches && updatedTeams.length >= 2) {
+            const newSettings = { ...t.settings };
+            if (newSettings.groups && newSettings.groups.length > 0) {
+              const smallest = newSettings.groups.reduce((min, g) =>
+                g.teamIds.length < min.teamIds.length ? g : min,
+              );
+              smallest.teamIds.push(newTeamId);
+            }
+            const format = newSettings.format ?? 'round-robin';
+            let newMatches: import('../types/tournament.types').Match[];
+            try {
+              if (format === 'groups-knockout' && newSettings.groups) {
+                newMatches = generateGroupsKnockoutSchedule(updatedTeams, newSettings);
+              } else {
+                newMatches = generateRoundRobinSchedule(updatedTeams, newSettings);
+              }
+            } catch {
+              newMatches = t.matches;
+            }
+            return { ...t, teams: updatedTeams, matches: newMatches, settings: newSettings, updatedAt: new Date().toISOString() };
+          }
+
+          return { ...t, teams: updatedTeams, updatedAt: new Date().toISOString() };
+        }));
         await syncById(get, set, tournamentId);
 
         // Remove registration record from Firebase

@@ -31,7 +31,7 @@ export function PublicRules({ tournament }: { tournament: Tournament }) {
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
       {/* ── Základní info o turnaji ── */}
-      <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 18 }}>🏆</span>
           <span style={{ fontWeight: 800, fontSize: 15 }}>{t('tournament.public.tournamentInfo')}</span>
@@ -88,7 +88,7 @@ export function PublicRules({ tournament }: { tournament: Tournament }) {
       </div>
 
       {/* ── Formát zápasů ── */}
-      <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 18 }}>⏱</span>
           <span style={{ fontWeight: 800, fontSize: 15 }}>{t('tournament.public.matchFormat')}</span>
@@ -115,7 +115,7 @@ export function PublicRules({ tournament }: { tournament: Tournament }) {
       {rules && rules.trim() !== '' && (
         <div style={{
           background: 'var(--surface)', borderRadius: 14, padding: '16px',
-          boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+          boxShadow: 'var(--shadow-sm)',
         }}>
           <h2 style={{ fontWeight: 800, fontSize: 15, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
             <span>📋</span> {t('tournament.public.rulesAndRegulations')}

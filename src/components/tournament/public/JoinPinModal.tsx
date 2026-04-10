@@ -23,7 +23,7 @@ export function JoinPinModal({ joinPin, setJoinPin, joinError, setJoinError, joi
       <div style={{
         background: 'var(--surface)', borderRadius: 20, padding: '28px 24px',
         width: '100%', maxWidth: 360,
-        boxShadow: '0 8px 32px rgba(0,0,0,.18)',
+        boxShadow: 'var(--shadow-lg)',
         display: 'flex', flexDirection: 'column', gap: 16,
       }}>
         {/* Title */}
@@ -69,9 +69,9 @@ export function JoinPinModal({ joinPin, setJoinPin, joinError, setJoinError, joi
         {/* Error message */}
         {joinError && (
           <p style={{
-            fontSize: 13, color: '#C62828', fontWeight: 600,
+            fontSize: 13, color: 'var(--danger)', fontWeight: 600,
             textAlign: 'center', margin: 0,
-            background: '#FFEBEE', padding: '8px 12px', borderRadius: 10,
+            background: 'var(--danger-light)', padding: '8px 12px', borderRadius: 10,
           }}>
             {joinError}
           </p>

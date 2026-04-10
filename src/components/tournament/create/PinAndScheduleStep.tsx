@@ -155,7 +155,7 @@ export function PinAndScheduleStep({
     <>
       {/* PIN */}
       {!hidePinSection && (
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--shadow-sm)' }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.pinOrg')}</h3>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
           {t('tournament.create.pinDesc')}
@@ -171,7 +171,7 @@ export function PinAndScheduleStep({
             placeholder="••••••"
             style={{
               width: '100%', padding: '12px', borderRadius: 10, fontSize: 20,
-              border: `1.5px solid ${pinError ? '#C62828' : 'var(--border)'}`,
+              border: `1.5px solid ${pinError ? 'var(--danger)' : 'var(--border)'}`,
               background: 'var(--bg)', color: 'var(--text)', letterSpacing: 8, boxSizing: 'border-box',
             }}
           />
@@ -187,17 +187,17 @@ export function PinAndScheduleStep({
             placeholder="••••••"
             style={{
               width: '100%', padding: '12px', borderRadius: 10, fontSize: 20,
-              border: `1.5px solid ${pinError ? '#C62828' : 'var(--border)'}`,
+              border: `1.5px solid ${pinError ? 'var(--danger)' : 'var(--border)'}`,
               background: 'var(--bg)', color: 'var(--text)', letterSpacing: 8, boxSizing: 'border-box',
             }}
           />
         </div>
-        {pinError && <div style={{ color: '#C62828', fontSize: 13 }}>⚠️ {pinError}</div>}
+        {pinError && <div style={{ color: 'var(--danger)', fontSize: 13 }}>⚠️ {pinError}</div>}
       </div>
       )}
 
       {/* Poradi zapasu -- interaktivni seznam */}
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 10, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 10, boxShadow: 'var(--shadow-sm)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.scheduleOrder')}</h3>
           <button onClick={handleResetMatchOrder} style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -232,18 +232,18 @@ export function PinAndScheduleStep({
         {/* Varovani z validace */}
         {scheduleValidated && scheduleWarnings.length > 0 && (
           <div style={{
-            background: '#FFF3E0', borderRadius: 10, padding: '10px 14px',
+            background: 'var(--warning-light)', borderRadius: 10, padding: '10px 14px',
             display: 'flex', flexDirection: 'column', gap: 4,
           }}>
             {scheduleWarnings.map((w, i) => (
-              <div key={i} style={{ fontSize: 12, color: '#E65100', lineHeight: 1.4 }}>{w}</div>
+              <div key={i} style={{ fontSize: 12, color: 'var(--warning)', lineHeight: 1.4 }}>{w}</div>
             ))}
           </div>
         )}
         {scheduleValidated && scheduleWarnings.length === 0 && (
           <div style={{
-            background: '#E8F5E9', borderRadius: 10, padding: '10px 14px',
-            fontSize: 12, color: '#2E7D32', lineHeight: 1.4,
+            background: 'var(--success-light)', borderRadius: 10, padding: '10px 14px',
+            fontSize: 12, color: 'var(--success)', lineHeight: 1.4,
           }}>
             {t('tournament.create.scheduleOk')}
           </div>

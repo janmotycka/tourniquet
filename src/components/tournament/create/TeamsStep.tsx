@@ -68,7 +68,7 @@ export function TeamsStep({
 
       {/* Tymy */}
       {teams.map((team, tIdx) => (
-        <div key={tIdx} style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+        <div key={tIdx} style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
           {/* Zahlavi tymu */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px' }}>
             {/* Logo nebo barevne kolecko */}
@@ -99,8 +99,8 @@ export function TeamsStep({
             </button>
             {teams.length > 2 && (
               <button onClick={() => onRemoveTeam(tIdx)} style={{
-                width: 30, height: 30, borderRadius: 8, background: '#FFEBEE',
-                fontSize: 14, color: '#C62828',
+                width: 30, height: 30, borderRadius: 8, background: 'var(--danger-light)',
+                fontSize: 14, color: 'var(--danger)',
               }}>✕</button>
             )}
           </div>

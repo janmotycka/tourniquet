@@ -367,13 +367,21 @@ export function estimateTournamentDuration(
   numberOfTeams: number,
   settings: TournamentSettings
 ): number {
-  const n = numberOfTeams % 2 === 0 ? numberOfTeams : numberOfTeams + 1;
-  const totalMatches = (n * (n - 1)) / 2;
-  // Odečteme BYE zápasy
-  const byeMatches = numberOfTeams % 2 !== 0 ? (n - 1) : 0;
-  const realMatches = totalMatches - byeMatches;
+  const format = settings.format ?? 'round-robin';
+  let realMatches: number;
+
+  if (format !== 'round-robin' && settings.groups && settings.groups.length > 0) {
+    // Skupiny + playoff (+ play-out): přesný výpočet
+    realMatches = countTotalMatchesForSettings(settings, numberOfTeams);
+  } else {
+    // Round-robin: n*(n-1)/2 s BYE korekcí
+    const n = numberOfTeams % 2 === 0 ? numberOfTeams : numberOfTeams + 1;
+    const totalMatches = (n * (n - 1)) / 2;
+    const byeMatches = numberOfTeams % 2 !== 0 ? (n - 1) : 0;
+    realMatches = totalMatches - byeMatches;
+  }
+
   const numberOfPitches = settings.numberOfPitches ?? 1;
-  // S více hřišti probíhají zápasy paralelně — celkový čas se dělí počtem hřišť
   const slots = Math.ceil(realMatches / numberOfPitches);
   if (slots <= 0) return 0;
   return slots * settings.matchDurationMinutes + (slots - 1) * settings.breakBetweenMatchesMinutes;
@@ -382,6 +390,56 @@ export function estimateTournamentDuration(
 /** Vrátí počet skutečných zápasů pro N týmů */
 export function countRealMatches(numberOfTeams: number): number {
   return (numberOfTeams * (numberOfTeams - 1)) / 2;
+}
+
+/**
+ * Spočítá celkový počet zápasů pro dané settings (skupiny, playoff, play-out).
+ * Zahrnuje: skupinové zápasy + playoff (SF+F+3rd) + play-out (pokud zapnutý).
+ */
+export function countTotalMatchesForSettings(settings: TournamentSettings, teamCount: number): number {
+  const format = settings.format ?? 'round-robin';
+  const groups = settings.groups ?? [];
+  const advance = settings.advancePerGroup ?? 1;
+  const thirdPlace = settings.thirdPlaceMatch ?? false;
+  const playOut = settings.playOut ?? false;
+
+  if (format === 'round-robin' || groups.length === 0) {
+    return (teamCount * (teamCount - 1)) / 2;
+  }
+
+  // Skupinové zápasy
+  let groupMatches = 0;
+  for (const g of groups) {
+    const n = g.teamIds.length;
+    groupMatches += (n * (n - 1)) / 2;
+  }
+
+  // Playoff
+  let playoffTeams: number;
+  if (groups.length === 3 && advance === 1) {
+    playoffTeams = 4; // 3 vítězové + best 2nd
+  } else {
+    playoffTeams = advance * groups.length;
+  }
+
+  let playoffMatches = 0;
+  if (playoffTeams <= 2) {
+    playoffMatches = 1 + (thirdPlace ? 1 : 0);
+  } else if (playoffTeams <= 4) {
+    playoffMatches = 2 + 1 + (thirdPlace ? 1 : 0); // 2 SF + F + 3rd
+  } else {
+    playoffMatches = 4 + 2 + 1 + (thirdPlace ? 1 : 0); // 4 QF + 2 SF + F + 3rd
+  }
+
+  // Play-out (jen pro 2 skupiny)
+  let playOutMatches = 0;
+  if (playOut && groups.length === 2) {
+    const sizes = groups.map(g => g.teamIds.length);
+    const minSize = Math.min(...sizes);
+    playOutMatches = Math.max(0, minSize - advance);
+  }
+
+  return groupMatches + playoffMatches + playOutMatches;
 }
 
 // ─── Group stage schedule ───────────────────────────────────────────────────
@@ -401,14 +459,14 @@ export function generateGroupStageSchedule(
   const { matchDurationMinutes, breakBetweenMatchesMinutes } = settings;
   const numberOfPitches = settings.numberOfPitches ?? 1;
 
-  const allMatches: Match[] = [];
-  let globalMatchIndex = 0;
+  // 1) Vygeneruj zápasy per skupina per kolo (bez přiřazení časů)
+  type RawMatch = { home: string; away: string; groupId: string; round: number };
+  const matchesByRound: RawMatch[][] = []; // [round][match]
 
   for (const group of groups) {
     const groupTeams = group.teamIds;
     if (groupTeams.length < 2) continue;
 
-    // Round-robin ve skupině
     const ids = [...groupTeams];
     const hasBye = ids.length % 2 !== 0;
     if (hasBye) ids.push('BYE');
@@ -418,6 +476,7 @@ export function generateGroupStageSchedule(
     const matchesPerRound = n / 2;
 
     for (let round = 0; round < rounds; round++) {
+      if (!matchesByRound[round]) matchesByRound[round] = [];
       const rotated = [ids[0], ...rotate(ids.slice(1), round)];
 
       for (let i = 0; i < matchesPerRound; i++) {
@@ -425,28 +484,57 @@ export function generateGroupStageSchedule(
         const away = rotated[n - 1 - i];
         if (home === 'BYE' || away === 'BYE') continue;
 
-        const slotIndex = Math.floor(globalMatchIndex / numberOfPitches);
-        const pitchNumber = (globalMatchIndex % numberOfPitches) + 1;
-        const scheduledTime = computeMatchStartTime(startDateTime, slotIndex, matchDurationMinutes, breakBetweenMatchesMinutes);
-
-        allMatches.push({
-          id: generateId(),
-          homeTeamId: home,
-          awayTeamId: away,
-          scheduledTime: scheduledTime.toISOString(),
-          durationMinutes: matchDurationMinutes,
-          status: 'scheduled',
-          homeScore: 0, awayScore: 0, goals: [],
-          startedAt: null, finishedAt: null, pausedAt: null, pausedElapsed: 0,
-          roundIndex: round,
-          matchIndex: globalMatchIndex,
-          pitchNumber,
-          stage: 'group',
-          groupId: group.id,
-        });
-
-        globalMatchIndex++;
+        matchesByRound[round].push({ home, away, groupId: group.id, round });
       }
+    }
+  }
+
+  // 2) Prokládej kola — kolo 1 všech skupin, kolo 2 všech skupin, atd.
+  // Uvnitř kola: střídej skupiny (A zápas, B zápas, A zápas, B zápas...)
+  const allMatches: Match[] = [];
+  let globalMatchIndex = 0;
+
+  for (const roundMatches of matchesByRound) {
+    if (!roundMatches) continue;
+
+    // Seřadit uvnitř kola: střídavě skupiny (A, B, C, A, B, C...)
+    const byGroup = new Map<string, RawMatch[]>();
+    for (const m of roundMatches) {
+      const arr = byGroup.get(m.groupId) ?? [];
+      arr.push(m);
+      byGroup.set(m.groupId, arr);
+    }
+    const groupQueues = [...byGroup.values()];
+    const interleaved: RawMatch[] = [];
+    let maxLen = Math.max(...groupQueues.map(q => q.length));
+    for (let i = 0; i < maxLen; i++) {
+      for (const queue of groupQueues) {
+        if (i < queue.length) interleaved.push(queue[i]);
+      }
+    }
+
+    for (const raw of interleaved) {
+      const slotIndex = Math.floor(globalMatchIndex / numberOfPitches);
+      const pitchNumber = (globalMatchIndex % numberOfPitches) + 1;
+      const scheduledTime = computeMatchStartTime(startDateTime, slotIndex, matchDurationMinutes, breakBetweenMatchesMinutes);
+
+      allMatches.push({
+        id: generateId(),
+        homeTeamId: raw.home,
+        awayTeamId: raw.away,
+        scheduledTime: scheduledTime.toISOString(),
+        durationMinutes: matchDurationMinutes,
+        status: 'scheduled',
+        homeScore: 0, awayScore: 0, goals: [],
+        startedAt: null, finishedAt: null, pausedAt: null, pausedElapsed: 0,
+        roundIndex: raw.round,
+        matchIndex: globalMatchIndex,
+        pitchNumber,
+        stage: 'group',
+        groupId: raw.groupId,
+      });
+
+      globalMatchIndex++;
     }
   }
 
@@ -455,20 +543,30 @@ export function generateGroupStageSchedule(
 
 // ─── Knockout bracket generator ─────────────────────────────────────────────
 
-/** Vrátí název fáze na základě počtu zbývajících zápasů */
+/**
+ * Vrátí fázi zápasu na základě pozice v bracket placeholders.
+ *
+ * Placeholders jdou v pořadí: [QF..., SF..., F, (3rd)].
+ * Pro 4 týmy: [SF1, SF2, F, 3rd] = pozice 0,1,2,3.
+ * Pro 8 týmů: [QF1..QF4, SF1,SF2, F, 3rd] = pozice 0-3,4-5,6,7.
+ */
 function stageForBracketSize(totalTeams: number, bracketPos: number, thirdPlace: boolean): MatchStage {
-  // totalTeams = počet týmů v playoff (4 → SF+F, 8 → QF+SF+F)
   const matchCount = totalTeams - 1 + (thirdPlace ? 1 : 0);
-  const sfStart = totalTeams / 2;
 
-  if (bracketPos < sfStart) {
-    if (totalTeams <= 4) return 'semifinal';
-    return 'quarterfinal';
-  }
-  if (bracketPos < sfStart + sfStart / 2) return 'semifinal';
-  // Zápas o 3. místo
-  if (thirdPlace && bracketPos === matchCount - 2) return 'third-place';
-  return 'final';
+  // Zápas o 3. místo je vždy POSLEDNÍ
+  if (thirdPlace && bracketPos === matchCount - 1) return 'third-place';
+
+  // Finále je vždy PŘEDPOSLEDNÍ (nebo poslední bez 3. místa)
+  const finalPos = thirdPlace ? matchCount - 2 : matchCount - 1;
+  if (bracketPos === finalPos) return 'final';
+
+  // Pro 4 týmy: pozice 0,1 = SF (žádné QF)
+  if (totalTeams <= 4) return 'semifinal';
+
+  // Pro 8 týmů: pozice 0-3 = QF, 4-5 = SF
+  const qfCount = totalTeams / 2;
+  if (bracketPos < qfCount) return 'quarterfinal';
+  return 'semifinal';
 }
 
 /**
@@ -567,13 +665,82 @@ export function generateGroupsKnockoutSchedule(
   // Spočítej počet postupujících
   const groups = settings.groups ?? [];
   const advance = settings.advancePerGroup ?? 1;
-  const playoffTeams = groups.length * advance;
   const thirdPlace = settings.thirdPlaceMatch ?? false;
 
   // Vygeneruj placeholders pro knockout
   const placeholders = generateGroupKnockoutPlaceholders(groups, advance, thirdPlace);
 
+  // Pro 3 skupiny s advance=1: skutečně postupují 4 týmy (3 vítězové + nejlepší 2.)
+  // Počet playoff týmů = počet SF placeholders × 2 (= kolik jich hraje první kolo)
+  const sfPlaceholders = placeholders.filter(p =>
+    !p.home.startsWith('Vítěz') && !p.home.startsWith('Poražený'),
+  );
+  const playoffTeams = sfPlaceholders.length * 2;
+
   const knockoutMatches = generateKnockoutBracket(playoffTeams, settings, afterIdx, placeholders);
+
+  // Play-out: zápasy o všechna umístění za hlavním playoff
+  const playOut = settings.playOut ?? false;
+  let playOutMatches: Match[] = [];
+  if (playOut) {
+    const playOutPlaceholders = generatePlayOutPlaceholders(groups, advance);
+    const playOutStartIdx = afterIdx + knockoutMatches.length;
+    const startDateTime = parseStartDateTime(settings);
+    const { matchDurationMinutes, breakBetweenMatchesMinutes } = settings;
+    const numberOfPitches = settings.numberOfPitches ?? 1;
+
+    let globalIdx = playOutStartIdx;
+    playOutMatches = playOutPlaceholders.map(p => {
+      const slotIndex = Math.floor(globalIdx / numberOfPitches);
+      const pitchNumber = (globalIdx % numberOfPitches) + 1;
+      const scheduledTime = computeMatchStartTime(startDateTime, slotIndex, matchDurationMinutes, breakBetweenMatchesMinutes);
+      const match: Match = {
+        id: generateId(),
+        homeTeamId: '',
+        awayTeamId: '',
+        scheduledTime: scheduledTime.toISOString(),
+        durationMinutes: matchDurationMinutes,
+        status: 'scheduled',
+        homeScore: 0, awayScore: 0, goals: [],
+        startedAt: null, finishedAt: null, pausedAt: null, pausedElapsed: 0,
+        roundIndex: 2000 + globalIdx, // vysoké číslo pro play-out
+        matchIndex: globalIdx,
+        pitchNumber,
+        stage: 'placement',
+        bracketPosition: globalIdx - playOutStartIdx,
+        homeTeamPlaceholder: p.home,
+        awayTeamPlaceholder: p.away,
+        placementLabel: p.placementLabel,
+      };
+      globalIdx++;
+      return match;
+    });
+  }
+
+  // Správné pořadí: skupiny → SF/QF → play-out (od nejnižšího) → O 3. místo → Finále
+  // Knockout matches obsahují SF, F, 3rd — potřebujeme vložit play-out PŘED 3rd a F
+  if (playOutMatches.length > 0) {
+    const sfQf = knockoutMatches.filter(m => m.stage === 'quarterfinal' || m.stage === 'semifinal');
+    const thirdPlaceMatch = knockoutMatches.filter(m => m.stage === 'third-place');
+    const finalMatch = knockoutMatches.filter(m => m.stage === 'final');
+    // Play-out: od nejvyššího čísla (O 9.) dolů k nejnižšímu (O 5.)
+    const playOutReversed = [...playOutMatches].reverse();
+
+    const allPostGroup = [...sfQf, ...playOutReversed, ...thirdPlaceMatch, ...finalMatch];
+    // Přečíslovat matchIndex a scheduledTime
+    const startDateTime = parseStartDateTime(settings);
+    const { matchDurationMinutes, breakBetweenMatchesMinutes } = settings;
+    const numberOfPitches = settings.numberOfPitches ?? 1;
+    allPostGroup.forEach((m, i) => {
+      const globalIdx = afterIdx + i;
+      m.matchIndex = globalIdx;
+      const slotIndex = Math.floor(globalIdx / numberOfPitches);
+      m.pitchNumber = (globalIdx % numberOfPitches) + 1;
+      m.scheduledTime = computeMatchStartTime(startDateTime, slotIndex, matchDurationMinutes, breakBetweenMatchesMinutes).toISOString();
+    });
+
+    return [...groupMatches, ...allPostGroup];
+  }
 
   return [...groupMatches, ...knockoutMatches];
 }
@@ -608,6 +775,16 @@ function generateGroupKnockoutPlaceholders(
     if (thirdPlace) {
       placeholders.push({ home: 'Poražený SF 1', away: 'Poražený SF 2' });
     }
+  } else if (groups.length === 3) {
+    // 3 skupiny → vždy 3 vítězové + 1 nejlepší druhý = 4 týmy → SF + F.
+    // (i když advance=2, 6 týmů se nedá čistě rozdělit do bracketu, proto
+    // vždy používáme 4 postupující = nejčistší formát pro 3 skupiny)
+    placeholders.push({ home: `1. ${groups[0].name}`, away: `Nejlepší 2. místo` });
+    placeholders.push({ home: `1. ${groups[1].name}`, away: `1. ${groups[2].name}` });
+    placeholders.push({ home: 'Vítěz SF 1', away: 'Vítěz SF 2' });
+    if (thirdPlace) {
+      placeholders.push({ home: 'Poražený SF 1', away: 'Poražený SF 2' });
+    }
   } else if (groups.length === 4 && advance === 2) {
     // 4 skupiny, 2 postupující → QF + SF + F
     placeholders.push({ home: `1. ${groups[0].name}`, away: `2. ${groups[1].name}` });
@@ -631,6 +808,47 @@ function generateGroupKnockoutPlaceholders(
   }
 
   return placeholders;
+}
+
+/**
+ * Generuje play-out placeholders — zápasy o VŠECHNA umístění za hlavním playoff.
+ *
+ * Pro 2 skupiny (A=n, B=m týmů), advance=k:
+ * - Hlavní playoff řeší pozice 1–(2k) (SF+F+3rd) — to generuje generateGroupKnockoutPlaceholders.
+ * - Play-out doplní zápasy pro pozice (2k+1) až (n+m):
+ *   Páruje se stejná pozice z obou skupin: (k+1)A vs (k+1)B → O (2k+1). místo,
+ *   (k+2)A vs (k+2)B → O (2k+3). místo, atd.
+ *   Vítěz dostane lepší umístění, poražený horší.
+ *
+ * Výsledek: KAŽDÝ tým odchází s konkrétním umístěním a diplomem.
+ *
+ * Pro 3+ skupiny: play-out se negeneruje (příliš složitá logika křížení).
+ */
+function generatePlayOutPlaceholders(
+  groups: GroupDefinition[],
+  advance: number,
+): Array<{ home: string; away: string; placementLabel: string }> {
+  if (groups.length !== 2) return [];
+
+  const sizeA = groups[0].teamIds.length;
+  const sizeB = groups[1].teamIds.length;
+  const minSize = Math.min(sizeA, sizeB);
+  const nameA = groups[0].name;
+  const nameB = groups[1].name;
+
+  const result: Array<{ home: string; away: string; placementLabel: string }> = [];
+
+  // Párování od pozice advance+1 dolů (ty co nepostupují do hlavního playoff)
+  for (let pos = advance + 1; pos <= minSize; pos++) {
+    const betterPlace = (pos - 1) * 2 + 1; // O 5., 7., 9. místo atd.
+    result.push({
+      home: `${pos}. ${nameA}`,
+      away: `${pos}. ${nameB}`,
+      placementLabel: `O ${betterPlace}. místo`,
+    });
+  }
+
+  return result;
 }
 
 /**
@@ -824,16 +1042,20 @@ export function advanceTeamsFromGroups(
   settings: TournamentSettings,
 ): Match[] {
   const groups = settings.groups ?? [];
-  const advance = settings.advancePerGroup ?? 1;
 
   // Spočítej tabulky pro každou skupinu
   const groupResults: Map<string, string[]> = new Map();
 
   for (const group of groups) {
     const groupMatches = matches.filter(m => m.groupId === group.id && m.stage === 'group');
-    const groupTeams = teams.filter(t => group.teamIds.includes(t.id));
-    const standings = computeStandings(groupMatches, groupTeams, settings.tiebreakerOrder, settings.penaltyResults);
-    groupResults.set(group.id, standings.slice(0, advance).map(s => s.teamId));
+    // Nasadit výsledky skupiny jen pokud jsou VŠECHNY její zápasy dohrané
+    const allFinished = groupMatches.length > 0 && groupMatches.every(m => m.status === 'finished');
+    if (allFinished) {
+      const groupTeams = teams.filter(t => group.teamIds.includes(t.id));
+      const standings = computeStandings(groupMatches, groupTeams, settings.tiebreakerOrder, settings.penaltyResults);
+      // Uložit VŠECHNY pozice (ne jen advance) — play-out potřebuje i 3., 4., 5. místo
+      groupResults.set(group.id, standings.map(s => s.teamId));
+    }
   }
 
   // Nasaď do knockout zápasů dle placeholderů

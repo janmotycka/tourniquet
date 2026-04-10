@@ -52,7 +52,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
   const timerMM = Math.floor(displaySec / 60).toString().padStart(2, '0');
   const timerSS = (displaySec % 60).toString().padStart(2, '0');
   const timerLabel = isOvertime ? `+${timerMM}:${timerSS}` : `${timerMM}:${timerSS}`;
-  const timerColor = isPausedModal ? '#E65100' : isOvertime ? '#C62828' : remaining <= 60 ? '#E65100' : 'var(--text)';
+  const timerColor = isPausedModal ? 'var(--warning)' : isOvertime ? 'var(--danger)' : remaining <= 60 ? 'var(--warning)' : 'var(--text)';
 
   const handleGoalModalAdd = (goal: Omit<Goal, 'id' | 'recordedAt'>) => {
     onAddGoal(goal);
@@ -78,8 +78,8 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <span style={{
                 fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 8,
-                background: match.status === 'live' ? '#FFEBEE' : match.status === 'finished' ? '#F3E5F5' : 'var(--surface-var)',
-                color: match.status === 'live' ? '#C62828' : match.status === 'finished' ? '#6A1B9A' : 'var(--text-muted)',
+                background: match.status === 'live' ? 'var(--danger-light)' : match.status === 'finished' ? '#F3E5F5' : 'var(--surface-var)',
+                color: match.status === 'live' ? 'var(--danger)' : match.status === 'finished' ? '#6A1B9A' : 'var(--text-muted)',
               }}>
                 {match.status === 'live' ? t('tournament.public.live') : match.status === 'finished' ? `✅ ${t('match.played')}` : `🕐 ${t('match.scheduled')}`}
               </span>
@@ -161,8 +161,8 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                       onClick={() => { setEditMode(e => !e); setEditingGoalId(null); }}
                       style={{
                         fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 8,
-                        background: editMode ? '#FFF3E0' : 'var(--surface-var)',
-                        color: editMode ? '#E65100' : 'var(--text-muted)',
+                        background: editMode ? 'var(--warning-light)' : 'var(--surface-var)',
+                        color: editMode ? 'var(--warning)' : 'var(--text-muted)',
                         border: editMode ? '1px solid #FFB74D' : '1px solid transparent',
                       }}
                     >
@@ -198,7 +198,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                               onClick={() => editMode && setEditingGoalId(isEditing ? null : g.id)}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 5, textAlign: 'left',
-                                background: isEditing ? '#FFF3E0' : 'var(--surface-var)',
+                                background: isEditing ? 'var(--warning-light)' : 'var(--surface-var)',
                                 borderRadius: 6, padding: '4px 6px 4px 4px',
                                 borderLeft: `3px solid ${homeBeneficiary?.color ?? 'var(--primary)'}`,
                                 outline: isEditing ? '2px solid #FFB74D' : 'none',
@@ -209,7 +209,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                               <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 ⚽ {playerLabel}
                               </span>
-                              {editMode && <span style={{ fontSize: 10, color: '#E65100', fontWeight: 700, flexShrink: 0 }}>✏️</span>}
+                              {editMode && <span style={{ fontSize: 10, color: 'var(--warning)', fontWeight: 700, flexShrink: 0 }}>✏️</span>}
                             </button>
                           ) : <div />}
 
@@ -223,14 +223,14 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                               onClick={() => editMode && setEditingGoalId(isEditing ? null : g.id)}
                               style={{
                                 display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5, textAlign: 'right',
-                                background: isEditing ? '#FFF3E0' : 'var(--surface-var)',
+                                background: isEditing ? 'var(--warning-light)' : 'var(--surface-var)',
                                 borderRadius: 6, padding: '4px 4px 4px 6px',
                                 borderRight: `3px solid ${awayBeneficiary?.color ?? '#666'}`,
                                 outline: isEditing ? '2px solid #FFB74D' : 'none',
                                 cursor: editMode ? 'pointer' : 'default',
                               }}
                             >
-                              {editMode && <span style={{ fontSize: 10, color: '#E65100', fontWeight: 700, flexShrink: 0 }}>✏️</span>}
+                              {editMode && <span style={{ fontSize: 10, color: 'var(--warning)', fontWeight: 700, flexShrink: 0 }}>✏️</span>}
                               <span style={{ fontSize: 11, color: 'var(--text)', fontWeight: 600, flex: 1, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {playerLabel} ⚽
                               </span>
@@ -245,7 +245,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                             margin: '4px 0 6px', padding: '10px', borderRadius: 10,
                             background: '#FFF8F0', border: '1px solid #FFB74D',
                           }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: '#E65100', marginBottom: 8 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning)', marginBottom: 8 }}>
                               {t('tournament.detail.assignScorer', { team: scoringTeam.name })}
                             </div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
@@ -279,7 +279,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                               onClick={() => { onRemoveGoal(g.id); setEditingGoalId(null); }}
                               style={{
                                 width: '100%', padding: '7px', borderRadius: 8,
-                                background: '#FFEBEE', color: '#C62828', fontWeight: 700, fontSize: 12,
+                                background: 'var(--danger-light)', color: 'var(--danger)', fontWeight: 700, fontSize: 12,
                               }}
                             >🗑 {t('score.deleteGoal')}</button>
                           </div>
@@ -291,7 +291,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                 {match.status === 'live' && match.goals.length > 0 && (
                   <button onClick={onRemoveLastGoal} style={{
                     marginTop: 8, width: '100%', padding: '8px', borderRadius: 10,
-                    background: '#FFEBEE', color: '#C62828', fontWeight: 600, fontSize: 13,
+                    background: 'var(--danger-light)', color: 'var(--danger)', fontWeight: 600, fontSize: 13,
                   }}>
                     ↩ {t('tournament.detail.undoGoal')}
                   </button>
@@ -303,7 +303,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {match.status === 'scheduled' && (
                 <button onClick={onStart} style={{
-                  background: '#FFF3E0', color: '#E65100', fontWeight: 700, fontSize: 16,
+                  background: 'var(--warning-light)', color: 'var(--warning)', fontWeight: 700, fontSize: 16,
                   padding: '14px', borderRadius: 14, border: '1.5px solid #FFB74D',
                 }}>
                   ▶ {t('score.startMatch')}
@@ -331,7 +331,7 @@ export function ScoreModal({ match, tournament, onClose, onStart, onFinish, onAd
                   <button
                     onClick={async () => { const ok = await ask({ title: t('tournament.detail.resetConfirm'), message: t('tournament.detail.resetConfirm'), destructive: true }); if (ok) { onReset(); onClose(); } }}
                     style={{
-                      flex: 1, background: '#FFEBEE', color: '#C62828', fontWeight: 600, fontSize: 14,
+                      flex: 1, background: 'var(--danger-light)', color: 'var(--danger)', fontWeight: 600, fontSize: 14,
                       padding: '11px', borderRadius: 12, border: '1px solid #FFCDD2',
                     }}
                   >

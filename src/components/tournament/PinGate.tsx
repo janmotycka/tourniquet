@@ -72,12 +72,12 @@ export function PinGate({ tournament, onVerified, onClose }: { tournament: Tourn
           autoFocus
           style={{
             width: '100%', padding: '14px', borderRadius: 12, fontSize: 24,
-            border: `2px solid ${error ? '#C62828' : 'var(--border)'}`,
+            border: `2px solid ${error ? 'var(--danger)' : 'var(--border)'}`,
             background: 'var(--bg)', color: 'var(--text)', letterSpacing: 10,
             textAlign: 'center', boxSizing: 'border-box',
           }}
         />
-        {error && <div style={{ color: '#C62828', fontSize: 13, textAlign: 'center' }}>⚠️ {error}</div>}
+        {error && <div style={{ color: 'var(--danger)', fontSize: 13, textAlign: 'center' }}>⚠️ {error}</div>}
         <div style={{ display: 'flex', gap: 10 }}>
           {onClose && (
             <button onClick={onClose} style={{

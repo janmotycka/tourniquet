@@ -6,6 +6,43 @@ import type { Locale } from '../../../i18n/context';
 import { PublicTeamBadge } from './PublicTeamBadge';
 import { LiveReactions } from './LiveReactions';
 
+// ─── Stage separátor pro public view ─────────────────────────────────────────
+const STAGE_LABELS: Record<string, string> = {
+  group: '', quarterfinal: 'Čtvrtfinále', semifinal: 'Semifinále',
+  final: 'Finále', 'third-place': 'O 3. místo', placement: 'O umístění',
+};
+
+function renderPublicMatchesWithStages(
+  matches: Match[],
+  renderFn: (m: Match) => React.ReactNode,
+) {
+  let lastStage = '';
+  let lastPlacement = '';
+  return matches.map(m => {
+    const stage = m.stage ?? 'group';
+    const pl = m.placementLabel ?? '';
+    const isNew = stage !== 'group' && (stage !== lastStage || (stage === 'placement' && pl !== lastPlacement));
+    lastStage = stage;
+    lastPlacement = pl;
+    const label = stage === 'placement' && pl ? pl : STAGE_LABELS[stage] ?? '';
+    const emoji = stage === 'final' ? '🏆' : stage === 'third-place' ? '🥉' : stage === 'placement' ? '🏅' : stage === 'semifinal' || stage === 'quarterfinal' ? '⚔️' : '';
+    return (
+      <React.Fragment key={m.id}>
+        {isNew && label && (
+          <div style={{
+            padding: '6px 0 2px', fontSize: 12, fontWeight: 700,
+            color: stage === 'final' ? 'var(--warning)' : 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: 0.8,
+          }}>
+            {emoji} {label}
+          </div>
+        )}
+        {renderFn(m)}
+      </React.Fragment>
+    );
+  });
+}
+
 // ─── Miniaturní odpočítávač přímo v řádku živého zápasu ────────────────────
 function LiveRowTimer({ match: m }: { match: Match }) {
   const [elapsed, setElapsed] = useState(() =>
@@ -23,7 +60,7 @@ function LiveRowTimer({ match: m }: { match: Match }) {
   const mm = Math.floor(sec / 60).toString().padStart(2, '0');
   const ss = (sec % 60).toString().padStart(2, '0');
   return (
-    <span style={{ fontSize: 11, fontWeight: 700, color: isOT ? '#C62828' : 'var(--text)', letterSpacing: 0.3 }}>
+    <span style={{ fontSize: 11, fontWeight: 700, color: isOT ? 'var(--danger)' : 'var(--text)', letterSpacing: 0.3 }}>
       {m.pausedAt ? '⏸' : (isOT ? `+${mm}:${ss}` : `${mm}:${ss}`)}
     </span>
   );
@@ -139,9 +176,9 @@ function MatchRow({ match, isLive = false, tournament, t, locale, goalOverlay }:
   const isClickable = match.status === 'finished';
 
   const scoreStyle: React.CSSProperties = isLive
-    ? { color: '#C62828', fontWeight: 900, fontSize: 22, textAlign: 'center', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }
+    ? { color: 'var(--danger)', fontWeight: 900, fontSize: 22, textAlign: 'center', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }
     : match.status === 'finished'
-    ? { background: '#E8F5E9', color: '#2E7D32', borderRadius: 8, padding: '4px 10px', fontWeight: 800, fontSize: 15, minWidth: 50, textAlign: 'center', flexShrink: 0 }
+    ? { background: 'var(--success-light)', color: 'var(--success)', borderRadius: 8, padding: '4px 10px', fontWeight: 800, fontSize: 15, minWidth: 50, textAlign: 'center', flexShrink: 0 }
     : { color: 'var(--text-muted)', fontWeight: 600, fontSize: 14, minWidth: 50, textAlign: 'center', flexShrink: 0 };
 
   return (
@@ -175,8 +212,8 @@ function MatchRow({ match, isLive = false, tournament, t, locale, goalOverlay }:
             <LiveRowTimer match={match} />
             <span style={scoreStyle}>{`${match.homeScore} : ${match.awayScore}`}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <div style={{ width: 5, height: 5, borderRadius: 3, background: '#C62828' }} />
-              <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.5, color: '#C62828' }}>{t('tournament.public.liveLabel')}</span>
+              <div style={{ width: 5, height: 5, borderRadius: 3, background: 'var(--danger)' }} />
+              <span style={{ fontSize: 10, fontWeight: 900, letterSpacing: 0.5, color: 'var(--danger)' }}>{t('tournament.public.liveLabel')}</span>
             </div>
             {(tournament.settings.numberOfPitches ?? 1) > 1 && (
               <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>
@@ -215,6 +252,28 @@ function MatchRow({ match, isLive = false, tournament, t, locale, goalOverlay }:
             <span style={scoreStyle}>
               {match.status === 'scheduled' ? '— : —' : `${match.homeScore} : ${match.awayScore}`}
             </span>
+            {match.status === 'finished' && match.homePenaltyScore != null && match.awayPenaltyScore != null && (
+              <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--text-muted)' }}>
+                pen {match.homePenaltyScore}:{match.awayPenaltyScore}
+              </div>
+            )}
+            {match.status === 'live' && (match.penaltyKicks?.length ?? 0) > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                <div style={{ display: 'flex', gap: 1 }}>
+                  {match.penaltyKicks!.filter(k => k.side === 'home').map((k, i) => (
+                    <span key={i} style={{ fontSize: 10 }}>{k.scored ? '⚽' : '❌'}</span>
+                  ))}
+                </div>
+                <span style={{ fontSize: 8, fontWeight: 800, color: 'var(--warning)' }}>
+                  pen {match.homePenaltyScore ?? 0}:{match.awayPenaltyScore ?? 0}
+                </span>
+                <div style={{ display: 'flex', gap: 1 }}>
+                  {match.penaltyKicks!.filter(k => k.side === 'away').map((k, i) => (
+                    <span key={i} style={{ fontSize: 10 }}>{k.scored ? '⚽' : '❌'}</span>
+                  ))}
+                </div>
+              </div>
+            )}
             {isClickable && (
               <span style={{ fontSize: 10, color: 'var(--text-muted)', transition: 'transform .2s', display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                 ▾
@@ -484,8 +543,8 @@ export function PublicResults({ tournament, selectedTeamId }: { tournament: Tour
       {/* 1. Živé zápasy + právě dohrané (seřazené podle matchIndex) */}
       {combinedLiveSection.length > 0 && (
           <div>
-            <h3 style={{ fontSize: 13, fontWeight: 700, color: '#C62828', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 10, color: '#C62828' }}>●</span> {t('tournament.public.nowPlaying')}
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--danger)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 10, color: 'var(--danger)' }}>●</span> {t('tournament.public.nowPlaying')}
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {combinedLiveSection.map(m => {
@@ -553,7 +612,7 @@ export function PublicResults({ tournament, selectedTeamId }: { tournament: Tour
         <div>
           <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('tournament.public.remainingMatches')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {scheduledMatches.map(m => <MatchRow key={m.id} match={m} tournament={tournament} t={t} locale={locale} />)}
+            {renderPublicMatchesWithStages(scheduledMatches, m => <MatchRow match={m} tournament={tournament} t={t} locale={locale} />)}
           </div>
         </div>
       )}
@@ -563,7 +622,7 @@ export function PublicResults({ tournament, selectedTeamId }: { tournament: Tour
         <div>
           <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('tournament.public.finishedResults')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {finishedMatches.map(m => <MatchRow key={m.id} match={m} tournament={tournament} t={t} locale={locale} />)}
+            {renderPublicMatchesWithStages(finishedMatches, m => <MatchRow match={m} tournament={tournament} t={t} locale={locale} />)}
           </div>
         </div>
       )}

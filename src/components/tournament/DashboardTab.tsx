@@ -16,8 +16,10 @@ import { generateInvoicePdf, createInvoiceDataFromApproval } from '../../utils/i
 import { TeamBadge } from './TeamBadge';
 import { AdminRosterSheet } from './AdminRosterSheet';
 import { exportTournamentPdf } from '../../utils/tournament-pdf';
+// import { exportRegulationsPdf } from '../../utils/tournament-regulations-pdf'; // TODO: propozice PDF
 import { useClubsStore } from '../../store/clubs.store';
 import { TEAM_COLORS } from '../../utils/team-colors';
+import { OpponentAutocomplete } from '../clubs/OpponentAutocomplete';
 import type { Club, AgeCategory } from '../../types/club.types';
 
 interface Props {
@@ -73,6 +75,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
   const addManualTeam = useTournamentStore(s => s.addManualTeam);
   const updateTournament = useTournamentStore(s => s.updateTournament);
   const removeTeam = useTournamentStore(s => s.removeTeam);
+  const updateTeamName = useTournamentStore(s => s.updateTeamName);
   const toggleTeamPaid = useTournamentStore(s => s.toggleTeamPaid);
   const ask = useConfirmStore(s => s.ask);
 
@@ -81,6 +84,26 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
   const [showAddTeam, setShowAddTeam] = useState(false);
   const [addTeamName, setAddTeamName] = useState('');
   const [addTeamCategory, setAddTeamCategory] = useState<{ club: Club; category?: AgeCategory } | null>(null);
+
+  /** Wrapper pro addManualTeam — potvrdí a přegeneruje rozpis */
+  const confirmAndAddTeam = async (team: Parameters<typeof addManualTeam>[1]) => {
+    const ok = await ask({
+      title: `➕ ${team.name}`,
+      message: t('dashboard.addTeamConfirm'),
+    });
+    if (!ok) return false;
+    try {
+      await addManualTeam(tournament.id, team);
+      setShowAddTeam(false);
+      setAddTeamName('');
+      setAddTeamCategory(null);
+      showToast('success', `✅ ${team.name}`);
+      return true;
+    } catch {
+      showToast('error', t('common.error'));
+      return false;
+    }
+  };
 
   const isRegistration = tournament.settings.registrationEnabled ?? false;
   const regUrl = getRegistrationUrl(tournament.id);
@@ -250,10 +273,10 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
         </div>
       )}
 
-      {/* Preparation checklist — compact */}
-      <div style={{
+      {/* Preparation checklist — compact (only if has items) */}
+      {checkItems.length > 0 && <div style={{
         background: 'var(--surface)', borderRadius: 12, padding: '10px 14px',
-        boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexWrap: 'wrap', gap: '4px 12px',
+        boxShadow: 'var(--shadow-sm)', display: 'flex', flexWrap: 'wrap', gap: '4px 12px',
         alignItems: 'center',
       }}>
         <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-muted)', marginRight: 4 }}>📋</span>
@@ -261,19 +284,19 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
           <span key={i} style={{
             fontSize: 13,
             fontWeight: item.highlight ? 700 : 500,
-            color: item.highlight ? '#E65100' : item.done ? '#2E7D32' : 'var(--text-muted)',
+            color: item.highlight ? 'var(--warning)' : item.done ? 'var(--success)' : 'var(--text-muted)',
             whiteSpace: 'nowrap',
           }}>
             {item.done ? '✓' : '○'} {item.label}
             {item.highlight ? ` (${pendingRegs.length})` : ''}
           </span>
         ))}
-      </div>
+      </div>}
 
       {/* Summary + PDF */}
       <div style={{
         background: 'var(--surface)', borderRadius: 14, padding: '12px 16px',
-        boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+        boxShadow: 'var(--shadow-sm)',
         display: 'flex',
         flexDirection: isDesktop ? 'row' : 'column',
         alignItems: isDesktop ? 'center' : undefined,
@@ -295,6 +318,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
             <span>📍 <b style={{ color: 'var(--text)' }}>{tournament.settings.venueName}</b></span>
           )}
         </div>
+        {/* PDF propozice — centrované */}
         <button
           onClick={async () => {
             setPdfExporting(true);
@@ -308,26 +332,25 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
           }}
           disabled={pdfExporting}
           style={{
-            padding: isDesktop ? '10px 18px' : '10px',
+            width: '100%',
+            padding: '10px 14px',
             borderRadius: 10, fontSize: 14, fontWeight: 700,
             background: pdfExporting ? 'var(--border)' : 'var(--primary)',
             color: pdfExporting ? 'var(--text-muted)' : '#fff',
             border: 'none', cursor: pdfExporting ? 'wait' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            transition: 'background .2s',
-            flexShrink: 0,
-            whiteSpace: 'nowrap',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           }}
         >
           {pdfExporting ? `⏳ ${t('pdf.generating')}` : `📄 ${t('pdf.downloadPdf')}`}
         </button>
+        {/* PDF propozice — TODO: dokončit před zapnutím */}
       </div>
 
       {/* Registration sharing — collapsible */}
       {isRegistration && isAdmin && (
         <div style={{
           background: 'var(--surface)', borderRadius: 14,
-          boxShadow: '0 1px 4px rgba(0,0,0,.05)', overflow: 'hidden',
+          boxShadow: 'var(--shadow-sm)', overflow: 'hidden',
         }}>
           <div
             onClick={() => setRegShareOpen(!regShareOpen)}
@@ -337,8 +360,8 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
             <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>{t('tournament.created.shareRegistration')}</span>
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 8,
-              background: (tournament.settings.registrationClosed ?? false) ? '#FFEBEE' : '#E8F5E9',
-              color: (tournament.settings.registrationClosed ?? false) ? '#C62828' : '#2E7D32',
+              background: (tournament.settings.registrationClosed ?? false) ? 'var(--danger-light)' : 'var(--success-light)',
+              color: (tournament.settings.registrationClosed ?? false) ? 'var(--danger)' : 'var(--success)',
             }}>
               {(tournament.settings.registrationClosed ?? false) ? `🔒 ${t('dashboard.registrationClosedBadge')}` : `🟢 ${t('dashboard.registrationOpenBadge')}`}
             </span>
@@ -366,7 +389,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                   onClick={handleCopy}
                   style={{
                     flex: 1, padding: '7px 6px', borderRadius: 8, fontWeight: 600, fontSize: 12,
-                    background: copied ? '#2E7D32' : 'var(--surface-var)',
+                    background: copied ? 'var(--success)' : 'var(--surface-var)',
                     color: copied ? '#fff' : 'var(--text)',
                     border: '1px solid var(--border)', transition: 'all .2s',
                   }}
@@ -402,8 +425,8 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                 }}
                 style={{
                   padding: '8px 12px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                  background: (tournament.settings.registrationClosed ?? false) ? '#E8F5E9' : '#FFF3E0',
-                  color: (tournament.settings.registrationClosed ?? false) ? '#2E7D32' : '#E65100',
+                  background: (tournament.settings.registrationClosed ?? false) ? 'var(--success-light)' : 'var(--warning-light)',
+                  color: (tournament.settings.registrationClosed ?? false) ? 'var(--success)' : 'var(--warning)',
                   border: (tournament.settings.registrationClosed ?? false) ? '1.5px solid #C8E6C9' : '1.5px solid #FFE0B2',
                   cursor: 'pointer', width: '100%',
                 }}
@@ -413,7 +436,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                   : `🔒 ${t('dashboard.closeRegistration')}`}
               </button>
               {(tournament.settings.registrationClosed ?? false) && (
-                <div style={{ fontSize: 12, color: '#E65100', textAlign: 'center', fontWeight: 600 }}>
+                <div style={{ fontSize: 12, color: 'var(--warning)', textAlign: 'center', fontWeight: 600 }}>
                   🔒 {t('dashboard.registrationClosedBadge')}
                 </div>
               )}
@@ -426,13 +449,13 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
       {(tournament.teams.length > 0 || (isRegistration && isAdmin && pendingRegs.length > 0)) && (
         <div style={{
           background: 'var(--surface)', borderRadius: 14, padding: '16px',
-          boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10,
+          boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 10,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0, flex: 1 }}>
               👥 {t('dashboard.teams')} ({tournament.teams.length}{hasExplicitMax ? `/${maxTeams}` : ''})
               {pendingRegs.length > 0 && (
-                <span style={{ color: '#E65100', fontWeight: 700, marginLeft: 6 }}>
+                <span style={{ color: 'var(--warning)', fontWeight: 700, marginLeft: 6 }}>
                   +{pendingRegs.length} ⏳
                 </span>
               )}
@@ -442,8 +465,8 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                 onClick={() => setEditTeamsMode(!editTeamsMode)}
                 style={{
                   padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                  background: editTeamsMode ? '#FFEBEE' : 'var(--surface-var)',
-                  color: editTeamsMode ? '#C62828' : 'var(--text-muted)',
+                  background: editTeamsMode ? 'var(--danger-light)' : 'var(--surface-var)',
+                  color: editTeamsMode ? 'var(--danger)' : 'var(--text-muted)',
                   border: editTeamsMode ? '1px solid #FFCDD2' : '1px solid var(--border)',
                   cursor: 'pointer', transition: 'all .15s',
                 }}
@@ -456,7 +479,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
           {/* Pending registrations — orange highlight at top */}
           {isRegistration && isAdmin && pendingRegs.map(([regId, reg]) => (
             <div key={regId} style={{
-              padding: '10px 12px', background: '#FFF3E0', borderRadius: 12,
+              padding: '10px 12px', background: 'var(--warning-light)', borderRadius: 12,
               border: '1.5px solid #FFE0B2', display: 'flex', flexDirection: 'column', gap: 6,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -474,7 +497,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                     {reg.coachName} · {reg.coachPhone}
                   </div>
                 </div>
-                <span style={{ fontSize: 11, color: '#E65100', fontWeight: 600, flexShrink: 0 }}>
+                <span style={{ fontSize: 11, color: 'var(--warning)', fontWeight: 600, flexShrink: 0 }}>
                   {t('registration.pending')}
                 </span>
               </div>
@@ -483,7 +506,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                   onClick={() => handleApprove(regId, reg)}
                   style={{
                     flex: 1, padding: '8px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                    background: '#E8F5E9', color: '#2E7D32', border: '1px solid #C8E6C9',
+                    background: 'var(--success-light)', color: 'var(--success)', border: '1px solid #C8E6C9',
                     cursor: 'pointer',
                   }}
                 >
@@ -493,7 +516,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                   onClick={() => handleRejectWithConfirm(regId, reg)}
                   style={{
                     padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                    background: '#FFEBEE', color: '#D32F2F', border: '1px solid #FFCDD2',
+                    background: 'var(--danger-light)', color: '#D32F2F', border: '1px solid #FFCDD2',
                     cursor: 'pointer',
                   }}
                 >
@@ -506,12 +529,12 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
           {/* Post-approval action panel — inline within team list */}
           {approvedTeam && (
             <div style={{
-              padding: '10px 12px', background: '#E8F5E9', borderRadius: 12,
+              padding: '10px 12px', background: 'var(--success-light)', borderRadius: 12,
               border: '1.5px solid #C8E6C9', display: 'flex', flexDirection: 'column', gap: 8,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 16 }}>🎉</span>
-                <span style={{ fontWeight: 700, fontSize: 14, color: '#2E7D32', flex: 1 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--success)', flex: 1 }}>
                   {approvedTeam.teamName} — {t('registration.approved')}
                 </span>
                 <button
@@ -611,7 +634,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                     }}
                     style={{
                       padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                      background: '#E3F2FD', color: '#1565C0', border: '1px solid #BBDEFB', cursor: 'pointer',
+                      background: 'var(--info-light)', color: 'var(--info)', border: '1px solid #BBDEFB', cursor: 'pointer',
                     }}
                   >
                     🧾 {t('invoice.download')}
@@ -637,8 +660,8 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
 
             // Status dot color & action button config
             const dotColor = isAccepted ? '#4CAF50' : isSubmitted ? '#1976D2' : hasRosterToken ? '#FFA726' : '#BDBDBD';
-            const actionBg = isSubmitted && !isAccepted ? '#E3F2FD' : isAccepted ? '#E8F5E9' : hasRosterToken ? '#FFF3E0' : '#F5F5F5';
-            const actionColor = isSubmitted && !isAccepted ? '#1565C0' : isAccepted ? '#2E7D32' : hasRosterToken ? '#E65100' : 'var(--text-muted)';
+            const actionBg = isSubmitted && !isAccepted ? 'var(--info-light)' : isAccepted ? 'var(--success-light)' : hasRosterToken ? 'var(--warning-light)' : '#F5F5F5';
+            const actionColor = isSubmitted && !isAccepted ? 'var(--info)' : isAccepted ? 'var(--success)' : hasRosterToken ? 'var(--warning)' : 'var(--text-muted)';
             const actionLabel = isAccepted
               ? `✅ ${playerCount} ${t('dashboard.players')}`
               : isSubmitted
@@ -666,16 +689,45 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                     boxShadow: `0 0 0 2px ${dotColor}33`,
                   }} />
                   <TeamBadge team={team} size={14} />
-                  <span style={{ flex: 1, fontWeight: 600, fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {team.name}
-                  </span>
+                  {editTeamsMode ? (
+                    <input
+                      type="text"
+                      defaultValue={team.name}
+                      onBlur={async (e) => {
+                        const newName = e.target.value.trim();
+                        if (newName && newName !== team.name) {
+                          await updateTeamName(tournament.id, team.id, newName);
+                        }
+                      }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        flex: 1, fontWeight: 600, fontSize: 14, minWidth: 0,
+                        padding: '4px 8px', borderRadius: 8,
+                        border: '1.5px solid var(--primary)',
+                        background: 'var(--surface)', color: 'var(--text)',
+                        outline: 'none',
+                      }}
+                    />
+                  ) : (
+                    <span style={{ flex: 1, fontWeight: 600, fontSize: 14, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {team.name}
+                    </span>
+                  )}
                   {editTeamsMode ? (
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
+                        const hasPlayed = tournament.matches.some(
+                          m => m.status === 'finished' || m.status === 'live',
+                        );
+                        const msg = hasPlayed
+                          ? t('dashboard.removeTeamMsgPlayed', { team: team.name })
+                          : t('dashboard.removeTeamMsgBefore', { team: team.name });
                         const ok = await ask({
                           title: t('dashboard.removeTeamTitle'),
-                          message: t('dashboard.removeTeamMsg', { team: team.name }),
+                          message: msg,
+                          destructive: true,
                         });
                         if (ok) {
                           await removeTeam(tournament.id, team.id);
@@ -684,7 +736,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                       }}
                       style={{
                         padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        background: '#FFEBEE', color: '#C62828',
+                        background: 'var(--danger-light)', color: 'var(--danger)',
                         border: '1px solid #FFCDD2', cursor: 'pointer', flexShrink: 0,
                       }}
                     >
@@ -735,8 +787,8 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                         }}
                         style={{
                           padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                          background: rosterLinkCopied === team.id ? '#E8F5E9' : 'var(--primary-light)',
-                          color: rosterLinkCopied === team.id ? '#2E7D32' : 'var(--primary)',
+                          background: rosterLinkCopied === team.id ? 'var(--success-light)' : 'var(--primary-light)',
+                          color: rosterLinkCopied === team.id ? 'var(--success)' : 'var(--primary)',
                           border: 'none', cursor: 'pointer',
                         }}
                       >
@@ -759,7 +811,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                         rel="noopener noreferrer"
                         style={{
                           padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                          background: '#E8F5E9', color: '#2E7D32',
+                          background: 'var(--success-light)', color: 'var(--success)',
                           border: 'none', textDecoration: 'none',
                           display: 'inline-flex', alignItems: 'center', gap: 2,
                         }}
@@ -801,7 +853,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                         }}
                         style={{
                           padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                          background: '#E8F5E9', color: '#2E7D32',
+                          background: 'var(--success-light)', color: 'var(--success)',
                           border: '1px solid #C8E6C9', cursor: 'pointer',
                         }}
                       >
@@ -815,19 +867,25 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
           })}
           </div>
 
-          {/* Add team manually */}
-          {isAdmin && (
-            <button
-              onClick={() => setShowAddTeam(true)}
-              style={{
-                padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                background: 'var(--surface-var)', color: 'var(--primary)',
-                border: '1.5px dashed var(--border)', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              ➕ {t('dashboard.addTeam')}
-            </button>
+          {/* Add team manually — only before first played match */}
+          {isAdmin && !tournament.matches.some(m => m.status === 'finished' || m.status === 'live') && (
+            <div>
+              <button
+                onClick={() => setShowAddTeam(true)}
+                style={{
+                  padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                  background: 'var(--surface-var)', color: 'var(--primary)',
+                  border: '1.5px dashed var(--border)', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  width: '100%',
+                }}
+              >
+                ➕ {t('dashboard.addTeam')}
+              </button>
+              <div style={{ fontSize: 11, color: 'var(--warning)', textAlign: 'center', marginTop: 4, lineHeight: 1.3, fontWeight: 600 }}>
+                ⚠️ {t('dashboard.addTeamHint')}
+              </div>
+            </div>
           )}
 
           {/* Rejected registrations — collapsible */}
@@ -849,12 +907,12 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
                   {rejectedRegs.map((rej, i) => (
                     <div key={i} style={{
-                      padding: '6px 10px', background: '#FFEBEE', borderRadius: 8,
+                      padding: '6px 10px', background: 'var(--danger-light)', borderRadius: 8,
                       fontSize: 13, color: '#B71C1C', display: 'flex', alignItems: 'center', gap: 6,
                     }}>
                       <span style={{ opacity: 0.5 }}>✕</span>
                       <span style={{ fontWeight: 600 }}>{rej.teamName}</span>
-                      <span style={{ fontSize: 11, color: '#C62828', opacity: 0.7 }}>
+                      <span style={{ fontSize: 11, color: 'var(--danger)', opacity: 0.7 }}>
                         {rej.coachName}
                       </span>
                     </div>
@@ -874,7 +932,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
             padding: '14px', borderRadius: 14, fontSize: 14, fontWeight: 700,
             background: 'var(--surface)', color: 'var(--primary)',
             border: '1.5px dashed var(--border)', cursor: 'pointer',
-            boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+            boxShadow: 'var(--shadow-sm)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
@@ -924,14 +982,13 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                               birthYear: null,
                             }));
                             try {
-                              await addManualTeam(tournament.id, {
+                              await confirmAndAddTeam({
                                 name: club.name,
                                 color,
                                 players,
                                 clubId: club.id,
                                 logoBase64: club.logoBase64 ?? null,
                               });
-                              setShowAddTeam(false);
                               setAddTeamName('');
                               setAddTeamCategory(null);
                               showToast('success', `✅ ${club.name}`);
@@ -1028,21 +1085,13 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                       birthYear: p.birthYear ?? null,
                     }));
                     const name = addTeamName || `${club.name} ${cat}`;
-                    try {
-                      await addManualTeam(tournament.id, {
-                        name,
-                        color,
-                        players,
-                        clubId: club.id,
-                        logoBase64: club.logoBase64 ?? null,
-                      });
-                      setShowAddTeam(false);
-                      setAddTeamName('');
-                      setAddTeamCategory(null);
-                      showToast('success', `✅ ${name}`);
-                    } catch {
-                      showToast('error', t('common.error'));
-                    }
+                    await confirmAndAddTeam({
+                      name,
+                      color,
+                      players,
+                      clubId: club.id,
+                      logoBase64: club.logoBase64 ?? null,
+                    });
                   }}
                   style={{
                     width: '100%', padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 700,
@@ -1066,34 +1115,22 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
                   {clubs.length > 0 ? t('dashboard.addCustomTeam') : t('dashboard.teamName')}
                 </div>
-                <input
-                  type="text"
+                <OpponentAutocomplete
                   value={addTeamName}
-                  onChange={e => setAddTeamName(e.target.value)}
+                  onChange={setAddTeamName}
                   placeholder={t('dashboard.teamNamePlaceholder')}
-                  style={{
-                    width: '100%', padding: '10px 12px', borderRadius: 10, fontSize: 14,
-                    border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
-                    boxSizing: 'border-box', marginBottom: 10,
-                  }}
+                  style={{ marginBottom: 10 }}
                 />
                 <button
                   onClick={async () => {
                     if (!addTeamName.trim()) return;
                     const usedColors = tournament.teams.map(tm => tm.color);
                     const color = TEAM_COLORS.find(c => !usedColors.includes(c)) ?? '#9E9E9E';
-                    try {
-                      await addManualTeam(tournament.id, {
-                        name: addTeamName.trim(),
-                        color,
-                        players: [],
-                      });
-                      setShowAddTeam(false);
-                      setAddTeamName('');
-                      showToast('success', `✅ ${addTeamName.trim()}`);
-                    } catch {
-                      showToast('error', t('common.error'));
-                    }
+                    await confirmAndAddTeam({
+                      name: addTeamName.trim(),
+                      color,
+                      players: [],
+                    });
                   }}
                   disabled={!addTeamName.trim()}
                   style={{
@@ -1175,7 +1212,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
       {isAdmin && tournament.settings.entryFee && tournament.teams.length > 0 && (
         <div style={{
           background: 'var(--surface)', borderRadius: 14,
-          boxShadow: '0 1px 4px rgba(0,0,0,.05)', overflow: 'hidden',
+          boxShadow: 'var(--shadow-sm)', overflow: 'hidden',
         }}>
           <div
             onClick={() => setPaymentsOpen(!paymentsOpen)}
@@ -1190,8 +1227,8 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
               return (
                 <span style={{
                   fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-                  background: allPaid ? '#E8F5E9' : '#FFF3E0',
-                  color: allPaid ? '#2E7D32' : '#E65100',
+                  background: allPaid ? 'var(--success-light)' : 'var(--warning-light)',
+                  color: allPaid ? 'var(--success)' : 'var(--warning)',
                 }}>
                   {paidCount}/{totalCount}
                 </span>
@@ -1210,7 +1247,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       padding: '10px 12px', borderRadius: 10,
-                      background: isPaid ? '#E8F5E9' : 'var(--bg)',
+                      background: isPaid ? 'var(--success-light)' : 'var(--bg)',
                       border: `1px solid ${isPaid ? '#C8E6C9' : 'var(--border)'}`,
                     }}
                   >
@@ -1220,7 +1257,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                         {team.name}
                       </div>
                       {isPaid && team.paidAt && (
-                        <div style={{ fontSize: 11, color: '#2E7D32', marginTop: 1 }}>
+                        <div style={{ fontSize: 11, color: 'var(--success)', marginTop: 1 }}>
                           {t('payments.paidAt', { date: new Date(team.paidAt).toLocaleDateString(locale === 'cs' ? 'cs-CZ' : locale === 'de' ? 'de-DE' : 'en-GB') })}
                         </div>
                       )}
@@ -1232,8 +1269,8 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                       onClick={() => toggleTeamPaid(tournament.id, team.id)}
                       style={{
                         padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                        background: isPaid ? '#FFEBEE' : '#E8F5E9',
-                        color: isPaid ? '#D32F2F' : '#2E7D32',
+                        background: isPaid ? 'var(--danger-light)' : 'var(--success-light)',
+                        color: isPaid ? '#D32F2F' : 'var(--success)',
                         border: `1px solid ${isPaid ? '#FFCDD2' : '#C8E6C9'}`,
                         cursor: 'pointer', whiteSpace: 'nowrap',
                       }}
@@ -1259,15 +1296,15 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                   }}>
                     <span>
                       <span style={{ color: 'var(--text-muted)' }}>{t('payments.totalCollected')}: </span>
-                      <b style={{ color: '#2E7D32' }}>{collected.toLocaleString()} Kč</b>
+                      <b style={{ color: 'var(--success)' }}>{collected.toLocaleString()} Kč</b>
                     </span>
                     {remaining > 0 ? (
                       <span>
                         <span style={{ color: 'var(--text-muted)' }}>{t('payments.totalRemaining')}: </span>
-                        <b style={{ color: '#E65100' }}>{remaining.toLocaleString()} Kč</b>
+                        <b style={{ color: 'var(--warning)' }}>{remaining.toLocaleString()} Kč</b>
                       </span>
                     ) : (
-                      <span style={{ color: '#2E7D32', fontWeight: 700 }}>{t('payments.allPaid')}</span>
+                      <span style={{ color: 'var(--success)', fontWeight: 700 }}>{t('payments.allPaid')}</span>
                     )}
                   </div>
                 );
@@ -1328,7 +1365,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                 onClick={confirmReject}
                 style={{
                   padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 700,
-                  background: '#FFEBEE', color: '#D32F2F', border: '1px solid #FFCDD2', cursor: 'pointer',
+                  background: 'var(--danger-light)', color: '#D32F2F', border: '1px solid #FFCDD2', cursor: 'pointer',
                 }}
               >
                 ✕ {t('registration.reject')}

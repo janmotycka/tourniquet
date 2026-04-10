@@ -20,11 +20,11 @@ export class PublicViewErrorBoundary extends Component<
       return (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: '40px 20px' }}>
           <div style={{ fontSize: 48 }}>💥</div>
-          <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center', color: '#C62828' }}>Display error</h2>
+          <h2 style={{ fontWeight: 800, fontSize: 20, textAlign: 'center', color: 'var(--danger)' }}>Display error</h2>
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 14, lineHeight: 1.5 }}>
             An unexpected error occurred while displaying the tournament.
           </p>
-          <pre style={{ fontSize: 11, color: '#C62828', background: '#FFEBEE', padding: '8px 12px', borderRadius: 8, maxWidth: '100%', overflow: 'auto', textAlign: 'left', wordBreak: 'break-word' }}>
+          <pre style={{ fontSize: 11, color: 'var(--danger)', background: 'var(--danger-light)', padding: '8px 12px', borderRadius: 8, maxWidth: '100%', overflow: 'auto', textAlign: 'left', wordBreak: 'break-word' }}>
             {this.state.error}
           </pre>
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 11 }}>ID: {this.props.tournamentId}</p>

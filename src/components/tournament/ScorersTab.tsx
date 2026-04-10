@@ -59,7 +59,7 @@ export function ScorersTab({ tournament }: { tournament: Tournament }) {
 
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
         {/* Hlavička */}
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 18 }}>🥇</span>
@@ -157,12 +157,12 @@ export function ScorersTab({ tournament }: { tournament: Tournament }) {
                           {opponentTeam?.name ?? '—'}
                         </span>
                         {statusDone && (
-                          <span style={{ fontWeight: 700, color: myScore > oppScore ? 'var(--primary)' : myScore < oppScore ? '#C62828' : 'var(--text-muted)', flexShrink: 0 }}>
+                          <span style={{ fontWeight: 700, color: myScore > oppScore ? 'var(--primary)' : myScore < oppScore ? 'var(--danger)' : 'var(--text-muted)', flexShrink: 0 }}>
                             {myScore}:{oppScore}
                           </span>
                         )}
                         {match.status === 'live' && (
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#C62828', flexShrink: 0 }}>{t('tournament.detail.liveLabel')}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--danger)', flexShrink: 0 }}>{t('tournament.detail.liveLabel')}</span>
                         )}
                       </div>
                     );

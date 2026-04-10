@@ -8,13 +8,14 @@ import { StandingsCriteriaBox } from './StandingsCriteriaBox';
 
 const GRID_COLS = '22px 1fr 22px 22px 22px 36px 30px';
 
-export function PublicStandings({ tournament, selectedTeamId }: { tournament: Tournament; selectedTeamId: string | null }) {
+export function PublicStandings({ tournament, selectedTeamId, onSwitchToResults }: { tournament: Tournament; selectedTeamId: string | null; onSwitchToResults?: () => void }) {
   const { t, locale } = useI18n();
   const [infoOpen, setInfoOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [criteriaOpen, setCriteriaOpen] = useState(false);
 
   const hasLiveMatch = tournament.matches.some(m => m.status === 'live');
+  const [showLive, setShowLive] = useState(true);
 
   // Tabulka včetně live zápasů (pro zobrazení)
   const standings = computeStandings(
@@ -22,11 +23,11 @@ export function PublicStandings({ tournament, selectedTeamId }: { tournament: To
     tournament.teams,
     tournament.settings.tiebreakerOrder,
     tournament.settings.penaltyResults,
-    true, // includeLive
+    showLive,
   );
 
   // Tabulka BEZ live zápasů (pro výpočet posunu)
-  const baseStandings = hasLiveMatch
+  const baseStandings = (hasLiveMatch && showLive)
     ? computeStandings(
         tournament.matches,
         tournament.teams,
@@ -59,73 +60,41 @@ export function PublicStandings({ tournament, selectedTeamId }: { tournament: To
   const formatTime = (iso: string) =>
     new Date(iso).toLocaleTimeString(getDateLocale(locale), { hour: '2-digit', minute: '2-digit' });
 
-  return (
-    <div style={{ padding: '12px 16px' }}>
-      <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: GRID_COLS, gap: 2, padding: '7px 10px', background: 'var(--surface-var)', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>
-          <span>#</span><span>{t('tournament.public.team')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.played')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.won')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.lost')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.goalsFor')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.points')}</span>
-        </div>
-        {standings.map((s, idx) => {
-          const team = getTeam(s.teamId);
-          const isFirst = idx === 0 && s.played > 0;
-          const isHighlighted = selectedTeamId === s.teamId;
-          const teamColor = team?.color ?? 'var(--primary)';
+  const liveChip = hasLiveMatch ? (
+    <button
+      onClick={() => setShowLive(v => !v)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+        background: showLive ? 'var(--danger)' : 'var(--surface-var)',
+        color: showLive ? '#fff' : 'var(--text-muted)',
+        border: showLive ? 'none' : '1px solid var(--border)',
+        cursor: 'pointer', transition: 'all .2s',
+      }}
+    >
+      {showLive && <span style={{ width: 6, height: 6, borderRadius: 3, background: '#fff', animation: 'pulse 1.5s infinite' }} />}
+      {showLive ? 'LIVE' : 'Bez LIVE'}
+    </button>
+  ) : null;
 
-          // Is this team currently in a live match?
-          const isInLive = hasLiveMatch && tournament.matches.some(
-            m => m.status === 'live' && (m.homeTeamId === s.teamId || m.awayTeamId === s.teamId),
-          );
+  const format = settings.format ?? 'round-robin';
+  const groups = settings.groups ?? [];
+  const advance = settings.advancePerGroup ?? 1;
 
-          // Live position change — only show for teams currently in a live match
-          const currentPos = idx + 1;
-          const basePos = basePositionMap.get(s.teamId);
-          const rawChange = basePos != null ? basePos - currentPos : 0;
-          const posChange = isInLive ? rawChange : 0;
+  const isTeamInLive = (teamId: string) => hasLiveMatch && tournament.matches.some(
+    m => m.status === 'live' && (m.homeTeamId === teamId || m.awayTeamId === teamId),
+  );
 
-          return (
-            <div key={s.teamId} style={{
-              display: 'grid', gridTemplateColumns: GRID_COLS, gap: 2,
-              padding: '8px 10px', alignItems: 'center',
-              borderTop: idx > 0 ? '1px solid var(--border)' : 'none',
-              background: isHighlighted ? `${teamColor}18` : isFirst ? 'var(--primary-light)' : isInLive ? 'rgba(183,28,28,.04)' : 'transparent',
-              borderLeft: isHighlighted ? `3px solid ${teamColor}` : '3px solid transparent',
-              transition: 'background .3s ease',
-            }}>
-              <span style={{
-                fontWeight: 700, fontSize: 12, textAlign: 'center',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0,
-                color: posChange > 0 ? '#2E7D32' : posChange < 0 ? '#C62828' : 'var(--text-muted)',
-              }}>
-                <span>{currentPos}</span>
-                {posChange !== 0 && (
-                  <span style={{ fontSize: 9, lineHeight: 1, fontWeight: 800, color: posChange > 0 ? '#2E7D32' : '#C62828' }}>
-                    {posChange > 0 ? '▲' : '▼'}
-                  </span>
-                )}
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                <PublicTeamBadge team={team} size={14} />
-                <span style={{ fontWeight: isHighlighted || isFirst ? 800 : 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team?.name ?? '?'}</span>
-              </div>
-              <span style={{ textAlign: 'center', fontSize: 12 }}>{s.played}</span>
-              <span style={{ textAlign: 'center', fontSize: 12, color: '#2E7D32', fontWeight: 600 }}>{s.won}</span>
-              <span style={{ textAlign: 'center', fontSize: 12, color: '#C62828', fontWeight: 600 }}>{s.lost}</span>
-              <span style={{ textAlign: 'center', fontSize: 11 }}>{s.goalsFor}:{s.goalsAgainst}</span>
-              <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 14, color: isFirst ? 'var(--primary)' : 'var(--text)' }}>{s.points}</span>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, textAlign: 'center' }}>
-        {t('tournament.public.standingsLegend')}
-      </div>
-
-      {/* Knockout bracket pod tabulkou */}
+  // Shared footer (bracket, info, rules, criteria) — rendered below both views
+  const sharedFooter = (
+    <>
+      {/* Knockout bracket */}
       {tournament.matches.some(m => m.stage && m.stage !== 'group') && (
         <div style={{ marginTop: 16 }}>
           <BracketView
             matches={tournament.matches.filter(m => m.stage && m.stage !== 'group')}
             teams={tournament.teams}
+            onLiveClick={onSwitchToResults}
           />
         </div>
       )}
@@ -133,7 +102,7 @@ export function PublicStandings({ tournament, selectedTeamId }: { tournament: To
       {/* ── Kompaktní info o turnaji ── */}
       <div style={{
         marginTop: 16, background: 'var(--surface)', borderRadius: 14,
-        overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+        overflow: 'hidden', boxShadow: 'var(--shadow-sm)',
       }}>
         <div
           onClick={() => setInfoOpen(!infoOpen)}
@@ -177,7 +146,7 @@ export function PublicStandings({ tournament, selectedTeamId }: { tournament: To
       {rules && rules.trim() !== '' && (
         <div style={{
           marginTop: 10, background: 'var(--surface)', borderRadius: 14,
-          padding: '12px 14px', boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+          padding: '12px 14px', boxShadow: 'var(--shadow-sm)',
         }}>
           <div
             onClick={() => setRulesOpen(!rulesOpen)}
@@ -203,6 +172,109 @@ export function PublicStandings({ tournament, selectedTeamId }: { tournament: To
       <div style={{ marginTop: 10 }}>
         <StandingsCriteriaBox tiebreakerOrder={tournament.settings.tiebreakerOrder} penaltyResults={tournament.settings.penaltyResults} collapsible collapsed={!criteriaOpen} onToggle={() => setCriteriaOpen(!criteriaOpen)} />
       </div>
+    </>
+  );
+
+  // Helper: render one standings table
+  const renderStandingsTable = (
+    standingsData: ReturnType<typeof computeStandings>,
+    basePosMap: Map<string, number>,
+    isAdvancingFn?: (idx: number, s: { played: number }) => boolean,
+  ) => (
+    <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: GRID_COLS, gap: 2, padding: '7px 10px', background: 'var(--surface-var)', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>
+        <span>#</span><span>{t('tournament.public.team')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.played')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.won')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.lost')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.goalsFor')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.points')}</span>
+      </div>
+      {standingsData.map((s, idx) => {
+        const team = getTeam(s.teamId);
+        const isFirst = !isAdvancingFn && idx === 0 && s.played > 0;
+        const isAdvancing = isAdvancingFn?.(idx, s) ?? false;
+        const isHighlighted = selectedTeamId === s.teamId;
+        const teamColor = team?.color ?? 'var(--primary)';
+        const inLive = isTeamInLive(s.teamId);
+        const currentPos = idx + 1;
+        const basePos = basePosMap.get(s.teamId);
+        const rawChange = basePos != null ? basePos - currentPos : 0;
+        const posChange = inLive ? rawChange : 0;
+
+        return (
+          <div key={s.teamId} style={{
+            display: 'grid', gridTemplateColumns: GRID_COLS, gap: 2,
+            padding: '8px 10px', alignItems: 'center',
+            borderTop: idx > 0 ? '1px solid var(--border)' : 'none',
+            background: isHighlighted ? `${teamColor}18` : isAdvancing ? 'var(--primary-light)' : isFirst ? 'var(--primary-light)' : inLive ? 'rgba(183,28,28,.04)' : 'transparent',
+            borderLeft: isHighlighted ? `3px solid ${teamColor}` : '3px solid transparent',
+            transition: 'background .3s ease',
+          }}>
+            <span style={{
+              fontWeight: 700, fontSize: 12, textAlign: 'center',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0,
+              color: posChange > 0 ? 'var(--success)' : posChange < 0 ? 'var(--danger)' : isAdvancing ? 'var(--primary)' : 'var(--text-muted)',
+            }}>
+              <span>{currentPos}</span>
+              {posChange !== 0 && (
+                <span style={{ fontSize: 9, lineHeight: 1, fontWeight: 800, color: posChange > 0 ? 'var(--success)' : 'var(--danger)' }}>
+                  {posChange > 0 ? '\u25B2' : '\u25BC'}
+                </span>
+              )}
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+              <PublicTeamBadge team={team} size={14} />
+              <span style={{ fontWeight: isHighlighted || isFirst || isAdvancing ? 800 : 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team?.name ?? '?'}</span>
+            </div>
+            <span style={{ textAlign: 'center', fontSize: 12 }}>{s.played}</span>
+            <span style={{ textAlign: 'center', fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>{s.won}</span>
+            <span style={{ textAlign: 'center', fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>{s.lost}</span>
+            <span style={{ textAlign: 'center', fontSize: 11 }}>{s.goalsFor}:{s.goalsAgainst}</span>
+            <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 14, color: isFirst || isAdvancing ? 'var(--primary)' : 'var(--text)' }}>{s.points}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // ── Groups-knockout: per-group tables ──
+  if (format === 'groups-knockout' && groups.length > 0) {
+    return (
+      <div style={{ padding: '12px 16px' }}>
+        {groups.map((group, gi) => {
+          const groupTeams = tournament.teams.filter(tm => group.teamIds.includes(tm.id));
+          const groupMatches = tournament.matches.filter(m => m.groupId === group.id);
+          const groupStandings = computeStandings(groupMatches, groupTeams, settings.tiebreakerOrder, settings.penaltyResults, showLive);
+          const groupBaseStandings = (hasLiveMatch && showLive)
+            ? computeStandings(groupMatches, groupTeams, settings.tiebreakerOrder, settings.penaltyResults, false)
+            : null;
+          const groupBaseMap = new Map<string, number>();
+          if (groupBaseStandings) {
+            groupBaseStandings.forEach((s, i) => groupBaseMap.set(s.teamId, i + 1));
+          }
+
+          return (
+            <div key={group.id} style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <h3 style={{ fontWeight: 800, fontSize: 15, margin: 0, color: 'var(--primary)' }}>
+                  {group.name}
+                </h3>
+                {gi === 0 && liveChip}
+              </div>
+              {renderStandingsTable(groupStandings, groupBaseMap, (idx, s) => idx < advance && s.played > 0)}
+            </div>
+          );
+        })}
+        {sharedFooter}
+      </div>
+    );
+  }
+
+  // ── Round-robin: single table ──
+  return (
+    <div style={{ padding: '12px 16px' }}>
+      {renderStandingsTable(standings, basePositionMap)}
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <span>{t('tournament.public.standingsLegend')}</span>
+        {liveChip}
+      </div>
+      {sharedFooter}
     </div>
   );
 }

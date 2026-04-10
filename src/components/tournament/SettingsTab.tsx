@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Page } from '../../App';
-import type { Tournament, TiebreakerCriterion } from '../../types/tournament.types';
+import type { Tournament, TiebreakerCriterion, TournamentRegulations } from '../../types/tournament.types';
 import { DEFAULT_TIEBREAKER_ORDER } from '../../types/tournament.types';
 import type { TournamentTemplate } from '../../types/tournament.types';
 import { useI18n } from '../../i18n';
@@ -48,8 +48,17 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const [rulesEdit, setRulesEdit] = useState(tournament.settings.rules ?? '');
-  const [rulesSaved, setRulesSaved] = useState(false);
+  // Regulations (propozice)
+  const [regsOpen, setRegsOpen] = useState(false);
+  const [regs, setRegs] = useState<Partial<TournamentRegulations>>(() => {
+    const saved = tournament.settings.regulations ?? {};
+    // Migrate legacy rules field into gameRules if not already set
+    if (!saved.gameRules && tournament.settings.rules) {
+      return { ...saved, gameRules: tournament.settings.rules };
+    }
+    return { ...saved };
+  });
+  const [regsSaved, setRegsSaved] = useState(false);
 
   // Přegenerování harmonogramu
   const [regenDate, setRegenDate] = useState(tournament.settings.startDate);
@@ -77,7 +86,6 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
   const [coOwnerOpen, setCoOwnerOpen] = useState(false);
   const [regenOpen, setRegenOpen] = useState(false);
   const [tiebreakerOpen, setTiebreakerOpen] = useState(false);
-  const [rulesOpen, setRulesOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [awardsOpen, setAwardsOpen] = useState(false);
   const [billingOpen, setBillingOpen] = useState(false);
@@ -164,10 +172,23 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
 
 
 
-  const handleSaveRules = () => {
-    updateTournament(tournament.id, { settings: { ...tournament.settings, rules: rulesEdit.trim() || undefined } });
-    setRulesSaved(true);
-    setTimeout(() => setRulesSaved(false), 2000);
+  const handleSaveRegulations = () => {
+    // Clean up empty string fields
+    const cleaned: Partial<TournamentRegulations> = {};
+    for (const [k, v] of Object.entries(regs)) {
+      if (typeof v === 'string' && v.trim() === '') continue;
+      (cleaned as Record<string, unknown>)[k] = typeof v === 'string' ? v.trim() : v;
+    }
+    updateTournament(tournament.id, {
+      settings: { ...tournament.settings, regulations: Object.keys(cleaned).length > 0 ? cleaned as TournamentRegulations : undefined },
+    });
+    setRegsSaved(true);
+    setTimeout(() => setRegsSaved(false), 2000);
+  };
+
+  const updateReg = <K extends keyof TournamentRegulations>(key: K, value: TournamentRegulations[K]) => {
+    setRegs(prev => ({ ...prev, [key]: value }));
+    setRegsSaved(false);
   };
 
   const handleRegenerate = async () => {
@@ -194,7 +215,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
   return (
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* QR kód — collapsible */}
-      <div style={{ background: 'var(--surface)', borderRadius: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
         <div
           onClick={() => setQrOpen(!qrOpen)}
           style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
@@ -213,7 +234,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
             </p>
             <div style={{ display: 'flex', gap: 8, width: '100%' }}>
               <button onClick={handleCopy} style={{
-                flex: 1, background: copied ? '#2E7D32' : 'var(--primary)', color: '#fff', fontWeight: 700,
+                flex: 1, background: copied ? 'var(--success)' : 'var(--primary)', color: '#fff', fontWeight: 700,
                 fontSize: 14, padding: '10px 12px', borderRadius: 12, transition: 'background .2s',
               }}>
                 {copied ? `✅ ${t('common.copied')}` : `🔗 ${t('common.copyLink')}`}
@@ -231,7 +252,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
 
       {/* Co-owner invite link — jen pro ownery, collapsible */}
       {isOwner && (
-        <div style={{ background: 'var(--surface)', borderRadius: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)', overflow: 'hidden' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
           <div
             onClick={() => setCoOwnerOpen(!coOwnerOpen)}
             style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
@@ -246,7 +267,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
               </p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button onClick={handleCopyCoOwnerLink} style={{
-                  flex: 1, background: coOwnerCopied ? '#2E7D32' : '#6A1B9A', color: '#fff', fontWeight: 700,
+                  flex: 1, background: coOwnerCopied ? 'var(--success)' : '#6A1B9A', color: '#fff', fontWeight: 700,
                   fontSize: 13, padding: '10px 14px', borderRadius: 10, transition: 'background .2s',
                   minWidth: 0,
                 }}>
@@ -262,7 +283,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
                   rel="noopener noreferrer"
                   style={{
                     padding: '10px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                    background: '#E8F5E9', color: '#2E7D32',
+                    background: 'var(--success-light)', color: 'var(--success)',
                     border: 'none', cursor: 'pointer', textDecoration: 'none',
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                   }}
@@ -278,7 +299,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
       {/* ═══════════════ NASTAVENÍ TURNAJE ═══════════════ */}
       {/* Awards — ocenění turnaje, collapsible */}
       {isAdmin && (
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div
           onClick={() => setAwardsOpen(!awardsOpen)}
           style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
@@ -296,7 +317,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
 
       {/* Feature toggles — iOS-style switches */}
       {isAdmin && (
-      <div style={{ background: 'var(--surface)', borderRadius: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
         {/* Awards visibility */}
         <ToggleRow
           icon="🏅"
@@ -312,7 +333,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
           icon="⚽"
           label={t('tournament.scorers.visibilityTitle')}
           desc={t('tournament.scorers.visibilityDesc')}
-          checked={tournament.settings.scorersVisible ?? true}
+          checked={tournament.settings.scorersVisible ?? false}
           onChange={val => updateTournament(tournament.id, { settings: { ...tournament.settings, scorersVisible: val } })}
         />
         <div style={{ height: 1, background: 'var(--border)', marginLeft: 52 }} />
@@ -366,40 +387,243 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
 
       {/* Registration, billing, rosters — managed in DashboardTab */}
 
-      {/* Propozice — collapsible */}
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Propozice — collapsible regulations form */}
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div
-          onClick={() => setRulesOpen(!rulesOpen)}
+          onClick={() => setRegsOpen(!regsOpen)}
           style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
         >
-          <h3 style={{ fontWeight: 700, fontSize: 15, flex: 1, margin: 0 }}>📋 {t('tournament.settings.rulesTitle')}</h3>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .2s', transform: rulesOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+          <h3 style={{ fontWeight: 700, fontSize: 15, flex: 1, margin: 0 }}>📋 {t('tournament.settings.regulationsTitle')}</h3>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .2s', transform: regsOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </div>
 
-        {rulesOpen && <>
-        <textarea
-          value={rulesEdit}
-          onChange={e => { setRulesEdit(e.target.value); setRulesSaved(false); }}
-          placeholder={t('tournament.settings.rulesPlaceholder')}
-          rows={5}
-          style={{
-            width: '100%', padding: '10px', borderRadius: 10, border: '1.5px solid var(--border)',
-            fontSize: 14, background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box',
-            resize: 'vertical', lineHeight: 1.5,
-          }}
-        />
-        <button onClick={handleSaveRules} style={{
-          background: rulesSaved ? '#2E7D32' : 'var(--primary)', color: '#fff',
-          fontWeight: 700, fontSize: 14, padding: '10px 20px', borderRadius: 12,
-          alignSelf: 'flex-start', transition: 'background .2s',
+        {regsOpen && <>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Text inputs */}
+          {([
+            { key: 'organizer' as const, label: t('tournament.regulations.organizer') },
+            { key: 'category' as const, label: t('tournament.regulations.category') },
+            { key: 'pitchDimensions' as const, label: t('tournament.regulations.pitchDimensions'), placeholder: t('tournament.regulations.pitchDimensionsPlaceholder') },
+            { key: 'matchFormat' as const, label: t('tournament.regulations.matchFormat'), placeholder: t('tournament.regulations.matchFormatPlaceholder') },
+            { key: 'substitutionRules' as const, label: t('tournament.regulations.substitutionRules'), placeholder: t('tournament.regulations.substitutionRulesPlaceholder') },
+          ]).map(field => (
+            <div key={field.key}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                {field.label}
+              </label>
+              <input
+                type="text"
+                value={(regs[field.key] as string) || ''}
+                onChange={e => updateReg(field.key, e.target.value)}
+                placeholder={field.placeholder}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 14,
+                  border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          ))}
+
+          {/* Textarea: gameRules */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+              {t('tournament.regulations.gameRules')}
+            </label>
+            <textarea
+              value={regs.gameRules || ''}
+              onChange={e => updateReg('gameRules', e.target.value)}
+              placeholder={t('tournament.regulations.gameRulesPlaceholder')}
+              rows={3}
+              style={{
+                width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 14,
+                border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
+                boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5,
+              }}
+            />
+          </div>
+
+          {/* Textarea: cardRules */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+              {t('tournament.regulations.cardRules')}
+            </label>
+            <textarea
+              value={regs.cardRules || ''}
+              onChange={e => updateReg('cardRules', e.target.value)}
+              placeholder={t('tournament.regulations.cardRulesPlaceholder')}
+              rows={2}
+              style={{
+                width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 14,
+                border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
+                boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5,
+              }}
+            />
+          </div>
+
+          {/* Textarea: protestRules */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+              {t('tournament.regulations.protestRules')}
+            </label>
+            <textarea
+              value={regs.protestRules || ''}
+              onChange={e => updateReg('protestRules', e.target.value)}
+              placeholder={t('tournament.regulations.protestRulesPlaceholder')}
+              rows={2}
+              style={{
+                width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 14,
+                border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
+                boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5,
+              }}
+            />
+          </div>
+
+          {/* More text inputs */}
+          {([
+            { key: 'equipment' as const, label: t('tournament.regulations.equipment') },
+            { key: 'prizes' as const, label: t('tournament.regulations.prizes') },
+            { key: 'referees' as const, label: t('tournament.regulations.referees') },
+          ]).map(field => (
+            <div key={field.key}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                {field.label}
+              </label>
+              <input
+                type="text"
+                value={(regs[field.key] as string) || ''}
+                onChange={e => updateReg(field.key, e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 14,
+                  border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          ))}
+
+          {/* Textarea: insurance (with default) */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+              {t('tournament.regulations.insurance')}
+            </label>
+            <textarea
+              value={regs.insurance ?? t('tournament.regulations.insuranceDefault')}
+              onChange={e => updateReg('insurance', e.target.value)}
+              rows={2}
+              style={{
+                width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 14,
+                border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
+                boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5,
+              }}
+            />
+          </div>
+
+          {/* changingRooms */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+              {t('tournament.regulations.changingRooms')}
+            </label>
+            <input
+              type="text"
+              value={regs.changingRooms || ''}
+              onChange={e => updateReg('changingRooms', e.target.value)}
+              style={{
+                width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 14,
+                border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          {/* Textarea: organizerDisclaimer (with default) */}
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+              {t('tournament.regulations.organizerDisclaimer')}
+            </label>
+            <textarea
+              value={regs.organizerDisclaimer ?? t('tournament.regulations.organizerDisclaimerDefault')}
+              onChange={e => updateReg('organizerDisclaimer', e.target.value)}
+              rows={2}
+              style={{
+                width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 14,
+                border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
+                boxSizing: 'border-box', resize: 'vertical', lineHeight: 1.5,
+              }}
+            />
+          </div>
+
+          {/* Contact fields */}
+          <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+          {([
+            { key: 'contactName' as const, label: t('tournament.regulations.contactName') },
+            { key: 'contactPhone' as const, label: t('tournament.regulations.contactPhone'), type: 'tel' },
+            { key: 'contactEmail' as const, label: t('tournament.regulations.contactEmail'), type: 'email' },
+          ] as const).map(field => (
+            <div key={field.key}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                {field.label}
+              </label>
+              <input
+                type={'type' in field ? field.type : 'text'}
+                value={(regs[field.key] as string) || ''}
+                onChange={e => updateReg(field.key, e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 10px', borderRadius: 8, fontSize: 14,
+                  border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+          ))}
+
+          {/* Roster required toggle */}
+          <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+          <div
+            onClick={() => updateReg('rosterRequired', !regs.rosterRequired)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0', cursor: 'pointer' }}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{t('tournament.regulations.rosterRequired')}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{t('tournament.regulations.rosterRequiredDesc')}</div>
+            </div>
+            <div style={{
+              width: 51, height: 31, borderRadius: 16, padding: 2,
+              background: regs.rosterRequired ? '#4CD964' : '#E5E5EA',
+              transition: 'background .25s', flexShrink: 0,
+            }}>
+              <div style={{
+                width: 27, height: 27, borderRadius: 14, background: '#fff',
+                boxShadow: '0 1px 3px rgba(0,0,0,.15)',
+                transition: 'transform .25s',
+                transform: regs.rosterRequired ? 'translateX(20px)' : 'translateX(0)',
+              }} />
+            </div>
+          </div>
+
+          {/* Penalty rounds stepper */}
+          <SettingsStepper
+            label={t('tournament.regulations.penaltyRounds')}
+            value={regs.penaltyRounds ?? 5}
+            min={3}
+            max={10}
+            onChange={v => updateReg('penaltyRounds', v)}
+            unit={t('tournament.regulations.penaltyRoundsUnit')}
+          />
+        </div>
+
+        <button onClick={handleSaveRegulations} style={{
+          background: regsSaved ? 'var(--success)' : 'var(--primary)', color: '#fff',
+          fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 12,
+          transition: 'background .2s', width: '100%',
         }}>
-          {rulesSaved ? '✅ ' + t('tournament.detail.rulesSaved') : t('tournament.detail.saveRules')}
+          {regsSaved ? '✅ ' + t('tournament.settings.regulationsSaved') : '💾 ' + t('tournament.settings.saveRegulations')}
         </button>
         </>}
       </div>
 
       {/* Kritéria pro umístění v tabulce — collapsible */}
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div
           onClick={() => setTiebreakerOpen(!tiebreakerOpen)}
           style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
@@ -501,7 +725,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
             }}
             style={{
               marginTop: 4, width: '100%',
-              background: tbSaved ? '#2E7D32' : 'var(--primary)', color: '#fff',
+              background: tbSaved ? 'var(--success)' : 'var(--primary)', color: '#fff',
               fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 12,
               transition: 'background .2s',
             }}
@@ -514,7 +738,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
 
       {/* Přegenerování harmonogramu — collapsible */}
       {isAdmin && (
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div
           onClick={() => setRegenOpen(!regenOpen)}
           style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
@@ -565,7 +789,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
           onClick={handleRegenerate}
           disabled={!regenDate || !regenTime}
           style={{
-            background: regenSaved ? '#2E7D32' : 'var(--primary)', color: '#fff',
+            background: regenSaved ? 'var(--success)' : 'var(--primary)', color: '#fff',
             fontWeight: 700, fontSize: 14, padding: '12px 20px', borderRadius: 12,
             transition: 'background .2s', opacity: (!regenDate || !regenTime) ? 0.5 : 1,
           }}
@@ -579,7 +803,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
       {/* Roster preview & admin roster fill — moved to DashboardTab */}
 
       {/* CSV export — collapsible */}
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div
           onClick={() => setExportOpen(!exportOpen)}
           style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
@@ -613,13 +837,13 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
 
       {/* Billing profile — fakturační údaje */}
       {isAdmin && tournament.settings.registrationEnabled && (
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div
           onClick={() => setBillingOpen(!billingOpen)}
           style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 8 }}
         >
           <h3 style={{ fontWeight: 700, fontSize: 15, flex: 1, margin: 0 }}>🧾 {t('billing.title')}</h3>
-          {billing.companyName && <span style={{ fontSize: 11, color: '#2E7D32', fontWeight: 600 }}>✓</span>}
+          {billing.companyName && <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 600 }}>✓</span>}
           <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .2s', transform: billingOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
         </div>
         {billingOpen && (
@@ -676,7 +900,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
               disabled={!billing.companyName || !billing.ico || !billing.bankAccount}
               style={{
                 width: '100%', padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 700,
-                background: billingSaved ? '#2E7D32' : (!billing.companyName || !billing.ico || !billing.bankAccount) ? 'var(--border)' : 'var(--primary)',
+                background: billingSaved ? 'var(--success)' : (!billing.companyName || !billing.ico || !billing.bankAccount) ? 'var(--border)' : 'var(--primary)',
                 color: billingSaved ? '#fff' : (!billing.companyName || !billing.ico || !billing.bankAccount) ? 'var(--text-muted)' : '#fff',
                 border: 'none', cursor: (!billing.companyName || !billing.ico || !billing.bankAccount) ? 'default' : 'pointer',
                 transition: 'background .2s',
@@ -752,7 +976,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
       {/* Uložit jako šablonu */}
       {isAdmin && (
         <button onClick={handleSaveAsTemplate} style={{
-          background: '#E8F5E9', color: '#2E7D32', fontWeight: 700, fontSize: 14,
+          background: 'var(--success-light)', color: 'var(--success)', fontWeight: 700, fontSize: 14,
           padding: '14px', borderRadius: 14, border: '1.5px solid #C8E6C9',
         }}>
           📋 {t('template.saveAsTemplate')}
@@ -762,7 +986,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
       {/* Nebezpečná zóna */}
       {isOwner ? (
         <button onClick={handleDelete} style={{
-          background: '#FFEBEE', color: '#C62828', fontWeight: 700, fontSize: 14,
+          background: 'var(--danger-light)', color: 'var(--danger)', fontWeight: 700, fontSize: 14,
           padding: '14px', borderRadius: 14, border: '1.5px solid #FFCDD2',
         }}>
           🗑 {t('tournament.settings.deleteTournament')}
@@ -775,7 +999,7 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
             navigate({ name: 'tournament-list' });
           }
         }} style={{
-          background: '#FFF3E0', color: '#E65100', fontWeight: 700, fontSize: 14,
+          background: 'var(--warning-light)', color: 'var(--warning)', fontWeight: 700, fontSize: 14,
           padding: '14px', borderRadius: 14, border: '1.5px solid #FFE0B2',
         }}>
           🚪 {t('tournament.settings.leaveTournament')}
@@ -949,7 +1173,7 @@ function AwardsEditor({ tournament }: { tournament: Tournament }) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '8px 10px', borderRadius: 10,
-                    background: isSelected ? '#E8F5E9' : 'var(--surface)',
+                    background: isSelected ? 'var(--success-light)' : 'var(--surface)',
                     border: isSelected ? '2px solid #4CAF50' : '1.5px solid var(--border)',
                     cursor: 'pointer', width: '100%', textAlign: 'left',
                     transition: 'all .15s',
@@ -1048,7 +1272,7 @@ function AwardRow({ titleKey, label, tournament, currentPlayerName, currentTeamI
           onClick={onClear}
           style={{
             padding: '4px 8px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-            background: '#FFEBEE', color: '#C62828',
+            background: 'var(--danger-light)', color: 'var(--danger)',
             border: '1px solid #FFCDD2', cursor: 'pointer', flexShrink: 0,
           }}
         >✕</button>

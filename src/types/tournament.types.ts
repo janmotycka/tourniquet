@@ -3,7 +3,14 @@
 export type TournamentStatus = 'draft' | 'active' | 'finished';
 export type MatchStatus = 'scheduled' | 'live' | 'finished' | 'cancelled';
 export type TournamentFormat = 'round-robin' | 'groups-knockout' | 'knockout';
-export type MatchStage = 'group' | 'quarterfinal' | 'semifinal' | 'third-place' | 'final';
+export type MatchStage =
+  | 'group'
+  | 'quarterfinal'
+  | 'semifinal'
+  | 'third-place'
+  | 'final'
+  // Play-out: zápasy o umístění (5., 7., 9. místo atd.)
+  | 'placement';
 
 // ─── Player & Team ────────────────────────────────────────────────────────────
 
@@ -99,6 +106,18 @@ export interface Match {
   homeTeamPlaceholder?: string;      // "1. Sk. A" — dokud se neurčí skutečný tým
   awayTeamPlaceholder?: string;
   veoUrl?: string;                   // odkaz na VEO záznam zápasu
+  placementLabel?: string;           // "O 5. místo", "O 7. místo" — label pro play-out zápasy
+
+  // ── Penaltový rozstřel (knockout/play-out) ─────────────────────────────
+  homePenaltyScore?: number;         // góly z penalt domácích (computed from kicks or manual)
+  awayPenaltyScore?: number;         // góly z penalt hostů
+  penaltyKicks?: PenaltyKick[];      // live kopy — každý uložen okamžitě pro real-time view
+}
+
+/** Jeden penaltový kop — uložen v pořadí střídavě home/away */
+export interface PenaltyKick {
+  side: 'home' | 'away';
+  scored: boolean;
 }
 
 // ─── Standing (computed, never stored) ───────────────────────────────────────
@@ -191,7 +210,7 @@ export interface TournamentSettings {
   numberOfPitches?: number;            // 1–8, default 1; zápasy v kole probíhají paralelně
   tiebreakerOrder?: TiebreakerCriterion[];  // pořadí kritérií; chybí = DEFAULT_TIEBREAKER_ORDER
   penaltyResults?: PenaltyResult[];         // ruční výsledky pokutových kopů
-  scorersVisible?: boolean;                 // tabulka střelců viditelná pro hosty; default true
+  scorersVisible?: boolean;                 // tabulka střelců viditelná pro hosty; default false
   chatEnabled?: boolean;                    // diskuze hostů; default false
   mvpVotingEnabled?: boolean;               // MVP hlasování diváků; default false
   reactionsEnabled?: boolean;               // live reakce fanoušků na zápas; default false
@@ -201,6 +220,7 @@ export interface TournamentSettings {
   groups?: GroupDefinition[];              // definice skupin (pro groups-knockout)
   advancePerGroup?: number;                // kolik týmů postupuje ze skupiny (1 nebo 2)
   thirdPlaceMatch?: boolean;               // zápas o 3. místo
+  playOut?: boolean;                       // play-out: zápasy o VŠECHNA umístění (5., 7., 9.… místo). Každý tým odchází s finálním umístěním.
 
   // ── Roster validation ───────────────────────────────────────────────
   maxBirthYear?: number;                   // min. rok narození hráče (např. 2014 = jen 2014+)
@@ -226,6 +246,32 @@ export interface TournamentSettings {
   // ── Awards (ocenění trenérů) ──────────────────────────────────────
   awards?: TournamentAward[];             // ocenění udělená trenéry/poradatelem
   awardsVisible?: boolean;                // zobrazit ocenění hostům; default false
+
+  // ── Propozice (regulations) ─────────────────────────────────────
+  regulations?: TournamentRegulations;
+}
+
+/** Strukturované propozice turnaje — pro PDF a rozeslání trenérům */
+export interface TournamentRegulations {
+  organizer?: string;            // Pořadatel (default: název klubu)
+  category?: string;             // Kategorie ("U9", "Ženy", "I.-II. třídy ZŠ")
+  pitchDimensions?: string;      // Plocha ("22×16 metrů, brány 3x2m")
+  matchFormat?: string;          // Počet hráčů ("1+4, na soupisce max. 10")
+  substitutionRules?: string;    // Střídání ("Hokejovým způsobem")
+  gameRules?: string;            // Pravidla (volný text)
+  cardRules?: string;            // Tresty ("Žlutá 2 min, červená konec")
+  protestRules?: string;         // Protesty
+  equipment?: string;            // Vybavení
+  prizes?: string;               // Ceny
+  referees?: string;             // Rozhodčí
+  insurance?: string;            // Pojištění
+  changingRooms?: string;        // Šatny / zázemí
+  organizerDisclaimer?: string;  // Organizátor si vyhrazuje právo...
+  contactName?: string;          // Kontaktní osoba
+  contactPhone?: string;         // Telefon
+  contactEmail?: string;         // Email
+  rosterRequired?: boolean;      // Vyžaduje soupisku (pro PDF 2. strana)
+  penaltyRounds?: number;        // Počet kol penaltového rozstřelu (default 5)
 }
 
 export interface TournamentAward {

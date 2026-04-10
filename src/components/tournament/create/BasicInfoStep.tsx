@@ -59,7 +59,7 @@ export function BasicInfoStep({
         <button onClick={onOpenTemplatePicker} style={{
           background: 'var(--surface)', borderRadius: 14, padding: '12px 16px',
           display: 'flex', alignItems: 'center', gap: 10,
-          boxShadow: '0 1px 4px rgba(0,0,0,.05)', width: '100%',
+          boxShadow: 'var(--shadow-sm)', width: '100%',
           border: '1.5px dashed var(--primary)', color: 'var(--primary)', fontWeight: 700, fontSize: 14,
         }}>
           <span style={{ fontSize: 18 }}>📋</span>
@@ -67,7 +67,7 @@ export function BasicInfoStep({
         </button>
       )}
 
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: 'var(--shadow-sm)' }}>
         <div>
           <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>{t('tournament.create.name')}</label>
           <input
@@ -110,7 +110,7 @@ export function BasicInfoStep({
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: 'var(--shadow-sm)' }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.matchDurations')}</h3>
         <Stepper label={t('tournament.create.matchDuration')} value={matchDuration} min={1} max={120} step={1} onChange={setMatchDuration} unit={t('common.min')} />
         <div style={{ height: 1, background: 'var(--border)' }} />
@@ -120,7 +120,7 @@ export function BasicInfoStep({
       </div>
 
       {/* Format turnaje */}
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--shadow-sm)' }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('knockout.format')}</h3>
         <div style={{ display: 'flex', gap: 8 }}>
           {([
@@ -193,7 +193,7 @@ export function BasicInfoStep({
       </div>
 
       {/* Speciální režimy */}
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--shadow-sm)' }}>
         {/* Friendly mode (školičky) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ flex: 1 }}>
@@ -241,7 +241,7 @@ export function BasicInfoStep({
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-sm)' }}>
         <div>
           <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, display: 'block' }}>
             {t('tournament.create.rules')}

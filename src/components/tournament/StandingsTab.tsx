@@ -7,7 +7,7 @@ import { computeStandings } from '../../utils/tournament-schedule';
 import { BracketView } from '../../components/BracketView';
 import { TeamBadge } from './TeamBadge';
 
-export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament: Tournament; onTeamClick?: (teamId: string) => void; isOwner?: boolean }) {
+export function StandingsTab({ tournament, onTeamClick, isOwner, onSwitchToMatches }: { tournament: Tournament; onTeamClick?: (teamId: string) => void; isOwner?: boolean; onSwitchToMatches?: () => void }) {
   const { t } = useI18n();
   const updateTournament = useTournamentStore(s => s.updateTournament);
   const [penaltyPair, setPenaltyPair] = useState<{ teamA: string; teamB: string } | null>(null);
@@ -16,17 +16,18 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
   const [penaltySaved, setPenaltySaved] = useState(false);
 
   const hasLiveMatch = tournament.matches.some(m => m.status === 'live');
+  const [showLive, setShowLive] = useState(true);
 
   const standings = useMemo(() => computeStandings(
     tournament.matches,
     tournament.teams,
     tournament.settings.tiebreakerOrder,
     tournament.settings.penaltyResults,
-    true, // includeLive — admin sees live standings
-  ), [tournament.matches, tournament.teams, tournament.settings.tiebreakerOrder, tournament.settings.penaltyResults]);
+    showLive, // includeLive — toggle
+  ), [tournament.matches, tournament.teams, tournament.settings.tiebreakerOrder, tournament.settings.penaltyResults, showLive]);
 
   // Base standings WITHOUT live matches (for position change calculation)
-  const baseStandings = useMemo(() => hasLiveMatch ? computeStandings(
+  const baseStandings = useMemo(() => (hasLiveMatch && showLive) ? computeStandings(
     tournament.matches,
     tournament.teams,
     tournament.settings.tiebreakerOrder,
@@ -122,15 +123,33 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
   const format = tournament.settings.format ?? 'round-robin';
   const groups = tournament.settings.groups ?? [];
 
+  // Chip pro přepnutí live/bez live
+  const liveChip = hasLiveMatch ? (
+    <button
+      onClick={() => setShowLive(v => !v)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        padding: '4px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+        background: showLive ? 'var(--danger)' : 'var(--surface-var)',
+        color: showLive ? '#fff' : 'var(--text-muted)',
+        border: showLive ? 'none' : '1px solid var(--border)',
+        cursor: 'pointer', transition: 'all .2s',
+      }}
+    >
+      {showLive && <span style={{ width: 6, height: 6, borderRadius: 3, background: '#fff', animation: 'pulse 1.5s infinite' }} />}
+      {showLive ? 'LIVE' : 'Bez LIVE'}
+    </button>
+  ) : null;
+
   // Pro groups-knockout: zobrazit per-group tabulky
   if (format === 'groups-knockout' && groups.length > 0) {
     return (
       <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {groups.map(group => {
+        {groups.map((group, gi) => {
           const groupTeams = tournament.teams.filter(tm => group.teamIds.includes(tm.id));
           const groupMatches = tournament.matches.filter(m => m.groupId === group.id);
-          const groupStandings = computeStandings(groupMatches, groupTeams, tournament.settings.tiebreakerOrder, tournament.settings.penaltyResults, true);
-          const groupBaseStandings = hasLiveMatch
+          const groupStandings = computeStandings(groupMatches, groupTeams, tournament.settings.tiebreakerOrder, tournament.settings.penaltyResults, showLive);
+          const groupBaseStandings = (hasLiveMatch && showLive)
             ? computeStandings(groupMatches, groupTeams, tournament.settings.tiebreakerOrder, tournament.settings.penaltyResults, false)
             : null;
           const groupBaseMap = new Map<string, number>();
@@ -140,10 +159,13 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
 
           return (
             <div key={group.id}>
-              <h3 style={{ fontWeight: 800, fontSize: 15, marginBottom: 8, color: 'var(--primary)' }}>
-                {group.name}
-              </h3>
-              <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <h3 style={{ fontWeight: 800, fontSize: 15, margin: 0, color: 'var(--primary)' }}>
+                  {group.name}
+                </h3>
+                {gi === 0 && liveChip}
+              </div>
+              <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 22px 22px 22px 36px 30px', gap: 4, padding: '7px 10px', background: 'var(--surface-var)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
                   <span>#</span><span>{t('tournament.teamA').replace(/ A$/, '')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.played')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.won')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.lost')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.goalsFor')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.points')}</span>
                 </div>
@@ -170,11 +192,11 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                       <span style={{
                         fontWeight: 700, fontSize: 12, textAlign: 'center',
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0,
-                        color: gPosChange > 0 ? '#2E7D32' : gPosChange < 0 ? '#C62828' : isAdvancing ? 'var(--primary)' : 'var(--text-muted)',
+                        color: gPosChange > 0 ? 'var(--success)' : gPosChange < 0 ? 'var(--danger)' : isAdvancing ? 'var(--primary)' : 'var(--text-muted)',
                       }}>
                         <span>{gCurrentPos}</span>
                         {gPosChange !== 0 && (
-                          <span style={{ fontSize: 9, lineHeight: 1, fontWeight: 800, color: gPosChange > 0 ? '#2E7D32' : '#C62828' }}>
+                          <span style={{ fontSize: 9, lineHeight: 1, fontWeight: 800, color: gPosChange > 0 ? 'var(--success)' : 'var(--danger)' }}>
                             {gPosChange > 0 ? '▲' : '▼'}
                           </span>
                         )}
@@ -184,8 +206,8 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                         <span style={{ fontWeight: isAdvancing ? 800 : 600, fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team?.name ?? '?'}</span>
                       </div>
                       <span style={{ textAlign: 'center', fontSize: 13 }}>{s.played}</span>
-                      <span style={{ textAlign: 'center', fontSize: 13, color: '#2E7D32', fontWeight: 600 }}>{s.won}</span>
-                      <span style={{ textAlign: 'center', fontSize: 13, color: '#C62828', fontWeight: 600 }}>{s.lost}</span>
+                      <span style={{ textAlign: 'center', fontSize: 13, color: 'var(--success)', fontWeight: 600 }}>{s.won}</span>
+                      <span style={{ textAlign: 'center', fontSize: 13, color: 'var(--danger)', fontWeight: 600 }}>{s.lost}</span>
                       <span style={{ textAlign: 'center', fontSize: 12 }}>{s.goalsFor}:{s.goalsAgainst}</span>
                       <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 15, color: isAdvancing ? 'var(--primary)' : 'var(--text)' }}>{s.points}</span>
                     </div>
@@ -201,6 +223,7 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
           <BracketView
             matches={tournament.matches.filter(m => m.stage && m.stage !== 'group')}
             teams={tournament.teams}
+            onLiveClick={onSwitchToMatches}
           />
         )}
       </div>
@@ -209,7 +232,7 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
 
   return (
     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
         {/* Header */}
         <div style={{ display: 'grid', gridTemplateColumns: '22px 1fr 22px 22px 22px 36px 30px', gap: 4, padding: '7px 10px', background: 'var(--surface-var)', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
           <span>#</span><span>{t('tournament.teamA').replace(/ A$/, '')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.played')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.won')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.lost')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.goalsFor')}</span><span style={{ textAlign: 'center' }}>{t('tournament.detail.points')}</span>
@@ -237,11 +260,11 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
               <span style={{
                 fontWeight: 700, fontSize: 12, textAlign: 'center',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0,
-                color: posChange > 0 ? '#2E7D32' : posChange < 0 ? '#C62828' : isFirst ? 'var(--primary)' : 'var(--text-muted)',
+                color: posChange > 0 ? 'var(--success)' : posChange < 0 ? 'var(--danger)' : isFirst ? 'var(--primary)' : 'var(--text-muted)',
               }}>
                 <span>{isFirst ? '🥇' : currentPos}</span>
                 {posChange !== 0 && (
-                  <span style={{ fontSize: 9, lineHeight: 1, fontWeight: 800, color: posChange > 0 ? '#2E7D32' : '#C62828' }}>
+                  <span style={{ fontSize: 9, lineHeight: 1, fontWeight: 800, color: posChange > 0 ? 'var(--success)' : 'var(--danger)' }}>
                     {posChange > 0 ? '▲' : '▼'}
                   </span>
                 )}
@@ -251,21 +274,22 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                 <span style={{ fontWeight: isFirst ? 800 : 600, fontSize: 13, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team?.name ?? '?'}</span>
               </div>
               <span style={{ textAlign: 'center', fontSize: 12 }}>{s.played}</span>
-              <span style={{ textAlign: 'center', fontSize: 12, color: '#2E7D32', fontWeight: 600 }}>{s.won}</span>
-              <span style={{ textAlign: 'center', fontSize: 12, color: '#C62828', fontWeight: 600 }}>{s.lost}</span>
+              <span style={{ textAlign: 'center', fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>{s.won}</span>
+              <span style={{ textAlign: 'center', fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>{s.lost}</span>
               <span style={{ textAlign: 'center', fontSize: 11 }}>{s.goalsFor}:{s.goalsAgainst}</span>
               <span style={{ textAlign: 'center', fontWeight: 800, fontSize: 14, color: isFirst ? 'var(--primary)' : 'var(--text)' }}>{s.points}</span>
             </div>
           );
         })}
       </div>
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
-        {t('tournament.detail.played')} · {t('tournament.detail.won')} · {t('tournament.detail.lost')} · {t('tournament.detail.goalsFor')} · {t('tournament.detail.points')}
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <span>{t('tournament.detail.played')} · {t('tournament.detail.won')} · {t('tournament.detail.lost')} · {t('tournament.detail.goalsFor')} · {t('tournament.detail.points')}</span>
+        {liveChip}
       </div>
 
       {/* Penalty resolution for tied teams */}
       {isOwner && tiedPairs.length > 0 && (
-        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '12px 14px', boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '12px 14px', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--text)' }}>
             ⚽ {t('tournament.tiebreaker.penaltyTitle')}
           </div>
@@ -290,8 +314,8 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                   <TeamBadge team={teamB} size={14} />
                   <span style={{
                     fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
-                    background: pair.resolved ? '#E8F5E9' : '#FFF3E0',
-                    color: pair.resolved ? '#2E7D32' : '#E65100',
+                    background: pair.resolved ? 'var(--success-light)' : 'var(--warning-light)',
+                    color: pair.resolved ? 'var(--success)' : 'var(--warning)',
                   }}>
                     {pair.resolved ? '✅' : t('tournament.tiebreaker.resolvePenalty')}
                   </span>
@@ -351,7 +375,7 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                 onClick={handleSavePenalty}
                 disabled={penaltyA === penaltyB}
                 style={{
-                  background: penaltySaved ? '#2E7D32' : (penaltyA === penaltyB ? 'var(--surface-var)' : 'var(--primary)'),
+                  background: penaltySaved ? 'var(--success)' : (penaltyA === penaltyB ? 'var(--surface-var)' : 'var(--primary)'),
                   color: penaltyA === penaltyB ? 'var(--text-muted)' : '#fff',
                   fontWeight: 700, fontSize: 15, padding: '14px', borderRadius: 12,
                   transition: 'background .2s', opacity: penaltyA === penaltyB ? 0.5 : 1,
@@ -360,7 +384,7 @@ export function StandingsTab({ tournament, onTeamClick, isOwner }: { tournament:
                 {penaltySaved ? `✅ ${t('tournament.tiebreaker.penaltySaved')}` : `💾 ${t('tournament.tiebreaker.resolvePenalty')}`}
               </button>
               {penaltyA === penaltyB && (
-                <div style={{ fontSize: 12, color: '#E65100', textAlign: 'center', marginTop: -8 }}>
+                <div style={{ fontSize: 12, color: 'var(--warning)', textAlign: 'center', marginTop: -8 }}>
                   {t('tournament.detail.penaltyMustHaveWinner')}
                 </div>
               )}

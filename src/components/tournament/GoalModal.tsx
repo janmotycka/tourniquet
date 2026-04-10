@@ -59,7 +59,7 @@ export function GoalModal({ match, teams, onAdd, onClose }: {
             }}>{t('tournament.detail.addGoal')}</button>
             <button onClick={() => setIsOwnGoal(true)} style={{
               flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 14,
-              background: isOwnGoal ? '#C62828' : 'var(--surface-var)',
+              background: isOwnGoal ? 'var(--danger)' : 'var(--surface-var)',
               color: isOwnGoal ? '#fff' : 'var(--text)',
             }}>{t('tournament.detail.ownGoal')}</button>
           </div>
@@ -132,7 +132,7 @@ export function GoalModal({ match, teams, onAdd, onClose }: {
                   return (
                     <button key={tid} onClick={() => setOwnGoalTeamId(tid)} style={{
                       flex: 1, padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 14,
-                      background: ownGoalTeamId === tid ? '#C62828' : 'var(--surface-var)',
+                      background: ownGoalTeamId === tid ? 'var(--danger)' : 'var(--surface-var)',
                       color: ownGoalTeamId === tid ? '#fff' : 'var(--text)',
                     }}>{tm?.name ?? '?'}</button>
                   );

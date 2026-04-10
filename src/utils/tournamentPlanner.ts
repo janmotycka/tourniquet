@@ -22,6 +22,8 @@ export interface PlannerInput {
   maxMatchLength?: number;  // default 20
   /** Pauza mezi zápasy v min. */
   breakBetweenMatches?: number;  // default 2
+  /** Play-out: zápasy o všechna umístění (5., 7., 9. místo…) */
+  playOut?: boolean;
 }
 
 /** Jedna vygenerovaná varianta, kterou může trenér vybrat. */
@@ -40,6 +42,15 @@ export interface PlannerVariant {
   matchesPerTeam: number;
   /** Celkem minut, kdy je průměrný tým "na hřišti" */
   minutesPerTeam: number;
+  /**
+   * Garantované minimum minut hry pro KAŽDÝ tým (i ten, co nepostoupí).
+   * Pro round-robin = minutesPerTeam (všichni hrají stejně).
+   * Pro groups-knockout = (groupSize - 1) × matchLength.
+   * Pro knockout = 1 × matchLength.
+   * Používá se pro řazení variant — trenéra zajímá, kolik hrají VŠICHNI,
+   * ne jen vítěz.
+   */
+  guaranteedMinutesPerTeam: number;
   /** Celkový počet zápasů v turnaji */
   totalMatches: number;
   /** Celková doba trvání turnaje v min. */
@@ -56,6 +67,8 @@ export interface PlannerVariant {
   groups?: { name: string; teamIndices: number[] }[];
   /** Kolik týmů postoupí ze skupiny (1 nebo 2) */
   advancePerGroup?: number;
+  /** Play-out: zápasy o všechna umístění */
+  playOut?: boolean;
 }
 
 export interface MatchOrderEntry {
@@ -75,7 +88,7 @@ export function planTournament(input: PlannerInput): PlannerVariant[] {
   const teams = Math.max(2, Math.floor(input.teamCount));
   const totalMin = Math.max(30, input.totalMinutes);
   const maxFields = Math.max(1, Math.min(8, input.maxFields));
-  const minML = input.minMatchLength ?? 6;
+  const minML = input.minMatchLength ?? 10;
   const maxML = input.maxMatchLength ?? 20;
   const brk = input.breakBetweenMatches ?? 2;
 
@@ -87,14 +100,23 @@ export function planTournament(input: PlannerInput): PlannerVariant[] {
     const rr = buildRoundRobin(teams, fields, totalMin, minML, maxML, brk);
     if (rr) candidates.push(rr);
 
-    // --- 2) Groups + playoff — only if enough teams (≥6) ---
+    // --- 2) Groups + playoff ---
     if (teams >= 6) {
-      // Try 2 groups and 3 groups (if teams ≥ 9)
-      const groupConfigs = teams >= 9 ? [2, 3] : [2];
+      const groupConfigs = teams >= 12 ? [2, 3, 4] : teams >= 9 ? [2, 3] : [2];
       for (const groupCount of groupConfigs) {
-        if (groupCount > Math.floor(teams / 3)) continue; // need at least 3 teams / group
-        const gk = buildGroupsKnockout(teams, groupCount, fields, totalMin, minML, maxML, brk);
+        if (groupCount > Math.floor(teams / 3)) continue;
+        // Varianta BEZ play-out
+        const gk = buildGroupsKnockout(teams, groupCount, fields, totalMin, minML, maxML, brk, false);
         if (gk) candidates.push(gk);
+        // Varianta S play-out (jen pro 2 skupiny — automaticky navíc)
+        if (groupCount === 2) {
+          const gkPo = buildGroupsKnockout(teams, groupCount, fields, totalMin, minML, maxML, brk, true);
+          if (gkPo) candidates.push(gkPo);
+        }
+      }
+      if (teams >= 12) {
+        const gk8 = buildGroupsKnockoutWithAdvance2(teams, 4, fields, totalMin, minML, maxML, brk, false);
+        if (gk8) candidates.push(gk8);
       }
     }
 
@@ -106,15 +128,34 @@ export function planTournament(input: PlannerInput): PlannerVariant[] {
   // Deduplicate: variants with same format+fields+matchLength+groups are considered same
   const dedup = dedupVariants(candidates);
 
-  // Sort by minutesPerTeam descending (primary), then by fewer fields (secondary — prefer simpler setup)
+  // Sort by guaranteedMinutesPerTeam descending
   dedup.sort((a, b) => {
-    if (b.minutesPerTeam !== a.minutesPerTeam) return b.minutesPerTeam - a.minutesPerTeam;
+    if (b.guaranteedMinutesPerTeam !== a.guaranteedMinutesPerTeam) return b.guaranteedMinutesPerTeam - a.guaranteedMinutesPerTeam;
     if (a.fields !== b.fields) return a.fields - b.fields;
     return b.totalMatches - a.totalMatches;
   });
 
-  // Take top 4, label them
-  const top = dedup.slice(0, 4);
+  // Diverzní výběr — z každého "typu" (RR, 2sk, 3sk, 4sk, play-out) vezmi nejlepší.
+  // Tím zajistíme, že trenér vidí i 4-skupinovou variantu, která by jinak vypadla.
+  const seen = new Set<string>();
+  const diverse: PlannerVariant[] = [];
+  for (const v of dedup) {
+    const groupCount = v.groups?.length ?? 0;
+    const adv = v.advancePerGroup ?? 1;
+    const typeKey = `${v.format}-g${groupCount}-a${adv}-po${v.playOut ? 1 : 0}`;
+    if (!seen.has(typeKey)) {
+      seen.add(typeKey);
+      diverse.push(v);
+    }
+  }
+  // Seřadit diverzní výběr zpět podle guaranteedMinutesPerTeam
+  diverse.sort((a, b) => {
+    if (b.guaranteedMinutesPerTeam !== a.guaranteedMinutesPerTeam) return b.guaranteedMinutesPerTeam - a.guaranteedMinutesPerTeam;
+    return b.totalMatches - a.totalMatches;
+  });
+
+  // Max 8 variant — trenér si filtruje chipy
+  const top = diverse.slice(0, 8);
   return labelVariants(top);
 }
 
@@ -152,6 +193,7 @@ function buildRoundRobin(
     breakMin: brk,
     matchesPerTeam,
     minutesPerTeam,
+    guaranteedMinutesPerTeam: minutesPerTeam, // round-robin: všichni hrají stejně
     totalMatches,
     totalDurationMin: totalDuration,
     label: '',
@@ -171,6 +213,7 @@ function buildGroupsKnockout(
   minML: number,
   maxML: number,
   brk: number,
+  playOut = false,
 ): PlannerVariant | null {
   // Distribute teams into groups as evenly as possible
   const base = Math.floor(teams / groupCount);
@@ -183,25 +226,27 @@ function buildGroupsKnockout(
   // Group stage matches
   const groupMatches = groupSizes.reduce((sum, s) => sum + (s * (s - 1)) / 2, 0);
 
-  // Playoff: top 2 per group → semifinal + final (+ 3rd place)
-  // For simplicity, assume 2 groups → SF + F + 3rd  (4 matches)
-  // For 3 groups → quarterfinal with best 3rd → simplified: just top 1 from each → final 3-way not clean, so skip
   let playoffMatches = 0;
   let advancePerGroup = 2;
   if (groupCount === 2) {
-    playoffMatches = 4; // 2 SF + F + 3rd place
+    playoffMatches = 4; // 2 SF + F + 3rd
     advancePerGroup = 2;
   } else if (groupCount === 3) {
-    // Top 1 from each → 3 teams → 2 placement matches (hard to schedule cleanly)
-    // Simpler: top 2 from 3 groups = 6 teams → 2 QF + 2 SF + F + 3rd = 6 matches
-    playoffMatches = 6;
-    advancePerGroup = 2;
+    playoffMatches = 4; // 2 SF + F + 3rd (3 vítězové + best 2nd)
+    advancePerGroup = 1;
   } else if (groupCount === 4) {
-    playoffMatches = 7; // 4 QF + 2 SF + F + 3rd = 8... ok 4 QF doesn't fit 4 teams each. Skip for now.
+    playoffMatches = 4; // SF + F + 3. místo
     advancePerGroup = 1;
   }
 
-  const totalMatches = groupMatches + playoffMatches;
+  // Play-out: zápasy o umístění pro týmy co nepostoupí (jen pro 2 skupiny)
+  let playOutMatches = 0;
+  if (playOut && groupCount === 2) {
+    const minGroupSize = Math.min(...groupSizes);
+    playOutMatches = minGroupSize - advancePerGroup; // jedna hra za každou pozici
+  }
+
+  const totalMatches = groupMatches + playoffMatches + playOutMatches;
   const slots = Math.ceil(totalMatches / fields);
   const maxPossibleLen = Math.floor(totalMin / slots) - brk;
   const matchLen = Math.min(maxML, Math.max(minML, maxPossibleLen));
@@ -211,13 +256,14 @@ function buildGroupsKnockout(
 
   // Matches per team (average): group = (size-1), playoff varies
   // Minimum matches per team = (size-1) for teams that don't advance
-  // Max matches per team = (size-1) + ~2 (SF + F)
-  // Use average
+  // Guaranteed = nejmenší skupina (worst case tým), ne průměr
+  const minGroupSize = Math.min(...groupSizes);
+  const groupMatchesPerTeam = minGroupSize - 1;
+  // Průměr pro celkové minutesPerTeam (zahrnuje playoff podíl)
   const avgGroupSize = teams / groupCount;
-  const groupMatchesPerTeam = avgGroupSize - 1;
-  // Assume average playoff contribution ~ 1 match (half get 2, half get 0)
+  const avgGroupMatches = avgGroupSize - 1;
   const avgPlayoffPerTeam = (playoffMatches * 2) / teams;
-  const matchesPerTeam = groupMatchesPerTeam + avgPlayoffPerTeam;
+  const matchesPerTeam = avgGroupMatches + avgPlayoffPerTeam;
   const minutesPerTeam = matchesPerTeam * matchLen;
 
   // Build groups definition (by index)
@@ -239,12 +285,88 @@ function buildGroupsKnockout(
     breakMin: brk,
     matchesPerTeam: Math.round(matchesPerTeam * 10) / 10,
     minutesPerTeam: Math.round(minutesPerTeam),
+    // S play-out: každý tým hraje skupinu + 1 play-out zápas (i ten nejhorší)
+    guaranteedMinutesPerTeam: Math.round((groupMatchesPerTeam + (playOut && groupCount === 2 ? 1 : 0)) * matchLen),
     totalMatches,
     totalDurationMin: totalDuration,
     label: '',
     description: `${fields}× hřiště · ${groupCount} skupiny + play-off`,
     rationale: '',
     matchOrder: [], // groups-knockout doesn't use matchOrder
+    groups,
+    advancePerGroup,
+    playOut: playOut || undefined,
+  };
+}
+
+/**
+ * 4 skupiny × advance=2 = 8 týmů v playoff (QF → SF → F + 3. místo).
+ * Samostatná funkce protože buildGroupsKnockout defaultně používá advance=1 pro 4 skupiny.
+ */
+function buildGroupsKnockoutWithAdvance2(
+  teams: number,
+  groupCount: number,
+  fields: number,
+  totalMin: number,
+  minML: number,
+  maxML: number,
+  brk: number,
+  playOut = false,
+): PlannerVariant | null {
+  const base = Math.floor(teams / groupCount);
+  const rem = teams % groupCount;
+  const groupSizes: number[] = [];
+  for (let i = 0; i < groupCount; i++) {
+    groupSizes.push(base + (i < rem ? 1 : 0));
+  }
+
+  const groupMatches = groupSizes.reduce((sum, s) => sum + (s * (s - 1)) / 2, 0);
+  const playoffMatches = 8; // 4 QF + 2 SF + F + 3. místo
+  const advancePerGroup = 2;
+
+  // Play-out — pro 4sk×adv2 zatím nepodporujeme (jen 2 skupiny)
+  const playOutMatches = 0;
+
+  const totalMatches = groupMatches + playoffMatches + playOutMatches;
+  void playOut; // reserved for future use with 4-group play-out
+  const slots = Math.ceil(totalMatches / fields);
+  const maxPossibleLen = Math.floor(totalMin / slots) - brk;
+  const matchLen = Math.min(maxML, Math.max(minML, maxPossibleLen));
+  if (maxPossibleLen < minML) return null;
+
+  const totalDuration = slots * (matchLen + brk);
+  const minGroupSize = Math.min(...groupSizes);
+  const groupMatchesPerTeam = minGroupSize - 1; // guaranteed = worst case
+  const avgGroupSize = teams / groupCount;
+  const avgGroupMatches = avgGroupSize - 1;
+  const avgPlayoffPerTeam = (playoffMatches * 2) / teams;
+  const matchesPerTeam = avgGroupMatches + avgPlayoffPerTeam;
+  const minutesPerTeam = matchesPerTeam * matchLen;
+
+  const groups: { name: string; teamIndices: number[] }[] = [];
+  let idx = 0;
+  for (let g = 0; g < groupCount; g++) {
+    const size = groupSizes[g];
+    const indices = Array.from({ length: size }, (_, i) => idx + i);
+    idx += size;
+    groups.push({ name: `Skupina ${String.fromCharCode(65 + g)}`, teamIndices: indices });
+  }
+
+  return {
+    key: `gk-g${groupCount}a2-f${fields}-l${matchLen}`,
+    format: 'groups-knockout',
+    fields,
+    matchLengthMin: matchLen,
+    breakMin: brk,
+    matchesPerTeam: Math.round(matchesPerTeam * 10) / 10,
+    minutesPerTeam: Math.round(minutesPerTeam),
+    guaranteedMinutesPerTeam: Math.round(groupMatchesPerTeam * matchLen),
+    totalMatches,
+    totalDurationMin: totalDuration,
+    label: '',
+    description: `${fields}× hřiště · ${groupCount} skupiny (2 post.) + play-off`,
+    rationale: '',
+    matchOrder: [],
     groups,
     advancePerGroup,
   };
@@ -302,51 +424,86 @@ function dedupVariants(variants: PlannerVariant[]): PlannerVariant[] {
 function labelVariants(variants: PlannerVariant[]): PlannerVariant[] {
   if (variants.length === 0) return variants;
 
-  // First = most minutes / team
-  const byMinutes = [...variants].sort((a, b) => b.minutesPerTeam - a.minutesPerTeam);
-  const byDuration = [...variants].sort((a, b) => a.totalDurationMin - b.totalDurationMin);
-  const byMatches = [...variants].sort((a, b) => b.matchesPerTeam - a.matchesPerTeam);
+  // Assign honest, format-based labels.
+  // First variant = "Doporučeno" (sorted by guaranteedMinutesPerTeam — highest
+  // guaranteed play time for ALL teams, including those that don't advance).
+  return variants.map((v, idx) => {
+    const isGroupsKnockout = v.format === 'groups-knockout';
+    const isRoundRobin = v.format === 'round-robin';
 
-  const topMinutes = byMinutes[0];
-  const topFastest = byDuration[0];
-  const topMost = byMatches[0];
+    // Honest rationale — one sentence about the trade-off
+    const z = (n: number) => n === 1 ? 'zápas' : (n >= 2 && n <= 4) ? 'zápasy' : 'zápasů';
+    let rationale: string;
+    if (isGroupsKnockout) {
+      const sizes = (v.groups ?? []).map(g => g.teamIndices.length);
+      const minGroupSize = Math.min(...sizes);
+      const groupCount = v.groups?.length ?? 2;
+      const groupMatches = minGroupSize - 1; // worst case = nejmenší skupina
+      const adv = v.advancePerGroup ?? 1;
+      let advDesc: string;
+      if (groupCount === 3 && adv === 1) {
+        // Speciální případ: 3 vítězové + nejlepší 2. místo = 4 do playoff
+        advDesc = `Do play-off postupují 3 vítězové skupin a 1 nejlepší tým z druhých míst — celkem 4 týmy (semifinále a finále).`;
+      } else {
+        const advTotal = adv * groupCount;
+        const advLabel = adv === 1 ? 'vítěz' : adv === 2 ? 'první dva' : `${adv} nejlepší`;
+        const playoffDesc = advTotal > 4
+          ? 'čtvrtfinále, semifinále a finále'
+          : 'semifinále a finále';
+        advDesc = `Ze skupiny postupují ${advLabel} — celkem ${advTotal} ${advTotal >= 5 ? 'týmů' : advTotal >= 2 ? 'týmy' : 'tým'} do play-off (${playoffDesc}).`;
+      }
+      const shortGroupWarning = groupMatches <= 2
+        ? ` Pozor: skupiny mají jen ${groupMatches} ${z(groupMatches)} — týmy co nepostoupí si toho moc nezahrají.`
+        : '';
+      const allSame = sizes.every(s => s === sizes[0]);
+      const groupSizeDesc = allSame
+        ? `${groupCount} skupin po ${sizes[0]} týmech`
+        : `${groupCount} skupiny (${sizes.join(', ')} týmů)`;
 
-  return variants.map(v => {
-    if (v === topMinutes && v.minutesPerTeam > 0) {
-      return {
-        ...v,
-        label: 'Nejvíc minut na tým',
-        rationale: `Maximalizuje hrací čas každého týmu — ${v.minutesPerTeam} min (${v.matchesPerTeam} zápasů po ${v.matchLengthMin} min). Ideální, když chcete, aby si každý tým opravdu zahrál.`,
-      };
+      const isPlayOut = v.playOut === true;
+      const playOutDesc = isPlayOut
+        ? ` Navíc se dohrají zápasy o každé umístění (5., 7., 9.…) — každý tým získá konkrétní umístění.`
+        : ` Umístění týmů co nepostoupí určí tabulka skupiny.`;
+
+      rationale = `Turnaj je rozdělen do ${groupSizeDesc}. Každý tým odehraje minimálně ${groupMatches + (isPlayOut ? 1 : 0)} ${z(groupMatches + (isPlayOut ? 1 : 0))} po ${v.matchLengthMin} min. ${advDesc}${playOutDesc}${shortGroupWarning}`;
+    } else if (isRoundRobin) {
+      const perTeam = Math.round(v.matchesPerTeam);
+      const totalMin = perTeam * v.matchLengthMin;
+      rationale = `Každý tým se utká s každým — celkem ${perTeam} ${z(perTeam)} po ${v.matchLengthMin} min (${totalMin} min hry na tým). Nejspravedlivější formát, protože všechny týmy odehrají stejný počet zápasů. Vítěze určí konečná tabulka. Vhodné, pokud chcete, aby si všichni zahráli co nejvíc.`;
+    } else {
+      rationale = `Vyřazovací pavouk — každý zápas trvá ${v.matchLengthMin} min. Prohra znamená konec turnaje. Rychlý a dramatický formát, ale slabší týmy odehrají jen minimum zápasů.`;
     }
-    if (v === topFastest && v !== topMinutes) {
-      return {
-        ...v,
-        label: 'Nejrychlejší turnaj',
-        rationale: `Turnaj skončí za ${formatDuration(v.totalDurationMin)}. Méně minut na tým (${v.minutesPerTeam} min), ale dřív jdete domů.`,
-      };
+
+    // Popisný label
+    const isPlayOutVariant = v.playOut === true;
+    let label: string;
+    if (idx === 0) {
+      label = 'Doporučeno';
+    } else if (isPlayOutVariant) {
+      label = 'Každý s umístěním';
+    } else {
+      const recommended = variants[0];
+      if (v.matchLengthMin > recommended.matchLengthMin) {
+        label = 'Delší zápasy';
+      } else if (v.totalDurationMin < recommended.totalDurationMin) {
+        label = 'Rychlejší';
+      } else if ((v.groups?.length ?? 0) > (recommended.groups?.length ?? 0)) {
+        label = 'Více skupin';
+      } else if ((v.groups?.length ?? 0) < (recommended.groups?.length ?? 0)) {
+        label = 'Méně skupin';
+      } else if (v.format === 'round-robin') {
+        label = 'Každý s každým';
+      } else {
+        label = 'Alternativa';
+      }
     }
-    if (v === topMost && v !== topMinutes && v !== topFastest) {
-      return {
-        ...v,
-        label: 'Nejvíc zápasů',
-        rationale: `Každý tým sehraje ${v.matchesPerTeam} zápasů — dobré pro rozmanitost soupeřů a herní zkušenost.`,
-      };
-    }
+
     return {
       ...v,
-      label: 'Alternativa',
-      rationale: `${v.matchesPerTeam} zápasů po ${v.matchLengthMin} min. Celkem ${formatDuration(v.totalDurationMin)}.`,
+      label,
+      rationale,
     };
   });
-}
-
-function formatDuration(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h === 0) return `${m} min`;
-  if (m === 0) return `${h} h`;
-  return `${h} h ${m} min`;
 }
 
 // ─── Time-addition helper (for wizard schedule preview) ──────────────────────

@@ -21,6 +21,173 @@ import { MvpAdminBanner } from '../../components/tournament/MvpAdminBanner';
 import { DashboardTab } from '../../components/tournament/DashboardTab';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
 
+// ─── Penalty Shootout Modal ──────────────────────────────────────────────────
+
+function PenaltyShootoutModal({ match, homeTeam, awayTeam, penaltyRounds = 5, onKick, onUndo, onFinish, onClose }: {
+  match: Match;
+  homeTeam?: { name: string; color: string; logoBase64?: string | null };
+  awayTeam?: { name: string; color: string; logoBase64?: string | null };
+  penaltyRounds?: number;
+  onKick: (side: 'home' | 'away', scored: boolean) => void;
+  onUndo: () => void;
+  onFinish: () => void;
+  onClose: () => void;
+}) {
+  const kicks = match.penaltyKicks ?? [];
+  const homeKicks = kicks.filter(k => k.side === 'home');
+  const awayKicks = kicks.filter(k => k.side === 'away');
+  const homeScored = homeKicks.filter(k => k.scored).length;
+  const awayScored = awayKicks.filter(k => k.scored).length;
+
+  // Kdo střílí příště? Střídavě, začíná home
+  const homeCount = homeKicks.length;
+  const awayCount = awayKicks.length;
+  const nextSide: 'home' | 'away' = homeCount <= awayCount ? 'home' : 'away';
+  const nextTeam = nextSide === 'home' ? homeTeam : awayTeam;
+
+  // Je rozhodnutý? (po min 3 kopech na tým, nebo po 5+ na tým kde 1 má víc a druhý nemůže dohnat)
+  const minKicks = Math.min(homeCount, awayCount);
+  const maxRound = penaltyRounds;
+  const inSuddenDeath = minKicks >= maxRound && homeCount === awayCount;
+  const isDecided = homeScored !== awayScored && (
+    // Po základních 5 kolech — oba mají stejný počet kopů
+    (homeCount === awayCount && homeCount >= maxRound) ||
+    // Během 5 kol — jeden má tolik náskok, že druhý už nemůže dohnat
+    (homeCount === awayCount && homeCount < maxRound && (() => {
+      const remaining = maxRound - homeCount;
+      return homeScored > awayScored + remaining || awayScored > homeScored + remaining;
+    })())
+  );
+
+  const roundNum = Math.min(homeCount, awayCount) + 1;
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 200,
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'var(--surface)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 480,
+        maxHeight: '90dvh', overflowY: 'auto', padding: '0 0 32px',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+        </div>
+        <div style={{ padding: '8px 20px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>Penaltový rozstřel</h2>
+            <button onClick={onClose} style={{ background: 'var(--surface-var)', width: 32, height: 32, borderRadius: 16, fontSize: 16, color: 'var(--text-muted)' }}>✕</button>
+          </div>
+
+          {/* Skóre penalt */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
+            padding: '12px 0',
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ width: 16, height: 16, borderRadius: 4, background: homeTeam?.color ?? '#ccc', margin: '0 auto 4px' }} />
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{homeTeam?.name ?? '?'}</div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 900, fontSize: 32, color: homeScored > awayScored ? 'var(--success)' : 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{homeScored}</span>
+              <span style={{ fontWeight: 700, fontSize: 20, color: 'var(--text-muted)' }}>:</span>
+              <span style={{ fontWeight: 900, fontSize: 32, color: awayScored > homeScored ? 'var(--success)' : 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{awayScored}</span>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ width: 16, height: 16, borderRadius: 4, background: awayTeam?.color ?? '#ccc', margin: '0 auto 4px' }} />
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{awayTeam?.name ?? '?'}</div>
+            </div>
+          </div>
+
+          {/* Vizualizace kopů — řádky po kolech */}
+          {minKicks > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {Array.from({ length: Math.max(homeCount, awayCount) }, (_, i) => {
+                const hk = homeKicks[i];
+                const ak = awayKicks[i];
+                const isSudden = i >= maxRound;
+                return (
+                  <div key={i} style={{
+                    display: 'grid', gridTemplateColumns: '1fr 30px 1fr', gap: 4, alignItems: 'center',
+                    padding: '3px 0',
+                    borderTop: i === maxRound ? '1px dashed var(--border)' : undefined,
+                  }}>
+                    <div style={{ textAlign: 'right', fontSize: 18 }}>
+                      {hk ? (hk.scored ? '⚽' : '❌') : ''}
+                    </div>
+                    <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)' }}>
+                      {isSudden ? `+${i - maxRound + 1}` : i + 1}
+                    </div>
+                    <div style={{ textAlign: 'left', fontSize: 18 }}>
+                      {ak ? (ak.scored ? '⚽' : '❌') : ''}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Rozhodnutí nebo další kop */}
+          {isDecided ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--success)', marginBottom: 12 }}>
+                🏆 {homeScored > awayScored ? homeTeam?.name : awayTeam?.name} vyhrává penalty!
+              </div>
+              <button
+                onClick={onFinish}
+                style={{
+                  background: 'var(--primary)', color: '#fff', width: '100%',
+                  fontWeight: 700, fontSize: 15, padding: '14px', borderRadius: 12,
+                }}
+              >
+                Ukončit zápas
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 8 }}>
+                {inSuddenDeath ? 'Náhlá smrt' : `${roundNum}. kolo`} — střílí {nextTeam?.name ?? '?'}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => onKick(nextSide, true)}
+                  style={{
+                    flex: 1, padding: '14px', borderRadius: 12, fontWeight: 800, fontSize: 16,
+                    background: 'var(--success)', color: '#fff',
+                    border: `3px solid ${nextTeam?.color ?? 'var(--success)'}`,
+                  }}
+                >
+                  ⚽ Gól
+                </button>
+                <button
+                  onClick={() => onKick(nextSide, false)}
+                  style={{
+                    flex: 1, padding: '14px', borderRadius: 12, fontWeight: 800, fontSize: 16,
+                    background: 'var(--danger)', color: '#fff',
+                    border: `3px solid ${nextTeam?.color ?? 'var(--danger)'}`,
+                  }}
+                >
+                  ❌ Vedle
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Undo */}
+          {kicks.length > 0 && !isDecided && (
+            <button onClick={onUndo} style={{
+              fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
+              background: 'none', padding: '6px 0', textAlign: 'center',
+            }}>
+              ↩ Vrátit poslední kop
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface Props { tournamentId: string; navigate: (p: Page) => void; }
 
 type Tab = 'dashboard' | 'standings' | 'matches' | 'scorers' | 'chat' | 'settings';
@@ -67,6 +234,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
   const [tab, setTab] = useState<Tab>('dashboard');
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [showPinGate, setShowPinGate] = useState(false);
+  const [penaltyMatchId, setPenaltyMatchId] = useState<string | null>(null);
   const { t } = useI18n();
   const ask = useConfirmStore(s => s.ask);
 
@@ -102,6 +270,8 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
   const resumeMatch = useTournamentStore(s => s.resumeMatch);
   const cancelMatchStore = useTournamentStore(s => s.cancelMatch);
   const reorderMatchesStore = useTournamentStore(s => s.reorderMatches);
+  const addPenaltyKick = useTournamentStore(s => s.addPenaltyKick);
+  const undoPenaltyKick = useTournamentStore(s => s.undoPenaltyKick);
   const [rosterTeamId, setRosterTeamId] = useState<string | null>(null);
 
   // ── Unread chat messages ───────────────────────────────────────────────────
@@ -190,10 +360,28 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
 
   const handleFinishMatchConfirm = async (matchId: string) => {
     if (!pinVerified) return;
-    const ok = await ask({ title: t('confirm.endMatch'), message: t('confirm.endMatchMsg') });
-    if (ok) {
-      finishMatch(tournamentId, matchId);
+    const match = tournament.matches.find(m => m.id === matchId);
+    const isKnockout = match?.stage && match.stage !== 'group';
+    const isDraw = match && match.homeScore === match.awayScore;
+    const hasPenalty = match?.homePenaltyScore != null && match?.awayPenaltyScore != null && match.homePenaltyScore !== match.awayPenaltyScore;
+
+    if (isKnockout && isDraw && !hasPenalty) {
+      // Remíza bez penalt — nabídnout penalty rozstřel
+      const ok = await ask({
+        title: 'Remíza v playoff',
+        message: `Zápas skončil remízou ${match.homeScore}:${match.awayScore}.\n\nZadej penaltový rozstřel nebo přidej rozhodující gól.`,
+        confirmLabel: 'Zadat penalty',
+        cancelLabel: 'Zpět',
+      });
+      if (ok) {
+        setPenaltyMatchId(matchId);
+      }
+      return;
     }
+
+    const ok = await ask({ title: t('confirm.endMatch'), message: t('confirm.endMatchMsg') });
+    if (!ok) return;
+    finishMatch(tournamentId, matchId);
   };
 
   const handlePauseMatch = (matchId: string) => {
@@ -264,7 +452,25 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
           )}
           {pinVerified && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <span style={{ fontSize: 11, color: '#2E7D32', fontWeight: 600, padding: '4px 8px', background: '#E8F5E9', borderRadius: 8 }}>
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/#tournament=${tournament.id}`;
+                  const d = new Date(tournament.settings.startDate + 'T00:00:00');
+                  const dateStr = `${d.getDate()}.${d.getMonth() + 1}.${d.getFullYear()}`;
+                  const venue = tournament.settings.venueName ? `\n📍 ${tournament.settings.venueName}` : '';
+                  const msg = `📡 *ŽIVÝ TURNAJ* 📡\n\n🏆 *${tournament.name}*\n📅 ${dateStr} ⏰ ${tournament.settings.startTime}\n👥 ${tournament.teams.length} týmů${venue}\n\nSleduj výsledky živě:\n\n👉 ${url}`;
+                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+                }}
+                style={{
+                  fontSize: 11, fontWeight: 700, padding: '4px 10px',
+                  background: 'var(--success)', color: '#fff', borderRadius: 8,
+                  border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                📡 Sdílet
+              </button>
+              <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 600, padding: '4px 8px', background: 'var(--success-light)', borderRadius: 8 }}>
                 {isAdmin ? '👑 Admin' : '✅ Rozhodčí'}
               </span>
               {!isOwner && (
@@ -281,7 +487,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
                   style={{
                     width: 32, height: 32, borderRadius: 8,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: '#FFEBEE', border: '1.5px solid #FFCDD2',
+                    background: 'var(--danger-light)', border: '1.5px solid #FFCDD2',
                     cursor: 'pointer', fontSize: 16, lineHeight: 1,
                   }}
                 >
@@ -295,7 +501,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
         {/* Live banner */}
         {liveMatch && (
           <div style={{
-            background: '#C62828', color: '#fff', padding: '6px 16px',
+            background: 'var(--danger)', color: '#fff', padding: '6px 16px',
             display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600,
             overflow: 'hidden', minWidth: 0,
           }}>
@@ -339,15 +545,15 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
             onDismissCreated={() => setJustCreated(false)}
           />
         )}
-        {tab === 'standings' && <StandingsTab tournament={tournament} onTeamClick={setRosterTeamId} isOwner={isAdmin} />}
+        {tab === 'standings' && <StandingsTab tournament={tournament} onTeamClick={setRosterTeamId} isOwner={isAdmin} onSwitchToMatches={() => { setTab('matches'); window.scrollTo(0, 0); }} />}
         {tab === 'matches' && (
           <>
             {needsSchedule && isAdmin && (
               <div style={{
-                margin: '12px 16px', padding: '16px', background: '#E3F2FD', borderRadius: 14,
+                margin: '12px 16px', padding: '16px', background: 'var(--info-light)', borderRadius: 14,
                 display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center',
               }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: '#1565C0', margin: 0, textAlign: 'center' }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--info)', margin: 0, textAlign: 'center' }}>
                   📋 {t('tournament.detail.noMatchesYet', { count: tournament.teams.length })}
                 </p>
                 <button
@@ -472,6 +678,33 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
           readOnly
         />
       )}
+
+      {/* Penalty shootout modal */}
+      {penaltyMatchId && tournament && (() => {
+        const pm = tournament.matches.find(m => m.id === penaltyMatchId);
+        if (!pm) return null;
+        const homeTeam = tournament.teams.find(t => t.id === pm.homeTeamId);
+        const awayTeam = tournament.teams.find(t => t.id === pm.awayTeamId);
+        return (
+          <PenaltyShootoutModal
+            match={pm}
+            homeTeam={homeTeam}
+            awayTeam={awayTeam}
+            penaltyRounds={tournament.settings.regulations?.penaltyRounds ?? 5}
+            onKick={async (side, scored) => {
+              await addPenaltyKick(tournamentId, penaltyMatchId, side, scored);
+            }}
+            onUndo={async () => {
+              await undoPenaltyKick(tournamentId, penaltyMatchId);
+            }}
+            onFinish={async () => {
+              setPenaltyMatchId(null);
+              await finishMatch(tournamentId, penaltyMatchId);
+            }}
+            onClose={() => setPenaltyMatchId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

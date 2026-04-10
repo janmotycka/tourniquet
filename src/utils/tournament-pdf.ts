@@ -250,64 +250,55 @@ export async function exportTournamentPdf(
   y = cardBottom + 5;
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 3. TÝMY — kompaktní inline seznam
+  // 3. TÝMY — kompaktní inline seznam (jen pokud nejsou skupiny — ty mají rozlosování)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  setFont('bold', 12);
-  doc.setTextColor(0, 0, 0);
-  doc.text(t('pdf.teams'), M, y);
-  y += 4;
+  const hasGroups = (settings.groups ?? []).length > 0;
 
-  // Team badges — evenly spaced grid
-  setFont('normal', 9.5);
-  const teamCount = tournament.teams.length;
-  // Max 3 columns so long team names always fit
-  const gridCols = teamCount <= 4 ? 2 : 3;
-  const cellW = W / gridCols;
-  const cellH = 7;
-  const dotRadius = 1.5;
+  if (!hasGroups) {
+    setFont('bold', 12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(t('pdf.teams'), M, y);
+    y += 4;
 
-  for (let i = 0; i < teamCount; i++) {
-    const team = tournament.teams[i];
-    const col = i % gridCols;
-    const row = Math.floor(i / gridCols);
-    const cx = M + col * cellW;
-    const cy = y + row * cellH;
+    // Team badges — evenly spaced grid
+    setFont('normal', 9.5);
+    const teamCount = tournament.teams.length;
+    // Max 3 columns so long team names always fit
+    const gridCols = teamCount <= 4 ? 2 : 3;
+    const cellW = W / gridCols;
+    const cellH = 7;
+    const dotRadius = 1.5;
 
-    // Color dot
-    doc.setFillColor(...hexToRgb(team.color));
-    doc.circle(cx + dotRadius + 1, cy + cellH / 2 + 1, dotRadius, 'F');
+    for (let i = 0; i < teamCount; i++) {
+      const team = tournament.teams[i];
+      const col = i % gridCols;
+      const row = Math.floor(i / gridCols);
+      const cx = M + col * cellW;
+      const cy = y + row * cellH;
 
-    // Team name — truncate if too long for cell
-    doc.setTextColor(30, 30, 30);
-    const maxNameW = cellW - dotRadius * 2 - 6;
-    let displayName = team.name;
-    if (doc.getTextWidth(displayName) > maxNameW) {
-      while (doc.getTextWidth(displayName + '…') > maxNameW && displayName.length > 3) {
-        displayName = displayName.slice(0, -1);
+      // Color dot
+      doc.setFillColor(...hexToRgb(team.color));
+      doc.circle(cx + dotRadius + 1, cy + cellH / 2 + 1, dotRadius, 'F');
+
+      // Team name — truncate if too long for cell
+      doc.setTextColor(30, 30, 30);
+      const maxNameW = cellW - dotRadius * 2 - 6;
+      let displayName = team.name;
+      if (doc.getTextWidth(displayName) > maxNameW) {
+        while (doc.getTextWidth(displayName + '…') > maxNameW && displayName.length > 3) {
+          displayName = displayName.slice(0, -1);
+        }
+        displayName += '…';
       }
-      displayName += '…';
+      doc.text(displayName, cx + dotRadius * 2 + 4, cy + cellH / 2 + 2);
     }
-    doc.text(displayName, cx + dotRadius * 2 + 4, cy + cellH / 2 + 2);
+
+    const totalRows = Math.ceil(teamCount / gridCols);
+    y += totalRows * cellH + 4;
   }
 
-  const totalRows = Math.ceil(teamCount / gridCols);
-  y += totalRows * cellH + 4;
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // 4. ROZPIS ZÁPASŮ — jednosloupec, velké písmo, centrovaná dvojtečka
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.4);
-  doc.line(M, y, M + W, y);
-  y += 5;
-
-  setFont('bold', 14);
-  doc.setTextColor(0, 0, 0);
-  doc.text(t('pdf.matchSchedule'), pageW / 2, y, { align: 'center' });
-  y += 8;
-
+  const footerSpace = 14;
   const hasPitches = (settings.numberOfPitches ?? 1) > 1;
   const getSideName = (m: typeof tournament.matches[0], side: 'home' | 'away'): string => {
     const id = side === 'home' ? m.homeTeamId : m.awayTeamId;
@@ -318,6 +309,85 @@ export async function exportTournamentPdf(
     }
     return placeholder ?? '?';
   };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 3a. ROZLOSOVÁNÍ — tabulky skupin s týmy (jen u turnajů se skupinami)
+  // ═══════════════════════════════════════════════════════════════════════════
+  const groups = settings.groups ?? [];
+  if (groups.length > 0) {
+    setFont('bold', 12);
+    doc.setTextColor(0, 0, 0);
+    doc.text(t('pdf.groupDraw') || 'ROZLOSOVÁNÍ', pageW / 2, y, { align: 'center' });
+    y += 3;
+    doc.setDrawColor(30, 30, 30);
+    doc.setLineWidth(0.4);
+    doc.line(M + 30, y, pageW - M - 30, y);
+    y += 5;
+
+    // Render skupiny vedle sebe — 4 skupiny = 2×2 (symetricky), jinak max 3 na řádek
+    const colsPerRow = groups.length === 4 ? 2 : Math.min(groups.length, 3);
+    const groupColW = (W - (colsPerRow - 1) * 4) / colsPerRow;
+
+    for (let gi = 0; gi < groups.length; gi += colsPerRow) {
+      const rowGroups = groups.slice(gi, gi + colsPerRow);
+      const maxTeamsInRow = Math.max(...rowGroups.map(g => g.teamIds.length));
+      const blockH = 6 + maxTeamsInRow * 5.5 + 4;
+
+      if (y + blockH > pageH - footerSpace) { doc.addPage(); y = 15; }
+
+      rowGroups.forEach((g, ci) => {
+        const x = M + ci * (groupColW + 4);
+
+        // Název skupiny
+        setFont('bold', 9);
+        doc.setTextColor(26, 35, 126);
+        doc.text(g.name, x + groupColW / 2, y + 4, { align: 'center' });
+
+        // Tým řádky
+        setFont('normal', 8);
+        doc.setTextColor(60, 60, 60);
+        g.teamIds.forEach((teamId, ti) => {
+          const team = tournament.teams.find(tm => tm.id === teamId);
+          const teamName = team?.name ?? `Tým ${ti + 1}`;
+          const rowY = y + 8 + ti * 5.5;
+
+          // Alternující pozadí
+          if (ti % 2 === 0) {
+            doc.setFillColor(245, 247, 250);
+            doc.rect(x, rowY - 3, groupColW, 5.5, 'F');
+          }
+
+          // Pořadí + název
+          doc.text(`${ti + 1}.`, x + 2, rowY);
+          setFont('bold', 8);
+          doc.text(truncateText(doc, teamName, groupColW - 12), x + 8, rowY);
+          setFont('normal', 8);
+        });
+
+        // Border kolem skupiny
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(x, y, groupColW, blockH - 2, 1.5, 1.5, 'S');
+      });
+
+      y += blockH + 2;
+    }
+
+    y += 4;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 4. ROZPIS ZÁPASŮ — nadpis až těsně nad prvním zápasem
+  // ═══════════════════════════════════════════════════════════════════════════
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineWidth(0.4);
+  doc.line(M, y, M + W, y);
+  y += 5;
+
+  setFont('bold', 14);
+  doc.setTextColor(0, 0, 0);
+  doc.text(t('pdf.matchSchedule'), pageW / 2, y, { align: 'center' });
+  y += 8;
 
   // Split matches: group phase (rendered by round) vs knockout (rendered as bracket)
   const groupMatches = sortedMatches.filter(m => !m.stage || m.stage === 'group');
@@ -339,7 +409,6 @@ export async function exportTournamentPdf(
   const awayStartX = centerX + scoreZoneW / 2; // left edge of away team zone
   const matchFontSize = 10;
   const lineH = 6;
-  const footerSpace = 14;
 
   // Truncate team name to fit available width
   const truncateName = (name: string, maxW: number): string => {
@@ -439,7 +508,7 @@ export async function exportTournamentPdf(
   if (knockoutMatches.length > 0) {
     // Group by stage — column order: QF → SF → F (third-place drawn separately)
     const byStage: Record<string, typeof knockoutMatches> = {
-      quarterfinal: [], semifinal: [], final: [], 'third-place': [],
+      quarterfinal: [], semifinal: [], final: [], 'third-place': [], placement: [],
     };
     for (const m of knockoutMatches) {
       const s = m.stage ?? 'final';
@@ -583,12 +652,63 @@ export async function exportTournamentPdf(
         doc.setFillColor(252, 252, 252);
         doc.roundedRect(tpX, y, tpBoxW, tpBoxH, 1.5, 1.5, 'FD');
         setFont('bold', 8);
-        doc.setTextColor(130, 130, 130);
-        doc.text(truncateText(doc, getSideName(thirdPlace, 'home'), tpBoxW - 10), tpX + 2, y + 5);
+        doc.setTextColor(thirdPlace.homeTeamId ? 20 : 130, thirdPlace.homeTeamId ? 20 : 130, thirdPlace.homeTeamId ? 20 : 130);
+        doc.text(truncateText(doc, getSideName(thirdPlace, 'home'), tpBoxW - 14), tpX + 2, y + 5);
+        if (thirdPlace.status === 'finished') {
+          doc.setTextColor(0, 0, 0);
+          doc.text(String(thirdPlace.homeScore), tpX + tpBoxW - 2, y + 5, { align: 'right' });
+        }
         doc.setDrawColor(220, 220, 220);
         doc.line(tpX + 2, y + tpBoxH / 2, tpX + tpBoxW - 2, y + tpBoxH / 2);
-        doc.text(truncateText(doc, getSideName(thirdPlace, 'away'), tpBoxW - 10), tpX + 2, y + tpBoxH - 2.5);
+        doc.setTextColor(thirdPlace.awayTeamId ? 20 : 130, thirdPlace.awayTeamId ? 20 : 130, thirdPlace.awayTeamId ? 20 : 130);
+        doc.text(truncateText(doc, getSideName(thirdPlace, 'away'), tpBoxW - 14), tpX + 2, y + tpBoxH - 2.5);
+        if (thirdPlace.status === 'finished') {
+          doc.setTextColor(0, 0, 0);
+          doc.text(String(thirdPlace.awayScore), tpX + tpBoxW - 2, y + tpBoxH - 2.5, { align: 'right' });
+        }
         y += tpBoxH + 2;
+      }
+
+      // Placement matches (play-out: O 5., 7., 9. místo...)
+      const placementMatches = byStage.placement ?? [];
+      if (placementMatches.length > 0) {
+        y += 4;
+        setFont('bold', 9);
+        doc.setTextColor(80, 80, 80);
+        doc.text('ZÁPASY O UMÍSTĚNÍ', pageW / 2, y, { align: 'center' });
+        y += 4;
+
+        for (const pm of placementMatches) {
+          if (y + 16 > pageH - footerSpace) { doc.addPage(); y = 15; }
+          const label = pm.placementLabel ?? 'O umístění';
+          setFont('bold', 8);
+          doc.setTextColor(120, 120, 120);
+          doc.text(label.toUpperCase(), pageW / 2, y + 3, { align: 'center' });
+          y += 5;
+          const pmBoxW = 60;
+          const pmBoxH = 14;
+          const pmX = (pageW - pmBoxW) / 2;
+          doc.setDrawColor(180, 180, 180);
+          doc.setLineWidth(0.3);
+          doc.setFillColor(252, 252, 252);
+          doc.roundedRect(pmX, y, pmBoxW, pmBoxH, 1.5, 1.5, 'FD');
+          setFont('bold', 8);
+          doc.setTextColor(pm.homeTeamId ? 20 : 130, pm.homeTeamId ? 20 : 130, pm.homeTeamId ? 20 : 130);
+          doc.text(truncateText(doc, getSideName(pm, 'home'), pmBoxW - 14), pmX + 2, y + 5);
+          if (pm.status === 'finished') {
+            doc.setTextColor(0, 0, 0);
+            doc.text(String(pm.homeScore), pmX + pmBoxW - 2, y + 5, { align: 'right' });
+          }
+          doc.setDrawColor(220, 220, 220);
+          doc.line(pmX + 2, y + pmBoxH / 2, pmX + pmBoxW - 2, y + pmBoxH / 2);
+          doc.setTextColor(pm.awayTeamId ? 20 : 130, pm.awayTeamId ? 20 : 130, pm.awayTeamId ? 20 : 130);
+          doc.text(truncateText(doc, getSideName(pm, 'away'), pmBoxW - 14), pmX + 2, y + pmBoxH - 2.5);
+          if (pm.status === 'finished') {
+            doc.setTextColor(0, 0, 0);
+            doc.text(String(pm.awayScore), pmX + pmBoxW - 2, y + pmBoxH - 2.5, { align: 'right' });
+          }
+          y += pmBoxH + 3;
+        }
       }
     }
   }

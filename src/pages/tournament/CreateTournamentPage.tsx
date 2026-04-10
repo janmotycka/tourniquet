@@ -7,7 +7,7 @@ import { useTemplatesStore } from '../../store/templates.store';
 import { useI18n } from '../../i18n';
 import type { TournamentTemplate } from '../../types/tournament.types';
 import { hashPin, generatePinSalt, markPinVerified } from '../../utils/pin-hash';
-import { countRealMatches, estimateTournamentDuration } from '../../utils/tournament-schedule';
+import { countRealMatches, countTotalMatchesForSettings, estimateTournamentDuration } from '../../utils/tournament-schedule';
 import type { TournamentSettings, TournamentFormat, GroupDefinition, TiebreakerCriterion } from '../../types/tournament.types';
 import { DEFAULT_TIEBREAKER_ORDER } from '../../types/tournament.types';
 import type { Club, AgeCategory } from '../../types/club.types';
@@ -74,6 +74,7 @@ export function CreateTournamentPage({ navigate }: Props) {
   const [groupCount, setGroupCount] = useState(2);
   const [advancePerGroup, setAdvancePerGroup] = useState(1);
   const [thirdPlaceMatch, setThirdPlaceMatch] = useState(false);
+  const [playOut, setPlayOut] = useState(false);
   const [pin, setPin] = useState('');
   const [pinConfirm, setPinConfirm] = useState('');
   const [pinError, setPinError] = useState('');
@@ -140,6 +141,7 @@ export function CreateTournamentPage({ navigate }: Props) {
     groups: format === 'groups-knockout' ? autoGroups : undefined,
     advancePerGroup: format === 'groups-knockout' ? advancePerGroup : undefined,
     thirdPlaceMatch: (format !== 'round-robin' && thirdPlaceMatch) ? true : undefined,
+    playOut: (format !== 'round-robin' && playOut) ? true : undefined,
     friendlyMode: isFriendly || undefined,
     registrationEnabled: isRegistration || undefined,
     maxTeams: isRegistration ? maxTeams : undefined,
@@ -165,7 +167,9 @@ export function CreateTournamentPage({ navigate }: Props) {
     } : undefined,
   };
 
-  const totalMatches = countRealMatches(teams.length);
+  const totalMatches = format === 'round-robin'
+    ? countRealMatches(teams.length)
+    : countTotalMatchesForSettings(settings, teams.length);
   const totalMinutes = estimateTournamentDuration(teams.length, settings);
   const totalHours = Math.floor(totalMinutes / 60);
   const remainMinutes = totalMinutes % 60;
@@ -262,14 +266,18 @@ export function CreateTournamentPage({ navigate }: Props) {
 
   const handleSelectClub = (teamIdx: number, club: Club, category?: AgeCategory) => {
     let players: Array<{ name: string; jerseyNumber: number }>;
-    if (category && (club.players ?? []).length > 0) {
-      players = (club.players ?? [])
+    const allClubPlayers = club.players ?? [];
+
+    if (category && allClubPlayers.length > 0) {
+      // Konkrétní kategorie
+      players = allClubPlayers
         .filter(p => p.ageCategory === category && p.active)
         .map(p => ({ name: p.name, jerseyNumber: p.jerseyNumber }));
-    } else if (!category && (club.players ?? []).length > 0 && (club.ageCategories ?? []).length === 1) {
-      const cat = (club.ageCategories ?? [])[0];
-      players = (club.players ?? [])
-        .filter(p => p.ageCategory === cat && p.active)
+    } else if (!category && allClubPlayers.length > 0) {
+      // "Všechny kategorie" (undefined) nebo klub s jedinou kategorií —
+      // vezmi všechny aktivní hráče napříč kategoriemi.
+      players = allClubPlayers
+        .filter(p => p.active)
         .map(p => ({ name: p.name, jerseyNumber: p.jerseyNumber }));
     } else {
       players = (club.defaultPlayers ?? []).map(p => ({ ...p }));
@@ -388,7 +396,7 @@ export function CreateTournamentPage({ navigate }: Props) {
         <ClubPickerModal
           clubs={clubs}
           onSelect={(club, category) => handleSelectClub(clubPickerForTeam, club, category)}
-          onCreateClub={(n, c, l) => createClub({ name: n, color: c, logoBase64: l })}
+          onCreateClub={async (n, c, l) => await createClub({ name: n, color: c, logoBase64: l })}
           onClose={() => setClubPickerForTeam(null)}
         />
       )}
@@ -438,7 +446,7 @@ export function CreateTournamentPage({ navigate }: Props) {
               <button onClick={() => setShowTemplatePicker(true)} style={{
                 background: 'var(--surface)', borderRadius: 14, padding: '12px 16px',
                 display: 'flex', alignItems: 'center', gap: 10,
-                boxShadow: '0 1px 4px rgba(0,0,0,.05)', width: '100%',
+                boxShadow: 'var(--shadow-sm)', width: '100%',
                 border: '1.5px dashed var(--primary)', color: 'var(--primary)', fontWeight: 700, fontSize: 14,
               }}>
                 <span style={{ fontSize: 18 }}>📋</span>
@@ -503,7 +511,7 @@ export function CreateTournamentPage({ navigate }: Props) {
         {step === 2 && (
           <>
             {/* Nazev + datum */}
-            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: 'var(--shadow-sm)' }}>
               <div>
                 <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, display: 'block' }}>{t('tournament.create.name')}</label>
                 <input
@@ -574,7 +582,7 @@ export function CreateTournamentPage({ navigate }: Props) {
             </div>
 
             {/* Místo konání */}
-            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ fontWeight: 700, fontSize: 15 }}>📍 {t('venue.title')}</h3>
               <div>
                 <label style={{ fontWeight: 600, fontSize: 13, marginBottom: 4, display: 'block' }}>{t('venue.name')}</label>
@@ -626,7 +634,7 @@ export function CreateTournamentPage({ navigate }: Props) {
             {isRegistration ? (
               <>
                 {/* Nastaveni turnaje */}
-                <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+                <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: 'var(--shadow-sm)' }}>
                   <Stepper label={t('tournament.create.pitchCount')} value={numberOfPitches} min={1} max={8} step={1} onChange={setNumberOfPitches} unit="" />
                   <div style={{ height: 1, background: 'var(--border)' }} />
                   <Stepper label={t('tournament.create.maxTeams')} value={maxTeams} min={3} max={16} step={1} onChange={setMaxTeams} unit="" />
@@ -643,7 +651,24 @@ export function CreateTournamentPage({ navigate }: Props) {
                     if (availMinutes <= 0) return null;
 
                     const CEREMONY_MINUTES = 15;
-                    const nMatches = countRealMatches(maxTeams);
+                    // Pro groups-knockout: vytvořit virtuální groups z maxTeams (teams ještě nemusí existovat)
+                    const calcSettings = { ...settings };
+                    if (format === 'groups-knockout' && (!calcSettings.groups || calcSettings.groups.length === 0)) {
+                      const gc = Math.min(groupCount, Math.floor(maxTeams / 2));
+                      const base = Math.floor(maxTeams / gc);
+                      const rem = maxTeams % gc;
+                      calcSettings.groups = Array.from({ length: gc }, (_, i) => ({
+                        id: `calc-${i}`,
+                        name: `G${i}`,
+                        teamIds: Array.from({ length: base + (i < rem ? 1 : 0) }, (_, j) => `t${i}-${j}`),
+                      }));
+                      calcSettings.advancePerGroup = advancePerGroup;
+                      calcSettings.thirdPlaceMatch = thirdPlaceMatch;
+                      calcSettings.playOut = playOut;
+                    }
+                    const nMatches = format === 'round-robin'
+                      ? countRealMatches(maxTeams)
+                      : countTotalMatchesForSettings(calcSettings, maxTeams);
                     const slots = Math.ceil(nMatches / numberOfPitches);
                     const recommendedDur = Math.floor((availMinutes - CEREMONY_MINUTES - (slots - 1) * breakDuration) / slots);
                     const actualDuration = estimateTournamentDuration(maxTeams, { ...settings, matchDurationMinutes: matchDuration });
@@ -668,7 +693,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                           display: 'flex', alignItems: 'center', gap: 8,
                         }}>
                           <span style={{ fontSize: 18 }}>{fits ? '✅' : '⚠️'}</span>
-                          <span style={{ fontWeight: 700, fontSize: 14, color: fits ? '#2E7D32' : '#D32F2F' }}>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: fits ? 'var(--success)' : '#D32F2F' }}>
                             {fits ? t('tournament.create.fitsInTime') : t('tournament.create.doesNotFit')}
                           </span>
                         </div>
@@ -687,7 +712,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-muted)' }}>
                             <span>{t('tournament.create.estimatedDuration')}</span>
-                            <span style={{ fontWeight: 600, color: fits ? '#2E7D32' : '#D32F2F' }}>{totH > 0 ? `${totH}h ` : ''}{totM > 0 ? `${totM} min` : ''}</span>
+                            <span style={{ fontWeight: 600, color: fits ? 'var(--success)' : '#D32F2F' }}>{totH > 0 ? `${totH}h ` : ''}{totM > 0 ? `${totM} min` : ''}</span>
                           </div>
                           <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 2 }}>
                             {t('tournament.create.ceremonyIncluded')}
@@ -713,7 +738,7 @@ export function CreateTournamentPage({ navigate }: Props) {
 
                 {/* Detaily formatu */}
                 {format === 'groups-knockout' && (
-                  <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+                  <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--shadow-sm)' }}>
                     <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('knockout.groupsKnockout')}</h3>
                     <Stepper label={t('knockout.groupCount')} value={groupCount} min={2} max={4} step={1} onChange={setGroupCount} unit="" />
                     <Stepper label={t('knockout.advancePerGroup')} value={advancePerGroup} min={1} max={2} step={1} onChange={setAdvancePerGroup} unit="" />
@@ -721,10 +746,17 @@ export function CreateTournamentPage({ navigate }: Props) {
                       <label style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{t('knockout.thirdPlace')}</label>
                       <Toggle value={thirdPlaceMatch} onChange={setThirdPlaceMatch} />
                     </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontWeight: 600, fontSize: 14 }}>{t('knockout.playOut') || 'Zápasy o umístění'}</label>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{t('knockout.playOutDesc') || 'Každý tým odchází s konkrétním umístěním'}</div>
+                      </div>
+                      <Toggle value={playOut} onChange={setPlayOut} />
+                    </div>
                   </div>
                 )}
                 {format === 'knockout' && (
-                  <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+                  <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--shadow-sm)' }}>
                     <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('knockout.pureKnockout')}</h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <label style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{t('knockout.thirdPlace')}</label>
@@ -760,7 +792,7 @@ export function CreateTournamentPage({ navigate }: Props) {
         {step === 3 && (
           <>
             {/* Nejstarší ročník (pro všechny typy) */}
-            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ fontWeight: 700, fontSize: 15 }}>🎂 {t('settings.maxBirthYear')}</h3>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
                 {t('settings.maxBirthYearDesc')}
@@ -790,7 +822,7 @@ export function CreateTournamentPage({ navigate }: Props) {
 
             {/* Startovné (jen pro registraci) */}
             {isRegistration && (
-              <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+              <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-sm)' }}>
                 <h3 style={{ fontWeight: 700, fontSize: 15 }}>💰 {t('registration.entryFee')}</h3>
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
                   {t('tournament.create.entryFeeDesc')}
@@ -832,7 +864,7 @@ export function CreateTournamentPage({ navigate }: Props) {
             {/* Nastaveni zapasu — jen pro manualni flow (registracni je uz v step 2) */}
             {!isRegistration && (
               <>
-                <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+                <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 16, boxShadow: 'var(--shadow-sm)' }}>
                   <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.matchDurations')}</h3>
                   <Stepper label={t('tournament.create.pitchCount')} value={numberOfPitches} min={1} max={8} step={1} onChange={setNumberOfPitches} unit="" />
                   <div style={{ height: 1, background: 'var(--border)' }} />
@@ -842,7 +874,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                 </div>
 
                 {format === 'groups-knockout' && (
-                  <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+                  <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--shadow-sm)' }}>
                     <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('knockout.groupsKnockout')}</h3>
                     <Stepper label={t('knockout.groupCount')} value={groupCount} min={2} max={4} step={1} onChange={setGroupCount} unit="" />
                     <Stepper label={t('knockout.advancePerGroup')} value={advancePerGroup} min={1} max={2} step={1} onChange={setAdvancePerGroup} unit="" />
@@ -854,7 +886,7 @@ export function CreateTournamentPage({ navigate }: Props) {
                 )}
 
                 {format === 'knockout' && (
-                  <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+                  <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--shadow-sm)' }}>
                     <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('knockout.pureKnockout')}</h3>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <label style={{ fontWeight: 600, fontSize: 14, flex: 1 }}>{t('knockout.thirdPlace')}</label>
@@ -885,7 +917,7 @@ export function CreateTournamentPage({ navigate }: Props) {
 
             {/* Kritéria pro umístění v tabulce (ne pro friendly) */}
             {!isFriendly && (
-              <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,.05)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>🏅 {t('tournament.tiebreaker.title')}</h3>
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4, lineHeight: 1.5 }}>
                   {t('tournament.tiebreaker.desc')}
@@ -969,7 +1001,7 @@ export function CreateTournamentPage({ navigate }: Props) {
             )}
 
             {/* Pravidla a propozice */}
-            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-sm)' }}>
               <div>
                 <label style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, display: 'block' }}>
                   {t('tournament.create.rules')}
@@ -992,7 +1024,7 @@ export function CreateTournamentPage({ navigate }: Props) {
 
             {/* Invoice / billing — shown when entry fee is set */}
             {isRegistration && parseInt(entryFee) > 0 && (
-              <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+              <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-sm)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 20 }}>🧾</span>
                   <div style={{ flex: 1 }}>
@@ -1050,7 +1082,7 @@ export function CreateTournamentPage({ navigate }: Props) {
             )}
 
             {/* PIN */}
-            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,.05)' }}>
+            <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '20px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('tournament.create.pinOrg')}</h3>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
                 {t('tournament.create.pinDesc')}
