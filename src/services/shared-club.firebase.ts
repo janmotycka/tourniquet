@@ -138,8 +138,19 @@ export function subscribeToSharedClub(
 ): () => void {
   const r = sharedClubRef(clubId);
   const listener = (snap: { val: () => unknown; exists: () => boolean }) => {
-    if (!snap.exists()) callback(null);
-    else callback(snap.val() as SharedClub);
+    if (!snap.exists()) { callback(null); return; }
+    const raw = snap.val() as Record<string, unknown>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const players = ensureArray(raw.players).map((p: any) => ({
+      ...p,
+      categoryHistory: ensureArray(p?.categoryHistory),
+    }));
+    callback({
+      ...raw,
+      players,
+      ageCategories: ensureArray(raw.ageCategories),
+      defaultPlayers: ensureArray(raw.defaultPlayers),
+    } as SharedClub);
   };
   onValue(r, listener as Parameters<typeof onValue>[1]);
   return () => off(r, 'value', listener as Parameters<typeof off>[2]);

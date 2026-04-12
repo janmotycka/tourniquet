@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
+import { useConfirmStore } from '../../store/confirm.store';
 import { useI18n } from '../../i18n';
 import { formatDate } from '../../components/match/match-utils';
 import { LiveTab } from '../../components/match/LiveTab';
@@ -35,6 +36,9 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
   const match = useMatchesStore(s => s.getMatchById(matchId));
   const matches = useMatchesStore(s => s.matches); // Subscribe for reactivity
   const togglePublicMatch = useMatchesStore(s => s.togglePublicMatch);
+  const resetMatch = useMatchesStore(s => s.resetMatch);
+  const reopenMatch = useMatchesStore(s => s.reopenMatch);
+  const ask = useConfirmStore(s => s.ask);
   const [tab, setTab] = useState<Tab>('live');
   const [showShare, setShowShare] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -208,6 +212,48 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
         {tab === 'live' && <LiveTab match={currentMatch} />}
         {tab === 'lineup' && <LineupTab match={currentMatch} />}
         {tab === 'ratings' && <RatingsTab match={currentMatch} />}
+
+        {/* Match actions */}
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+          {currentMatch.status === 'finished' && (
+            <button
+              onClick={async () => {
+                const ok = await ask({
+                  title: 'Znovu otevřít zápas',
+                  message: 'Zápas se vrátí do stavu LIVE a můžeš pokračovat v zadávání.',
+                });
+                if (ok) reopenMatch(matchId);
+              }}
+              style={{
+                width: '100%', padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                background: 'var(--surface-var)', color: 'var(--text)', border: '1px solid var(--border)',
+                cursor: 'pointer',
+              }}
+            >
+              🔄 Znovu otevřít zápas
+            </button>
+          )}
+          {(currentMatch.status === 'live' || currentMatch.status === 'finished') && (
+            <button
+              onClick={async () => {
+                const ok = await ask({
+                  title: 'Resetovat zápas',
+                  message: 'Smaže se skóre, góly, karty, střídání a hodnocení. Zápas se vrátí do stavu Naplánováno. Tuto akci nelze vrátit.',
+                  destructive: true,
+                  confirmLabel: 'Resetovat',
+                });
+                if (ok) resetMatch(matchId);
+              }}
+              style={{
+                width: '100%', padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 600,
+                background: 'var(--danger-light)', color: 'var(--danger)', border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              ⚠️ Resetovat zápas
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -156,7 +156,7 @@ export function ClubForm({
 
       {/* Název s katalogový našeptáváním */}
       <Field label={t('clubs.nameRequired')}>
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative' }} onBlur={() => setTimeout(() => setSuggestions([]), 200)}>
           <Input
             value={name}
             onChange={handleNameChange}

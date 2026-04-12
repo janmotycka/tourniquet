@@ -69,6 +69,8 @@ interface MatchesState {
   finishMatch: (id: string) => void;
   pauseMatch: (id: string) => void;
   resumeMatch: (id: string) => void;
+  resetMatch: (id: string) => void;
+  reopenMatch: (id: string) => void;
 
   // Události
   addGoal: (matchId: string, goal: Omit<MatchGoal, 'id' | 'recordedAt'>) => string;
@@ -130,7 +132,7 @@ export const useMatchesStore = create<MatchesState>()(
         const localMatches = get().matches;
         const firebaseIds = new Set(matches.map(m => m.id));
         const localOnly = localMatches.filter(m => !firebaseIds.has(m.id));
-        console.log(`[Matches] Loaded ${matches.length} from Firebase, ${localOnly.length} local-only, total: ${matches.length + localOnly.length}`);
+        logger.debug(`[Matches] Loaded ${matches.length} from Firebase, ${localOnly.length} local-only, total: ${matches.length + localOnly.length}`);
         set({ matches: [...matches, ...localOnly], firebaseUid: uid, pendingSync: [] });
       },
 
@@ -180,7 +182,7 @@ export const useMatchesStore = create<MatchesState>()(
           updatedAt: now(),
         };
         set(state => ({ matches: [match, ...state.matches] }));
-        console.log(`[Matches] Created match ${match.id}, firebaseUid: ${get().firebaseUid}, total: ${get().matches.length}`);
+        logger.debug(`[Matches] Created match ${match.id}, firebaseUid: ${get().firebaseUid}, total: ${get().matches.length}`);
         syncMatchAndTrack(get().firebaseUid, match, set);
         return match;
       },
@@ -274,6 +276,59 @@ export const useMatchesStore = create<MatchesState>()(
               ...m,
               startedAt: now(),   // resetujeme startedAt na "teď" — elapsed se nuluje, ale pausedElapsed drží kumulativní čas
               pausedAt: null,
+              updatedAt: now(),
+            };
+          }),
+        }));
+        const m = get().matches.find(x => x.id === id);
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
+      },
+
+      resetMatch: (id) => {
+        set(state => ({
+          matches: state.matches.map(m => {
+            if (m.id !== id) return m;
+            return {
+              ...m,
+              status: 'planned' as const,
+              homeScore: 0,
+              awayScore: 0,
+              goals: [],
+              cards: [],
+              substitutions: [],
+              ratings: [],
+              note: undefined,
+              currentPeriod: 0,
+              startedAt: null,
+              pausedAt: null,
+              pausedElapsed: 0,
+              finishedAt: null,
+              penaltyKicks: undefined,
+              homePenaltyScore: undefined,
+              awayPenaltyScore: undefined,
+              updatedAt: now(),
+            };
+          }),
+        }));
+        const m = get().matches.find(x => x.id === id);
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
+      },
+
+      reopenMatch: (id) => {
+        set(state => ({
+          matches: state.matches.map(m => {
+            if (m.id !== id) return m;
+            // Compute how much was actually played before finish
+            const priorElapsed = m.finishedAt && m.startedAt
+              ? m.pausedElapsed + Math.floor((new Date(m.finishedAt).getTime() - new Date(m.startedAt).getTime()) / 1000)
+              : m.pausedElapsed;
+            return {
+              ...m,
+              status: 'live' as const,
+              finishedAt: null,
+              startedAt: now(),
+              pausedAt: null,
+              pausedElapsed: priorElapsed, // carry actual played time, not stale value
               updatedAt: now(),
             };
           }),

@@ -75,9 +75,7 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
         /hr[áa][čc]/i.test(s.sheetName) || /player/i.test(s.sheetName),
       );
       const idx = playersIdx >= 0 ? playersIdx : 0;
-      // Debug: log column mapping
-      console.log('[Import] Columns:', wb.sheets[idx].columns.map(c => `${c.header} → ${c.field}`));
-      console.log('[Import] First row:', wb.sheets[idx].rows[0]);
+      // Debug: log column mapping (dev only)
       setWorkbook(wb);
       setActiveSheetIdx(idx);
       setActiveSheet(wb.sheets[idx]);
@@ -100,7 +98,8 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
       }
       setCategoryAutoDetected(years.length > 0);
     } catch (err) {
-      console.error('[Import] Parse failed:', err);
+      // eslint-disable-next-line no-console
+      console.error('[Import] Parse failed:', err); // intentional — user-facing error
       setError(t('clubs.import.errParse'));
     } finally {
       setParsing(false);

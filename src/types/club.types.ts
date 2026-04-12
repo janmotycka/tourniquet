@@ -2,6 +2,7 @@
 export const AGE_CATEGORIES = [
   'U6', 'U7', 'U8', 'U9', 'U10', 'U11', 'U12',
   'U13', 'U14', 'U15', 'U17', 'U19',
+  'Dorost', 'Muži', 'Muži B', 'Ženy',
 ] as const;
 
 export type AgeCategory = typeof AGE_CATEGORIES[number];

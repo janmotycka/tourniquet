@@ -112,7 +112,7 @@ async function patchClubContent(
   try {
     await updateSharedClub(clubId, { ...patch, updatedAt });
   } catch (err) {
-    console.error('[Clubs] updateSharedClub FAILED:', err);
+    logger.error('[Clubs] updateSharedClub FAILED:', err);
     useToastStore.getState().show('error', 'Nepodařilo se uložit do cloudu');
   }
 }
