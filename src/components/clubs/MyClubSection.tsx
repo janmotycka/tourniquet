@@ -42,9 +42,7 @@ export function MyClubSection({
   const addPlayersBulk = useClubsStore(s => s.addPlayersBulk);
   const updatePlayer = useClubsStore(s => s.updatePlayer);
   const removePlayer = useClubsStore(s => s.removePlayer);
-  const [activeTab, setActiveTab] = useState<AgeCategory | null>(
-    club.ageCategories.length > 0 ? club.ageCategories[0] : null,
-  );
+  const [activeTab, setActiveTab] = useState<AgeCategory | null>(null); // null = dashboard view
   const [importOpen, setImportOpen] = useState(false);
 
   const playersByCategory = useMemo(() => {
@@ -129,39 +127,82 @@ export function MyClubSection({
       </div>
 
       {/* Category tabs */}
-      {club.ageCategories.length > 0 && (
-        <div style={{
-          display: 'flex', flexWrap: 'wrap', gap: spacing.xs,
-          marginTop: spacing.lg - 2, paddingBottom: spacing.sm,
-          borderBottom: '1px solid var(--border)',
-        }}>
+      {/* Dashboard view (no category selected) */}
+      {!activeTab && club.ageCategories.length > 0 && (
+        <div style={{ marginTop: spacing.lg, display: 'flex', flexDirection: 'column', gap: spacing.sm }}>
+          {/* Category cards */}
+          <div style={{ fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Soupisky
+          </div>
           {club.ageCategories.map(cat => {
-            const isActive = activeTab === cat;
             const count = (playersByCategory[cat] ?? []).filter(p => p.active).length;
             return (
               <button
                 key={cat}
                 onClick={() => setActiveTab(cat)}
                 style={{
-                  padding: `${spacing.xs + 2}px ${spacing.md}px`,
-                  borderRadius: radius.sm, fontSize: fontSize.sm + 1,
-                  fontWeight: fontWeight.medium,
-                  background: isActive ? club.color : 'var(--surface-var)',
-                  color: isActive ? '#fff' : 'var(--text-muted)',
-                  border: 'none', cursor: 'pointer',
-                  transition: 'all .15s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: `${spacing.md}px ${spacing.lg}px`,
+                  borderRadius: radius.lg, background: 'var(--bg)',
+                  border: '1.5px solid var(--border)', cursor: 'pointer',
+                  textAlign: 'left', transition: 'all .15s',
                 }}
               >
-                {cat} ({count})
+                <div style={{ display: 'flex', alignItems: 'center', gap: spacing.md }}>
+                  <span style={{
+                    fontWeight: fontWeight.extrabold, fontSize: fontSize.lg,
+                    color: club.color, minWidth: 40,
+                  }}>{cat}</span>
+                  <span style={{ fontSize: fontSize.base, color: 'var(--text)' }}>
+                    {count} {count === 1 ? 'hráč' : count >= 2 && count <= 4 ? 'hráči' : 'hráčů'}
+                  </span>
+                </div>
+                <span style={{ color: 'var(--text-muted)', fontSize: fontSize.lg }}>→</span>
               </button>
             );
           })}
         </div>
       )}
 
-      {/* Player roster for active tab */}
+      {/* Category roster view (when a category is selected) */}
       {activeTab && club.ageCategories.includes(activeTab) && (
-        <div style={{ marginTop: spacing.sm }}>
+        <div style={{ marginTop: spacing.md }}>
+          {/* Back + category tabs */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: spacing.sm,
+            marginBottom: spacing.sm, paddingBottom: spacing.sm,
+            borderBottom: '1px solid var(--border)',
+          }}>
+            <button
+              onClick={() => setActiveTab(null)}
+              style={{
+                padding: `${spacing.xs}px ${spacing.sm}px`, borderRadius: radius.sm,
+                background: 'var(--surface-var)', color: 'var(--text-muted)',
+                fontSize: fontSize.sm, fontWeight: fontWeight.bold,
+                border: 'none', cursor: 'pointer',
+              }}
+            >← Zpět</button>
+            {club.ageCategories.map(cat => {
+              const isActive = activeTab === cat;
+              const count = (playersByCategory[cat] ?? []).filter(p => p.active).length;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveTab(cat)}
+                  style={{
+                    padding: `${spacing.xs + 2}px ${spacing.md}px`,
+                    borderRadius: radius.sm, fontSize: fontSize.sm,
+                    fontWeight: fontWeight.medium,
+                    background: isActive ? club.color : 'var(--surface-var)',
+                    color: isActive ? '#fff' : 'var(--text-muted)',
+                    border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  {cat} ({count})
+                </button>
+              );
+            })}
+          </div>
           <PlayerRosterEditor
             players={playersByCategory[activeTab] ?? []}
             ageCategory={activeTab}
