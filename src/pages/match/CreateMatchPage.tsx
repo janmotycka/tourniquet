@@ -94,7 +94,8 @@ export function CreateMatchPage({ navigate }: Props) {
   const [trackAssists, setTrackAssists] = useState(lastMatch?.trackAssists ?? true);
   // Step 1: lineup
   const [lineup, setLineup] = useState<MatchLineupPlayer[]>([]);
-  const [subInterval, setSubInterval] = useState(15);
+  const [useSubAssistant, setUseSubAssistant] = useState(true);
+  const [subInterval, setSubInterval] = useState(5);
   const [subCount, setSubCount] = useState(2);
 
   // When club is selected, populate default lineup
@@ -188,7 +189,7 @@ export function CreateMatchPage({ navigate }: Props) {
 
   const handleCreate = () => {
     if (!step1Valid) return;
-    const subSettings: SubstitutionSettings | undefined = lineup.some(p => !p.isStarter)
+    const subSettings: SubstitutionSettings | undefined = useSubAssistant && lineup.some(p => !p.isStarter)
       ? { intervalMinutes: subInterval, playersAtOnce: subCount }
       : undefined;
 
@@ -385,30 +386,44 @@ export function CreateMatchPage({ navigate }: Props) {
           </span>
         </div>
 
-        {/* Assist tracking toggle */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '2px 0',
-        }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
-            Evidovat asistence
-          </label>
-          <button
-            onClick={() => setTrackAssists(v => !v)}
-            style={{
-              width: 44, height: 24, borderRadius: 12, padding: 2,
-              background: trackAssists ? 'var(--primary)' : 'var(--border)',
-              cursor: 'pointer', border: 'none',
-              display: 'flex', alignItems: 'center',
-              justifyContent: trackAssists ? 'flex-end' : 'flex-start',
-              transition: 'background .2s',
-            }}
-          >
-            <div style={{
-              width: 20, height: 20, borderRadius: 10, background: '#fff',
-              boxShadow: '0 1px 3px rgba(0,0,0,.2)',
-            }} />
-          </button>
+        {/* Match options toggles */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+              Evidovat asistence
+            </label>
+            <button
+              onClick={() => setTrackAssists(v => !v)}
+              style={{
+                width: 44, height: 24, borderRadius: 12, padding: 2,
+                background: trackAssists ? 'var(--primary)' : 'var(--border)',
+                cursor: 'pointer', border: 'none',
+                display: 'flex', alignItems: 'center',
+                justifyContent: trackAssists ? 'flex-end' : 'flex-start',
+                transition: 'background .2s',
+              }}
+            >
+              <div style={{ width: 20, height: 20, borderRadius: 10, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+              Asistent střídání
+            </label>
+            <button
+              onClick={() => setUseSubAssistant(v => !v)}
+              style={{
+                width: 44, height: 24, borderRadius: 12, padding: 2,
+                background: useSubAssistant ? 'var(--primary)' : 'var(--border)',
+                cursor: 'pointer', border: 'none',
+                display: 'flex', alignItems: 'center',
+                justifyContent: useSubAssistant ? 'flex-end' : 'flex-start',
+                transition: 'background .2s',
+              }}
+            >
+              <div style={{ width: 20, height: 20, borderRadius: 10, background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -587,8 +602,8 @@ export function CreateMatchPage({ navigate }: Props) {
         </div>
       )}
 
-      {/* Substitution assistant settings */}
-      {benchers.length > 0 && (
+      {/* Substitution assistant settings — only if enabled in step 0 */}
+      {useSubAssistant && benchers.length > 0 && (
         <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.subAssistant')}</h3>
           <Stepper label={t('match.create.subEvery')} value={subInterval} min={1} max={45} onChange={setSubInterval} unit={t('common.min')} />
