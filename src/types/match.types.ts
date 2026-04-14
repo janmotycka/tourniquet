@@ -16,6 +16,8 @@ export function formatToStarterCount(format: MatchFormat): number {
 
 // ─── Lineup ───────────────────────────────────────────────────────────────────
 
+export type AttendanceStatus = 'confirmed' | 'tentative' | 'absent';
+
 export interface MatchLineupPlayer {
   playerId: string;
   jerseyNumber: number;
@@ -23,6 +25,7 @@ export interface MatchLineupPlayer {
   position?: string;      // volitelné: "brankář", "stoper", "záložník"...
   isStarter: boolean;     // true = základní sestava, false = náhradník
   substituteOrder: number; // pořadí na lavičce (1 = první na střídání); 0 pro startéry
+  attendance?: AttendanceStatus; // účast na zápase; default (unset) = 'tentative'
 }
 
 // ─── Events ───────────────────────────────────────────────────────────────────

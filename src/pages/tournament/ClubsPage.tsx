@@ -17,6 +17,7 @@ import { ClubForm } from '../../components/clubs/ClubForm';
 import { ContactRow } from '../../components/clubs/ContactRow';
 import { ContactDetailSheet } from '../../components/clubs/ContactDetailSheet';
 import { MyClubSection } from '../../components/clubs/MyClubSection';
+import { SeasonAdvanceModal } from '../../components/clubs/SeasonAdvanceModal';
 import { PageHeader, Button, Card } from '../../components/ui';
 import { spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
@@ -65,12 +66,21 @@ export function ClubsPage({ navigate }: Props) {
   const [viewingContact, setViewingContact] = useState<Contact | null>(null);
   const [showContactSheet, setShowContactSheet] = useState(false);
 
+  // Season advance modal
+  const [showSeasonAdvance, setShowSeasonAdvance] = useState(false);
+
   // Můj klub = aktivní workspace (podle ClubSwitcher).
   // Fallback na první klub, pokud activeClubId není nastaven.
   const activeClubId = useClubsStore(s => s.activeClubId);
   const myClub = useMemo(
     () => clubs.find(c => c.id === activeClubId) ?? clubs[0],
     [clubs, activeClubId],
+  );
+
+  // Počet aktivních hráčů — tlačítko nové sezóny se ukazuje jen když má klub koho posunout.
+  const hasActivePlayers = useMemo(
+    () => (myClub?.players ?? []).some(p => p.active),
+    [myClub],
   );
 
   // Statistiky hráčů — memoizované pro celý klub
@@ -228,6 +238,31 @@ export function ClubsPage({ navigate }: Props) {
               t={t}
             />
 
+            {/* Nová sezóna — bulk posun kategorií */}
+            {hasActivePlayers && (
+              <Card
+                onClick={() => setShowSeasonAdvance(true)}
+                padding="md"
+                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: spacing.md }}
+              >
+                <div style={{
+                  width: 40, height: 40, borderRadius: radius.md,
+                  background: 'var(--primary-light)', color: 'var(--primary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 20, flexShrink: 0,
+                }}>🎉</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: fontWeight.bold, fontSize: fontSize.base, color: 'var(--text)' }}>
+                    {t('clubs.seasonAdvance.button')}
+                  </div>
+                  <div style={{ fontSize: fontSize.sm, color: 'var(--text-muted)' }}>
+                    {t('clubs.seasonAdvance.title')}
+                  </div>
+                </div>
+                <span style={{ color: 'var(--text-muted)', fontSize: 18 }}>→</span>
+              </Card>
+            )}
+
             {/* Pozvat trenéra / členové klubu */}
             <Card
               onClick={() => navigate({ name: 'club-members' })}
@@ -348,6 +383,14 @@ export function ClubsPage({ navigate }: Props) {
           onDelete={handleDeleteContact}
           onClose={() => { setShowContactSheet(false); setViewingContact(null); }}
           t={t}
+        />
+      )}
+
+      {/* Season advance modal */}
+      {showSeasonAdvance && myClub && (
+        <SeasonAdvanceModal
+          club={myClub}
+          onClose={() => setShowSeasonAdvance(false)}
         />
       )}
 

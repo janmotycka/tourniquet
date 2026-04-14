@@ -1,15 +1,69 @@
 import { useState } from 'react';
-import type { SeasonMatch, MatchLineupPlayer } from '../../types/match.types';
+import type { SeasonMatch, MatchLineupPlayer, AttendanceStatus } from '../../types/match.types';
 import { useMatchesStore } from '../../store/matches.store';
 import { useI18n } from '../../i18n';
+
+// ── Attendance helpers ──
+
+const ATTENDANCE_OPTIONS: Array<{ status: AttendanceStatus; icon: string; labelKey: string }> = [
+  { status: 'confirmed', icon: '✅', labelKey: 'match.attendance.confirmed' },
+  { status: 'tentative', icon: '❔', labelKey: 'match.attendance.tentative' },
+  { status: 'absent', icon: '❌', labelKey: 'match.attendance.absent' },
+];
+
+function getEffectiveAttendance(p: MatchLineupPlayer): AttendanceStatus {
+  return p.attendance ?? 'tentative';
+}
+
+function AttendanceChips({
+  player,
+  onChange,
+  disabled,
+}: {
+  player: MatchLineupPlayer;
+  onChange: (status: AttendanceStatus) => void;
+  disabled?: boolean;
+}) {
+  const { t } = useI18n();
+  const current = getEffectiveAttendance(player);
+  return (
+    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+      {ATTENDANCE_OPTIONS.map(opt => {
+        const active = current === opt.status;
+        return (
+          <button
+            key={opt.status}
+            onClick={() => !disabled && onChange(opt.status)}
+            disabled={disabled}
+            title={t(opt.labelKey)}
+            aria-label={t(opt.labelKey)}
+            aria-pressed={active}
+            style={{
+              fontSize: 13, padding: '5px 8px', borderRadius: 8,
+              background: active ? 'var(--primary)' : 'var(--surface-var)',
+              color: active ? '#fff' : 'var(--text-muted)',
+              border: 'none', cursor: disabled ? 'default' : 'pointer',
+              minWidth: 32, lineHeight: 1,
+              opacity: disabled ? 0.5 : 1,
+            }}
+          >
+            {opt.icon}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // ── Inline player editor ──
 
 function PlayerEditor({ match }: { match: SeasonMatch }) {
   const { t } = useI18n();
   const updateMatch = useMatchesStore(s => s.updateMatch);
+  const setLineupAttendance = useMatchesStore(s => s.setLineupAttendance);
   const [name, setName] = useState('');
   const [jersey, setJersey] = useState('');
+  const showAttendance = match.status === 'planned';
 
   const starters = match.lineup.filter(p => p.isStarter).sort((a, b) => a.jerseyNumber - b.jerseyNumber);
   const benchers = match.lineup.filter(p => !p.isStarter).sort((a, b) => a.substituteOrder - b.substituteOrder);
@@ -73,31 +127,41 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
             {t('match.lineup.emptyStarters')}
           </p>
         )}
-        {starters.map(p => (
-          <div key={p.playerId} style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
-            borderBottom: '1px solid var(--border)',
-          }}>
-            <div style={{
-              width: 30, height: 30, borderRadius: 8, background: 'var(--primary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0,
-            }}>{p.jerseyNumber}</div>
-            <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{p.name}</span>
-            {match.status !== 'finished' && (
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button onClick={() => toggleStarter(p.playerId)}
-                  style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, background: 'var(--warning-light)', color: 'var(--warning)', border: 'none', cursor: 'pointer' }}>
-                  → {t('match.lineup.toBench')}
-                </button>
-                <button onClick={() => handleRemove(p.playerId)}
-                  style={{ fontSize: 13, fontWeight: 700, padding: '4px 8px', borderRadius: 6, background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', cursor: 'pointer' }}>
-                  ×
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+        {starters.map(p => {
+          const isAbsent = getEffectiveAttendance(p) === 'absent';
+          return (
+            <div key={p.playerId} style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
+              borderBottom: '1px solid var(--border)', flexWrap: 'wrap',
+              opacity: isAbsent ? 0.5 : 1,
+            }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: 8, background: 'var(--primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 800, color: '#fff', flexShrink: 0,
+              }}>{p.jerseyNumber}</div>
+              <span style={{ flex: 1, fontWeight: 600, fontSize: 14, minWidth: 100 }}>{p.name}</span>
+              {showAttendance && (
+                <AttendanceChips
+                  player={p}
+                  onChange={status => setLineupAttendance(match.id, p.playerId, status)}
+                />
+              )}
+              {match.status !== 'finished' && (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => toggleStarter(p.playerId)}
+                    style={{ fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, background: 'var(--warning-light)', color: 'var(--warning)', border: 'none', cursor: 'pointer' }}>
+                    → {t('match.lineup.toBench')}
+                  </button>
+                  <button onClick={() => handleRemove(p.playerId)}
+                    style={{ fontSize: 13, fontWeight: 700, padding: '4px 8px', borderRadius: 6, background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', cursor: 'pointer' }}>
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Bench */}
@@ -108,36 +172,46 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
             {t('match.lineup.emptyBench')}
           </p>
         )}
-        {benchers.map(p => (
-          <div key={p.playerId} style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
-            borderBottom: '1px solid var(--border)',
-          }}>
-            <div style={{
-              width: 30, height: 30, borderRadius: 8, background: 'var(--surface-var)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 800, color: 'var(--text)', flexShrink: 0,
-            }}>{p.jerseyNumber}</div>
-            <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{p.name}</span>
-            {match.status !== 'finished' && (
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button onClick={() => toggleStarter(p.playerId)}
-                  disabled={starters.length >= 11}
-                  style={{
-                    fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                    background: starters.length >= 11 ? 'var(--surface-var)' : 'var(--success-light)',
-                    color: starters.length >= 11 ? 'var(--text-muted)' : 'var(--success)',
-                  }}>
-                  → {t('match.lineup.toStart')}
-                </button>
-                <button onClick={() => handleRemove(p.playerId)}
-                  style={{ fontSize: 13, fontWeight: 700, padding: '4px 8px', borderRadius: 6, background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', cursor: 'pointer' }}>
-                  ×
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
+        {benchers.map(p => {
+          const isAbsent = getEffectiveAttendance(p) === 'absent';
+          return (
+            <div key={p.playerId} style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
+              borderBottom: '1px solid var(--border)', flexWrap: 'wrap',
+              opacity: isAbsent ? 0.5 : 1,
+            }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: 8, background: 'var(--surface-var)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 800, color: 'var(--text)', flexShrink: 0,
+              }}>{p.jerseyNumber}</div>
+              <span style={{ flex: 1, fontWeight: 600, fontSize: 14, minWidth: 100 }}>{p.name}</span>
+              {showAttendance && (
+                <AttendanceChips
+                  player={p}
+                  onChange={status => setLineupAttendance(match.id, p.playerId, status)}
+                />
+              )}
+              {match.status !== 'finished' && (
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => toggleStarter(p.playerId)}
+                    disabled={starters.length >= 11}
+                    style={{
+                      fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                      background: starters.length >= 11 ? 'var(--surface-var)' : 'var(--success-light)',
+                      color: starters.length >= 11 ? 'var(--text-muted)' : 'var(--success)',
+                    }}>
+                    → {t('match.lineup.toStart')}
+                  </button>
+                  <button onClick={() => handleRemove(p.playerId)}
+                    style={{ fontSize: 13, fontWeight: 700, padding: '4px 8px', borderRadius: 6, background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', cursor: 'pointer' }}>
+                    ×
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Add player */}
@@ -193,7 +267,9 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
 
 export function LineupTab({ match }: { match: SeasonMatch }) {
   const { t } = useI18n();
+  const setLineupAttendance = useMatchesStore(s => s.setLineupAttendance);
   const [editMode, setEditMode] = useState(false);
+  const showAttendance = match.status === 'planned';
 
   const starters = match.lineup.filter(p => p.isStarter).sort((a, b) => a.jerseyNumber - b.jerseyNumber);
   const bench = match.lineup.filter(p => !p.isStarter).sort((a, b) => a.substituteOrder - b.substituteOrder);
@@ -239,12 +315,14 @@ export function LineupTab({ match }: { match: SeasonMatch }) {
     const onMin = subbedOnMinute(p.playerId);
     const subbedOff = offMin !== null;
     const subbedOn = onMin !== null;
+    const isAbsent = getEffectiveAttendance(p) === 'absent';
+    const mutedOpacity = showAttendance && isAbsent ? 0.5 : (isBench && !subbedOn ? 0.65 : 1);
 
     return (
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
-        borderBottom: '1px solid var(--border)',
-        opacity: (isBench && !subbedOn) ? 0.65 : 1,
+        borderBottom: '1px solid var(--border)', flexWrap: 'wrap',
+        opacity: mutedOpacity,
       }}>
         <div style={{
           width: 32, height: 32, borderRadius: 9, flexShrink: 0,
@@ -254,27 +332,34 @@ export function LineupTab({ match }: { match: SeasonMatch }) {
         }}>
           {p.jerseyNumber}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 100 }}>
           <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {p.name}
           </div>
           {p.position && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.position}</div>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          {goals > 0 && <span style={{ fontSize: 13 }}>⚽×{goals}</span>}
-          {cards.map((c, i) => (
-            <span key={i} style={{ fontSize: 14 }}>
-              {c.type === 'yellow' ? '🟨' : c.type === 'red' ? '🟥' : '🟨🟥'}
-            </span>
-          ))}
-          {subbedOff && <span style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 700 }}>↓{offMin}'</span>}
-          {subbedOn && <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700 }}>↑{onMin}'</span>}
-          {isBench && !subbedOn && (
-            <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--surface-var)', padding: '2px 6px', borderRadius: 6 }}>
-              #{p.substituteOrder}
-            </span>
-          )}
-        </div>
+        {showAttendance ? (
+          <AttendanceChips
+            player={p}
+            onChange={status => setLineupAttendance(match.id, p.playerId, status)}
+          />
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {goals > 0 && <span style={{ fontSize: 13 }}>⚽×{goals}</span>}
+            {cards.map((c, i) => (
+              <span key={i} style={{ fontSize: 14 }}>
+                {c.type === 'yellow' ? '🟨' : c.type === 'red' ? '🟥' : '🟨🟥'}
+              </span>
+            ))}
+            {subbedOff && <span style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 700 }}>↓{offMin}'</span>}
+            {subbedOn && <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 700 }}>↑{onMin}'</span>}
+            {isBench && !subbedOn && (
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', background: 'var(--surface-var)', padding: '2px 6px', borderRadius: 6 }}>
+                #{p.substituteOrder}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     );
   };

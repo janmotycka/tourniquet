@@ -8,6 +8,7 @@ import type {
   MatchCard,
   MatchSubstitution,
   PlayerRating,
+  AttendanceStatus,
 } from '../types/match.types';
 
 import { generateId } from '../utils/id';
@@ -79,6 +80,9 @@ interface MatchesState {
   removeCard: (matchId: string, cardId: string) => void;
   addSubstitution: (matchId: string, sub: Omit<MatchSubstitution, 'id' | 'recordedAt'>) => void;
   removeSubstitution: (matchId: string, subId: string) => void;
+
+  // Účast
+  setLineupAttendance: (matchId: string, playerId: string, status: AttendanceStatus) => void;
 
   // Hodnocení
   saveRatings: (matchId: string, ratings: PlayerRating[], note?: string) => void;
@@ -439,6 +443,25 @@ export const useMatchesStore = create<MatchesState>()(
           matches: state.matches.map(m =>
             m.id !== matchId ? m : { ...m, substitutions: m.substitutions.filter(s => s.id !== subId), updatedAt: now() }
           ),
+        }));
+        const m = get().matches.find(x => x.id === matchId);
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
+      },
+
+      // ── Účast ──────────────────────────────────────────────────────────────
+
+      setLineupAttendance: (matchId, playerId, status) => {
+        set(state => ({
+          matches: state.matches.map(m => {
+            if (m.id !== matchId) return m;
+            return {
+              ...m,
+              lineup: m.lineup.map(p =>
+                p.playerId === playerId ? { ...p, attendance: status } : p
+              ),
+              updatedAt: now(),
+            };
+          }),
         }));
         const m = get().matches.find(x => x.id === matchId);
         if (m) syncMatchAndTrack(get().firebaseUid, m, set);

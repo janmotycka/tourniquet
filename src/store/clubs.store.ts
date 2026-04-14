@@ -79,9 +79,42 @@ interface ClubsState {
   updatePlayer: (clubId: string, playerId: string, patch: Partial<Omit<ClubPlayer, 'id'>>) => Promise<void>;
   removePlayer: (clubId: string, playerId: string) => Promise<void>;
   movePlayerToCategory: (clubId: string, playerId: string, newCategory: AgeCategory) => Promise<void>;
+  /**
+   * Bulk posun všech aktivních hráčů do další věkové kategorie (nová sezóna).
+   * Dospělé kategorie (Dorost, Muži, Muži B, Ženy) a U19 zůstávají beze změny.
+   * U15 přeskakuje U16 → U17 (FAČR tradice).
+   * Vrací počet reálně posunutých hráčů.
+   */
+  advanceAllPlayersCategory: (clubId: string) => Promise<{ movedCount: number }>;
 
   // ─── Kategorie ────────────────────────────────────────────────────────────
   setAgeCategories: (clubId: string, categories: AgeCategory[]) => Promise<void>;
+}
+
+// ─── Season advance helpers ────────────────────────────────────────────────
+
+/**
+ * Mapa "co je další kategorie" pro posun o sezónu.
+ * Dospělé kategorie a U19 zůstávají (vrátí null = no-op).
+ * U15 přeskakuje U16 → U17 (FAČR tradice).
+ */
+const NEXT_AGE_CATEGORY: Partial<Record<AgeCategory, AgeCategory>> = {
+  'U6': 'U7',
+  'U7': 'U8',
+  'U8': 'U9',
+  'U9': 'U10',
+  'U10': 'U11',
+  'U11': 'U12',
+  'U12': 'U13',
+  'U13': 'U14',
+  'U14': 'U15',
+  'U15': 'U17',
+  'U17': 'U19',
+};
+
+/** Vrací další kategorii pro posun nebo null, pokud hráč zůstává. */
+export function getNextAgeCategory(current: AgeCategory): AgeCategory | null {
+  return NEXT_AGE_CATEGORY[current] ?? null;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -363,6 +396,52 @@ export const useClubsStore = create<ClubsState>((set, get) => ({
 
       return { ageCategories, players };
     });
+  },
+
+  advanceAllPlayersCategory: async (clubId) => {
+    const today = new Date().toISOString().slice(0, 10);
+    let movedCount = 0;
+    await patchClubContent(get, set, clubId, (c) => {
+      const updatedPlayers = (c.players ?? []).map(p => {
+        if (!p.active) return p;
+        const next = getNextAgeCategory(p.ageCategory);
+        if (!next || next === p.ageCategory) return p;
+
+        movedCount += 1;
+        const history = [...(p.categoryHistory ?? [])];
+        const openIdx = history.findIndex(h => !h.to);
+        if (openIdx >= 0) {
+          history[openIdx] = { ...history[openIdx], to: today };
+        } else if (history.length === 0) {
+          history.push({
+            category: p.ageCategory,
+            from: p.createdAt?.slice(0, 10) ?? today,
+            to: today,
+          });
+        }
+        history.push({ category: next, from: today });
+
+        return {
+          ...p,
+          ageCategory: next,
+          categoryHistory: history,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      // Odvoď ageCategories z unique kategorií aktivních hráčů +
+      // zachovej kategorie, které už v klubu byly (nesmažeme prázdnou kategorii
+      // kterou si trenér nastavil, ale v této sezóně zatím nemá hráče).
+      const activeCats = new Set<AgeCategory>(
+        updatedPlayers.filter(p => p.active).map(p => p.ageCategory),
+      );
+      const ageCategories: AgeCategory[] = Array.from(
+        new Set<AgeCategory>([...(c.ageCategories ?? []), ...activeCats]),
+      );
+
+      return { players: updatedPlayers, ageCategories };
+    });
+    return { movedCount };
   },
 
   // ─── Kategorie ────────────────────────────────────────────────────────────

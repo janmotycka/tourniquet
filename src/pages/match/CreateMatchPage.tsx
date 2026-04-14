@@ -3,7 +3,7 @@ import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useI18n } from '../../i18n';
-import type { MatchLineupPlayer, SubstitutionSettings, MatchFormat } from '../../types/match.types';
+import type { MatchLineupPlayer, SubstitutionSettings, MatchFormat, AttendanceStatus } from '../../types/match.types';
 import { MATCH_FORMATS, formatToStarterCount } from '../../types/match.types';
 import type { Club, AgeCategory } from '../../types/club.types';
 import { useToastStore } from '../../store/toast.store';
@@ -43,6 +43,49 @@ function todayStr(): string {
 function nowTimeStr(): string {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+// ─── Attendance chips ─────────────────────────────────────────────────────────
+const ATTENDANCE_OPTIONS: Array<{ status: AttendanceStatus; icon: string; labelKey: string }> = [
+  { status: 'confirmed', icon: '✅', labelKey: 'match.attendance.confirmed' },
+  { status: 'tentative', icon: '❔', labelKey: 'match.attendance.tentative' },
+  { status: 'absent', icon: '❌', labelKey: 'match.attendance.absent' },
+];
+
+function AttendanceChips({
+  value,
+  onChange,
+  t,
+}: {
+  value: AttendanceStatus;
+  onChange: (status: AttendanceStatus) => void;
+  t: (key: string, params?: Record<string, string | number>) => string;
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+      {ATTENDANCE_OPTIONS.map(opt => {
+        const active = value === opt.status;
+        return (
+          <button
+            key={opt.status}
+            onClick={() => onChange(opt.status)}
+            title={t(opt.labelKey)}
+            aria-label={t(opt.labelKey)}
+            aria-pressed={active}
+            style={{
+              fontSize: 13, padding: '5px 8px', borderRadius: 8,
+              background: active ? 'var(--primary)' : 'var(--surface-var)',
+              color: active ? '#fff' : 'var(--text-muted)',
+              border: 'none', cursor: 'pointer',
+              minWidth: 32, lineHeight: 1,
+            }}
+          >
+            {opt.icon}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 // ─── Club logo/color badge ────────────────────────────────────────────────────
@@ -161,6 +204,18 @@ export function CreateMatchPage({ navigate }: Props) {
       .forEach(p => { if (p.squad) squads.add(p.squad); });
     return Array.from(squads).sort();
   }, [selectedClub, selectedCategory]);
+
+  const setAttendance = (playerId: string, status: AttendanceStatus) => {
+    setLineup(prev => prev.map(p => {
+      if (p.playerId !== playerId) return p;
+      // If moving to absent and player is a starter, move to bench automatically
+      if (status === 'absent' && p.isStarter) {
+        const benchCount = prev.filter(x => !x.isStarter).length;
+        return { ...p, attendance: status, isStarter: false, substituteOrder: benchCount + 1 };
+      }
+      return { ...p, attendance: status };
+    }));
+  };
 
   const toggleStarter = (playerId: string) => {
     setLineup(prev => {
@@ -684,43 +739,49 @@ export function CreateMatchPage({ navigate }: Props) {
             {t('match.create.startingEmpty')}
           </p>
         ) : (
-          starters.map(p => (
-            <div key={p.playerId} style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
-              borderBottom: '1px solid var(--border)',
-            }}>
-              <input
-                type="number"
-                value={p.jerseyNumber || ''}
-                onChange={e => {
-                  const num = parseInt(e.target.value) || 0;
-                  setLineup(prev => prev.map(x => x.playerId === p.playerId ? { ...x, jerseyNumber: num } : x));
-                }}
-                style={{
-                  width: 34, height: 34, borderRadius: 8, background: 'var(--primary)',
-                  color: '#fff', fontSize: 13, fontWeight: 800, textAlign: 'center',
-                  border: 'none', flexShrink: 0,
-                }}
-              />
-              <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{p.name}</span>
-              <button
-                onClick={() => toggleStarter(p.playerId)}
-                style={{
-                  fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 8,
-                  background: 'var(--surface-var)', color: 'var(--text-muted)',
-                }}
-              >
-                {t('match.create.toBench')}
-              </button>
-              <button
-                onClick={() => { const id = p.playerId; setLineup(prev => prev.filter(x => x.playerId !== id)); }}
-                style={{
-                  width: 28, height: 28, borderRadius: 8, background: 'var(--danger-light)',
-                  color: 'var(--danger)', fontSize: 12, fontWeight: 700,
-                }}
-              >✕</button>
-            </div>
-          ))
+          starters.map(p => {
+            const att = p.attendance ?? 'tentative';
+            const isAbsent = att === 'absent';
+            return (
+              <div key={p.playerId} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
+                borderBottom: '1px solid var(--border)', flexWrap: 'wrap',
+                opacity: isAbsent ? 0.5 : 1,
+              }}>
+                <input
+                  type="number"
+                  value={p.jerseyNumber || ''}
+                  onChange={e => {
+                    const num = parseInt(e.target.value) || 0;
+                    setLineup(prev => prev.map(x => x.playerId === p.playerId ? { ...x, jerseyNumber: num } : x));
+                  }}
+                  style={{
+                    width: 34, height: 34, borderRadius: 8, background: 'var(--primary)',
+                    color: '#fff', fontSize: 13, fontWeight: 800, textAlign: 'center',
+                    border: 'none', flexShrink: 0,
+                  }}
+                />
+                <span style={{ flex: 1, fontWeight: 600, fontSize: 14, minWidth: 100 }}>{p.name}</span>
+                <AttendanceChips value={att} onChange={s => setAttendance(p.playerId, s)} t={t} />
+                <button
+                  onClick={() => toggleStarter(p.playerId)}
+                  style={{
+                    fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 8,
+                    background: 'var(--surface-var)', color: 'var(--text-muted)',
+                  }}
+                >
+                  {t('match.create.toBench')}
+                </button>
+                <button
+                  onClick={() => { const id = p.playerId; setLineup(prev => prev.filter(x => x.playerId !== id)); }}
+                  style={{
+                    width: 28, height: 28, borderRadius: 8, background: 'var(--danger-light)',
+                    color: 'var(--danger)', fontSize: 12, fontWeight: 700,
+                  }}
+                >✕</button>
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -733,10 +794,15 @@ export function CreateMatchPage({ navigate }: Props) {
               {t('match.create.benchEmpty')}
             </p>
           ) : (
-            benchers.map((p, idx) => (
+            benchers.map((p, idx) => {
+              const att = p.attendance ?? 'tentative';
+              const isAbsent = att === 'absent';
+              return (
               <div key={p.playerId} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
                 borderBottom: idx < benchers.length - 1 ? '1px solid var(--border)' : 'none',
+                flexWrap: 'wrap',
+                opacity: isAbsent ? 0.5 : 1,
               }}>
                 <div style={{
                   width: 22, height: 22, borderRadius: 6, background: 'var(--surface-var)',
@@ -758,7 +824,8 @@ export function CreateMatchPage({ navigate }: Props) {
                     border: '1px solid var(--border)', flexShrink: 0,
                   }}
                 />
-                <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{p.name}</span>
+                <span style={{ flex: 1, fontWeight: 600, fontSize: 14, minWidth: 100 }}>{p.name}</span>
+                <AttendanceChips value={att} onChange={s => setAttendance(p.playerId, s)} t={t} />
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button
                     onClick={() => moveSubOrder(p.playerId, -1)}
@@ -796,7 +863,8 @@ export function CreateMatchPage({ navigate }: Props) {
                   </button>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       )}

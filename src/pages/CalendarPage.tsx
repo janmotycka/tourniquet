@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
 import type { Page } from '../App';
 import { useTrainingsStore } from '../store/trainings.store';
+import { useMatchesStore } from '../store/matches.store';
 import { CATEGORY_CONFIGS } from '../data/categories.data';
 import { formatMinutes } from '../utils/time';
 import type { TrainingUnit } from '../types/training.types';
+import type { SeasonMatch } from '../types/match.types';
 import { useI18n, getDateLocale } from '../i18n';
 import type { Locale } from '../i18n';
 import { copyToClipboard } from '../utils/training-share';
@@ -108,12 +110,20 @@ function buildShareText(trainings: TrainingUnit[], locale: Locale): string {
   }).join('\n\n---\n\n');
 }
 
+// ─── Match status → background color ──────────────────────────────────────────
+function matchChipBg(status: SeasonMatch['status']): string {
+  if (status === 'live') return 'var(--danger-light)';
+  if (status === 'finished') return 'var(--success-light)';
+  return 'var(--primary-light)';
+}
+
 // ─── Monthly Grid View ────────────────────────────────────────────────────────
-function MonthView({ year, month, scheduledByDate, onDayClick }: {
+function MonthView({ year, month, scheduledByDate, matchesByDate, onDayClick }: {
   year: number;
   month: number;
   scheduledByDate: Map<string, TrainingUnit[]>;
-  onDayClick: (dateStr: string, trainings: TrainingUnit[]) => void;
+  matchesByDate: Map<string, SeasonMatch[]>;
+  onDayClick: (dateStr: string, trainings: TrainingUnit[], matches: SeasonMatch[]) => void;
 }) {
   const { t } = useI18n();
   const dayNames = [t('calendar.days.mo'), t('calendar.days.tu'), t('calendar.days.we'), t('calendar.days.th'), t('calendar.days.fr'), t('calendar.days.sa'), t('calendar.days.su')];
@@ -149,28 +159,54 @@ function MonthView({ year, month, scheduledByDate, onDayClick }: {
           }
           const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
           const trainingsOnDay = scheduledByDate.get(dateStr) ?? [];
+          const matchesOnDay = matchesByDate.get(dateStr) ?? [];
           const isToday = dateStr === today;
           const isWeekend = idx % 7 >= 5;
           const hasTrain = trainingsOnDay.length > 0;
+          const hasMatch = matchesOnDay.length > 0;
+          const hasAny = hasTrain || hasMatch;
+          const hasLive = matchesOnDay.some(m => m.status === 'live');
 
           return (
-            <button key={dateStr} onClick={() => onDayClick(dateStr, trainingsOnDay)}
+            <button key={dateStr} onClick={() => onDayClick(dateStr, trainingsOnDay, matchesOnDay)}
               style={{
                 aspectRatio: '1', borderRadius: 10, display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center', gap: 2, padding: 2,
-                background: isToday ? 'var(--primary)' : hasTrain ? 'var(--primary-light)' : 'var(--surface)',
-                border: isToday ? 'none' : hasTrain ? '1.5px solid var(--primary)' : '1px solid transparent',
+                background: isToday
+                  ? 'var(--primary)'
+                  : hasLive
+                    ? 'var(--danger-light)'
+                    : hasMatch
+                      ? 'var(--success-light)'
+                      : hasTrain
+                        ? 'var(--primary-light)'
+                        : 'var(--surface)',
+                border: isToday
+                  ? 'none'
+                  : hasLive
+                    ? '1.5px solid var(--danger)'
+                    : hasMatch
+                      ? '1.5px solid var(--success)'
+                      : hasTrain
+                        ? '1.5px solid var(--primary)'
+                        : '1px solid transparent',
                 color: isToday ? '#fff' : isWeekend ? 'var(--text-muted)' : 'var(--text)',
                 position: 'relative',
               }}>
               <span style={{ fontSize: 13, fontWeight: isToday ? 800 : 600, lineHeight: 1 }}>{dayNum}</span>
-              {hasTrain && (
-                <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center', maxWidth: '100%' }}>
+              {hasAny && (
+                <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', maxWidth: '100%' }}>
                   {trainingsOnDay.slice(0, 3).map((tr, i) => (
-                    <div key={i} style={{
+                    <div key={`tr-${i}`} style={{
                       width: 5, height: 5, borderRadius: '50%',
                       background: isToday ? 'rgba(255,255,255,.8)' : CATEGORY_CONFIGS[tr.input.category].color,
                     }} />
+                  ))}
+                  {matchesOnDay.slice(0, 2).map((_m, i) => (
+                    <span key={`m-${i}`} style={{
+                      fontSize: 9, lineHeight: 1,
+                      filter: isToday ? 'brightness(2)' : undefined,
+                    }} aria-label="Zápas">⚽</span>
                   ))}
                 </div>
               )}
@@ -290,6 +326,7 @@ export function CalendarPage({ navigate }: Props) {
     savedTrainings: s.savedTrainings,
     scheduleTraining: s.scheduleTraining,
   }));
+  const matches = useMatchesStore(s => s.matches);
 
   const now = new Date();
   const [viewTab, setViewTab] = useState<'month' | 'agenda'>('month');
@@ -303,6 +340,7 @@ export function CalendarPage({ navigate }: Props) {
   // Day click modal (show trainings on that day OR open schedule modal for empty days)
   const [dayClickDate, setDayClickDate] = useState<string | null>(null);
   const [dayClickTrainings, setDayClickTrainings] = useState<TrainingUnit[]>([]);
+  const [dayClickMatches, setDayClickMatches] = useState<SeasonMatch[]>([]);
 
   // Multi-select
   const [multiSelect, setMultiSelect] = useState(false);
@@ -321,14 +359,40 @@ export function CalendarPage({ navigate }: Props) {
     return map;
   }, [savedTrainings]);
 
-  const handleDayClick = (dateStr: string, trainings: TrainingUnit[]) => {
-    if (trainings.length === 0) {
+  // Build lookup map: dateStr → matches (sorted by kickoff time)
+  const matchesByDate = useMemo(() => {
+    const map = new Map<string, SeasonMatch[]>();
+    for (const m of matches) {
+      if (!m.date) continue;
+      const arr = map.get(m.date) ?? [];
+      arr.push(m);
+      map.set(m.date, arr);
+    }
+    for (const arr of map.values()) {
+      arr.sort((a, b) => (a.kickoffTime ?? '').localeCompare(b.kickoffTime ?? ''));
+    }
+    return map;
+  }, [matches]);
+
+  // Month summary counts
+  const { monthTrainingCount, monthMatchCount } = useMemo(() => {
+    const prefix = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-`;
+    let tCount = 0;
+    let mCount = 0;
+    for (const [d, arr] of scheduledByDate) if (d.startsWith(prefix)) tCount += arr.length;
+    for (const [d, arr] of matchesByDate) if (d.startsWith(prefix)) mCount += arr.length;
+    return { monthTrainingCount: tCount, monthMatchCount: mCount };
+  }, [scheduledByDate, matchesByDate, calYear, calMonth]);
+
+  const handleDayClick = (dateStr: string, trainings: TrainingUnit[], matchesOnDay: SeasonMatch[]) => {
+    if (trainings.length === 0 && matchesOnDay.length === 0) {
       // Open schedule modal to assign a training
       setScheduleDate(dateStr);
     } else {
       // Show day detail
       setDayClickDate(dateStr);
       setDayClickTrainings(trainings);
+      setDayClickMatches(matchesOnDay);
     }
   };
 
@@ -427,13 +491,21 @@ export function CalendarPage({ navigate }: Props) {
 
       {/* Month navigation (only in month view) */}
       {viewTab === 'month' && (
-        <div style={{ display: 'flex', alignItems: 'center', padding: '0 20px 12px' }}>
-          <button onClick={prevMonth} style={{ background: 'var(--surface-var)', borderRadius: 10, padding: '8px 12px', color: 'var(--text)', fontWeight: 700 }}>‹</button>
-          <span style={{ flex: 1, textAlign: 'center', fontWeight: 700, fontSize: 16, textTransform: 'capitalize' }}>
-            {formatMonthYear(calYear, calMonth, locale)}
-          </span>
-          <button onClick={nextMonth} style={{ background: 'var(--surface-var)', borderRadius: 10, padding: '8px 12px', color: 'var(--text)', fontWeight: 700 }}>›</button>
-        </div>
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', padding: '0 20px 4px' }}>
+            <button onClick={prevMonth} style={{ background: 'var(--surface-var)', borderRadius: 10, padding: '8px 12px', color: 'var(--text)', fontWeight: 700 }}>‹</button>
+            <span style={{ flex: 1, textAlign: 'center', fontWeight: 700, fontSize: 16, textTransform: 'capitalize' }}>
+              {formatMonthYear(calYear, calMonth, locale)}
+            </span>
+            <button onClick={nextMonth} style={{ background: 'var(--surface-var)', borderRadius: 10, padding: '8px 12px', color: 'var(--text)', fontWeight: 700 }}>›</button>
+          </div>
+          <div style={{ padding: '0 20px 10px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+            {t('calendar.monthSummary', { trainings: monthTrainingCount, matches: monthMatchCount })}
+          </div>
+          <div style={{ padding: '0 20px 10px', textAlign: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
+            {t('calendar.legend')}
+          </div>
+        </>
       )}
 
       {/* Content */}
@@ -443,6 +515,7 @@ export function CalendarPage({ navigate }: Props) {
             year={calYear}
             month={calMonth}
             scheduledByDate={scheduledByDate}
+            matchesByDate={matchesByDate}
             onDayClick={handleDayClick}
           />
         ) : (
@@ -556,24 +629,65 @@ export function CalendarPage({ navigate }: Props) {
                 style={{ background: 'var(--surface-var)', width: 32, height: 32, borderRadius: 16, fontSize: 16, color: 'var(--text-muted)' }}>✕</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 32px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {dayClickTrainings.map(tr => {
-                const cfg = CATEGORY_CONFIGS[tr.input.category];
-                return (
-                  <button key={tr.id}
-                    onClick={() => { setDayClickDate(null); navigate({ name: 'training', training: tr }); }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px',
-                      background: 'var(--surface)', borderRadius: 14, textAlign: 'left', width: '100%', color: 'var(--text)',
-                    }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 5, background: cfg.color, flexShrink: 0 }} />
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tr.title}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t(cfg.label)} · {formatMinutes(tr.totalDuration)}</div>
-                    </div>
-                    <span style={{ color: 'var(--text-muted)' }}>›</span>
-                  </button>
-                );
-              })}
+              {dayClickTrainings.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: .6, marginTop: 4 }}>
+                    📋 {t('calendar.trainings')} ({dayClickTrainings.length})
+                  </div>
+                  {dayClickTrainings.map(tr => {
+                    const cfg = CATEGORY_CONFIGS[tr.input.category];
+                    return (
+                      <button key={tr.id}
+                        onClick={() => { setDayClickDate(null); navigate({ name: 'training', training: tr }); }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px',
+                          background: 'var(--surface)', borderRadius: 14, textAlign: 'left', width: '100%', color: 'var(--text)',
+                        }}>
+                        <div style={{ width: 10, height: 10, borderRadius: 5, background: cfg.color, flexShrink: 0 }} />
+                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tr.title}</div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{t(cfg.label)} · {formatMinutes(tr.totalDuration)}</div>
+                        </div>
+                        <span style={{ color: 'var(--text-muted)' }}>›</span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
+              {dayClickMatches.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: .6, marginTop: dayClickTrainings.length > 0 ? 12 : 4 }}>
+                    ⚽ {t('calendar.matches')} ({dayClickMatches.length})
+                  </div>
+                  {dayClickMatches.map(m => {
+                    const statusLabel = m.status === 'live'
+                      ? t('calendar.matchLive')
+                      : m.status === 'finished'
+                        ? t('calendar.matchFinished')
+                        : t('calendar.matchPlanned');
+                    return (
+                      <button key={m.id}
+                        onClick={() => { setDayClickDate(null); navigate({ name: 'match-detail', matchId: m.id }); }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12, padding: '13px 14px',
+                          background: matchChipBg(m.status), borderRadius: 14, textAlign: 'left', width: '100%', color: 'var(--text)',
+                          border: '1px solid var(--border)',
+                        }}>
+                        <span style={{ fontSize: 20, flexShrink: 0 }}>⚽</span>
+                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                          <div style={{ fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {m.isHome ? `${m.clubName ?? ''} vs ${m.opponent}` : `${m.opponent} vs ${m.clubName ?? ''}`}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                            {m.kickoffTime ? `${m.kickoffTime} · ` : ''}{m.ageCategory ?? m.competition} · {statusLabel}
+                          </div>
+                        </div>
+                        <span style={{ color: 'var(--text-muted)' }}>›</span>
+                      </button>
+                    );
+                  })}
+                </>
+              )}
               {/* Also offer to add another training on this day */}
               <button onClick={() => { setDayClickDate(null); setScheduleDate(dayClickDate); }}
                 style={{

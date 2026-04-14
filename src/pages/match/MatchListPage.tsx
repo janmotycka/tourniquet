@@ -150,7 +150,18 @@ function MatchCard({ match, onClick, t }: { match: SeasonMatch; onClick: () => v
             {match.competition}
           </span>
         )}
-        {match.lineup.length > 0 && (
+        {match.lineup.length > 0 && match.status === 'planned' ? (
+          (() => {
+            const confirmed = match.lineup.filter(l => l.attendance === 'confirmed').length;
+            const absent = match.lineup.filter(l => l.attendance === 'absent').length;
+            const tentative = match.lineup.length - confirmed - absent;
+            return (
+              <div style={{ display: 'flex', gap: spacing.sm, fontSize: fontSize.xs, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                <span>{t('match.attendance.summary')}: ✅ {confirmed} · ❔ {tentative} · ❌ {absent}</span>
+              </div>
+            );
+          })()
+        ) : match.lineup.length > 0 && (
           <div style={{ display: 'flex', gap: spacing.sm, fontSize: fontSize.xs, color: 'var(--text-muted)', marginLeft: 'auto' }}>
             <span>{t('match.list.starters', { count: match.lineup.filter(l => l.isStarter).length })}</span>
             <span>{t('match.list.subs', { count: match.lineup.filter(l => !l.isStarter).length })}</span>

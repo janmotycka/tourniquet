@@ -340,6 +340,14 @@ export const de: Record<TranslationKey, string> = {
   'calendar.days.sa': 'Sa',
   'calendar.days.su': 'So',
   'calendar.addTraining': '+ Weiteres Training hinzufügen',
+  'calendar.matches': 'Spiele',
+  'calendar.trainings': 'Trainings',
+  'calendar.todayMatches': '{count} Spiele heute',
+  'calendar.monthSummary': '{trainings} Trainings · {matches} Spiele',
+  'calendar.legend': '📋 Training | ⚽ Spiel',
+  'calendar.matchLive': 'Live',
+  'calendar.matchFinished': 'Beendet',
+  'calendar.matchPlanned': 'Geplant',
 
   // ─── Manual Builder ───────────────────────────────────────────────────────
   'manual.title': 'Manuell erstellen',
@@ -949,6 +957,12 @@ export const de: Record<TranslationKey, string> = {
   'match.lineup.toStart': 'In die Startelf',
   'match.lineup.edit': 'Bearbeiten',
 
+  // ─── Match Attendance ─────────────────────────────────────────────────────
+  'match.attendance.confirmed': 'Kommt',
+  'match.attendance.tentative': 'Vielleicht',
+  'match.attendance.absent': 'Fehlt',
+  'match.attendance.summary': 'Teilnahme',
+
   // ─── Match Detail ─────────────────────────────────────────────────────────
   'match.detail.ourGoal': 'Unser Tor',
   'match.detail.opponentGoal': 'Gegnertor',
@@ -1115,6 +1129,16 @@ export const de: Record<TranslationKey, string> = {
   'clubs.createMyClub': '🏟 Meinen Verein erstellen',
   'clubs.createMyClubTitle': '🏟 Mein Verein',
   'clubs.createMyClubHint': 'Kader, Altersgruppen und Spielerstatistiken verwalten',
+
+  // ─── Season advance (Bulk-Verschiebung der Kategorien zu Saisonbeginn) ───
+  'clubs.seasonAdvance.button': '🎉 Neue Saison starten',
+  'clubs.seasonAdvance.title': 'Neue Saison — Kategorien anpassen',
+  'clubs.seasonAdvance.preview': 'Spieler werden verschoben:',
+  'clubs.seasonAdvance.staysLabel': 'bleibt in',
+  'clubs.seasonAdvance.warning': 'Diese Aktion kann nicht rückgängig gemacht werden. Den Kategorieverlauf findest du in der Spielerkarte.',
+  'clubs.seasonAdvance.confirm': 'Alle verschieben ({count} Spieler)',
+  'clubs.seasonAdvance.success': '{count} Spieler in neue Kategorien verschoben',
+  'clubs.seasonAdvance.noActivePlayers': 'Verein hat keine aktiven Spieler',
   'clubs.emptyDescNew': 'Erstellen Sie Ihren Verein mit Altersgruppen und Spielern, oder fügen Sie Gegnervereine mit Kontakten hinzu.',
   'clubs.opponents': 'Gegner',
   'clubs.addOpponent': 'Gegnerverein hinzufügen',
@@ -2035,9 +2059,22 @@ export const de: Record<TranslationKey, string> = {
   'landing.format.round-robin': 'Jeder gegen jeden',
   'landing.format.groups-knockout': 'Gruppen + K.o.',
   'landing.format.knockout': 'K.o.-Runde',
+  // Public landing hero (logged-out visitors)
+  'landing.hero.title': 'TORQ — Sport-App für Trainer',
+  'landing.hero.subtitle': 'Turniere, Spiele, Trainings und Spieler an einem Ort',
+  'landing.hero.ctaPrimary': 'Anmelden / Konto erstellen',
+  'landing.hero.ctaSecondary': 'Beispiele ansehen',
+  'landing.features.tournaments': 'Turniere',
+  'landing.features.tournamentsDesc': 'Komplettes Management: Spielpläne, Gruppen, K.o., Live-Ergebnisse',
+  'landing.features.matches': 'Spiele',
+  'landing.features.matchesDesc': 'Saison-Tracking, Spielerbewertung, Verbandsberichte',
+  'landing.features.clubs': 'Verein',
+  'landing.features.clubsDesc': 'Geteilter Verein, Spieler-Import, Trainings-Anwesenheit',
+  'landing.socialProof': 'Verwendet von SFK Vrchovina NMNM und anderen Vereinen',
 
   // ─── Match Share UI ───────────────────────────────────────────────────────
   'matchShare.shareTitle': 'Mit Eltern teilen',
+  'matchShare.title': 'Spiel teilen',
   'matchShare.shareBtn': 'Teilen',
   'matchShare.liveSharing': 'Live-Teilen aktiviert',
   'matchShare.stopSharing': 'Teilen beenden',
@@ -2045,7 +2082,15 @@ export const de: Record<TranslationKey, string> = {
   'matchShare.copied': 'Kopiert',
   'matchShare.showQr': 'QR-Code',
   'matchShare.hideQr': 'QR ausblenden',
-  'matchShare.whatsappMessage': '⚽ *LIVE-SPIELÜBERTRAGUNG*\n\n🏠 Heim: *{home}*\n✈️ Gast: *{away}*\n📅 Datum: *{date}*\n⏰ Anpfiff: *{time}*\n🏆 Wettbewerb: *{competition}*\n\nSpiel live verfolgen — Ergebnis, Tore, Auswechslungen:\n\n👉 {url}',
+  'matchShare.qrHint': 'QR-Code scannen oder Link teilen',
+  'matchShare.email': 'E-Mail',
+  'matchShare.emailSubject': 'Spiel {home} vs {away}',
+  'matchShare.infoText': 'Eltern und Fans sehen Live-Ergebnis, Tore und Aufstellung.',
+  'matchShare.publicToggle': 'Spiel ist öffentlich',
+  'matchShare.makePublicHint': 'Einschalten, um mit Eltern zu teilen',
+  'matchShare.home': 'Heim',
+  'matchShare.away': 'Auswärts',
+  'matchShare.whatsappMessage': '⚽ SPIEL\n{club} vs {opponent}\n📅 {date}, {time}\n🏟 {homeAway}\n🏆 {competition}\n\nLive-Ergebnis, Tore und Aufstellung verfolgen:\n{url}',
 
   // ─── Dashboard tab ──────────────────────────────────────────────────────
   'dashboard.tab': 'Übersicht',

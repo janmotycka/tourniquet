@@ -5,6 +5,7 @@ import type { MatchCatalogEntry } from '../types/match.types';
 import { subscribeToCatalog } from '../services/catalog.firebase';
 import { subscribeToMatchCatalog } from '../services/match.firebase';
 import { useI18n } from '../i18n';
+import { useAuth } from '../context/AuthContext';
 
 interface Props {
   navigate: (p: Page) => void;
@@ -23,11 +24,18 @@ type FeedItem =
 
 export function LandingPage({ navigate, onLogin }: Props) {
   const { t, locale, setLocale } = useI18n();
+  const { user } = useAuth();
+  const isLoggedOut = !user;
   const [tournaments, setTournaments] = useState<CatalogEntry[]>([]);
   const [matches, setMatches] = useState<MatchCatalogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
+  const feedRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToFeed = () => {
+    feedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   useEffect(() => {
     let tLoaded = false;
@@ -129,49 +137,151 @@ export function LandingPage({ navigate, onLogin }: Props) {
       minHeight: '100dvh',
       background: 'var(--bg)',
     }}>
-      {/* ─── Hero — gradient banner ──────────────────────────────────────── */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1A237E 0%, #283593 50%, #3949AB 100%)',
-        color: '#fff',
-        padding: '36px 24px 28px',
-        textAlign: 'center',
-        boxShadow: '0 4px 16px rgba(26, 35, 126, 0.18)',
-        position: 'relative',
-      }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: 20,
-          background: 'rgba(255,255,255,.15)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 36, margin: '0 auto 16px',
-          backdropFilter: 'blur(8px)',
-        }}>⚽</div>
-        <h1 style={{ fontSize: 28, fontWeight: 900, margin: 0, lineHeight: 1.2 }}>TORQ</h1>
-        <p style={{ fontSize: 15, opacity: 0.9, marginTop: 8, lineHeight: 1.5, maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
-          {t('landing.hero')}
-        </p>
-        <p style={{ fontSize: 13, opacity: 0.65, marginTop: 4, maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
-          {t('landing.heroSub')}
-        </p>
+      {/* ─── Hero — only for logged-out visitors ──────────────────────────── */}
+      {isLoggedOut ? (
+        <>
+          <div style={{
+            background: 'linear-gradient(135deg, #1A237E 0%, #283593 45%, #3949AB 100%)',
+            color: '#fff',
+            padding: '48px 20px 44px',
+            textAlign: 'center',
+            boxShadow: '0 4px 16px rgba(26, 35, 126, 0.18)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            {/* Decorative gradient glow */}
+            <div aria-hidden style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              background:
+                'radial-gradient(circle at 20% 10%, rgba(255,255,255,.15), transparent 45%), ' +
+                'radial-gradient(circle at 85% 85%, rgba(121,134,203,.35), transparent 50%)',
+            }} />
 
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
-          <button
-            onClick={onLogin}
-            style={{
-              padding: '12px 28px', borderRadius: 14, fontWeight: 800, fontSize: 15,
-              background: '#fff', color: '#1A237E', border: 'none', cursor: 'pointer',
-              boxShadow: '0 4px 16px rgba(0,0,0,.2)',
-            }}
-          >
-            {t('landing.loginCta')}
-          </button>
-        </div>
+            <div style={{ position: 'relative', maxWidth: 560, margin: '0 auto' }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: 22,
+                background: 'rgba(255,255,255,.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 40, margin: '0 auto 18px',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 4px 18px rgba(0,0,0,.15)',
+              }}>⚽</div>
 
-        <span style={{
-          fontSize: 11, opacity: 0.5, display: 'inline-block', marginTop: 12,
-        }}>
-          🚧 {t('home.betaNotice')}
-        </span>
-      </div>
+              <h1 style={{
+                fontSize: 'clamp(24px, 6vw, 32px)',
+                fontWeight: 900,
+                margin: 0,
+                lineHeight: 1.15,
+                letterSpacing: '-0.02em',
+              }}>
+                {t('landing.hero.title')}
+              </h1>
+              <p style={{
+                fontSize: 'clamp(14px, 3.8vw, 17px)',
+                opacity: 0.92,
+                marginTop: 12,
+                marginBottom: 0,
+                lineHeight: 1.5,
+                maxWidth: 420,
+                marginLeft: 'auto', marginRight: 'auto',
+              }}>
+                {t('landing.hero.subtitle')}
+              </p>
+
+              <div style={{
+                display: 'flex', gap: 10, justifyContent: 'center',
+                marginTop: 24, flexWrap: 'wrap',
+              }}>
+                <button
+                  onClick={onLogin}
+                  style={{
+                    padding: '14px 22px', borderRadius: 14, fontWeight: 800, fontSize: 15,
+                    background: '#fff', color: '#1A237E', border: 'none', cursor: 'pointer',
+                    boxShadow: '0 6px 18px rgba(0,0,0,.2)',
+                    minHeight: 48, minWidth: 160,
+                  }}
+                >
+                  {t('landing.hero.ctaPrimary')}
+                </button>
+                <button
+                  onClick={scrollToFeed}
+                  style={{
+                    padding: '14px 22px', borderRadius: 14, fontWeight: 700, fontSize: 15,
+                    background: 'rgba(255,255,255,.12)', color: '#fff',
+                    border: '1.5px solid rgba(255,255,255,.4)',
+                    cursor: 'pointer',
+                    minHeight: 48, minWidth: 160,
+                    backdropFilter: 'blur(4px)',
+                  }}
+                >
+                  {t('landing.hero.ctaSecondary')}
+                </button>
+              </div>
+
+              <span style={{
+                fontSize: 11, opacity: 0.55, display: 'inline-block', marginTop: 16,
+              }}>
+                🚧 {t('home.betaNotice')}
+              </span>
+            </div>
+          </div>
+
+          {/* ─── Feature highlights ──────────────────────────────────────── */}
+          <div style={{
+            maxWidth: 960, margin: '0 auto', width: '100%', boxSizing: 'border-box',
+            padding: '28px 16px 8px',
+          }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: 12,
+            }}>
+              {([
+                { icon: '🏆', title: t('landing.features.tournaments'), desc: t('landing.features.tournamentsDesc') },
+                { icon: '⚽', title: t('landing.features.matches'), desc: t('landing.features.matchesDesc') },
+                { icon: '👥', title: t('landing.features.clubs'), desc: t('landing.features.clubsDesc') },
+              ]).map((f) => (
+                <div key={f.title} style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 16,
+                  padding: '18px 16px',
+                  boxShadow: '0 1px 4px rgba(0,0,0,.04)',
+                }}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: 12,
+                    background: 'var(--primary-light)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 24, marginBottom: 10,
+                  }}>{f.icon}</div>
+                  <div style={{
+                    fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 4,
+                  }}>{f.title}</div>
+                  <div style={{
+                    fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.45,
+                  }}>{f.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Social proof */}
+            <div style={{
+              textAlign: 'center',
+              marginTop: 20,
+              padding: '12px 16px',
+              fontSize: 13,
+              color: 'var(--text-muted)',
+              fontWeight: 600,
+            }}>
+              ⭐ {t('landing.socialProof')}
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {/* Anchor where the feed begins — used by "Browse examples" CTA */}
+      <div ref={feedRef} />
+
 
       {/* ─── Catalog ──────────────────────────────────────────────────────── */}
       {/* NOTE: outer is plain block (no flex, no overflow). Sticky filter chips

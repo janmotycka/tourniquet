@@ -338,6 +338,14 @@ export const cs = {
   'calendar.days.sa': 'So',
   'calendar.days.su': 'Ne',
   'calendar.addTraining': '+ Přidat další trénink',
+  'calendar.matches': 'Zápasy',
+  'calendar.trainings': 'Tréninky',
+  'calendar.todayMatches': '{count} zápasy dnes',
+  'calendar.monthSummary': '{trainings} tréninků · {matches} zápasů',
+  'calendar.legend': '📋 Trénink | ⚽ Zápas',
+  'calendar.matchLive': 'Živě',
+  'calendar.matchFinished': 'Odehráno',
+  'calendar.matchPlanned': 'Naplánováno',
 
   // ─── Manual Builder ───────────────────────────────────────────────────────
   'manual.title': 'Sestavit ručně',
@@ -947,6 +955,12 @@ export const cs = {
   'match.lineup.toStart': 'Do sestavy',
   'match.lineup.edit': 'Upravit',
 
+  // ─── Match Attendance ─────────────────────────────────────────────────────
+  'match.attendance.confirmed': 'Dorazí',
+  'match.attendance.tentative': 'Snad',
+  'match.attendance.absent': 'Nepřijde',
+  'match.attendance.summary': 'Účast',
+
   // ─── Match Detail ─────────────────────────────────────────────────────────
   'match.detail.ourGoal': 'Náš gól',
   'match.detail.opponentGoal': 'Gól soupeře',
@@ -1113,6 +1127,16 @@ export const cs = {
   'clubs.createMyClub': '🏟 Vytvořit Můj Klub',
   'clubs.createMyClubTitle': '🏟 Můj Klub',
   'clubs.createMyClubHint': 'Spravujte roster, kategorie a statistiky hráčů',
+
+  // ─── Season advance (bulk posun kategorií na začátku sezóny) ─────────────
+  'clubs.seasonAdvance.button': '🎉 Začít novou sezónu',
+  'clubs.seasonAdvance.title': 'Nová sezóna — posun kategorií',
+  'clubs.seasonAdvance.preview': 'Hráči budou posunuti:',
+  'clubs.seasonAdvance.staysLabel': 'zůstává',
+  'clubs.seasonAdvance.warning': 'Tuto akci nelze vrátit. Historii kategorií najdeš v kartě hráče.',
+  'clubs.seasonAdvance.confirm': 'Posunout všechny ({count} hráčů)',
+  'clubs.seasonAdvance.success': 'Posunuto {count} hráčů do nových kategorií',
+  'clubs.seasonAdvance.noActivePlayers': 'Klub nemá žádné aktivní hráče',
   'clubs.emptyDescNew': 'Vytvořte svůj klub s kategoriemi a hráči, nebo přidejte soupeřské kluby s kontakty.',
   'clubs.opponents': 'Soupeři',
   'clubs.addOpponent': 'Přidat soupeřský klub',
@@ -2037,9 +2061,22 @@ export const cs = {
   'landing.format.round-robin': 'Každý s každým',
   'landing.format.groups-knockout': 'Skupiny + pavouk',
   'landing.format.knockout': 'Pavouk',
+  // Public landing hero (logged-out visitors)
+  'landing.hero.title': 'TORQ — sportovní aplikace pro trenéry',
+  'landing.hero.subtitle': 'Turnaje, zápasy, tréninky a hráči na jednom místě',
+  'landing.hero.ctaPrimary': 'Přihlásit se / Vytvořit účet',
+  'landing.hero.ctaSecondary': 'Prohlédnout ukázky',
+  'landing.features.tournaments': 'Turnaje',
+  'landing.features.tournamentsDesc': 'Kompletní management: rozpisy, skupiny, play-off, live skóre',
+  'landing.features.matches': 'Zápasy',
+  'landing.features.matchesDesc': 'Sezónní tracking, hodnocení hráčů, FAČR hlášení',
+  'landing.features.clubs': 'Klub',
+  'landing.features.clubsDesc': 'Sdílený klub, import hráčů, docházka',
+  'landing.socialProof': 'Používá klub SFK Vrchovina NMNM a další',
 
   // ─── Match Share UI ───────────────────────────────────────────────────────
   'matchShare.shareTitle': 'Sdílet s rodiči',
+  'matchShare.title': 'Sdílet zápas',
   'matchShare.shareBtn': 'Sdílet',
   'matchShare.liveSharing': 'Živé sdílení zapnuto',
   'matchShare.stopSharing': 'Vypnout sdílení',
@@ -2047,7 +2084,15 @@ export const cs = {
   'matchShare.copied': 'Zkopírováno',
   'matchShare.showQr': 'QR kód',
   'matchShare.hideQr': 'Skrýt QR',
-  'matchShare.whatsappMessage': '⚽ *ŽIVÝ PŘENOS ZÁPASU*\n\n🏠 Domácí: *{home}*\n✈️ Hosté: *{away}*\n📅 Datum: *{date}*\n⏰ Začátek: *{time}*\n🏆 Soutěž: *{competition}*\n\nSledujte zápas živě — skóre, góly, střídání:\n\n👉 {url}',
+  'matchShare.qrHint': 'Naskenuj QR nebo sdílej odkaz',
+  'matchShare.email': 'E-mail',
+  'matchShare.emailSubject': 'Zápas {home} vs {away}',
+  'matchShare.infoText': 'Rodiče a fanoušci uvidí live skóre, góly a sestavu.',
+  'matchShare.publicToggle': 'Zápas je veřejný',
+  'matchShare.makePublicHint': 'Zapni pro sdílení s rodiči',
+  'matchShare.home': 'Doma',
+  'matchShare.away': 'Venku',
+  'matchShare.whatsappMessage': '⚽ ZÁPAS\n{club} vs {opponent}\n📅 {date}, {time}\n🏟 {homeAway}\n🏆 {competition}\n\nSleduj live skóre, góly a sestavu:\n{url}',
 
   // ─── Dashboard tab ──────────────────────────────────────────────────────
   'dashboard.tab': 'Přehled',
