@@ -1,11 +1,10 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { I18nProvider, useI18n } from './i18n';
 import { ThemeProvider } from './theme/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
 import { LandingPage } from './pages/LandingPage';
 import { HomePage } from './pages/HomePage';
-import { OnboardingWizard } from './components/onboarding/OnboardingWizard';
 import { ToastContainer } from './components/ToastContainer';
 import { CookieConsent } from './components/CookieConsent';
 import { ConnectionStatus } from './components/ConnectionStatus';
@@ -115,11 +114,6 @@ function AppRouter() {
   const setTrainingsFirebaseUid = useTrainingsStore(s => s.setFirebaseUid);
 
   const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin, adminJoinRole, setAdminJoinRole, clubJoinIntent } = usePageStore();
-
-  // Onboarding wizard state — MUST be before any early returns (React hooks rule)
-  const [onboarded, setOnboarded] = useState(() => {
-    try { return !!localStorage.getItem('torq_onboarded'); } catch { return true; }
-  });
 
   const navigate = (p: Page) => {
     if (p.name === 'tournament-public') {
@@ -259,10 +253,6 @@ function AppRouter() {
       return <LandingPage navigate={navigate} onLogin={() => setPage({ name: 'login' })} />;
     }
     return <LoginPage onBack={() => setPage({ name: 'home' })} />;
-  }
-
-  if (!onboarded) {
-    return <OnboardingWizard navigate={navigate} onComplete={() => setOnboarded(true)} />;
   }
 
   const pageContent = (

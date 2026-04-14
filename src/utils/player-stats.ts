@@ -24,6 +24,10 @@ export interface PlayerStats {
   seasonRedCards: number;
   seasonMatches: number;           // zápasy, kde hráč byl v sestavě
   seasonAvgRating: number | null;  // průměrné hodnocení (null = žádné)
+  seasonAvgEffort: number | null;      // průměrná bojovnost
+  seasonAvgTechnique: number | null;   // průměrná technika
+  seasonAvgTeamwork: number | null;    // průměrný kolektiv
+  seasonAvgBehavior: number | null;    // průměrné chování
 
   // Tréninky
   trainingsTotal: number;          // počet tréninků kategorie hráče s vyplněnou docházkou
@@ -47,6 +51,10 @@ const EMPTY_STATS: PlayerStats = {
   seasonRedCards: 0,
   seasonMatches: 0,
   seasonAvgRating: null,
+  seasonAvgEffort: null,
+  seasonAvgTechnique: null,
+  seasonAvgTeamwork: null,
+  seasonAvgBehavior: null,
   trainingsTotal: 0,
   trainingsPresent: 0,
   trainingsAbsent: 0,
@@ -114,6 +122,10 @@ export function aggregatePlayerStats(
 
   // ─── Sezónní zápasy ────────────────────────────────────────────────────
   const ratingValues: number[] = [];
+  const effortValues: number[] = [];
+  const techniqueValues: number[] = [];
+  const teamworkValues: number[] = [];
+  const behaviorValues: number[] = [];
 
   for (const match of seasonMatches) {
     if (match.clubId !== clubId) continue;
@@ -152,15 +164,24 @@ export function aggregatePlayerStats(
     const rating = (match.ratings ?? []).find(r => r.playerId === lineupPlayer.playerId);
     if (rating) {
       ratingValues.push(rating.stars);
+      if (rating.attributes) {
+        if (typeof rating.attributes.effort === 'number') effortValues.push(rating.attributes.effort);
+        if (typeof rating.attributes.technique === 'number') techniqueValues.push(rating.attributes.technique);
+        if (typeof rating.attributes.teamwork === 'number') teamworkValues.push(rating.attributes.teamwork);
+        if (typeof rating.attributes.behavior === 'number') behaviorValues.push(rating.attributes.behavior);
+      }
     }
   }
 
+  const avgOf = (arr: number[]): number | null =>
+    arr.length > 0 ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10 : null;
+
   // Průměrné hodnocení
-  if (ratingValues.length > 0) {
-    stats.seasonAvgRating = Math.round(
-      (ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length) * 10,
-    ) / 10;
-  }
+  stats.seasonAvgRating = avgOf(ratingValues);
+  stats.seasonAvgEffort = avgOf(effortValues);
+  stats.seasonAvgTechnique = avgOf(techniqueValues);
+  stats.seasonAvgTeamwork = avgOf(teamworkValues);
+  stats.seasonAvgBehavior = avgOf(behaviorValues);
 
   // ─── Tréninky / docházka ───────────────────────────────────────────────
   for (const tr of trainings) {

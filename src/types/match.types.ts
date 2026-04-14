@@ -59,6 +59,13 @@ export interface PlayerRating {
   playerId: string;
   stars: 1 | 2 | 3 | 4 | 5;  // ⭐–⭐⭐⭐⭐⭐
   note?: string;
+  attributes?: {
+    effort?: 1 | 2 | 3 | 4 | 5;       // bojovnost / nasazení
+    technique?: 1 | 2 | 3 | 4 | 5;    // technika
+    teamwork?: 1 | 2 | 3 | 4 | 5;     // kolektiv / spolupráce
+    behavior?: 1 | 2 | 3 | 4 | 5;     // chování / disciplína
+  };
+  emoji?: string;  // single emoji shortcut for quick feedback (👏 💪 🌟 etc.)
 }
 
 // ─── Substitution assistant settings ─────────────────────────────────────────

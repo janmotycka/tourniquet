@@ -1041,6 +1041,12 @@ export const cs = {
   'match.ratings.playerRatings': 'Hodnocení hráčů',
   'match.ratings.coachNote': 'Trenérova poznámka',
   'match.ratings.noLineup': 'Nejdříve zadejte sestavu v záložce Sestava',
+  'match.ratings.detailed': 'Detailní hodnocení',
+  'match.ratings.effort': '💪 Bojovnost',
+  'match.ratings.technique': '⚽ Technika',
+  'match.ratings.teamwork': '🤝 Kolektiv',
+  'match.ratings.behavior': '😊 Chování',
+  'match.ratings.emoji': 'Rychlá zpětná vazba',
 
   // ─── VEO ────────────────────────────────────────────────────────────────
   'veo.title': 'VEO záznam',
@@ -2281,6 +2287,31 @@ export const cs = {
   'admin.clubRequests.approveNote': 'Poznámka (volitelné):',
   'admin.clubRequests.approved': 'Žádost schválena',
   'admin.clubRequests.rejected': 'Žádost zamítnuta',
+
+  // ─── First-time onboarding wizard (HomePage modal) ──────────────────────
+  'onboarding.welcome.title': 'Vítej v TORQ! 👋',
+  'onboarding.welcome.subtitle': 'Pomůžeme ti za 2 minuty nastavit klub a být připraven na první zápas.',
+  'onboarding.welcome.start': 'Začít',
+  'onboarding.welcome.skip': 'Přeskočit',
+  'onboarding.club.title': 'Vytvoř svůj klub',
+  'onboarding.club.subtitle': 'Pojmenuj klub, vyber barvu a kategorie. Logo můžeš přidat hned, nebo později.',
+  'onboarding.club.name': 'Název klubu',
+  'onboarding.club.namePlaceholder': 'Např. SFK Vrchovina NMNM',
+  'onboarding.club.color': 'Barva klubu',
+  'onboarding.club.logo': 'Logo',
+  'onboarding.club.categories': 'Věkové kategorie (vyber své)',
+  'onboarding.club.continue': 'Pokračovat',
+  'onboarding.clubCreated': 'Klub vytvořen',
+  'onboarding.done.title': 'Hotovo!',
+  'onboarding.done.subtitle': 'Tvůj klub je připraven. Co chceš udělat dál?',
+  'onboarding.done.whatsNext': 'Co dál?',
+  'onboarding.done.importPlayers': 'Importovat hráče',
+  'onboarding.done.importPlayersDesc': 'Přidej hráče do rosteru — ručně nebo importem.',
+  'onboarding.done.createMatch': 'Vytvořit první zápas',
+  'onboarding.done.createMatchDesc': 'Naplánuj nejbližší zápas a sestav lineup.',
+  'onboarding.done.createTournament': 'Vytvořit turnaj',
+  'onboarding.done.createTournamentDesc': 'Spusť turnaj se živým skórem a veřejným odkazem.',
+  'onboarding.done.finish': 'Dokončit',
 } as const;
 
 export type TranslationKey = keyof typeof cs;

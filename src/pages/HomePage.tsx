@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Page } from '../App';
 import { useAuth } from '../context/AuthContext';
 import { useSubscriptionStore } from '../store/subscription.store';
@@ -10,6 +10,7 @@ import { useLayoutMode } from '../hooks/useLayoutMode';
 import { DesktopPage } from '../components/desktop/DesktopPage';
 import { ClubSwitcher } from '../components/clubs/ClubSwitcher';
 import { useClubsStore } from '../store/clubs.store';
+import { OnboardingWizard, isOnboarded } from '../components/onboarding/OnboardingWizard';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -25,12 +26,31 @@ export function HomePage({ navigate }: Props) {
   const { canInstall, install } = usePWAInstall();
   const { isDesktop } = useLayoutMode();
 
+  // ─── First-time onboarding wizard ────────────────────────────────────────
+  // Spustí se, když přihlášený uživatel nemá žádný klub a ještě nedokončil
+  // (nebo nepřeskočil) onboarding pro tento UID.
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (clubCount === 0 && !isOnboarded(user.uid)) {
+      setShowOnboarding(true);
+    }
+  }, [user?.uid, clubCount]);
+
   // Live overview — currently running matches & active tournaments
   const matches = useMatchesStore(s => s.matches);
   const tournaments = useTournamentStore(s => s.tournaments);
   const liveMatches = useMemo(() => matches.filter(m => m.status === 'live'), [matches]);
   const activeTournaments = useMemo(() => tournaments.filter(tt => tt.status === 'active'), [tournaments]);
   const hasLive = liveMatches.length > 0 || activeTournaments.length > 0;
+
+  // Wizard JSX shared across mobile/desktop returns (renders as fixed overlay).
+  const wizard = showOnboarding ? (
+    <OnboardingWizard
+      navigate={navigate}
+      onComplete={() => setShowOnboarding(false)}
+    />
+  ) : null;
 
   if (isDesktop) {
     const upcomingMatches = matches
@@ -39,6 +59,8 @@ export function HomePage({ navigate }: Props) {
       .slice(0, 5);
 
     return (
+      <>
+      {wizard}
       <DesktopPage
         title={t('home.greeting')}
         subtitle={user?.displayName ?? user?.email ?? t('home.loggedIn')}
@@ -216,10 +238,13 @@ export function HomePage({ navigate }: Props) {
           </DashSection>
         </div>
       </DesktopPage>
+      </>
     );
   }
 
   return (
+    <>
+    {wizard}
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
       padding: '24px 20px', gap: 20, overflowY: 'auto', paddingBottom: 40,
@@ -570,6 +595,7 @@ export function HomePage({ navigate }: Props) {
       </div>
 
     </div>
+    </>
   );
 }
 

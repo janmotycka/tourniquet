@@ -369,6 +369,44 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
             )}
           </div>
 
+          {/* ── Průměrné atributy ── */}
+          {(stats.seasonAvgEffort !== null || stats.seasonAvgTechnique !== null
+            || stats.seasonAvgTeamwork !== null || stats.seasonAvgBehavior !== null) && (
+            <div style={{
+              background: 'var(--bg)', borderRadius: 14, padding: '14px 16px',
+              marginBottom: 10,
+            }}>
+              <div style={{
+                fontWeight: 700, fontSize: 13, color: 'var(--text-muted)',
+                marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                ⭐ {t('match.ratings.detailed')}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {([
+                  ['effort', stats.seasonAvgEffort],
+                  ['technique', stats.seasonAvgTechnique],
+                  ['teamwork', stats.seasonAvgTeamwork],
+                  ['behavior', stats.seasonAvgBehavior],
+                ] as const).map(([key, val]) => (
+                  val !== null && (
+                    <div key={key} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '4px 0',
+                    }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                        {t(`match.ratings.${key}`)}
+                      </span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--warning)' }}>
+                        {val.toFixed(1)} / 5
+                      </span>
+                    </div>
+                  )
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── Tréninky / docházka ── */}
           {stats.trainingsTotal > 0 && (
             <div style={{

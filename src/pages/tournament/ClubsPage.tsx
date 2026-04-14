@@ -332,6 +332,7 @@ export function ClubsPage({ navigate }: Props) {
             tournamentGoals: 0, tournamentMatches: 0, tournamentsPlayed: 0,
             seasonGoals: 0, seasonAssists: 0, seasonYellowCards: 0, seasonRedCards: 0,
             seasonMatches: 0, seasonAvgRating: null,
+            seasonAvgEffort: null, seasonAvgTechnique: null, seasonAvgTeamwork: null, seasonAvgBehavior: null,
             trainingsTotal: 0, trainingsPresent: 0, trainingsAbsent: 0, trainingsExcused: 0,
             attendanceRate: null,
             totalGoals: 0, totalMatches: 0,
