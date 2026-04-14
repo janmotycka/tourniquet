@@ -110,7 +110,7 @@ export function ClubForm({
     );
   };
 
-  const canSave = name.trim().length >= 2;
+  const canSave = name.trim().length >= 2 && !catalogMatch?.torqClubId;
 
   // ─── Inner form body — stejné pro oba módy ────────────────────────────────
   const body = (

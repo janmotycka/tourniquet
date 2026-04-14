@@ -538,11 +538,11 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
               }}>
                 <button
                   onClick={handleCreateClub}
-                  disabled={!clubName.trim() || creating}
+                  disabled={!clubName.trim() || creating || !!selectedCatalog?.torqClubId}
                   style={{
                     ...btnPrimary,
-                    opacity: (!clubName.trim() || creating) ? 0.5 : 1,
-                    cursor: (!clubName.trim() || creating) ? 'not-allowed' : 'pointer',
+                    opacity: (!clubName.trim() || creating || !!selectedCatalog?.torqClubId) ? 0.5 : 1,
+                    cursor: (!clubName.trim() || creating || !!selectedCatalog?.torqClubId) ? 'not-allowed' : 'pointer',
                   }}
                 >
                   {creating ? '…' : t('onboarding.club.continue')}

@@ -65,10 +65,13 @@ export function ClubsPage({ navigate }: Props) {
   const [viewingContact, setViewingContact] = useState<Contact | null>(null);
   const [showContactSheet, setShowContactSheet] = useState(false);
 
-  // Můj klub = aktivní workspace. V sustaining mode má uživatel právě jeden
-  // klub (multiple clubs jsou povolené pro Shared Clubs, ale UI tady jich
-  // stejně neukazuje víc).
-  const myClub = useMemo(() => clubs[0], [clubs]);
+  // Můj klub = aktivní workspace (podle ClubSwitcher).
+  // Fallback na první klub, pokud activeClubId není nastaven.
+  const activeClubId = useClubsStore(s => s.activeClubId);
+  const myClub = useMemo(
+    () => clubs.find(c => c.id === activeClubId) ?? clubs[0],
+    [clubs, activeClubId],
+  );
 
   // Statistiky hráčů — memoizované pro celý klub
   const getPlayerStats = useCallback((player: ClubPlayer): PlayerStats | null => {
