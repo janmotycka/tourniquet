@@ -18,7 +18,7 @@ import { ContactRow } from '../../components/clubs/ContactRow';
 import { ContactDetailSheet } from '../../components/clubs/ContactDetailSheet';
 import { MyClubSection } from '../../components/clubs/MyClubSection';
 import { PageHeader, Button, Card } from '../../components/ui';
-import { spacing, fontSize, fontWeight } from '../../theme/tokens';
+import { spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -212,17 +212,42 @@ export function ClubsPage({ navigate }: Props) {
       }}>
         {/* ── Můj klub ── */}
         {myClub ? (
-          <MyClubSection
-            club={myClub}
-            contacts={[]} /* kontakty se nyní zobrazují v samostatné sekci níže */
-            onEditClub={() => setEditingClub(true)}
-            onDeleteClub={handleDeleteMyClub}
-            onContactTap={handleOpenContactDetail}
-            onAddContact={handleAddContact}
-            onPlayerTap={handlePlayerTap}
-            getPlayerStats={getPlayerStats}
-            t={t}
-          />
+          <>
+            <MyClubSection
+              club={myClub}
+              contacts={[]} /* kontakty se nyní zobrazují v samostatné sekci níže */
+              onEditClub={() => setEditingClub(true)}
+              onDeleteClub={handleDeleteMyClub}
+              onContactTap={handleOpenContactDetail}
+              onAddContact={handleAddContact}
+              onPlayerTap={handlePlayerTap}
+              getPlayerStats={getPlayerStats}
+              t={t}
+            />
+
+            {/* Pozvat trenéra / členové klubu */}
+            <Card
+              onClick={() => navigate({ name: 'club-members' })}
+              padding="md"
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: spacing.md }}
+            >
+              <div style={{
+                width: 40, height: 40, borderRadius: radius.md,
+                background: 'var(--primary-light)', color: 'var(--primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20, flexShrink: 0,
+              }}>👥</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: fontWeight.bold, fontSize: fontSize.base, color: 'var(--text)' }}>
+                  {t('clubs.membersAndInvites')}
+                </div>
+                <div style={{ fontSize: fontSize.sm, color: 'var(--text-muted)' }}>
+                  {t('clubs.membersAndInvitesDesc')}
+                </div>
+              </div>
+              <span style={{ color: 'var(--text-muted)', fontSize: 18 }}>→</span>
+            </Card>
+          </>
         ) : (
           <Card
             variant="dashed"

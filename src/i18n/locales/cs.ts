@@ -2238,6 +2238,8 @@ export const cs = {
   'clubs.shared.requestForm.errorAlreadyPending': 'Už máš pending žádost o tento klub',
 
   // Members management
+  'clubs.membersAndInvites': 'Členové klubu',
+  'clubs.membersAndInvitesDesc': 'Pozvat trenéra, spravovat členy a pozvánky',
   'clubs.members.title': 'Členové klubu',
   'clubs.members.you': 'Ty',
   'clubs.members.empty': 'Žádní další členové',
@@ -2301,6 +2303,8 @@ export const cs = {
   'onboarding.club.logo': 'Logo',
   'onboarding.club.categories': 'Věkové kategorie (vyber své)',
   'onboarding.club.continue': 'Pokračovat',
+  'onboarding.club.alreadyInTorq': 'Tento klub už v TORQ existuje',
+  'onboarding.club.alreadyInTorqDesc': 'Pokud chceš tento klub používat, požádej jeho správce o pozvánku (PIN kód). Nebo vytvoř klub s jiným názvem.',
   'onboarding.clubCreated': 'Klub vytvořen',
   'onboarding.done.title': 'Hotovo!',
   'onboarding.done.subtitle': 'Tvůj klub je připraven. Co chceš udělat dál?',

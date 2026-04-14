@@ -52,6 +52,7 @@ interface CatalogClub {
   city?: string;
   logoUrl?: string;
   logoBase64?: string;
+  torqClubId?: string;  // set when club already exists in TORQ
 }
 
 async function urlToBase64(url: string): Promise<string | null> {
@@ -106,6 +107,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   // Catalog autocomplete (reused logic from ClubForm)
   const [catalog, setCatalog] = useState<CatalogClub[]>([]);
   const [suggestions, setSuggestions] = useState<CatalogClub[]>([]);
+  const [selectedCatalog, setSelectedCatalog] = useState<CatalogClub | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,6 +125,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
 
   const handleNameChange = useCallback((v: string) => {
     setClubName(v);
+    setSelectedCatalog(null);
     if (v.length < 2 || catalog.length === 0) { setSuggestions([]); return; }
     const q = v.toLowerCase();
     const matches = catalog
@@ -139,6 +142,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   const handleCatalogPick = useCallback(async (c: CatalogClub) => {
     setClubName(c.name);
     setSuggestions([]);
+    setSelectedCatalog(c);
     if (!logoBase64 && (c.logoBase64 || c.logoUrl)) {
       if (c.logoBase64) {
         setLogoBase64(c.logoBase64);
@@ -442,7 +446,15 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                             <div style={{ width: 24, height: 24, borderRadius: 4, background: 'var(--surface-var)', flexShrink: 0 }} />
                           )}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: fontWeight.bold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ fontWeight: fontWeight.bold, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                              {c.torqClubId && (
+                                <span style={{
+                                  fontSize: 8, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
+                                  background: 'var(--success-light)', color: 'var(--success)',
+                                }}>TORQ</span>
+                              )}
+                            </div>
                             {c.city && <div style={{ fontSize: fontSize.xs, color: 'var(--text-muted)' }}>{c.city}</div>}
                           </div>
                         </button>
@@ -450,6 +462,24 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                     </div>
                   )}
                 </div>
+
+                {/* Klub už existuje v TORQ */}
+                {selectedCatalog?.torqClubId && (
+                  <div style={{
+                    marginTop: spacing.sm,
+                    padding: `${spacing.md}px`,
+                    borderRadius: radius.md, background: 'var(--warning-light)',
+                    fontSize: fontSize.sm, color: 'var(--warning)',
+                  }}>
+                    <div style={{ fontWeight: fontWeight.bold, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>⚠️</span>
+                      <span>{t('onboarding.club.alreadyInTorq')}</span>
+                    </div>
+                    <div style={{ fontSize: fontSize.xs, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                      {t('onboarding.club.alreadyInTorqDesc')}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Color picker */}

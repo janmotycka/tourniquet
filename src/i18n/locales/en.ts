@@ -2235,6 +2235,8 @@ export const en: Record<TranslationKey, string> = {
   'clubs.shared.requestForm.errorAlreadyClaimed': 'This club is already registered by another user',
   'clubs.shared.requestForm.errorAlreadyPending': 'You already have a pending request for this club',
 
+  'clubs.membersAndInvites': 'Club members',
+  'clubs.membersAndInvitesDesc': 'Invite coach, manage members and invites',
   'clubs.members.title': 'Club members',
   'clubs.members.you': 'You',
   'clubs.members.empty': 'No other members',
@@ -2296,6 +2298,8 @@ export const en: Record<TranslationKey, string> = {
   'onboarding.club.logo': 'Logo',
   'onboarding.club.categories': 'Age categories (pick yours)',
   'onboarding.club.continue': 'Continue',
+  'onboarding.club.alreadyInTorq': 'This club already exists in TORQ',
+  'onboarding.club.alreadyInTorqDesc': 'If you want to use this club, ask its administrator for an invite (PIN code). Or create a club with a different name.',
   'onboarding.clubCreated': 'Club created',
   'onboarding.done.title': 'All set!',
   'onboarding.done.subtitle': 'Your club is ready. What would you like to do next?',
