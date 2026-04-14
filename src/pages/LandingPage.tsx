@@ -31,12 +31,6 @@ export function LandingPage({ navigate, onLogin }: Props) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
-  const feedRef = useRef<HTMLDivElement | null>(null);
-
-  const scrollToFeed = () => {
-    feedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-
   useEffect(() => {
     let tLoaded = false;
     let mLoaded = false;
@@ -137,148 +131,82 @@ export function LandingPage({ navigate, onLogin }: Props) {
       minHeight: '100dvh',
       background: 'var(--bg)',
     }}>
-      {/* ─── Hero — for everyone, CTA differs by auth state ────────────────── */}
-      <>
-          <div style={{
-            background: 'linear-gradient(135deg, #1A237E 0%, #283593 45%, #3949AB 100%)',
-            color: '#fff',
-            padding: '48px 20px 44px',
-            textAlign: 'center',
-            boxShadow: '0 4px 16px rgba(26, 35, 126, 0.18)',
-            position: 'relative',
-            overflow: 'hidden',
-          }}>
-            {/* Decorative gradient glow */}
-            <div aria-hidden style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none',
-              background:
-                'radial-gradient(circle at 20% 10%, rgba(255,255,255,.15), transparent 45%), ' +
-                'radial-gradient(circle at 85% 85%, rgba(121,134,203,.35), transparent 50%)',
-            }} />
-
-            <div style={{ position: 'relative', maxWidth: 560, margin: '0 auto' }}>
-              <div style={{
-                width: 72, height: 72, borderRadius: 22,
-                background: 'rgba(255,255,255,.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 40, margin: '0 auto 18px',
-                backdropFilter: 'blur(8px)',
-                boxShadow: '0 4px 18px rgba(0,0,0,.15)',
-              }}>⚽</div>
-
-              <h1 style={{
-                fontSize: 'clamp(24px, 6vw, 32px)',
-                fontWeight: 900,
-                margin: 0,
-                lineHeight: 1.15,
-                letterSpacing: '-0.02em',
-              }}>
-                {t('landing.hero.title')}
-              </h1>
-              <p style={{
-                fontSize: 'clamp(14px, 3.8vw, 17px)',
-                opacity: 0.92,
-                marginTop: 12,
-                marginBottom: 0,
-                lineHeight: 1.5,
-                maxWidth: 420,
-                marginLeft: 'auto', marginRight: 'auto',
-              }}>
-                {t('landing.hero.subtitle')}
-              </p>
-
-              <div style={{
-                display: 'flex', gap: 10, justifyContent: 'center',
-                marginTop: 24, flexWrap: 'wrap',
-              }}>
-                <button
-                  onClick={() => isLoggedOut ? onLogin() : navigate({ name: 'home' })}
-                  style={{
-                    padding: '14px 22px', borderRadius: 14, fontWeight: 800, fontSize: 15,
-                    background: '#fff', color: '#1A237E', border: 'none', cursor: 'pointer',
-                    boxShadow: '0 6px 18px rgba(0,0,0,.2)',
-                    minHeight: 48, minWidth: 160,
-                  }}
-                >
-                  {isLoggedOut ? t('landing.hero.ctaPrimary') : t('landing.hero.ctaBackToApp')}
-                </button>
-                <button
-                  onClick={scrollToFeed}
-                  style={{
-                    padding: '14px 22px', borderRadius: 14, fontWeight: 700, fontSize: 15,
-                    background: 'rgba(255,255,255,.12)', color: '#fff',
-                    border: '1.5px solid rgba(255,255,255,.4)',
-                    cursor: 'pointer',
-                    minHeight: 48, minWidth: 160,
-                    backdropFilter: 'blur(4px)',
-                  }}
-                >
-                  {t('landing.hero.ctaSecondary')}
-                </button>
-              </div>
-
-              <span style={{
-                fontSize: 11, opacity: 0.55, display: 'inline-block', marginTop: 16,
-              }}>
-                🚧 {t('home.betaNotice')}
-              </span>
+      {/* ─── Header — compact for logged-in, full hero for logged-out ─────── */}
+      {isLoggedOut ? (
+        <div style={{
+          background: 'linear-gradient(135deg, #1A237E 0%, #283593 50%, #3949AB 100%)',
+          color: '#fff',
+          padding: '32px 20px 28px',
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          <div aria-hidden style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: 'radial-gradient(circle at 85% 85%, rgba(121,134,203,.35), transparent 55%)',
+          }} />
+          <div style={{ position: 'relative', maxWidth: 520, margin: '0 auto' }}>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>⚽</div>
+            <h1 style={{
+              fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: 900,
+              margin: 0, lineHeight: 1.2, letterSpacing: '-0.02em',
+            }}>
+              {t('landing.hero.title')}
+            </h1>
+            <p style={{
+              fontSize: 'clamp(13px, 3.4vw, 15px)', opacity: 0.9,
+              marginTop: 8, marginBottom: 20, lineHeight: 1.4,
+            }}>
+              {t('landing.hero.subtitle')}
+            </p>
+            <button
+              onClick={onLogin}
+              style={{
+                padding: '12px 28px', borderRadius: 12, fontWeight: 800, fontSize: 14,
+                background: '#fff', color: '#1A237E', border: 'none', cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(0,0,0,.18)',
+                minHeight: 44,
+              }}
+            >
+              {t('landing.hero.ctaPrimary')}
+            </button>
+            <div style={{ fontSize: 10, opacity: 0.55, marginTop: 12 }}>
+              🚧 {t('home.betaNotice')}
             </div>
           </div>
-
-          {/* ─── Feature highlights ──────────────────────────────────────── */}
-          <div style={{
-            maxWidth: 960, margin: '0 auto', width: '100%', boxSizing: 'border-box',
-            padding: '28px 16px 8px',
+        </div>
+      ) : (
+        /* Compact header for logged-in users — just navigation back */
+        <div style={{
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
+          padding: '12px 16px',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <button
+            onClick={() => navigate({ name: 'home' })}
+            aria-label="Zpět"
+            style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: 'var(--surface-var)', border: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, cursor: 'pointer', color: 'var(--text)',
+              flexShrink: 0,
+            }}
+          >
+            ←
+          </button>
+          <h1 style={{
+            flex: 1, margin: 0, fontSize: 17, fontWeight: 800, color: 'var(--text)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: 12,
-            }}>
-              {([
-                { icon: '🏆', title: t('landing.features.tournaments'), desc: t('landing.features.tournamentsDesc') },
-                { icon: '⚽', title: t('landing.features.matches'), desc: t('landing.features.matchesDesc') },
-                { icon: '👥', title: t('landing.features.clubs'), desc: t('landing.features.clubsDesc') },
-              ]).map((f) => (
-                <div key={f.title} style={{
-                  background: 'var(--surface)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 16,
-                  padding: '18px 16px',
-                  boxShadow: '0 1px 4px rgba(0,0,0,.04)',
-                }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: 12,
-                    background: 'var(--primary-light)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 24, marginBottom: 10,
-                  }}>{f.icon}</div>
-                  <div style={{
-                    fontSize: 15, fontWeight: 800, color: 'var(--text)', marginBottom: 4,
-                  }}>{f.title}</div>
-                  <div style={{
-                    fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.45,
-                  }}>{f.desc}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Social proof */}
-            <div style={{
-              textAlign: 'center',
-              marginTop: 20,
-              padding: '12px 16px',
-              fontSize: 13,
-              color: 'var(--text-muted)',
-              fontWeight: 600,
-            }}>
-              ⭐ {t('landing.socialProof')}
-            </div>
-          </div>
-        </>
+            📡 {t('landing.title')}
+          </h1>
+        </div>
+      )}
 
       {/* Anchor where the feed begins — used by "Browse examples" CTA */}
-      <div ref={feedRef} />
+      <div />
 
 
       {/* ─── Catalog ──────────────────────────────────────────────────────── */}
