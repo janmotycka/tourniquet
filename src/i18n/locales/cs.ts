@@ -2061,10 +2061,12 @@ export const cs = {
   'landing.format.round-robin': 'Každý s každým',
   'landing.format.groups-knockout': 'Skupiny + pavouk',
   'landing.format.knockout': 'Pavouk',
+  'landing.title': 'Veřejné akce',
   // Public landing hero (logged-out visitors)
   'landing.hero.title': 'TORQ — sportovní aplikace pro trenéry',
   'landing.hero.subtitle': 'Turnaje, zápasy, tréninky a hráči na jednom místě',
   'landing.hero.ctaPrimary': 'Přihlásit se / Vytvořit účet',
+  'landing.hero.ctaBackToApp': 'Zpět do TORQ',
   'landing.hero.ctaSecondary': 'Prohlédnout ukázky',
   'landing.features.tournaments': 'Turnaje',
   'landing.features.tournamentsDesc': 'Kompletní management: rozpisy, skupiny, play-off, live skóre',

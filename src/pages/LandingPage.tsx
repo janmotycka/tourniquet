@@ -137,9 +137,8 @@ export function LandingPage({ navigate, onLogin }: Props) {
       minHeight: '100dvh',
       background: 'var(--bg)',
     }}>
-      {/* ─── Hero — only for logged-out visitors ──────────────────────────── */}
-      {isLoggedOut ? (
-        <>
+      {/* ─── Hero — for everyone, CTA differs by auth state ────────────────── */}
+      <>
           <div style={{
             background: 'linear-gradient(135deg, #1A237E 0%, #283593 45%, #3949AB 100%)',
             color: '#fff',
@@ -193,7 +192,7 @@ export function LandingPage({ navigate, onLogin }: Props) {
                 marginTop: 24, flexWrap: 'wrap',
               }}>
                 <button
-                  onClick={onLogin}
+                  onClick={() => isLoggedOut ? onLogin() : navigate({ name: 'home' })}
                   style={{
                     padding: '14px 22px', borderRadius: 14, fontWeight: 800, fontSize: 15,
                     background: '#fff', color: '#1A237E', border: 'none', cursor: 'pointer',
@@ -201,7 +200,7 @@ export function LandingPage({ navigate, onLogin }: Props) {
                     minHeight: 48, minWidth: 160,
                   }}
                 >
-                  {t('landing.hero.ctaPrimary')}
+                  {isLoggedOut ? t('landing.hero.ctaPrimary') : t('landing.hero.ctaBackToApp')}
                 </button>
                 <button
                   onClick={scrollToFeed}
@@ -277,7 +276,6 @@ export function LandingPage({ navigate, onLogin }: Props) {
             </div>
           </div>
         </>
-      ) : null}
 
       {/* Anchor where the feed begins — used by "Browse examples" CTA */}
       <div ref={feedRef} />

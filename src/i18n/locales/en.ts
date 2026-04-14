@@ -2059,10 +2059,12 @@ export const en: Record<TranslationKey, string> = {
   'landing.format.round-robin': 'Round robin',
   'landing.format.groups-knockout': 'Groups + knockout',
   'landing.format.knockout': 'Knockout',
+  'landing.title': 'Public events',
   // Public landing hero (logged-out visitors)
   'landing.hero.title': 'TORQ — sports app for coaches',
   'landing.hero.subtitle': 'Tournaments, matches, training and players in one place',
   'landing.hero.ctaPrimary': 'Sign in / Create account',
+  'landing.hero.ctaBackToApp': 'Back to TORQ',
   'landing.hero.ctaSecondary': 'Browse examples',
   'landing.features.tournaments': 'Tournaments',
   'landing.features.tournamentsDesc': 'Full management: schedules, groups, playoffs, live score',
