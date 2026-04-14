@@ -162,6 +162,7 @@ export const useMatchesStore = create<MatchesState>()(
           periodDurationMinutes: input.periodDurationMinutes,
           matchFormat: input.matchFormat,
           ageCategory: input.ageCategory,
+          squad: input.squad,
           currentPeriod: 0,
           status: 'planned',
           startedAt: null,

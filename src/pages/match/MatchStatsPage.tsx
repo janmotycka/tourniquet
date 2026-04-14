@@ -8,6 +8,7 @@ import { exportSeasonPlayerStatsCSV } from '../../utils/export-csv';
 import type { PlayerSeasonStats } from '../../utils/match-stats';
 import { PageHeader } from '../../components/ui';
 import { radius, fontSize, fontWeight } from '../../theme/tokens';
+import { getSeasonIdForDate, getCurrentSeason } from '../../utils/season';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -33,7 +34,7 @@ function FormBadge({ result }: { result: 'W' | 'D' | 'L' }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      width: 22, height: 22, borderRadius: 6, fontWeight: 800, fontSize: 11,
+      width: 24, height: 24, borderRadius: '50%', fontWeight: fontWeight.extrabold, fontSize: fontSize.xs,
       color: colors[result], background: bgs[result],
     }}>
       {result}
@@ -41,16 +42,33 @@ function FormBadge({ result }: { result: 'W' | 'D' | 'L' }) {
   );
 }
 
-// ─── StatBox ────────────────────────────────────────────────────────────────
+// ─── StatTile ───────────────────────────────────────────────────────────────
+// Velký stat tile — používá fontSize.xl pro hodnotu, fontSize.xs pro label.
+// Použito v týmové bilanci (W/D/L/Goals/Points).
 
-function StatBox({ label, value, color }: { label: string; value: string | number; color?: string }) {
+function StatTile({ label, value, color }: { label: string; value: string | number; color?: string }) {
   return (
     <div style={{
-      background: 'var(--surface)', borderRadius: 14, padding: '10px 14px',
-      textAlign: 'center', flex: '1 1 0',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      gap: 2, padding: '6px 4px', minWidth: 0,
     }}>
-      <div style={{ fontWeight: 900, fontSize: 22, color: color ?? 'var(--text)' }}>{value}</div>
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginTop: 2 }}>{label}</div>
+      <div style={{
+        fontWeight: fontWeight.extrabold,
+        fontSize: fontSize.xl,
+        color: color ?? 'var(--text)',
+        lineHeight: 1.1,
+      }}>
+        {value}
+      </div>
+      <div style={{
+        fontSize: fontSize.xs,
+        color: 'var(--text-muted)',
+        fontWeight: fontWeight.medium,
+        textAlign: 'center',
+        whiteSpace: 'nowrap',
+      }}>
+        {label}
+      </div>
     </div>
   );
 }
@@ -63,6 +81,10 @@ export function MatchStatsPage({ navigate }: Props) {
   const clubs = useClubsStore(s => s.clubs);
   const [clubFilter, setClubFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  // Season filter: null = all seasons; otherwise season id (e.g. "2025-2026").
+  // Default to the current season.
+  const currentSeasonId = useMemo(() => getCurrentSeason(t).seasonId, [t]);
+  const [seasonFilter, setSeasonFilter] = useState<string | null>(currentSeasonId);
   const [sortKey, setSortKey] = useState<SortKey>('goals');
 
   // Extract unique age categories
@@ -76,11 +98,29 @@ export function MatchStatsPage({ navigate }: Props) {
     });
   }, [matches]);
 
-  // Pre-filter matches by category before stats computation
+  // Extract unique seasons present in matches, sorted by recency (newest first).
+  const seasons = useMemo(() => {
+    const map = new Map<string, string>();
+    matches.forEach(m => {
+      const id = getSeasonIdForDate(m.date);
+      if (!id) return;
+      if (!map.has(id)) {
+        const [start, end] = id.split('-');
+        map.set(id, t('season.label', { start, end }));
+      }
+    });
+    return [...map.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([id, label]) => ({ id, label }));
+  }, [matches, t]);
+
+  // Pre-filter matches by season + category before stats computation
   const filteredMatches = useMemo(() => {
-    if (!categoryFilter) return matches;
-    return matches.filter(m => m.ageCategory === categoryFilter);
-  }, [matches, categoryFilter]);
+    let result = matches;
+    if (seasonFilter) result = result.filter(m => getSeasonIdForDate(m.date) === seasonFilter);
+    if (categoryFilter) result = result.filter(m => m.ageCategory === categoryFilter);
+    return result;
+  }, [matches, seasonFilter, categoryFilter]);
 
   const teamStats = useMemo(
     () => computeTeamStats(filteredMatches, clubFilter ?? undefined),
@@ -117,6 +157,46 @@ export function MatchStatsPage({ navigate }: Props) {
             </button>
           ) : undefined}
         />
+
+        {/* Season filter */}
+        {seasons.length > 0 && (
+          <div style={{
+            display: 'flex', gap: 6, padding: '0 20px 12px',
+            overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+          }}>
+            <button
+              onClick={() => setSeasonFilter(null)}
+              style={{
+                fontSize: fontSize.sm, fontWeight: !seasonFilter ? fontWeight.bold : fontWeight.medium,
+                padding: '5px 11px', borderRadius: radius.sm,
+                background: !seasonFilter ? 'var(--primary)' : 'var(--surface)',
+                color: !seasonFilter ? '#fff' : 'var(--text-muted)',
+                border: !seasonFilter ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+                whiteSpace: 'nowrap',
+                transition: 'all .15s',
+              }}
+            >
+              {t('season.all')}
+            </button>
+            {seasons.map(s => (
+              <button
+                key={s.id}
+                onClick={() => setSeasonFilter(s.id)}
+                style={{
+                  fontSize: fontSize.sm, fontWeight: seasonFilter === s.id ? fontWeight.bold : fontWeight.medium,
+                  padding: '5px 11px', borderRadius: radius.sm,
+                  background: seasonFilter === s.id ? 'var(--primary)' : 'var(--surface)',
+                  color: seasonFilter === s.id ? '#fff' : 'var(--text-muted)',
+                  border: seasonFilter === s.id ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+                  whiteSpace: 'nowrap',
+                  transition: 'all .15s',
+                }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Filtr klubu (pokud je vic nez 1) */}
         {clubs.length > 1 && (
@@ -201,32 +281,59 @@ export function MatchStatsPage({ navigate }: Props) {
           </div>
         ) : (
           <>
-            {/* ── Přehled týmu ─────────────────────────────────────── */}
-            <div>
-              <h2 style={{ fontWeight: 800, fontSize: 16, marginBottom: 10 }}>{t('matchStats.team')}</h2>
+            {/* ── Týmová bilance ──────────────────────────────────── */}
+            <div style={{
+              background: 'var(--surface)',
+              borderRadius: radius.xl,
+              padding: '14px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14,
+              boxShadow: 'var(--shadow-sm)',
+            }}>
+              <h2 style={{
+                fontWeight: fontWeight.extrabold,
+                fontSize: fontSize.lg,
+                margin: 0,
+              }}>
+                {t('matchStats.teamRecord')}
+              </h2>
 
-              {/* W / D / L + matches */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                <StatBox label={t('matchStats.matches')} value={teamStats.totalMatches} />
-                <StatBox label={t('matchStats.wins')} value={teamStats.wins} color="var(--success)" />
-                <StatBox label={t('matchStats.draws')} value={teamStats.draws} color="var(--warning)" />
-                <StatBox label={t('matchStats.losses')} value={teamStats.losses} color="var(--danger)" />
+              {/* Big stats grid: Z / V / R / P / Skóre / Body */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+                gap: 4,
+              }}>
+                <StatTile label={t('matchStats.matches')} value={teamStats.totalMatches} />
+                <StatTile label={t('matchStats.wins')} value={teamStats.wins} color="var(--success)" />
+                <StatTile label={t('matchStats.draws')} value={teamStats.draws} color="var(--warning)" />
+                <StatTile label={t('matchStats.losses')} value={teamStats.losses} color="var(--danger)" />
+                <StatTile
+                  label={t('matchStats.goalsScore')}
+                  value={`${teamStats.goalsFor}:${teamStats.goalsAgainst}`}
+                />
+                <StatTile
+                  label={t('matchStats.points')}
+                  value={teamStats.wins * 3 + teamStats.draws}
+                  color="var(--primary)"
+                />
               </div>
 
-              {/* Goals + clean sheets */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                <StatBox label={t('matchStats.goalsFor')} value={teamStats.goalsFor} />
-                <StatBox label={t('matchStats.goalsAgainst')} value={teamStats.goalsAgainst} />
-                <StatBox label={t('matchStats.cleanSheets')} value={teamStats.cleanSheets} />
-              </div>
-
-              {/* Form */}
+              {/* Form (last 5) */}
               {teamStats.form.length > 0 && (
                 <div style={{
-                  background: 'var(--surface)', borderRadius: 14, padding: '10px 14px',
-                  display: 'flex', alignItems: 'center', gap: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  paddingTop: 10,
+                  borderTop: '1px solid var(--border)',
                 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)' }}>
+                  <span style={{
+                    fontSize: fontSize.xs,
+                    fontWeight: fontWeight.bold,
+                    color: 'var(--text-muted)',
+                  }}>
                     {t('matchStats.form')}
                   </span>
                   <div style={{ display: 'flex', gap: 4 }}>
@@ -234,6 +341,31 @@ export function MatchStatsPage({ navigate }: Props) {
                   </div>
                 </div>
               )}
+
+              {/* Clean sheets */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+                paddingTop: 10,
+                borderTop: '1px solid var(--border)',
+              }}>
+                <span style={{
+                  fontSize: fontSize.xs,
+                  fontWeight: fontWeight.bold,
+                  color: 'var(--text-muted)',
+                }}>
+                  {t('matchStats.cleanSheets')}
+                </span>
+                <span style={{
+                  fontSize: fontSize.md,
+                  fontWeight: fontWeight.extrabold,
+                  color: 'var(--text)',
+                }}>
+                  {teamStats.cleanSheets}
+                </span>
+              </div>
             </div>
 
             {/* ── Tabulka hráčů ──────────────────────────────────── */}

@@ -11,6 +11,7 @@ import { DesktopPage, FilterPill, desktopPrimaryButtonStyle, desktopSecondaryBut
 import { PageHeader } from '../../components/ui';
 import type { SeasonMatch } from '../../types/match.types';
 import { radius, fontSize, fontWeight, spacing } from '../../theme/tokens';
+import { groupMatchesBySeasonHalf } from '../../utils/season';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -73,6 +74,14 @@ function MatchCard({ match, onClick, t }: { match: SeasonMatch; onClick: () => v
               padding: '2px 7px', borderRadius: radius.sm, fontWeight: fontWeight.bold, whiteSpace: 'nowrap',
             }}>
               {match.ageCategory}
+            </span>
+          )}
+          {match.squad && (
+            <span style={{
+              fontSize: fontSize.xs, background: 'var(--surface-var)', color: 'var(--text)',
+              padding: '2px 7px', borderRadius: radius.sm, fontWeight: fontWeight.bold, whiteSpace: 'nowrap',
+            }}>
+              {match.squad}
             </span>
           )}
         </div>
@@ -176,12 +185,14 @@ function MatchListSkeleton() {
 
 // ─── Desktop table view ──────────────────────────────────────────────────────
 
-function MatchesTable({ matches, t, onRowClick, onDelete }: {
-  matches: SeasonMatch[];
+function MatchesTable({ sections, t, onRowClick, onDelete }: {
+  sections: Array<{ key: string; label: string; matches: SeasonMatch[] }>;
   t: (key: string, params?: Record<string, string | number>) => string;
   onRowClick: (m: SeasonMatch) => void;
   onDelete: (m: SeasonMatch, e: React.MouseEvent) => void;
 }) {
+  const totalCols = 7;
+  const showHeaders = sections.length > 1;
   return (
     <div style={{
       background: 'var(--surface)',
@@ -211,95 +222,111 @@ function MatchesTable({ matches, t, onRowClick, onDelete }: {
             <th style={{ ...thStyle, width: 60 }}></th>
           </tr>
         </thead>
-        <tbody>
-          {matches.map((m, i) => {
-            const result = matchResult(m, t);
-            const badge = statusBadge(m, t);
-            const isLive = m.status === 'live';
-            const our = m.isHome ? m.homeScore : m.awayScore;
-            const their = m.isHome ? m.awayScore : m.homeScore;
-            return (
-              <tr
-                key={m.id}
-                onClick={() => onRowClick(m)}
-                style={{
-                  borderTop: i === 0 ? 'none' : '1px solid var(--border)',
-                  cursor: 'pointer',
-                  background: isLive ? 'rgba(198, 40, 40, 0.04)' : 'transparent',
-                  transition: 'background .12s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = isLive ? 'rgba(198, 40, 40, 0.08)' : 'var(--surface-var)')}
-                onMouseLeave={e => (e.currentTarget.style.background = isLive ? 'rgba(198, 40, 40, 0.04)' : 'transparent')}
-              >
-                <td style={tdStyle}>
-                  <div style={{ fontWeight: 700, color: 'var(--text)' }}>{formatDate(m.date)}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{m.kickoffTime}</div>
-                </td>
-                <td style={tdStyle}>
-                  <div style={{ fontWeight: 700, color: 'var(--text)' }}>{m.opponent}</div>
-                </td>
-                <td style={tdStyle}>
-                  <span style={{ color: 'var(--text-muted)' }}>{m.competition || '—'}</span>
-                </td>
-                <td style={tdStyle}>
-                  <span style={{ color: 'var(--text-muted)' }}>
-                    {m.isHome ? t('match.home') : t('match.away')}
-                  </span>
-                </td>
-                <td style={{ ...tdStyle, textAlign: 'center' }}>
-                  {m.status === 'planned' ? (
-                    <span style={{ color: 'var(--text-disabled)' }}>—</span>
-                  ) : (
-                    <span style={{
-                      fontWeight: 900, fontSize: 16, color: 'var(--text)',
-                      background: isLive ? 'var(--danger)' : 'var(--surface-var)',
-                      padding: '4px 12px', borderRadius: 8, letterSpacing: 0.5,
-                      display: 'inline-block', minWidth: 56,
-                      ...(isLive ? { color: '#fff' } : {}),
-                    }}>
-                      {our}:{their}
-                    </span>
-                  )}
-                </td>
-                <td style={{ ...tdStyle, textAlign: 'center' }}>
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 8,
-                    color: badge.color, background: badge.bg, whiteSpace: 'nowrap',
-                  }}>
-                    {badge.label}
-                  </span>
-                  {result && (
-                    <span style={{
-                      marginLeft: 6,
-                      display: 'inline-block', padding: '4px 8px', borderRadius: 8,
-                      background: result.bg, color: result.color, fontWeight: 800, fontSize: 11,
-                    }}>
-                      {result.label}
-                    </span>
-                  )}
-                </td>
-                <td style={{ ...tdStyle, textAlign: 'right' }}>
-                  <button
-                    onClick={(e) => onDelete(m, e)}
-                    title={t('common.delete')}
-                    style={{
-                      background: 'transparent', border: 'none',
-                      width: 30, height: 30, borderRadius: 8,
-                      cursor: 'pointer', color: 'var(--text-muted)',
-                      fontSize: 16, opacity: 0.5,
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'var(--surface-var)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    ×
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
+        {sections.map((section, sIdx) => (
+          <tbody key={section.key}>
+            {showHeaders && (
+              <SeasonHeaderRow label={section.label} count={section.matches.length} colSpan={totalCols} />
+            )}
+            {section.matches.map((m, i) => {
+              const isFirstRow = !showHeaders && sIdx === 0 && i === 0;
+              return renderMatchRow(m, isFirstRow ? 0 : 1, t, onRowClick, onDelete);
+            })}
+          </tbody>
+        ))}
       </table>
     </div>
+  );
+}
+
+function renderMatchRow(
+  m: SeasonMatch,
+  borderTopIndex: number,
+  t: (key: string, params?: Record<string, string | number>) => string,
+  onRowClick: (m: SeasonMatch) => void,
+  onDelete: (m: SeasonMatch, e: React.MouseEvent) => void,
+) {
+  const result = matchResult(m, t);
+  const badge = statusBadge(m, t);
+  const isLive = m.status === 'live';
+  const our = m.isHome ? m.homeScore : m.awayScore;
+  const their = m.isHome ? m.awayScore : m.homeScore;
+  return (
+    <tr
+      key={m.id}
+      onClick={() => onRowClick(m)}
+      style={{
+        borderTop: borderTopIndex === 0 ? 'none' : '1px solid var(--border)',
+        cursor: 'pointer',
+        background: isLive ? 'rgba(198, 40, 40, 0.04)' : 'transparent',
+        transition: 'background .12s',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.background = isLive ? 'rgba(198, 40, 40, 0.08)' : 'var(--surface-var)')}
+      onMouseLeave={e => (e.currentTarget.style.background = isLive ? 'rgba(198, 40, 40, 0.04)' : 'transparent')}
+    >
+      <td style={tdStyle}>
+        <div style={{ fontWeight: 700, color: 'var(--text)' }}>{formatDate(m.date)}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{m.kickoffTime}</div>
+      </td>
+      <td style={tdStyle}>
+        <div style={{ fontWeight: 700, color: 'var(--text)' }}>{m.opponent}</div>
+      </td>
+      <td style={tdStyle}>
+        <span style={{ color: 'var(--text-muted)' }}>{m.competition || '—'}</span>
+      </td>
+      <td style={tdStyle}>
+        <span style={{ color: 'var(--text-muted)' }}>
+          {m.isHome ? t('match.home') : t('match.away')}
+        </span>
+      </td>
+      <td style={{ ...tdStyle, textAlign: 'center' }}>
+        {m.status === 'planned' ? (
+          <span style={{ color: 'var(--text-disabled)' }}>—</span>
+        ) : (
+          <span style={{
+            fontWeight: 900, fontSize: 16, color: 'var(--text)',
+            background: isLive ? 'var(--danger)' : 'var(--surface-var)',
+            padding: '4px 12px', borderRadius: 8, letterSpacing: 0.5,
+            display: 'inline-block', minWidth: 56,
+            ...(isLive ? { color: '#fff' } : {}),
+          }}>
+            {our}:{their}
+          </span>
+        )}
+      </td>
+      <td style={{ ...tdStyle, textAlign: 'center' }}>
+        <span style={{
+          fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 8,
+          color: badge.color, background: badge.bg, whiteSpace: 'nowrap',
+        }}>
+          {badge.label}
+        </span>
+        {result && (
+          <span style={{
+            marginLeft: 6,
+            display: 'inline-block', padding: '4px 8px', borderRadius: 8,
+            background: result.bg, color: result.color, fontWeight: 800, fontSize: 11,
+          }}>
+            {result.label}
+          </span>
+        )}
+      </td>
+      <td style={{ ...tdStyle, textAlign: 'right' }}>
+        <button
+          onClick={(e) => onDelete(m, e)}
+          title={t('common.delete')}
+          style={{
+            background: 'transparent', border: 'none',
+            width: 30, height: 30, borderRadius: 8,
+            cursor: 'pointer', color: 'var(--text-muted)',
+            fontSize: 16, opacity: 0.5,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'var(--surface-var)'; }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.background = 'transparent'; }}
+        >
+          ×
+        </button>
+      </td>
+    </tr>
   );
 }
 
@@ -346,6 +373,58 @@ function DesktopEmptyState({ icon, title, description, action }: {
       </div>
       {action && <div style={{ marginTop: 8 }}>{action}</div>}
     </div>
+  );
+}
+
+// ─── SeasonHeader ─────────────────────────────────────────────────────────────
+
+function SeasonHeader({ label, count }: { label: string; count: number }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: spacing.sm,
+      padding: `${spacing.sm}px ${spacing.xs}px ${spacing.xs}px`,
+      marginTop: spacing.xs,
+    }}>
+      <span style={{
+        fontSize: fontSize.sm, fontWeight: fontWeight.extrabold,
+        color: 'var(--text)', letterSpacing: 0.2,
+      }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: fontSize.xs, fontWeight: fontWeight.bold,
+        background: 'var(--surface-var)', color: 'var(--text-muted)',
+        padding: '2px 8px', borderRadius: radius.sm,
+      }}>
+        {count}
+      </span>
+      <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+    </div>
+  );
+}
+
+function SeasonHeaderRow({ label, count, colSpan }: { label: string; count: number; colSpan: number }) {
+  return (
+    <tr>
+      <td colSpan={colSpan} style={{
+        background: 'var(--surface-var)',
+        padding: '10px 18px',
+        fontWeight: fontWeight.extrabold,
+        fontSize: fontSize.sm,
+        color: 'var(--text)',
+        letterSpacing: 0.2,
+      }}>
+        <span>{label}</span>
+        <span style={{
+          marginLeft: spacing.sm,
+          fontSize: fontSize.xs, fontWeight: fontWeight.bold,
+          background: 'var(--surface)', color: 'var(--text-muted)',
+          padding: '2px 8px', borderRadius: radius.sm,
+        }}>
+          {count}
+        </span>
+      </td>
+    </tr>
   );
 }
 
@@ -424,6 +503,14 @@ export function MatchListPage({ navigate }: Props) {
     if (categoryFilter !== 'all') result = result.filter(m => m.ageCategory === categoryFilter);
     return result;
   }, [sorted, filter, categoryFilter]);
+
+  // Group filtered matches by season half (Podzim 2025, Jaro 2026, ...)
+  // for section-header rendering. Within each group, original order
+  // (status → date desc) is preserved.
+  const seasonSections = useMemo(
+    () => groupMatchesBySeasonHalf(filtered, t),
+    [filtered, t]
+  );
 
   const ask = useConfirmStore(s => s.ask);
 
@@ -540,7 +627,7 @@ export function MatchListPage({ navigate }: Props) {
           />
         ) : (
           <MatchesTable
-            matches={filtered}
+            sections={seasonSections}
             t={t}
             onRowClick={(m) => navigate({ name: 'match-detail', matchId: m.id })}
             onDelete={(m, e) => handleDelete(m, e)}
@@ -687,30 +774,37 @@ export function MatchListPage({ navigate }: Props) {
             </div>
           </div>
         ) : (
-          filtered.map(match => (
-            <div key={match.id} style={{ position: 'relative' }}>
-              <MatchCard
-                match={match}
-                t={t}
-                onClick={() => navigate({ name: 'match-detail', matchId: match.id })}
-              />
-              <button
-                onClick={(e) => handleDelete(match, e)}
-                aria-label={t('common.delete')}
-                style={{
-                  position: 'absolute', top: -6, right: -6,
-                  width: 26, height: 26, borderRadius: 13,
-                  background: 'var(--surface)', color: 'var(--danger)',
-                  fontWeight: 800, fontSize: 15, lineHeight: 1,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '1.5px solid var(--border)',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-                  cursor: 'pointer',
-                  zIndex: 2,
-                }}
-              >
-                ×
-              </button>
+          seasonSections.map(section => (
+            <div key={section.key} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {seasonSections.length > 1 && (
+                <SeasonHeader label={section.label} count={section.matches.length} />
+              )}
+              {section.matches.map(match => (
+                <div key={match.id} style={{ position: 'relative' }}>
+                  <MatchCard
+                    match={match}
+                    t={t}
+                    onClick={() => navigate({ name: 'match-detail', matchId: match.id })}
+                  />
+                  <button
+                    onClick={(e) => handleDelete(match, e)}
+                    aria-label={t('common.delete')}
+                    style={{
+                      position: 'absolute', top: -6, right: -6,
+                      width: 26, height: 26, borderRadius: 13,
+                      background: 'var(--surface)', color: 'var(--danger)',
+                      fontWeight: 800, fontSize: 15, lineHeight: 1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      border: '1.5px solid var(--border)',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                      cursor: 'pointer',
+                      zIndex: 2,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
           ))
         )}

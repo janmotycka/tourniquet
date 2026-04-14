@@ -41,6 +41,7 @@ export interface ClubPlayer {
   email?: string;
 
   ageCategory: AgeCategory;    // aktuální kategorie
+  squad?: string;              // 'A', 'B', ... — volitelný sub-tým v rámci ageCategory
   categoryHistory?: CategoryHistoryEntry[];  // historie přesunů
 
   active: boolean;             // soft-delete

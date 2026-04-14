@@ -84,6 +84,7 @@ export interface SeasonMatch {
   periodDurationMinutes: number; // délka jedné periody v minutách
   matchFormat?: MatchFormat;  // "4+1", "7+1", ... určuje počet hráčů v základní sestavě
   ageCategory?: string;       // věková kategorie (U6–U19), volitelná
+  squad?: string;             // volitelný sub-tým v rámci ageCategory (např. 'A', 'B')
 
   currentPeriod: number;      // aktuální perioda (1-based, 0 = nezačal)
   status: SeasonMatchStatus;
@@ -175,6 +176,7 @@ export interface CreateSeasonMatchInput {
   periodDurationMinutes: number;
   matchFormat?: MatchFormat;
   ageCategory?: string;
+  squad?: string;
   lineup: MatchLineupPlayer[];
   substitutionSettings?: SubstitutionSettings;
   trackAssists?: boolean;

@@ -138,6 +138,20 @@ export function PlayerRosterEditor({
                       placeholder={t('clubs.yearShort')}
                     />
                   </div>
+                  <div style={{ display: 'flex', gap: spacing.xs + 2, alignItems: 'center' }}>
+                    <span style={{ fontSize: fontSize.xs, color: 'var(--text-muted)', fontWeight: fontWeight.medium }}>
+                      {t('clubs.squadLabel') || 'Tým'}:
+                    </span>
+                    <input
+                      value={player.squad ?? ''}
+                      onChange={e => {
+                        const v = e.target.value.toUpperCase().slice(0, 3);
+                        onUpdate(player.id, { squad: v || undefined });
+                      }}
+                      placeholder="A / B"
+                      style={{ ...inputStyle, width: 72, textAlign: 'center' }}
+                    />
+                  </div>
                   <div style={{ display: 'flex', gap: spacing.xs + 2, justifyContent: 'flex-end' }}>
                     <button
                       onClick={() => onRemove(player.id)}
@@ -196,8 +210,22 @@ export function PlayerRosterEditor({
                     fontWeight: fontWeight.medium, fontSize: fontSize.base,
                     color: 'var(--text)',
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    display: 'flex', alignItems: 'center', gap: spacing.xs,
                   }}>
-                    {player.name}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {player.name}
+                    </span>
+                    {player.squad && (
+                      <span style={{
+                        fontSize: fontSize.xs, fontWeight: fontWeight.bold,
+                        background: clubColor ? hexToTint(clubColor, 0.15) : 'var(--primary-light)',
+                        color: clubColor || 'var(--primary)',
+                        borderRadius: radius.sm, padding: '1px 6px',
+                        lineHeight: 1.4, flexShrink: 0,
+                      }}>
+                        {player.squad}
+                      </span>
+                    )}
                   </div>
 
                   {/* Second row: position badge + birth year + stat badges */}

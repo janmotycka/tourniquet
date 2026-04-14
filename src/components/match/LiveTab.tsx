@@ -180,7 +180,7 @@ function LandscapeScoreboard({ match, elapsed, onQuickGoal, onPause, onResume, t
             fontSize: 10, fontWeight: 700, color: '#FF9800',
             animation: 'pulse 1s infinite',
           }}>
-            ⏸ PAUSED
+            {t('match.detail.pausedBadge')}
           </div>
         )}
       </div>
@@ -350,7 +350,7 @@ function InlineGoalEdit({ match, goal, onClose }: {
             padding: '2px 10px', borderRadius: 10, background: 'var(--primary-light)',
             fontWeight: 700, color: 'var(--primary)',
           }}>{goal.minute}'</span>
-          <span>Kdo dal gól?</span>
+          <span>{t('match.detail.whoScored')}</span>
         </div>
 
         {/* Player grid — 2 columns for quick tapping */}
@@ -692,7 +692,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               color: match.pausedAt ? '#FFD54F' : '#A5D6A7',
               animation: match.pausedAt ? undefined : 'pulse 2s infinite',
             }}>
-              {match.pausedAt ? '⏸ PAUSED' : 'LIVE'}
+              {match.pausedAt ? t('match.detail.pausedBadge') : t('match.detail.liveBadge')}
             </span>
             {periods > 1 && (
               <span style={{

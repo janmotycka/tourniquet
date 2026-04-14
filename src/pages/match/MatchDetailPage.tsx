@@ -11,6 +11,8 @@ import { getMatchPublicUrl, generateMatchQRCodeDataUrl } from '../../utils/qr-co
 import { useLayoutMode } from '../../hooks/useLayoutMode';
 import { useClubsStore } from '../../store/clubs.store';
 import { PageHeader } from '../../components/ui';
+import { useToastStore } from '../../store/toast.store';
+import { generateFacrTextReport, exportFacrReportPdf } from '../../utils/match-facr-report';
 
 interface Props { matchId: string; navigate: (p: Page) => void; }
 
@@ -31,7 +33,7 @@ function MatchDetailSkeleton() {
 // ─── MatchDetailPage ──────────────────────────────────────────────────────────
 
 export function MatchDetailPage({ matchId, navigate }: Props) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { isDesktop } = useLayoutMode();
   const match = useMatchesStore(s => s.getMatchById(matchId));
   const matches = useMatchesStore(s => s.matches); // Subscribe for reactivity
@@ -75,6 +77,26 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
       setQrDataUrl(url);
     } catch { /* QR gen failed */ }
   }, [matchId, qrDataUrl]);
+
+  const handleCopyFacrText = useCallback(async () => {
+    if (!currentMatch) return;
+    try {
+      const text = generateFacrTextReport(currentMatch, clubDisplayName);
+      await navigator.clipboard.writeText(text);
+      useToastStore.getState().show('success', t('match.detail.facrCopied'));
+    } catch {
+      useToastStore.getState().show('error', t('match.detail.facrCopied'));
+    }
+  }, [currentMatch, clubDisplayName, t]);
+
+  const handleDownloadFacrPdf = useCallback(async () => {
+    if (!currentMatch) return;
+    try {
+      await exportFacrReportPdf(currentMatch, clubDisplayName, t, locale);
+    } catch {
+      /* PDF generation failed silently */
+    }
+  }, [currentMatch, clubDisplayName, t, locale]);
 
   const handleWhatsApp = useCallback(() => {
     if (!currentMatch) return;
@@ -216,11 +238,43 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
         {/* Match actions */}
         <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
           {currentMatch.status === 'finished' && (
+            <div style={{
+              background: 'var(--surface)', borderRadius: 14, padding: '12px 14px',
+              border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10,
+              marginBottom: 4,
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                {t('match.detail.facrReportTitle')}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleCopyFacrText}
+                  style={{
+                    flex: '1 1 140px', padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                    background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  📋 {t('match.detail.facrCopyText')}
+                </button>
+                <button
+                  onClick={handleDownloadFacrPdf}
+                  style={{
+                    flex: '1 1 140px', padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                    background: 'var(--surface-var)', color: 'var(--text)', border: '1px solid var(--border)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  📄 {t('match.detail.facrDownloadPdf')}
+                </button>
+              </div>
+            </div>
+          )}
+          {currentMatch.status === 'finished' && (
             <button
               onClick={async () => {
                 const ok = await ask({
-                  title: 'Znovu otevřít zápas',
-                  message: 'Zápas se vrátí do stavu LIVE a můžeš pokračovat v zadávání.',
+                  title: t('match.detail.reopenTitle'),
+                  message: t('match.detail.reopenMessage'),
                 });
                 if (ok) reopenMatch(matchId);
               }}
@@ -230,17 +284,17 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
                 cursor: 'pointer',
               }}
             >
-              🔄 Znovu otevřít zápas
+              {t('match.detail.reopenBtn')}
             </button>
           )}
           {(currentMatch.status === 'live' || currentMatch.status === 'finished') && (
             <button
               onClick={async () => {
                 const ok = await ask({
-                  title: 'Resetovat zápas',
-                  message: 'Smaže se skóre, góly, karty, střídání a hodnocení. Zápas se vrátí do stavu Naplánováno. Tuto akci nelze vrátit.',
+                  title: t('match.detail.resetTitle'),
+                  message: t('match.detail.resetMessage'),
                   destructive: true,
-                  confirmLabel: 'Resetovat',
+                  confirmLabel: t('match.detail.resetConfirm'),
                 });
                 if (ok) resetMatch(matchId);
               }}
@@ -250,7 +304,7 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
                 cursor: 'pointer',
               }}
             >
-              ⚠️ Resetovat zápas
+              {t('match.detail.resetBtn')}
             </button>
           )}
         </div>

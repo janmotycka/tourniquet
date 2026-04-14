@@ -1,8 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { Tournament, Team, RosterSubmission } from '../../types/tournament.types';
+import type { ClubPlayer, AgeCategory } from '../../types/club.types';
 import { useI18n } from '../../i18n';
 import { useTournamentStore } from '../../store/tournament.store';
 import { useContactsStore } from '../../store/contacts.store';
+import { useClubsStore } from '../../store/clubs.store';
+import { useToastStore } from '../../store/toast.store';
 import { submitRoster } from '../../services/roster.firebase';
 import { generateId } from '../../utils/id';
 import { textOnColor, isLightColor } from '../../utils/team-colors';
@@ -23,6 +26,12 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
   const acceptRoster = useTournamentStore(s => s.acceptRoster);
   const firebaseUid = useTournamentStore(s => s.firebaseUid);
   const createOrUpdateContact = useContactsStore(s => s.createOrUpdateContact);
+  const getClubById = useClubsStore(s => s.getClubById);
+  const showToast = useToastStore(s => s.show);
+
+  // Klub, ze kterého lze importovat hráče (tým má clubId a user k němu má přístup)
+  const sourceClub = team.clubId ? getClubById(team.clubId) : undefined;
+  const [importOpen, setImportOpen] = useState(false);
 
   const existingRoster = rosterMap[team.id];
 
@@ -80,6 +89,45 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
   const updatePlayer = useCallback((id: string, field: keyof AdminPlayerRow, value: string) => {
     setPlayers(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
   }, []);
+
+  // Bulk import vybraných klubových hráčů do lokálního seznamu soupisky.
+  // Deduplikuje dle jméno+rok, jinak generuje nové id.
+  const importClubPlayers = useCallback((clubPlayers: ClubPlayer[]) => {
+    if (!clubPlayers.length) return;
+    setPlayers(prev => {
+      const existingKeys = new Set(
+        prev
+          .filter(p => p.name.trim())
+          .map(p => `${p.name.trim().toLowerCase()}|${p.birthYear.trim()}`),
+      );
+      const usedJerseys = new Set(
+        prev.filter(p => p.jerseyNumber.trim()).map(p => p.jerseyNumber.trim()),
+      );
+      const toAdd: AdminPlayerRow[] = [];
+      for (const cp of clubPlayers) {
+        const key = `${cp.name.trim().toLowerCase()}|${cp.birthYear ?? ''}`;
+        if (existingKeys.has(key)) continue;
+        let jersey = cp.jerseyNumber ? String(cp.jerseyNumber) : '';
+        if (jersey && usedJerseys.has(jersey)) {
+          // Duplicita → necháme prázdné, ať admin doplní ručně
+          jersey = '';
+        }
+        if (jersey) usedJerseys.add(jersey);
+        existingKeys.add(key);
+        toAdd.push({
+          id: generateId(),
+          name: cp.name.trim(),
+          jerseyNumber: jersey,
+          birthYear: cp.birthYear ? String(cp.birthYear) : '',
+        });
+      }
+      if (!toAdd.length) return prev;
+      // Zachovej prázdný placeholder řádek (bez jména), pokud je jediný řádek
+      const nonEmpty = prev.filter(p => p.name.trim());
+      showToast('success', t('roster.importFromClubAdded', { count: toAdd.length }));
+      return [...nonEmpty, ...toAdd];
+    });
+  }, [showToast, t]);
 
   const validate = useCallback((): string | null => {
     if (!coachName.trim()) return t('roster.errorCoachName');
@@ -309,6 +357,25 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
               })}
             </div>
 
+            {/* Import from club — only if team is linked to a club user has access to */}
+            {sourceClub && (sourceClub.players?.length ?? 0) > 0 && (
+              <button
+                onClick={() => setImportOpen(true)}
+                style={{
+                  marginTop: 6, width: '100%', padding: '8px 10px', borderRadius: 10,
+                  background: 'var(--primary-light, #E3F2FD)', color: 'var(--primary)',
+                  border: '1.5px dashed var(--primary)', fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', touchAction: 'manipulation',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <span>{t('roster.importFromClub')}</span>
+                <span style={{ fontSize: 11, opacity: 0.75, fontWeight: 600 }}>
+                  ({sourceClub.players.length})
+                </span>
+              </button>
+            )}
+
             {/* Birth year limit info */}
             {maxBY && (
               <div style={{ background: 'var(--warning-light)', borderRadius: 8, padding: '5px 10px', fontSize: 11, color: 'var(--warning)', lineHeight: 1.4, marginTop: 4 }}>
@@ -419,6 +486,282 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
             fontWeight: 800, fontSize: 14, cursor: 'pointer', touchAction: 'manipulation',
           }}>
             {saving ? t('roster.fillRosterSaving') : t('roster.fillRosterTitle')}
+          </button>
+        </div>
+      </div>
+
+      {/* Club import sub-sheet */}
+      {importOpen && sourceClub && (
+        <ClubImportSheet
+          club={sourceClub}
+          existingPlayers={players.filter(p => p.name.trim())}
+          onClose={() => setImportOpen(false)}
+          onConfirm={(picked) => {
+            importClubPlayers(picked);
+            setImportOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Club Import Sheet ─────────────────────────────────────────────────────
+// Interní bottom sheet — ukáže hráče z klubu s checkboxy a (volitelně)
+// filtr podle kategorie. Už existující hráči (stejné jméno+rok) jsou šedě
+// označeni jako "již v soupisce".
+function ClubImportSheet({
+  club,
+  existingPlayers,
+  onClose,
+  onConfirm,
+}: {
+  club: { id: string; name: string; color: string; players: ClubPlayer[]; ageCategories: AgeCategory[] };
+  existingPlayers: AdminPlayerRow[];
+  onClose: () => void;
+  onConfirm: (picked: ClubPlayer[]) => void;
+}) {
+  const { t } = useI18n();
+
+  const existingKey = useMemo(() => {
+    const s = new Set<string>();
+    for (const p of existingPlayers) {
+      s.add(`${p.name.trim().toLowerCase()}|${p.birthYear.trim()}`);
+    }
+    return s;
+  }, [existingPlayers]);
+
+  // Aktivní hráči klubu, seřazeni podle jména
+  const activePlayers = useMemo(
+    () => (club.players ?? []).filter(p => p.active !== false),
+    [club.players],
+  );
+
+  // Kategorie které se skutečně objevují v hráčích
+  const categoriesInUse = useMemo(() => {
+    const s = new Set<AgeCategory>();
+    for (const p of activePlayers) if (p.ageCategory) s.add(p.ageCategory);
+    return Array.from(s);
+  }, [activePlayers]);
+
+  const [category, setCategory] = useState<AgeCategory | 'ALL'>(
+    categoriesInUse.length === 1 ? categoriesInUse[0] : 'ALL',
+  );
+
+  const visiblePlayers = useMemo(() => {
+    const filtered = category === 'ALL'
+      ? activePlayers
+      : activePlayers.filter(p => p.ageCategory === category);
+    return [...filtered].sort((a, b) => {
+      const ja = a.jerseyNumber ?? 999;
+      const jb = b.jerseyNumber ?? 999;
+      if (ja !== jb) return ja - jb;
+      return a.name.localeCompare(b.name);
+    });
+  }, [activePlayers, category]);
+
+  // Pre-select všichni viditelní hráči, kteří ještě nejsou v soupisce
+  const [selected, setSelected] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {};
+    for (const p of activePlayers) {
+      const key = `${p.name.trim().toLowerCase()}|${p.birthYear ?? ''}`;
+      if (!existingKey.has(key)) init[p.id] = true;
+    }
+    return init;
+  });
+
+  const toggleOne = (id: string) => setSelected(s => ({ ...s, [id]: !s[id] }));
+
+  const allVisibleSelectable = visiblePlayers.filter(p => {
+    const key = `${p.name.trim().toLowerCase()}|${p.birthYear ?? ''}`;
+    return !existingKey.has(key);
+  });
+  const allVisibleSelected = allVisibleSelectable.length > 0
+    && allVisibleSelectable.every(p => selected[p.id]);
+
+  const toggleAllVisible = () => {
+    setSelected(prev => {
+      const next = { ...prev };
+      if (allVisibleSelected) {
+        for (const p of allVisibleSelectable) next[p.id] = false;
+      } else {
+        for (const p of allVisibleSelectable) next[p.id] = true;
+      }
+      return next;
+    });
+  };
+
+  const pickedCount = Object.values(selected).filter(Boolean).length;
+  const canConfirm = pickedCount > 0;
+
+  const handleConfirm = () => {
+    const picked = activePlayers.filter(p => selected[p.id]);
+    onConfirm(picked);
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 220,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)', borderRadius: '20px 20px 0 0', width: '100%', maxWidth: 480,
+          height: '85dvh', display: 'flex', flexDirection: 'column',
+        }}
+      >
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+        </div>
+
+        {/* Header */}
+        <div style={{ padding: '4px 14px 6px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 26, height: 26, borderRadius: 7, flexShrink: 0,
+            background: club.color || '#666',
+          }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {t('roster.importFromClubTitle')}
+            </h3>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {club.name}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{ background: 'var(--surface-var)', width: 28, height: 28, borderRadius: 14, border: 'none', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0 }}
+          >✕</button>
+        </div>
+
+        {/* Category tabs */}
+        {categoriesInUse.length > 1 && (
+          <div style={{ padding: '0 14px 6px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setCategory('ALL')}
+              style={{
+                padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 700,
+                border: '1px solid var(--border)',
+                background: category === 'ALL' ? 'var(--primary)' : 'var(--bg)',
+                color: category === 'ALL' ? '#fff' : 'var(--text)',
+                cursor: 'pointer',
+              }}
+            >
+              {t('roster.importFromClubAllCategories')}
+            </button>
+            {categoriesInUse.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategory(cat)}
+                style={{
+                  padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 700,
+                  border: '1px solid var(--border)',
+                  background: category === cat ? 'var(--primary)' : 'var(--bg)',
+                  color: category === cat ? '#fff' : 'var(--text)',
+                  cursor: 'pointer',
+                }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Select all / deselect */}
+        {allVisibleSelectable.length > 0 && (
+          <div style={{ padding: '0 14px 6px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={toggleAllVisible}
+              style={{
+                padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 700,
+                background: 'var(--surface-var)', color: 'var(--text)', border: 'none', cursor: 'pointer',
+              }}
+            >
+              {allVisibleSelected ? t('roster.importFromClubDeselectAll') : t('roster.importFromClubSelectAll')}
+            </button>
+          </div>
+        )}
+
+        {/* Player list */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 14px 10px', minHeight: 0 }}>
+          {visiblePlayers.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, padding: '24px 10px' }}>
+              {t('roster.importFromClubEmpty')}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {visiblePlayers.map(p => {
+                const key = `${p.name.trim().toLowerCase()}|${p.birthYear ?? ''}`;
+                const alreadyIn = existingKey.has(key);
+                const isSelected = !!selected[p.id];
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => !alreadyIn && toggleOne(p.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '6px 8px', borderRadius: 8,
+                      background: alreadyIn ? 'var(--surface-var, #eee)' : 'var(--bg)',
+                      opacity: alreadyIn ? 0.55 : 1,
+                      cursor: alreadyIn ? 'default' : 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      readOnly
+                      checked={alreadyIn ? true : isSelected}
+                      disabled={alreadyIn}
+                      style={{ width: 18, height: 18, accentColor: 'var(--primary)', flexShrink: 0, pointerEvents: 'none' }}
+                    />
+                    <div style={{
+                      width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                      background: club.color || '#666', color: textOnColor(club.color || '#666'),
+                      boxShadow: isLightColor(club.color || '#666') ? 'inset 0 0 0 1.5px rgba(0,0,0,0.15)' : undefined,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 800, fontSize: 11,
+                    }}>
+                      {p.jerseyNumber || '–'}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {p.name}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', display: 'flex', gap: 6 }}>
+                        <span>{p.birthYear ?? '—'}</span>
+                        {p.ageCategory && <span>· {p.ageCategory}</span>}
+                        {alreadyIn && <span style={{ color: 'var(--primary)', fontWeight: 700 }}>· {t('roster.importFromClubAlreadyIn')}</span>}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom confirm */}
+        <div style={{ padding: '8px 14px 14px', flexShrink: 0, borderTop: '1px solid var(--border)' }}>
+          <button
+            onClick={handleConfirm}
+            disabled={!canConfirm}
+            style={{
+              width: '100%', padding: '10px', borderRadius: 10, border: 'none',
+              background: canConfirm ? 'var(--primary)' : 'var(--border)',
+              color: canConfirm ? '#fff' : 'var(--text-muted)',
+              fontWeight: 800, fontSize: 14,
+              cursor: canConfirm ? 'pointer' : 'default',
+              touchAction: 'manipulation',
+            }}
+          >
+            {pickedCount === 1
+              ? t('roster.importFromClubConfirmOne')
+              : t('roster.importFromClubConfirm', { count: pickedCount })}
           </button>
         </div>
       </div>

@@ -91,6 +91,7 @@ export function CreateMatchPage({ navigate }: Props) {
   // Auto-select myClub, fallback to first club
   const [selectedClubId, setSelectedClubId] = useState<string>(myClub?.id ?? clubs[0]?.id ?? '');
   const [selectedCategory, setSelectedCategory] = useState<AgeCategory | null>(null);
+  const [selectedSquad, setSelectedSquad] = useState<string | null>(null);
   const [trackAssists, setTrackAssists] = useState(lastMatch?.trackAssists ?? true);
   // Step 1: lineup
   const [lineup, setLineup] = useState<MatchLineupPlayer[]>([]);
@@ -107,14 +108,14 @@ export function CreateMatchPage({ navigate }: Props) {
     return selectedClub.ageCategories ?? [];
   }, [selectedClub]);
 
-  const initLineupFromClub = (club: Club, category?: AgeCategory | null) => {
+  const initLineupFromClub = (club: Club, category?: AgeCategory | null, squad?: string | null) => {
     const activePlayers = (club.players ?? []).filter(p => p.active);
 
     let rosterPlayers: Array<{ id: string; name: string; jerseyNumber: number }>;
     if (activePlayers.length > 0 && category) {
-      rosterPlayers = activePlayers
-        .filter(p => p.ageCategory === category)
-        .map(p => ({ id: p.id, name: p.name, jerseyNumber: p.jerseyNumber }));
+      let filtered = activePlayers.filter(p => p.ageCategory === category);
+      if (squad) filtered = filtered.filter(p => p.squad === squad);
+      rosterPlayers = filtered.map(p => ({ id: p.id, name: p.name, jerseyNumber: p.jerseyNumber }));
     } else if (activePlayers.length > 0) {
       rosterPlayers = activePlayers.map(p => ({ id: p.id, name: p.name, jerseyNumber: p.jerseyNumber }));
     } else {
@@ -135,14 +136,31 @@ export function CreateMatchPage({ navigate }: Props) {
   const handleClubChange = (clubId: string) => {
     setSelectedClubId(clubId);
     setSelectedCategory(null);
+    setSelectedSquad(null);
     const club = clubs.find(c => c.id === clubId);
     if (club) initLineupFromClub(club);
   };
 
   const handleCategoryChange = (cat: AgeCategory) => {
     setSelectedCategory(cat);
-    if (selectedClub) initLineupFromClub(selectedClub, cat);
+    setSelectedSquad(null);
+    if (selectedClub) initLineupFromClub(selectedClub, cat, null);
   };
+
+  const handleSquadChange = (squad: string | null) => {
+    setSelectedSquad(squad);
+    if (selectedClub) initLineupFromClub(selectedClub, selectedCategory, squad);
+  };
+
+  // Dostupné squads v rámci vybrané kategorie
+  const availableSquads = useMemo(() => {
+    if (!selectedClub || !selectedCategory) return [];
+    const squads = new Set<string>();
+    (selectedClub.players ?? [])
+      .filter(p => p.active && p.ageCategory === selectedCategory && p.squad)
+      .forEach(p => { if (p.squad) squads.add(p.squad); });
+    return Array.from(squads).sort();
+  }, [selectedClub, selectedCategory]);
 
   const toggleStarter = (playerId: string) => {
     setLineup(prev => {
@@ -206,6 +224,7 @@ export function CreateMatchPage({ navigate }: Props) {
       periodDurationMinutes: periodDuration,
       matchFormat,
       ageCategory: selectedCategory ?? undefined,
+      squad: selectedSquad ?? undefined,
       lineup,
       substitutionSettings: subSettings,
       trackAssists,
@@ -390,7 +409,7 @@ export function CreateMatchPage({ navigate }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
-              Evidovat asistence
+              {t('match.create.trackAssists')}
             </label>
             <button
               onClick={() => setTrackAssists(v => !v)}
@@ -408,7 +427,7 @@ export function CreateMatchPage({ navigate }: Props) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
-              Asistent střídání
+              {t('match.create.subAssistantLabel')}
             </label>
             <button
               onClick={() => setUseSubAssistant(v => !v)}
@@ -511,6 +530,39 @@ export function CreateMatchPage({ navigate }: Props) {
                   {t('match.create.categoryHint')}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* ── Squad filter (A/B) — jen pokud kategorie obsahuje squad hráče ── */}
+          {selectedCategory && availableSquads.length > 0 && (
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                {t('match.create.selectSquad') || 'Tým'}
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {[null, ...availableSquads].map(sq => {
+                  const isActive = selectedSquad === sq;
+                  const label = sq === null ? (t('match.create.squadAll') || 'Všichni') : sq;
+                  const count = sq === null
+                    ? (selectedClub.players ?? []).filter(p => p.active && p.ageCategory === selectedCategory).length
+                    : (selectedClub.players ?? []).filter(p => p.active && p.ageCategory === selectedCategory && p.squad === sq).length;
+                  return (
+                    <button
+                      key={sq ?? '__all'}
+                      onClick={() => handleSquadChange(sq)}
+                      style={{
+                        padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                        background: isActive ? 'var(--primary)' : 'var(--surface-var)',
+                        color: isActive ? '#fff' : 'var(--text)',
+                        border: isActive ? '2px solid var(--primary)' : '2px solid var(--border)',
+                        cursor: 'pointer', transition: 'all .15s',
+                      }}
+                    >
+                      {label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
