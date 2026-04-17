@@ -100,7 +100,7 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
       }
       setCategoryAutoDetected(years.length > 0);
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error('[Import] Parse failed:', err); // intentional — user-facing error
       setError(t('clubs.import.errParse'));
     } finally {

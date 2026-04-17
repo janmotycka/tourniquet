@@ -81,6 +81,7 @@ const HEADER_PATTERNS: Record<ImportField, RegExp[]> = {
 
 function detectField(header: string): ImportField {
   // Strip BOM, zero-width chars, trim whitespace
+  // eslint-disable-next-line no-misleading-character-class
   const h = header.replace(/[\uFEFF\u200B\u200C\u200D\u00A0]/g, '').trim();
   if (!h) return 'ignore';
   for (const [field, patterns] of Object.entries(HEADER_PATTERNS) as [ImportField, RegExp[]][]) {

@@ -40,6 +40,7 @@ const ONBOARDED_KEY_PREFIX = 'torq-onboarded-';
  *   bez argumentu = legacy (sdílené mezi sporty) — používat jen tam, kde
  *   není znám kontext sportu.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function isOnboarded(uid: string, sport?: 'football' | 'tennis'): boolean {
   try {
     // Nový klíč per sport. Fallback na legacy (bez sportu) pro uživatele,

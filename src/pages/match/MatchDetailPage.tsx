@@ -170,59 +170,38 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
     }
   }, [buildNominationText, t]);
 
-  if (!currentMatch && isHydrating) {
-    return <MatchDetailSkeleton />;
-  }
+  // Všechny hooks MUSÍ být volané před early return (React rules of hooks).
+  // Proto voláme i když currentMatch může být null — hooky jsou null-safe.
+  const isLive = currentMatch?.status === 'live';
+  const isPublic = !!currentMatch?.isPublic;
 
-  if (!currentMatch) {
-    return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-        <div style={{ fontSize: 48 }}>❓</div>
-        <div style={{ fontWeight: 700, fontSize: 17 }}>{t('match.detail.notFound')}</div>
-        <button onClick={() => navigate({ name: 'match-list' })}
-          style={{ background: 'var(--primary)', color: '#fff', borderRadius: 12, padding: '10px 20px', fontWeight: 700 }}>
-          ← {t('match.detail.backToList')}
-        </button>
-      </div>
-    );
-  }
-
-  const isLive = currentMatch.status === 'live';
-  const isPublic = !!currentMatch.isPublic;
-
-  // Live elapsed timer v headeru — at' trener vid\u00ed čas i kdy\u017e scrolluje událostmi dole
-  const [headerElapsed, setHeaderElapsed] = useState(() => computeElapsed(currentMatch));
+  // Live elapsed timer v headeru
+  const [headerElapsed, setHeaderElapsed] = useState(() => currentMatch ? computeElapsed(currentMatch) : 0);
   useEffect(() => {
-    if (!isLive || currentMatch.pausedAt) return;
+    if (!currentMatch || !isLive || currentMatch.pausedAt) return;
     const interval = setInterval(() => setHeaderElapsed(computeElapsed(currentMatch)), 1000);
     return () => clearInterval(interval);
-  }, [isLive, currentMatch.pausedAt, currentMatch]);
+  }, [isLive, currentMatch?.pausedAt, currentMatch]);
   useEffect(() => {
+    if (!currentMatch) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setHeaderElapsed(computeElapsed(currentMatch));
-  }, [currentMatch.startedAt, currentMatch.pausedAt, currentMatch.pausedElapsed]);
+  }, [currentMatch]);
 
   const headerSubtitle = isLive
     ? `⏱ ${formatTime(headerElapsed)} ● ${t('match.live')}`
-    : `${formatDate(currentMatch.date)} · ${currentMatch.kickoffTime}`;
+    : currentMatch ? `${formatDate(currentMatch.date)} · ${currentMatch.kickoffTime}` : '';
 
-  // Multi-trainer soft lock — pouze pro klubové zápasy, tenisové individuální
-  // zápasy (individual-xxx clubId) si řeší každý trenér sám.
+  // Multi-trainer soft lock — oba hooks jsou null-safe (zvládají undefined match).
   const lock = useMatchLock(currentMatch);
-  const isClubMatch = !!(currentMatch.clubId && !currentMatch.clubId.startsWith('individual-'));
-  // Cross-team pairing — přihlášený user je paired away coach?
   const perspective = useMatchPerspective(currentMatch);
+  const isClubMatch = !!(currentMatch?.clubId && !currentMatch.clubId.startsWith('individual-'));
   const isPairedAwayCoach = perspective.role === 'away';
-  const isPairedMatch = !!(currentMatch.pairing?.awayCoachUid);
-  // Gate editačních akcí — vlastník locku nebo idle (nikdo needituje).
-  // Soft lock je aktivní pro klubové ZAPARSOVANÉ nebo cross-team paired zápasy.
+  const isPairedMatch = !!(currentMatch?.pairing?.awayCoachUid);
   const needsLock = isClubMatch || isPairedMatch;
   const canEdit = !needsLock || lock.status === 'mine' || lock.status === 'idle';
 
-  // Real-time subscribe na single match pro paired away coach-e. Away coach
-  // nemá access na celý scope list (rules povolují jen single-doc read po join),
-  // takže scope-level subscribe tenhle match nepřitahuje. Proto subscribe přímo
-  // na /matches/{ownerScope}/{matchId}.
+  // Real-time subscribe na single match pro paired away coach-e.
   const ownerScopeForSubscribe = currentMatch?.pairing?.ownerScope
     ?? (currentMatch?.clubId && !currentMatch.clubId.startsWith('individual-') ? currentMatch.clubId : null);
   useEffect(() => {
@@ -239,7 +218,6 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
   }, [isPairedAwayCoach, ownerScopeForSubscribe, matchId]);
 
   const handleClaim = useCallback(async () => {
-    // Pokud je někdo aktivní (ne stale/idle), zeptej se.
     if (lock.status === 'other' && lock.editor) {
       const ok = await ask({
         title: t('matchLock.claimConfirmTitle'),
@@ -252,6 +230,23 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
       useToastStore.getState().show('error', t('matchLock.claimFailed'));
     }
   }, [lock, ask, t]);
+
+  if (!currentMatch && isHydrating) {
+    return <MatchDetailSkeleton />;
+  }
+
+  if (!currentMatch) {
+    return (
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+        <div style={{ fontSize: 48 }}>❓</div>
+        <div style={{ fontWeight: 700, fontSize: 17 }}>{t('match.detail.notFound')}</div>
+        <button onClick={() => navigate({ name: 'match-list' })}
+          style={{ background: 'var(--primary)', color: '#fff', borderRadius: 12, padding: '10px 20px', fontWeight: 700 }}>
+          ← {t('match.detail.backToList')}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh', width: '100%', maxWidth: isDesktop ? 1400 : undefined, margin: isDesktop ? '0 auto' : undefined, boxSizing: 'border-box' }}>

@@ -506,7 +506,7 @@ export function generateGroupStageSchedule(
     }
     const groupQueues = [...byGroup.values()];
     const interleaved: RawMatch[] = [];
-    let maxLen = Math.max(...groupQueues.map(q => q.length));
+    const maxLen = Math.max(...groupQueues.map(q => q.length));
     for (let i = 0; i < maxLen; i++) {
       for (const queue of groupQueues) {
         if (i < queue.length) interleaved.push(queue[i]);
