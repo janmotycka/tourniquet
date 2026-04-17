@@ -35,11 +35,11 @@ export function JoinMatchPairingModal({ scopeId, matchId, joinToken, navigate }:
 
   // Pokud je uživatel v klubu, automaticky použij active club jako awayClub
   const activeClubId = useClubsStore(s => s.activeClubId);
-  const sharedClubs = useClubsStore(s => s.sharedClubs);
+  const clubs = useClubsStore(s => s.clubs);
   const activeClub = useMemo(() => {
     if (!activeClubId) return null;
-    return sharedClubs.find(c => c.id === activeClubId) ?? null;
-  }, [activeClubId, sharedClubs]);
+    return clubs.find(c => c.id === activeClubId) ?? null;
+  }, [activeClubId, clubs]);
 
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
@@ -80,7 +80,7 @@ export function JoinMatchPairingModal({ scopeId, matchId, joinToken, navigate }:
         pin,
         awayCoachName,
         activeClub?.id,
-        activeClub?.displayName,
+        activeClub?.name,
       );
       if (result.ok) {
         showToast('success', t('matchPairing.joinedToast'));
@@ -152,7 +152,7 @@ export function JoinMatchPairingModal({ scopeId, matchId, joinToken, navigate }:
               background: 'var(--primary-light)', borderRadius: 10, padding: '8px 12px',
               fontSize: 12, color: 'var(--primary)', fontWeight: 600, textAlign: 'center',
             }}>
-              {t('matchPairing.joinAsClub', { club: activeClub.displayName })}
+              {t('matchPairing.joinAsClub', { club: activeClub.name })}
             </div>
           )}
 
