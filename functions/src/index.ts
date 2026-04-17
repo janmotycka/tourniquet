@@ -17,6 +17,7 @@ export {
   adminSetSubscription,
   adminListUsers,
   adminSetUserBlock,
+  adminGeneratePasswordResetLink,
   adminPurgeUserTournaments,
   adminGetStats,
   adminSyncClubsCatalog,

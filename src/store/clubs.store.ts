@@ -57,6 +57,8 @@ interface ClubsState {
   setActiveClubId: (clubId: string | null) => Promise<void>;
   getActiveClub: () => Club | undefined;
   getMyRoleInClub: (clubId: string) => ClubRole | null;
+  /** Pokud aktivní klub nepatří k danému sportu, přepne na první klub daného sportu (nebo null). */
+  ensureActiveClubMatchesSport: (sport: 'football' | 'tennis') => Promise<void>;
 
   // ─── CRUD klubu ──────────────────────────────────────────────────────────
   /**
@@ -244,10 +246,31 @@ export const useClubsStore = create<ClubsState>((set, get) => ({
     }
   },
 
+  ensureActiveClubMatchesSport: async (sport) => {
+    const { activeClubId, clubs } = get();
+    const active = activeClubId ? clubs.find(c => c.id === activeClubId) : undefined;
+    const activeSport = (active?.sport ?? 'football') as 'football' | 'tennis';
+    if (active && activeSport === sport) return; // už sedí
+    // Najdi první klub daného sportu (legacy bez sportu = football).
+    const candidate = clubs.find(c => (c.sport ?? 'football') === sport);
+    await get().setActiveClubId(candidate?.id ?? null);
+  },
+
   getActiveClub: () => {
     const { activeClubId, clubs } = get();
-    if (!activeClubId) return undefined;
-    return clubs.find(c => c.id === activeClubId);
+    if (clubs.length === 0) return undefined;
+    // Pokud activeClubId pointuje na smazaný / nedostupný klub
+    // (např. klub smazán na jiném zařízení během realtime syncu),
+    // fallback na první dostupný a opravit activeClubId.
+    const found = activeClubId ? clubs.find(c => c.id === activeClubId) : undefined;
+    if (!found) {
+      const first = clubs[0];
+      if (first && first.id !== activeClubId) {
+        set(() => ({ activeClubId: first.id }));
+      }
+      return first;
+    }
+    return found;
   },
 
   getMyRoleInClub: (clubId) => {
@@ -277,6 +300,16 @@ export const useClubsStore = create<ClubsState>((set, get) => ({
         fresh.ageCategories = input.ageCategories;
       } catch (err) {
         logger.warn('[Clubs] Failed to set initial ageCategories:', err);
+      }
+    }
+
+    // Nastav sport (default 'football', ale pokud vytváříme v tenis módu, je 'tennis').
+    if (input.sport) {
+      try {
+        await updateSharedClub(res.clubId, { sport: input.sport });
+        fresh.sport = input.sport;
+      } catch (err) {
+        logger.warn('[Clubs] Failed to set sport on new club:', err);
       }
     }
 

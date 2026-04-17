@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import type { SeasonMatch, MatchLineupPlayer, MatchGoal } from '../../types/match.types';
+import { formatToStarterCount } from '../../types/match.types';
 import { useMatchesStore } from '../../store/matches.store';
 import { useConfirmStore } from '../../store/confirm.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useI18n } from '../../i18n';
-import { computeElapsed, formatTime, computePlayingTime } from './match-utils';
+import { computeElapsed, formatTime, computePlayingTime, computeCurrentStretch } from './match-utils';
 import { GoalModal } from './GoalModal';
 import { CardModal } from './CardModal';
 import { SubstitutionModal } from './SubstitutionModal';
+import { useMatchPerspective } from '../../hooks/useMatchPerspective';
 
 // ── Landscape detection hook ──
 
@@ -42,19 +44,23 @@ function useLandscape() {
 
 // ── Landscape Scoreboard — fullscreen swipe-to-score ──
 
-function LandscapeScoreboard({ match, elapsed, onQuickGoal, onPause, onResume, t }: {
+function LandscapeScoreboard({ match, elapsed, onQuickGoal, onPause, onResume, t, myTeamName, theirTeamName, myScore, theirScore }: {
   match: SeasonMatch;
   elapsed: number;
   onQuickGoal: (side: 'ours' | 'theirs') => void;
   onPause: () => void;
   onResume: () => void;
   t: (k: string, p?: Record<string, string | number>) => string;
+  myTeamName: string;
+  theirTeamName: string;
+  myScore: number;
+  theirScore: number;
 }) {
-  const ourScore = match.isHome ? match.homeScore : match.awayScore;
-  const theirScore = match.isHome ? match.awayScore : match.homeScore;
+  const ourScore = myScore;
   const isPaused = !!match.pausedAt;
   const activeClubLS = useClubsStore(s => s.clubs.find(c => c.id === match.clubId));
-  const clubDisplayName = match.clubName || activeClubLS?.name || t('match.detail.us');
+  const clubDisplayName = myTeamName || match.clubName || activeClubLS?.name || t('match.detail.us');
+  const opponentDisplayName = theirTeamName || match.opponent;
 
   const periods = match.periods ?? 2;
   const currentPeriod = match.currentPeriod ?? 1;
@@ -198,7 +204,7 @@ function LandscapeScoreboard({ match, elapsed, onQuickGoal, onPause, onResume, t
         }}
       >
         <div style={{ fontSize: 13, fontWeight: 700, opacity: .6, marginBottom: 8, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '90%', textAlign: 'center' }}>
-          {match.opponent}
+          {opponentDisplayName}
         </div>
         <div style={{ fontSize: 'min(30vw, 160px)', fontWeight: 900, lineHeight: 1 }}>
           {theirScore}
@@ -267,32 +273,116 @@ function useWakeLock(enabled: boolean) {
 
 // ── Substitution assistant logic ──
 
-function useSubstitutionAlert(match: SeasonMatch, elapsed: number): {
-  alertActive: boolean;
+/**
+ * Substitution queue — deterministic assistant ve stylu "fronty návrhů".
+ *
+ * Jak to funguje:
+ *   - Po každé uplynulé intervalMinutes vzroste cíl (target) o `playersAtOnce`
+ *   - Provedené střídání z fronty odečte 1, "odložené" taky
+ *   - Co zbude = návrh na střídání (1..N párů), který pulzuje dokud trenér nepotvrdí
+ *
+ * Pairing:
+ *   - OUT: hráč s nejvíce odehranými minutami
+ *   - IN: hráč z lavičky s nejméně odehranými minutami (nejdelší odpočinek)
+ *   Tím se zátěž rovnoměrně rozkládá.
+ */
+export interface SubPair {
+  out: MatchLineupPlayer;
+  in: MatchLineupPlayer;
+  outMinutes: number;
+  inMinutes: number;
+}
+
+export interface SubCandidate {
+  player: MatchLineupPlayer;
+  minutes: number;       // odehrané minuty celkem
+  benchMinutes: number;  // čas na lavici celkem
+  stretchMinutes: number; // aktuální střih — od posledního střídání
+}
+
+function useSubstitutionQueue(
+  match: SeasonMatch,
+  elapsed: number,
+  dismissedOffset: number,
+): {
+  pairs: SubPair[];
   nextAlertMinute: number;
-  suggestedIn: MatchLineupPlayer[];
-  suggestedOut: MatchLineupPlayer[];
+  alertActive: boolean;
+  elapsedMinutes: number;
+  queueSize: number;
+  /** Nezobrazený "raw" počet čekajících návrhů (bez cap podle lavice/hřiště).
+   *  Používá se pro Odložit — aby jeden klik vyčistil celou frontu. */
+  rawPending: number;
+  benchCandidates: SubCandidate[];   // všichni z lavičky, seřazení "nejvíc odpočatý první"
+  onFieldCandidates: SubCandidate[]; // všichni na hřišti, seřazení "nejvíc unavený první"
 } {
-  if (!match.substitutionSettings || match.status !== 'live') {
-    return { alertActive: false, nextAlertMinute: 0, suggestedIn: [], suggestedOut: [] };
+  // Pauza nebo ne-live → asistent je neaktivní (trenér zrovna nestřídá).
+  if (!match.substitutionSettings || match.status !== 'live' || match.pausedAt) {
+    return {
+      pairs: [], nextAlertMinute: 0, alertActive: false, elapsedMinutes: 0, queueSize: 0,
+      rawPending: 0,
+      benchCandidates: [], onFieldCandidates: [],
+    };
   }
 
   const { intervalMinutes, playersAtOnce } = match.substitutionSettings;
   const elapsedMinutes = elapsed / 60;
+  const intervalsPassed = Math.floor(elapsedMinutes / intervalMinutes);
+  const nextAlertMinute = (intervalsPassed + 1) * intervalMinutes;
 
-  const nextAlertMinute = Math.ceil(elapsedMinutes / intervalMinutes) * intervalMinutes;
-  const alertActive = elapsed > 0 && (nextAlertMinute - elapsedMinutes) <= 0.5;
+  const targetSubs = intervalsPassed * playersAtOnce;
+  const actualSubs = match.substitutions.length;
 
-  const bench = match.lineup.filter(p => !p.isStarter).sort((a, b) => a.substituteOrder - b.substituteOrder);
-  const suggestedIn = bench.slice(0, playersAtOnce);
+  const bench = match.lineup.filter(p => !p.isStarter);
   const onField = match.lineup.filter(p => p.isStarter);
-  // Sort by playing time descending — suggest longest-playing players first
-  const playingTime = computePlayingTime(match, elapsedMinutes);
-  const suggestedOut = [...onField]
-    .sort((a, b) => (playingTime.get(b.playerId) ?? 0) - (playingTime.get(a.playerId) ?? 0))
-    .slice(0, playersAtOnce);
 
-  return { alertActive, nextAlertMinute, suggestedIn, suggestedOut };
+  const rawQueue = targetSubs - actualSubs - dismissedOffset;
+  const queueSize = Math.max(0, Math.min(rawQueue, onField.length, bench.length));
+  const rawPending = Math.max(0, rawQueue);
+
+  const playingTime = computePlayingTime(match, elapsedMinutes);
+  const stretchTime = computeCurrentStretch(match, elapsedMinutes);
+  const elapsedMinsInt = Math.max(0, Math.round(elapsedMinutes));
+
+  // OUT: primárně podle aktuálního střihu (nejdelší nepřetržitá účast nejvíc unavený),
+  // fallback na total playing time (např. když nikdo nestřídal, střih = total)
+  const onFieldCandidates: SubCandidate[] = [...onField]
+    .map(p => {
+      const m = Math.round(playingTime.get(p.playerId) ?? 0);
+      const s = Math.round(stretchTime.get(p.playerId) ?? 0);
+      return { player: p, minutes: m, benchMinutes: Math.max(0, elapsedMinsInt - m), stretchMinutes: s };
+    })
+    .sort((a, b) => b.stretchMinutes - a.stretchMinutes || b.minutes - a.minutes);
+
+  // IN: primárně podle aktuálního střihu na lavici (nejdelší odpočinek první),
+  // fallback na total playing time (kdo hrál míň celkově)
+  const benchCandidates: SubCandidate[] = [...bench]
+    .map(p => {
+      const m = Math.round(playingTime.get(p.playerId) ?? 0);
+      const s = Math.round(stretchTime.get(p.playerId) ?? 0);
+      return { player: p, minutes: m, benchMinutes: Math.max(0, elapsedMinsInt - m), stretchMinutes: s };
+    })
+    .sort((a, b) => b.stretchMinutes - a.stretchMinutes || a.minutes - b.minutes);
+
+  const pairs: SubPair[] = [];
+  for (let i = 0; i < queueSize; i++) {
+    const out = onFieldCandidates[i];
+    const inC = benchCandidates[i];
+    if (!out || !inC) break;
+    pairs.push({
+      out: out.player,
+      in: inC.player,
+      outMinutes: out.minutes,
+      inMinutes: inC.minutes,
+    });
+  }
+
+  return {
+    pairs, nextAlertMinute,
+    alertActive: queueSize > 0,
+    elapsedMinutes, queueSize, rawPending,
+    benchCandidates, onFieldCandidates,
+  };
 }
 
 // (QuickGoalFlash removed — goal feedback is now inline on the score card)
@@ -428,6 +518,14 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   const [goalModal, setGoalModal] = useState<'ours' | 'theirs' | null>(null);
   const [cardModal, setCardModal] = useState(false);
   const [subModal, setSubModal] = useState(false);
+
+  // Při pauze nebo ukončení zápasu automaticky zavři modal střídání — trenér
+  // během pauzy nestřídá (může mít poločas, přestávku atd.).
+  useEffect(() => {
+    if ((match.pausedAt || match.status !== 'live') && subModal) {
+      setSubModal(false);
+    }
+  }, [match.pausedAt, match.status, subModal]);
   const [quickFlash, setQuickFlash] = useState<'ours' | 'theirs' | null>(null);
   const [editingGoal, setEditingGoal] = useState<MatchGoal | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -446,6 +544,10 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   const [undoToast, setUndoToast] = useState<{ goalId: string; side: 'ours' | 'theirs' } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Sub undo toast — po batch střídání ukáž "↶ Zrušit" na 8s
+  const [subUndoToast, setSubUndoToast] = useState<{ subIds: string[]; count: number } | null>(null);
+  const subUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Wake lock — keep screen on during live match
   useWakeLock(match.status === 'live');
 
@@ -459,8 +561,14 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   const addGoal = useMatchesStore(s => s.addGoal);
   const addCard = useMatchesStore(s => s.addCard);
   const addSubstitution = useMatchesStore(s => s.addSubstitution);
+  const undoSubstitutions = useMatchesStore(s => s.undoSubstitutions);
   const removeGoal = useMatchesStore(s => s.removeGoal);
   const updateMatch = useMatchesStore(s => s.updateMatch);
+
+  // Cross-team pairing perspective — pro away coach flippujeme tlačítka a názvy.
+  // „Můj gól" away coach-e = `isOpponentGoal: true` z creator pohledu.
+  const perspective = useMatchPerspective(match);
+  const isAwayView = perspective.role === 'away';
 
   // Haptic feedback helper
   const vibrate = (ms: number | number[] = 30) => {
@@ -468,19 +576,117 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   };
 
   // Tick timer
+  // Použij ref k aktuálnímu match, aby se interval nezakládal znovu při každém
+  // Firebase sync (dřív dep `[match]` → každá změna zápasu = clearInterval + setInterval
+  // → parazitní re-renders a jank).
+  const matchRef = useRef(match);
+  useEffect(() => { matchRef.current = match; }, [match]);
+
   useEffect(() => {
     if (match.status !== 'live' || match.pausedAt) return;
-    const interval = setInterval(() => setElapsed(computeElapsed(match)), 1000);
+    const interval = setInterval(() => setElapsed(computeElapsed(matchRef.current)), 1000);
     return () => clearInterval(interval);
-  }, [match]);
+  }, [match.status, match.pausedAt]);
 
-  // Sync elapsed on match data change
+  // Sync elapsed on match timing data change (start/pause/resume)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setElapsed(computeElapsed(match)); // initial sync from match prop
-  }, [match.startedAt, match.pausedAt, match.pausedElapsed, match]);
+    setElapsed(computeElapsed(match));
+  }, [match.startedAt, match.pausedAt, match.pausedElapsed]);
 
-  const { alertActive, nextAlertMinute, suggestedIn, suggestedOut } = useSubstitutionAlert(match, elapsed);
+  // Počet "odložených" návrhů — trenér klikl na "Odložit", zmizí dokud nepřijde další interval
+  const [dismissedOffset, setDismissedOffset] = useState(0);
+  const {
+    alertActive, nextAlertMinute, pairs, queueSize, rawPending, elapsedMinutes,
+    benchCandidates, onFieldCandidates,
+  } = useSubstitutionQueue(match, elapsed, dismissedOffset);
+
+  // Pro kompatibilitu s původní SubstitutionModal — posílá první návrh
+  const suggestedOut = pairs.map(p => p.out);
+  const suggestedIn = pairs.map(p => p.in);
+
+  // Multi-select: trenér označí 1–N hráčů ven a 1–N hráčů dovnitř, pak dá "Provést"
+  const [selectedOutIds, setSelectedOutIds] = useState<string[]>([]);
+  const [selectedInIds, setSelectedInIds] = useState<string[]>([]);
+
+  // Resetnout výběr kdykoli fronta spadne na 0 (vyřešeno)
+  useEffect(() => {
+    if (queueSize === 0) {
+      if (selectedOutIds.length > 0) setSelectedOutIds([]);
+      if (selectedInIds.length > 0) setSelectedInIds([]);
+    }
+  }, [queueSize, selectedOutIds.length, selectedInIds.length]);
+
+  // Haptické upozornění při nárůstu fronty (nový návrh vznikl)
+  const prevQueueRef = useRef(queueSize);
+  useEffect(() => {
+    if (queueSize > prevQueueRef.current) {
+      try { navigator.vibrate?.([60, 60, 60]); } catch { /* ignore */ }
+    }
+    prevQueueRef.current = queueSize;
+  }, [queueSize]);
+
+  // Toggle výběru v obou sloupcích (tap přidá / odebere)
+  // Jakmile má uživatel na obou stranách stejný počet, tap na přebývající
+  // stranu by porušil párování — ale povolíme to (coach to ihned vidí v UI
+  // a confirm button hlásí "chybí X").
+  const toggleOut = (id: string) => {
+    try { navigator.vibrate?.(15); } catch { /* ignore */ }
+    setSelectedOutIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+  const toggleIn = (id: string) => {
+    try { navigator.vibrate?.(15); } catch { /* ignore */ }
+    setSelectedInIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  // Provést batch střídání — VYŽADUJE exact count match (žádné zahození hráče)
+  const handleConfirmBatch = () => {
+    const out = selectedOutIds.length;
+    const inn = selectedInIds.length;
+    if (out === 0 || inn === 0 || out !== inn) return;
+    try { navigator.vibrate?.([40, 30, 40]); } catch { /* ignore */ }
+    const minute = Math.max(0, Math.round(elapsedMinutes));
+    const newSubIds: string[] = [];
+    for (let i = 0; i < out; i++) {
+      const id = addSubstitution(match.id, {
+        playerOutId: selectedOutIds[i],
+        playerInId: selectedInIds[i],
+        minute,
+      });
+      if (id) newSubIds.push(id);
+    }
+    setSelectedOutIds([]);
+    setSelectedInIds([]);
+
+    // Ukaž undo toast na 8 s
+    if (subUndoTimerRef.current) clearTimeout(subUndoTimerRef.current);
+    setSubUndoToast({ subIds: newSubIds, count: out });
+    subUndoTimerRef.current = setTimeout(() => {
+      setSubUndoToast(null);
+      subUndoTimerRef.current = null;
+    }, 8000);
+  };
+
+  // Odložit VŠECHNY aktuální návrhy — znovu se objeví až po dalším intervalu.
+  // Používáme rawPending (bez cap podle lavice/hřiště), aby jeden klik vyčistil
+  // frontu kompletně. Jinak by se čekající nad limit lavice neodstranili.
+  const handleDismissQueue = () => {
+    setDismissedOffset(d => d + rawPending);
+    setSelectedOutIds([]);
+    setSelectedInIds([]);
+  };
+
+  // Confirm button state
+  const outCount = selectedOutIds.length;
+  const inCount = selectedInIds.length;
+  const canConfirm = outCount > 0 && outCount === inCount;
+  // Lidsky srozumitelná diagnoza proč confirm není hotový
+  const confirmHint = (() => {
+    if (outCount === 0 && inCount === 0) return 'subSelectBoth';
+    if (outCount > inCount) return 'subSelectMoreIn';
+    if (inCount > outCount) return 'subSelectMoreOut';
+    return null;
+  })();
 
   const periods = match.periods ?? 2;
   const periodDuration = match.periodDurationMinutes ?? Math.round(match.durationMinutes / periods);
@@ -495,6 +701,18 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   // Total progress
   // (isOvertime/progress/remaining derivations reserved for future UI)
 
+  // Signál "konec periody" — pipnutí + banner hned jak čas vyprší
+  // Uložíme v ref, abychom pipli jen JEDNOU při přechodu přes 0
+  const periodEndAnnouncedRef = useRef<number>(-1);
+  useEffect(() => {
+    if (match.status !== 'live' || match.pausedAt) return;
+    if (!isPeriodOvertime) return;
+    // Pipni jen jednou pro každý period index
+    if (periodEndAnnouncedRef.current === currentPeriod) return;
+    periodEndAnnouncedRef.current = currentPeriod;
+    try { navigator.vibrate?.([150, 80, 150]); } catch { /* ignore */ }
+  }, [isPeriodOvertime, currentPeriod, match.status, match.pausedAt]);
+
   const getPlayerName = (playerId: string | null) =>
     playerId ? (match.lineup.find(p => p.playerId === playerId)?.name ?? '?') : t('match.detail.unknown');
 
@@ -505,11 +723,15 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
     if (ok) finishMatch(match.id);
   };
 
-  // Quick goal — one tap, auto-minute, no modal + undo toast
+  // Quick goal — one tap, auto-minute, no modal + undo/scorer toast.
+  // `side: 'ours'` znamená „z pohledu aktuálně přihlášeného trenéra". Pro away
+  // coach-e to je opposite v datech (isOpponentGoal: true) — creator je v datech
+  // pořád „home", takže musíme flipnout.
   const handleQuickGoal = (side: 'ours' | 'theirs') => {
     vibrate(side === 'ours' ? 50 : [30, 30, 30]);
     const minute = Math.max(1, Math.floor(elapsed / 60) + 1);
-    const isOpponentGoal = side === 'theirs';
+    // Away coach: „náš" (ours) → opponent goal v datech; „jejich" (theirs) → creator goal.
+    const isOpponentGoal = isAwayView ? side === 'ours' : side === 'theirs';
     const goalId = addGoal(match.id, {
       scorerId: null,
       assistId: null,
@@ -519,13 +741,24 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
     });
     setQuickFlash(side);
 
-    // Show undo toast for 5 seconds
+    // Zobraz undo/scorer toast — 8s pro náš gól (čas na výběr střelce), 5s pro soupeřův
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     setUndoToast({ goalId, side });
     undoTimerRef.current = setTimeout(() => {
       setUndoToast(null);
       undoTimerRef.current = null;
-    }, 5000);
+    }, side === 'ours' ? 8000 : 5000);
+  };
+
+  // Přiřadit střelce ke gólu z inline pickeru
+  const assignScorerToGoal = (goalId: string, scorerId: string | null) => {
+    vibrate(30);
+    const updatedGoals = match.goals.map(g =>
+      g.id === goalId ? { ...g, scorerId, assistId: g.assistId ?? null } : g
+    );
+    updateMatch(match.id, { goals: updatedGoals });
+    setUndoToast(null);
+    if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null; }
   };
 
   // Long-press for detailed goal modal
@@ -567,9 +800,9 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
     });
   };
 
-  // Derive "our" vs "their" scores based on isHome
-  const ourScore = match.isHome ? match.homeScore : match.awayScore;
-  const theirScore = match.isHome ? match.awayScore : match.homeScore;
+  // "Our" vs "their" skóre — bere v potaz perspective (pro away coach flipped).
+  const ourScore = perspective.myScore;
+  const theirScore = perspective.theirScore;
 
   const hasBench = match.lineup.some(p => !p.isStarter);
   const showCards = enabledPanels.has('cards');
@@ -589,6 +822,10 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
         }
         @keyframes undoToastSlide {
           0% { transform: translateY(-20px); opacity: 0; }
+          100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes undoToastSlideUp {
+          0% { transform: translateY(20px); opacity: 0; }
           100% { transform: translateY(0); opacity: 1; }
         }
         @keyframes scoreFlash {
@@ -613,6 +850,18 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
         }
       `}</style>
 
+      {/* Away coach info — vysvětli omezení (nemá svou sestavu, jen score) */}
+      {isAwayView && match.status === 'live' && (
+        <div style={{
+          margin: '8px 16px 0',
+          padding: '8px 12px', borderRadius: 10,
+          background: 'var(--surface-var)', border: '1px solid var(--border)',
+          fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.4,
+        }}>
+          ℹ️ {t('matchPairing.awayLimitationHint')}
+        </div>
+      )}
+
       {/* Landscape fullscreen scoreboard */}
       {isLandscape && match.status === 'live' && (
         <LandscapeScoreboard
@@ -622,37 +871,177 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
           onPause={() => { vibrate(); pauseMatch(match.id); }}
           onResume={() => { vibrate(); resumeMatch(match.id); }}
           t={t}
+          myTeamName={perspective.myTeamName}
+          theirTeamName={perspective.theirTeamName}
+          myScore={perspective.myScore}
+          theirScore={perspective.theirScore}
         />
       )}
 
-      {/* Undo toast */}
-      {undoToast && (
+      {/* Undo / scorer picker toast */}
+      {undoToast && (() => {
+        const isOurs = undoToast.side === 'ours';
+        // Scorer picker má smysl jen když mám lineup (== home coach / viewer).
+        // Away coach vidí jen undo — nemá svoji sestavu v datech.
+        let currentOnField: MatchLineupPlayer[] = [];
+        if (isOurs && !isAwayView) {
+          const onFieldIds = new Set(match.lineup.filter(p => p.isStarter).map(p => p.playerId));
+          for (const sub of match.substitutions) {
+            onFieldIds.delete(sub.playerOutId);
+            onFieldIds.add(sub.playerInId);
+          }
+          currentOnField = match.lineup
+            .filter(p => onFieldIds.has(p.playerId))
+            .sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+        }
+        const currentGoal = match.goals.find(g => g.id === undoToast.goalId);
+        const hasScorer = !!currentGoal?.scorerId;
+        // Toast se objeví NAD sticky gólovými tlačítky (v dosahu palce).
+        // Pozice: fixed bottom, nad sticky footerem s goal buttons (~156px vysoké) + safe-area.
+        return (
+          <div style={{
+            position: 'fixed',
+            bottom: 'calc(168px + env(safe-area-inset-bottom, 0px))',
+            left: 16, right: 16, zIndex: 150,
+            padding: '10px 14px', borderRadius: 14,
+            background: isOurs ? '#1B5E20' : '#B71C1C',
+            color: '#fff', boxShadow: '0 -4px 20px rgba(0,0,0,.3)',
+            animation: 'undoToastSlideUp .25s ease-out',
+            maxWidth: 480, marginLeft: 'auto', marginRight: 'auto',
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            {/* Header: goal recorded + undo */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+            }}>
+              <span style={{ fontWeight: 800, fontSize: 14 }}>
+                ⚽ {isOurs ? t('match.detail.goalRecorded') : t('match.detail.opponentGoalRecorded')}
+                {hasScorer && currentGoal && (() => {
+                  const scorer = match.lineup.find(p => p.playerId === currentGoal.scorerId);
+                  return scorer ? ` · ${scorer.name}` : '';
+                })()}
+              </span>
+              <button
+                onClick={() => {
+                  removeGoal(match.id, undoToast.goalId);
+                  setUndoToast(null);
+                  if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null; }
+                  vibrate();
+                }}
+                style={{
+                  padding: '6px 14px', borderRadius: 10, fontWeight: 800, fontSize: 12,
+                  background: 'rgba(255,255,255,.25)', color: '#fff', border: 'none', cursor: 'pointer', flexShrink: 0,
+                }}
+              >
+                ↶ {t('match.detail.undo')}
+              </button>
+            </div>
+
+            {/* Inline scorer picker — jen pro náš gól, jen pokud nebyl ještě přiřazen */}
+            {isOurs && !hasScorer && currentOnField.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, opacity: 0.85, fontWeight: 600, marginTop: 2 }}>
+                  {t('match.detail.whoScored')}
+                </div>
+                <div style={{
+                  display: 'flex', gap: 6, flexWrap: 'wrap',
+                }}>
+                  {currentOnField.slice(0, 8).map(p => (
+                    <button
+                      key={p.playerId}
+                      onClick={() => assignScorerToGoal(undoToast.goalId, p.playerId)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        background: 'rgba(255,255,255,.18)', color: '#fff',
+                        padding: '5px 9px', borderRadius: 8,
+                        border: '1px solid rgba(255,255,255,.25)',
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                        minWidth: 0, maxWidth: '100%',
+                      }}
+                    >
+                      <span style={{
+                        background: 'rgba(255,255,255,.25)', color: '#fff',
+                        padding: '1px 5px', borderRadius: 4, fontSize: 10, fontWeight: 900,
+                        flexShrink: 0,
+                      }}>{p.jerseyNumber}</span>
+                      <span style={{
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>{p.name}</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      // Skip — jen zavři toast, scorer zůstane null
+                      setUndoToast(null);
+                      if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null; }
+                    }}
+                    style={{
+                      background: 'transparent', color: 'rgba(255,255,255,.75)',
+                      padding: '5px 9px', borderRadius: 8,
+                      border: '1px dashed rgba(255,255,255,.35)',
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    {t('match.detail.scorerUnknown')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Sub undo toast — nad sticky gólovými tlačítky v dosahu palce */}
+      {subUndoToast && (
         <div style={{
-          position: 'fixed', top: 16, left: 16, right: 16, zIndex: 150,
+          position: 'fixed',
+          bottom: 'calc(168px + env(safe-area-inset-bottom, 0px))',
+          left: 16, right: 16, zIndex: 150,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 16px', borderRadius: 14,
-          background: undoToast.side === 'ours' ? '#1B5E20' : '#B71C1C',
-          color: '#fff', boxShadow: '0 4px 20px rgba(0,0,0,.3)',
-          animation: 'undoToastSlide .3s ease-out',
-          maxWidth: 480, margin: '0 auto',
+          padding: '10px 14px', borderRadius: 14,
+          background: 'var(--primary)', color: '#fff',
+          boxShadow: '0 -4px 20px rgba(0,0,0,.3)',
+          animation: 'undoToastSlideUp .25s ease-out',
+          maxWidth: 480, marginLeft: 'auto', marginRight: 'auto',
         }}>
-          <span style={{ fontWeight: 700, fontSize: 14 }}>
-            ⚽ {undoToast.side === 'ours' ? t('match.detail.goalRecorded') : t('match.detail.opponentGoalRecorded')}
+          <span style={{ fontWeight: 700, fontSize: 13 }}>
+            🔄 {t('match.detail.subDone', { count: subUndoToast.count })}
           </span>
           <button
             onClick={() => {
-              removeGoal(match.id, undoToast.goalId);
-              setUndoToast(null);
-              if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null; }
+              undoSubstitutions(match.id, subUndoToast.subIds);
+              setSubUndoToast(null);
+              if (subUndoTimerRef.current) { clearTimeout(subUndoTimerRef.current); subUndoTimerRef.current = null; }
               vibrate();
             }}
             style={{
-              padding: '6px 16px', borderRadius: 10, fontWeight: 800, fontSize: 13,
+              padding: '6px 14px', borderRadius: 10, fontWeight: 800, fontSize: 12,
               background: 'rgba(255,255,255,.25)', color: '#fff', border: 'none', cursor: 'pointer',
             }}
           >
-            {t('match.detail.undo')}
+            ↶ {t('match.detail.undo')}
           </button>
+        </div>
+      )}
+
+      {/* Period end banner — viditelný signál že uběhla doba periody */}
+      {match.status === 'live' && isPeriodOvertime && (
+        <div style={{
+          background: 'linear-gradient(135deg, #FF6F00 0%, #E65100 100%)',
+          color: '#fff', borderRadius: 14,
+          padding: '10px 14px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          boxShadow: '0 2px 10px rgba(230,81,0,.3)',
+          animation: 'pulse 2s ease-in-out infinite',
+        }}>
+          <span style={{ fontWeight: 800, fontSize: 13 }}>
+            ⏰ {currentPeriod < periods
+              ? t('match.detail.periodOvertimeHalftime')
+              : t('match.detail.periodOvertimeFinish')}
+          </span>
+          <span style={{ fontSize: 12, opacity: 0.85 }}>
+            +{formatTime(periodElapsed - periodSeconds)}
+          </span>
         </div>
       )}
 
@@ -763,35 +1152,227 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
         )}
       </div>
 
-      {/* Sub alert */}
-      {alertActive && match.status === 'live' && hasBench && (
-        <div style={{
-          background: '#FF6F00', borderRadius: 14, padding: '12px 16px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-          boxShadow: '0 0 0 2px #E65100',
-          animation: 'pulse 1s infinite',
-        }}>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 14, color: '#fff' }}>{t('match.detail.subAlert')}</div>
-            {suggestedIn.length > 0 && (
-              <div style={{ fontSize: 12, color: 'rgba(255,255,255,.85)', marginTop: 2 }}>
-                {t('match.detail.subAlertSuggested', { players: suggestedIn.map(p => p.name).join(', ') })}
+      {/* ── Sub alert — multi-select: označ N ven, N dovnitř, proveď batch ── */}
+      {alertActive && match.status === 'live' && hasBench && (() => {
+        return (
+          <div style={{
+            background: 'linear-gradient(135deg, #FF6F00 0%, #E65100 100%)',
+            borderRadius: 16, padding: '12px 10px 10px',
+            boxShadow: '0 0 0 2px #E65100, 0 6px 20px rgba(230,81,0,.35)',
+            animation: 'pulse 1.4s ease-in-out infinite',
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <span style={{ fontSize: 18 }}>🔄</span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 900, fontSize: 14, color: '#fff', lineHeight: 1.1 }}>
+                    {t('match.detail.subAlert')}
+                  </div>
+                  <div style={{
+                    fontSize: 11, color: 'rgba(255,255,255,.9)', marginTop: 2,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {t('match.detail.subMultiHint')}
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-          <button
-            onClick={() => setSubModal(true)}
-            style={{
-              background: '#fff', color: 'var(--warning)', borderRadius: 10,
-              padding: '8px 14px', fontWeight: 800, fontSize: 13, flexShrink: 0,
-            }}
-          >
-            {t('common.confirm')}
-          </button>
-        </div>
-      )}
+              <span style={{
+                background: 'rgba(255,255,255,.18)', color: '#fff',
+                borderRadius: 8, padding: '3px 8px', fontSize: 11, fontWeight: 800, flexShrink: 0,
+              }}>
+                {queueSize}×
+              </span>
+            </div>
 
-      {/* Next sub info */}
+            {/* Dvousloupce — DOLŮ (armuj) | NAHORU (tap = proveď) */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6,
+              background: 'rgba(255,255,255,.08)', borderRadius: 12, padding: 6,
+              maxHeight: 360, overflowY: 'auto',
+            }}>
+              {/* OUT sloupec — multi-select, pořadí = pořadí tapů */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: 0.5,
+                  textAlign: 'center', padding: '2px 0', position: 'sticky', top: 0,
+                  background: 'rgba(230,81,0,.85)', backdropFilter: 'blur(8px)', zIndex: 1,
+                }}>
+                  ↓ {t('match.detail.subOutCol')} {selectedOutIds.length > 0 && `(${selectedOutIds.length})`}
+                </div>
+                {onFieldCandidates.map((c) => {
+                  const orderIdx = selectedOutIds.indexOf(c.player.playerId);
+                  const isSelected = orderIdx !== -1;
+                  return (
+                    <button
+                      key={c.player.playerId}
+                      onClick={() => toggleOut(c.player.playerId)}
+                      style={{
+                        position: 'relative',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        background: isSelected ? '#fff' : 'rgba(255,255,255,.92)',
+                        color: 'var(--text)',
+                        borderRadius: 10, padding: '8px 8px',
+                        cursor: 'pointer', textAlign: 'left',
+                        border: isSelected ? '2px solid var(--danger)' : '2px solid transparent',
+                        boxShadow: isSelected ? '0 2px 8px rgba(198,40,40,.3)' : 'none',
+                        minWidth: 0,
+                      }}
+                    >
+                      <span style={{
+                        width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                        background: 'var(--danger-light)', color: 'var(--danger)',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 900,
+                      }}>{c.player.jerseyNumber}</span>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{
+                          fontWeight: 700, fontSize: 12,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {c.player.name}
+                        </div>
+                        <div style={{
+                          fontSize: 11, fontWeight: 800,
+                          color: c.stretchMinutes >= 15 ? 'var(--danger)'
+                            : c.stretchMinutes >= 10 ? 'var(--warning)'
+                            : 'var(--text-muted)',
+                        }}>
+                          {c.stretchMinutes}' {t('match.detail.subOnFieldNow')}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <span style={{
+                          position: 'absolute', top: 4, right: 4,
+                          width: 18, height: 18, borderRadius: '50%',
+                          background: 'var(--danger)', color: '#fff',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 10, fontWeight: 900,
+                        }}>{orderIdx + 1}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* IN sloupec — multi-select, pořadí = pořadí tapů */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: 0.5,
+                  textAlign: 'center', padding: '2px 0', position: 'sticky', top: 0,
+                  background: 'rgba(230,81,0,.85)', backdropFilter: 'blur(8px)', zIndex: 1,
+                }}>
+                  ↑ {t('match.detail.subInCol')} {selectedInIds.length > 0 && `(${selectedInIds.length})`}
+                </div>
+                {benchCandidates.map((c) => {
+                  const orderIdx = selectedInIds.indexOf(c.player.playerId);
+                  const isSelected = orderIdx !== -1;
+                  return (
+                    <button
+                      key={c.player.playerId}
+                      onClick={() => toggleIn(c.player.playerId)}
+                      style={{
+                        position: 'relative',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        background: isSelected ? '#fff' : 'rgba(255,255,255,.92)',
+                        color: 'var(--text)',
+                        borderRadius: 10, padding: '8px 8px',
+                        cursor: 'pointer', textAlign: 'left',
+                        border: isSelected ? '2px solid var(--success)' : '2px solid transparent',
+                        boxShadow: isSelected ? '0 2px 8px rgba(46,125,50,.3)' : 'none',
+                        minWidth: 0,
+                      }}
+                    >
+                      <span style={{
+                        width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                        background: 'var(--success-light)', color: 'var(--success)',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 900,
+                      }}>{c.player.jerseyNumber}</span>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{
+                          fontWeight: 700, fontSize: 12,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {c.player.name}
+                        </div>
+                        <div style={{
+                          fontSize: 11, fontWeight: 800,
+                          color: c.stretchMinutes >= 15 ? 'var(--success)'
+                            : c.stretchMinutes >= 10 ? 'var(--primary)'
+                            : 'var(--text-muted)',
+                        }}>
+                          {c.stretchMinutes}' {t('match.detail.subOnBenchNow')}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <span style={{
+                          position: 'absolute', top: 4, right: 4,
+                          width: 18, height: 18, borderRadius: '50%',
+                          background: 'var(--success)', color: '#fff',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 10, fontWeight: 900,
+                        }}>{orderIdx + 1}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Velké potvrzovací tlačítko — VYŽADUJE stejný počet OUT a IN */}
+            <button
+              onClick={handleConfirmBatch}
+              disabled={!canConfirm}
+              style={{
+                background: canConfirm ? '#fff' : 'rgba(255,255,255,.4)',
+                color: canConfirm ? '#E65100' : 'rgba(255,255,255,.9)',
+                border: 'none', borderRadius: 12,
+                padding: '12px', fontWeight: 900, fontSize: 15,
+                cursor: canConfirm ? 'pointer' : 'not-allowed',
+                boxShadow: canConfirm ? '0 3px 10px rgba(0,0,0,.2)' : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {canConfirm
+                ? `✓ ${t('match.detail.subExecuteN', { count: outCount })}`
+                : confirmHint === 'subSelectBoth'
+                  ? t('match.detail.subSelectBoth')
+                  : confirmHint === 'subSelectMoreIn'
+                    ? t('match.detail.subSelectMoreInN', { missing: outCount - inCount })
+                    : t('match.detail.subSelectMoreOutN', { missing: inCount - outCount })
+              }
+            </button>
+
+            {/* Sekundární akce */}
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={handleDismissQueue}
+                style={{
+                  flex: 1, background: 'rgba(255,255,255,.15)', color: '#fff',
+                  border: '1px solid rgba(255,255,255,.25)', borderRadius: 10,
+                  padding: '8px', fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                }}
+              >
+                ⏭ {t('match.detail.subPostpone')}
+              </button>
+              <button
+                onClick={() => setSubModal(true)}
+                style={{
+                  flex: 1, background: 'rgba(255,255,255,.15)', color: '#fff',
+                  border: '1px solid rgba(255,255,255,.25)', borderRadius: 10,
+                  padding: '8px', fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                }}
+              >
+                ⚙️ {t('match.detail.subManualPick')}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Next sub info — jen když fronta je prázdná */}
       {!alertActive && match.status === 'live' && match.substitutionSettings && hasBench && (
         <div style={{
           background: 'var(--surface)', borderRadius: 14, padding: '10px 14px',
@@ -801,6 +1382,60 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
           <span style={{ fontWeight: 700, color: 'var(--text)' }}>{Math.ceil(nextAlertMinute)}'</span>
         </div>
       )}
+
+      {/* Pre-match checklist — viditelný signál co je připravené, co ne */}
+      {match.status === 'planned' && (() => {
+        const starters = match.lineup.filter(p => p.isStarter);
+        const targetStarters = match.matchFormat ? formatToStarterCount(match.matchFormat) : 11;
+        const bench = match.lineup.filter(p => !p.isStarter);
+        const checks = [
+          {
+            ok: starters.length >= targetStarters,
+            label: t('match.detail.checkLineup', { n: starters.length, target: targetStarters }),
+          },
+          {
+            ok: bench.length > 0,
+            label: t('match.detail.checkBench', { n: bench.length }),
+            soft: true, // "nice to have" — not blocking
+          },
+          {
+            ok: !!match.venue?.trim(),
+            label: match.venue?.trim() ? t('match.detail.checkVenueOk', { venue: match.venue }) : t('match.detail.checkVenueMissing'),
+            soft: true,
+          },
+          {
+            ok: !!match.kickoffTime,
+            label: match.kickoffTime ? t('match.detail.checkKickoffOk', { time: match.kickoffTime }) : t('match.detail.checkKickoffMissing'),
+          },
+        ];
+        const allReady = checks.filter(c => !c.soft).every(c => c.ok);
+        return (
+          <div style={{
+            background: allReady ? 'var(--success-light)' : 'var(--warning-light)',
+            borderRadius: 14, padding: '12px 14px',
+            border: `1px solid ${allReady ? 'var(--success)' : 'var(--warning)'}`,
+            display: 'flex', flexDirection: 'column', gap: 6,
+          }}>
+            <div style={{
+              fontWeight: 800, fontSize: 13,
+              color: allReady ? 'var(--success)' : 'var(--warning)',
+            }}>
+              {allReady ? `✅ ${t('match.detail.checkReady')}` : `⚠️ ${t('match.detail.checkNotReady')}`}
+            </div>
+            {checks.map((c, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                fontSize: 12,
+                color: c.ok ? 'var(--success)' : c.soft ? 'var(--text-muted)' : 'var(--warning)',
+                opacity: c.soft && !c.ok ? 0.75 : 1,
+              }}>
+                <span style={{ fontSize: 13, flexShrink: 0 }}>{c.ok ? '✅' : c.soft ? '·' : '⚠'}</span>
+                <span>{c.label}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* ── Action buttons (sticky during live) ── */}
       <div style={match.status === 'live' ? {
@@ -827,7 +1462,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
 
       {match.status === 'live' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {/* ── GOAL BUTTONS — dominant, huge touch targets ── */}
+          {/* ── SCORING BUTTONS — sport-aware (goal pro fotbal, set pro tenis) ── */}
           <div style={{ display: 'flex', gap: 10 }}>
             <button
               onPointerDown={() => handleGoalPointerDown('ours')}
@@ -843,7 +1478,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                 letterSpacing: 0.5,
               }}
             >
-              ⚽ {t('match.detail.ourGoalBtn')}
+              {match.sport === 'tennis' ? `🎾 ${t('match.detail.ourSetBtn')}` : `⚽ ${t('match.detail.ourGoalBtn')}`}
             </button>
             <button
               onPointerDown={() => handleGoalPointerDown('theirs')}
@@ -859,7 +1494,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                 letterSpacing: 0.5,
               }}
             >
-              ⚽ {t('match.detail.opponentGoalBtn')}
+              {match.sport === 'tennis' ? `🎾 ${t('match.detail.opponentSetBtn')}` : `⚽ ${t('match.detail.opponentGoalBtn')}`}
             </button>
           </div>
 
@@ -873,9 +1508,12 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             </div>
           )}
 
-          {/* ── Secondary actions — compact row ── */}
+          {/* ── Secondary actions — compact row ──
+              Pro away coach-e (paired): karty a střídání dělá home coach (má lineup).
+              Away coach jen zaznamenává skóre svého týmu — detaily (střelci, karty,
+              střídání) pořád patří creator-ovi. */}
           <div style={{ display: 'flex', gap: 6 }}>
-            {showCards && (
+            {showCards && !isAwayView && (
               <button
                 onClick={() => { vibrate(); setCardModal(true); }}
                 style={{
@@ -886,7 +1524,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                 {t('match.detail.cardBtn')}
               </button>
             )}
-            {showSubs && (
+            {showSubs && !isAwayView && (
               <button
                 onClick={() => { vibrate(); setSubModal(true); }}
                 style={{
@@ -1083,6 +1721,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {sortedPlayers.map(p => {
                 const mins = playingTime.get(p.playerId) ?? 0;
+                const benchMins = Math.max(0, elapsedMin - mins);
                 const pct = maxTime > 0 ? Math.min(100, (mins / maxTime) * 100) : 0;
                 const isOn = currentlyOnField.has(p.playerId);
                 return (
@@ -1106,6 +1745,15 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                     </div>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', minWidth: 30, textAlign: 'right' }}>
                       {mins}'
+                    </span>
+                    <span
+                      title={t('match.detail.benchTime')}
+                      style={{
+                        fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
+                        minWidth: 34, textAlign: 'right',
+                      }}
+                    >
+                      🪑 {benchMins}'
                     </span>
                   </div>
                 );
@@ -1135,35 +1783,54 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
 
       {/* ── Goals log (clickable to assign scorer) ── */}
       {match.goals.length > 0 && (
-        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
-          <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: 'var(--text-muted)' }}>
+        <details style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden' }}>
+          <summary style={{
+            padding: '12px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 14,
+            display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)',
+            listStyle: 'none', WebkitAppearance: 'none',
+          }}>
             {t('match.detail.goalsLog')}
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+              {match.goals.length}
+            </span>
+          </summary>
+          <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[...match.goals].reverse().map(g => {
               const isUnassigned = !g.isOpponentGoal && !g.isOwnGoal && !g.scorerId;
+              // Z pohledu aktuálního trenéra — je to „můj" gól? (flipnuto pro away)
+              const isMyGoal = perspective.isGoalMine(g);
+              // Edit gólu dovolíme jen pokud mám přístup ke sestavě = home/viewer
+              // s creator lineup. Away coach gól nelze edit (nemá svoji sestavu).
+              const canEditThis = match.status !== 'finished' && !isAwayView && !g.isOpponentGoal;
               return (
                 <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', minWidth: 28 }}>{g.minute}'</span>
                   <span
                     onClick={() => {
-                      if (match.status !== 'finished' && !g.isOpponentGoal) setEditingGoal(g);
+                      if (canEditThis) setEditingGoal(g);
                     }}
                     style={{
                       fontSize: 13, fontWeight: 600, flex: 1,
-                      color: g.isOpponentGoal ? 'var(--danger)' : 'var(--success)',
-                      cursor: match.status !== 'finished' && !g.isOpponentGoal ? 'pointer' : 'default',
-                      textDecoration: isUnassigned ? 'underline dashed' : 'none',
+                      color: isMyGoal ? 'var(--success)' : 'var(--danger)',
+                      cursor: canEditThis ? 'pointer' : 'default',
+                      textDecoration: isUnassigned && !isAwayView ? 'underline dashed' : 'none',
                       textDecorationColor: 'var(--text-muted)',
                     }}
                   >
-                    {g.isOpponentGoal
-                      ? `${match.opponent} ⚽`
-                      : g.isOwnGoal
-                        ? t('match.detail.ownGoalLog')
-                        : g.scorerId
-                          ? `${getPlayerName(g.scorerId)}${g.assistId ? ` (${getPlayerName(g.assistId)})` : ''}`
-                          : `⚽ ${t('match.field.tapToAssign')}`}
+                    {isAwayView
+                      // Pro away coach: flipnuté popisky
+                      ? (g.isOpponentGoal
+                          ? `${perspective.myTeamName} ⚽`   // creator pohled "opp" = away coach-ův tým
+                          : g.isOwnGoal
+                            ? t('match.detail.ownGoalLog')
+                            : `${perspective.theirTeamName} ⚽`)
+                      : (g.isOpponentGoal
+                          ? `${match.opponent} ⚽`
+                          : g.isOwnGoal
+                            ? t('match.detail.ownGoalLog')
+                            : g.scorerId
+                              ? `${getPlayerName(g.scorerId)}${g.assistId ? ` (${getPlayerName(g.assistId)})` : ''}`
+                              : `⚽ ${t('match.field.tapToAssign')}`)}
                   </span>
                   {match.status !== 'finished' && (
                     <button
@@ -1178,14 +1845,23 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               );
             })}
           </div>
-        </div>
+        </details>
       )}
 
       {/* Cards log */}
       {match.cards.length > 0 && (
-        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
-          <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: 'var(--text-muted)' }}>{t('match.detail.cardsLog')}</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <details style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden' }}>
+          <summary style={{
+            padding: '12px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 14,
+            display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)',
+            listStyle: 'none', WebkitAppearance: 'none',
+          }}>
+            {t('match.detail.cardsLog')}
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+              {match.cards.length}
+            </span>
+          </summary>
+          <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {match.cards.map(c => {
               const player = match.lineup.find(p => p.playerId === c.playerId);
               return (
@@ -1197,16 +1873,23 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               );
             })}
           </div>
-        </div>
+        </details>
       )}
 
       {/* Substitutions log */}
       {match.substitutions.length > 0 && (
-        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
-          <h3 style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, color: 'var(--text-muted)' }}>
-            🔄 {t('match.detail.subsLog')}
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <details style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden' }}>
+          <summary style={{
+            padding: '12px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 14,
+            display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)',
+            listStyle: 'none', WebkitAppearance: 'none',
+          }}>
+            <span>🔄</span> {t('match.detail.subsLog')}
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+              {match.substitutions.length}
+            </span>
+          </summary>
+          <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[...match.substitutions].sort((a, b) => a.minute - b.minute).map(s => {
               const playerOut = match.lineup.find(p => p.playerId === s.playerOutId);
               const playerIn = match.lineup.find(p => p.playerId === s.playerInId);
@@ -1220,114 +1903,13 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               );
             })}
           </div>
-        </div>
+        </details>
       )}
 
-      {/* ── Post-match summary ── */}
-      {match.status === 'finished' && (
-        <div style={{
-          background: 'linear-gradient(135deg, var(--surface), var(--surface-var))',
-          borderRadius: 14, padding: '16px', border: '1.5px solid var(--border)',
-        }}>
-          <h3 style={{ fontWeight: 800, fontSize: 15, marginBottom: 12, textAlign: 'center' }}>
-            📊 {t('match.detail.matchSummary')}
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
-            {/* Our stats */}
-            <div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--primary)' }}>{ourScore}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{t('match.detail.goals')}</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{
-                padding: '4px 14px', borderRadius: 8, fontWeight: 800, fontSize: 14,
-                background: ourScore > theirScore ? 'var(--success-light)' : ourScore < theirScore ? 'var(--danger-light)' : 'var(--warning-light)',
-                color: ourScore > theirScore ? 'var(--success)' : ourScore < theirScore ? 'var(--danger)' : 'var(--warning)',
-              }}>
-                {ourScore > theirScore ? t('match.result.win') : ourScore < theirScore ? t('match.result.loss') : t('match.result.draw')}
-              </span>
-            </div>
-            <div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--danger)' }}>{theirScore}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{t('match.detail.goals')}</div>
-            </div>
-          </div>
-
-          {/* Stats row */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 14, padding: '10px 0', borderTop: '1px solid var(--border)' }}>
-            {match.cards.length > 0 && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 20, fontWeight: 800 }}>{match.cards.length}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>🟨 {t('match.detail.cardsCount')}</div>
-              </div>
-            )}
-            {match.substitutions.length > 0 && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 20, fontWeight: 800 }}>{match.substitutions.length}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>🔄 {t('match.detail.subsCount')}</div>
-              </div>
-            )}
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{Math.round(elapsed / 60)}'</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>⏱ {t('match.detail.duration')}</div>
-            </div>
-          </div>
-
-          {/* Event timeline for finished match */}
-          {(match.goals.length > 0 || match.cards.length > 0 || match.substitutions.length > 0) && (() => {
-            type TimelineEvent = { minute: number; type: 'goal' | 'card' | 'sub'; label: string; color: string; icon: string };
-            const events: TimelineEvent[] = [];
-
-            for (const g of match.goals) {
-              const scorer = g.isOpponentGoal ? match.opponent : g.scorerId ? getPlayerName(g.scorerId) : '?';
-              events.push({
-                minute: g.minute,
-                type: 'goal',
-                label: g.isOpponentGoal ? `${match.opponent}` : g.isOwnGoal ? t('match.detail.ownGoalLog') : scorer,
-                color: g.isOpponentGoal ? 'var(--danger)' : 'var(--success)',
-                icon: '⚽',
-              });
-            }
-            for (const c of match.cards) {
-              const player = match.lineup.find(p => p.playerId === c.playerId);
-              events.push({
-                minute: c.minute, type: 'card',
-                label: player?.name ?? '?',
-                color: c.type === 'red' ? 'var(--danger)' : '#F9A825',
-                icon: c.type === 'yellow' ? '🟨' : c.type === 'red' ? '🟥' : '🟨🟥',
-              });
-            }
-            for (const s of match.substitutions) {
-              const inP = match.lineup.find(p => p.playerId === s.playerInId);
-              const outP = match.lineup.find(p => p.playerId === s.playerOutId);
-              events.push({
-                minute: s.minute, type: 'sub',
-                label: `${inP?.name ?? '?'} ⇄ ${outP?.name ?? '?'}`,
-                color: 'var(--text-muted)',
-                icon: '🔄',
-              });
-            }
-            events.sort((a, b) => a.minute - b.minute);
-
-            return (
-              <div style={{ marginTop: 12, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8 }}>
-                  {t('match.detail.eventTimeline')}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {events.map((e, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', minWidth: 24 }}>{e.minute}'</span>
-                      <span style={{ fontSize: 14 }}>{e.icon}</span>
-                      <span style={{ fontWeight: 600, color: e.color }}>{e.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-        </div>
-      )}
+      {/* ── Post-match summary sekce odstraněna — obsahovala jen duplicitní info
+          (skóre je v headeru, gólové průběhy + střídání + karty mají samostatné
+          sbalitelné sekce). Shrnutí pro rodiče se posílá přes WhatsApp — viz
+          MatchDetailPage "📢 Shrnutí pro rodiče". */}
 
       {/* ── VEO recording ── */}
       {match.veoUrl ? (

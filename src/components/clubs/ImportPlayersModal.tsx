@@ -14,7 +14,7 @@
 
 import { useState } from 'react';
 import type { Club, AgeCategory, ClubPlayer } from '../../types/club.types';
-import { AGE_CATEGORIES } from '../../types/club.types';
+import { AGE_CATEGORIES_BY_SPORT } from '../../types/club.types';
 import {
   parseRosterFile,
   mapRows,
@@ -48,12 +48,14 @@ const FIELD_LABELS: Record<ImportField, string> = {
 
 export function ImportPlayersModal({ club, onClose, onImport }: Props) {
   const { t } = useI18n();
+  const clubSport = (club.sport ?? 'football') as 'football' | 'tennis';
+  const availableCategories = AGE_CATEGORIES_BY_SPORT[clubSport];
   const [workbook, setWorkbook] = useState<ParsedWorkbook | null>(null);
   const [activeSheetIdx, setActiveSheetIdx] = useState(0);
   const [activeSheet, setActiveSheet] = useState<ParsedSheet | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [targetCategory, setTargetCategory] = useState<AgeCategory>(
-    club.ageCategories[0] ?? 'U10',
+    club.ageCategories[0] ?? availableCategories[0],
   );
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState('');
@@ -92,7 +94,7 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
         const age = currentYear - avgYear;
         const uAge = Math.min(19, Math.max(6, age));
         const detected = `U${uAge}` as AgeCategory;
-        if (AGE_CATEGORIES.includes(detected)) {
+        if (availableCategories.includes(detected)) {
           setTargetCategory(detected);
         }
       }
@@ -317,7 +319,7 @@ export function ImportPlayersModal({ club, onClose, onImport }: Props) {
                   {t('clubs.import.targetCategory')}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {AGE_CATEGORIES.map(cat => (
+                  {availableCategories.map(cat => (
                     <button
                       key={cat}
                       onClick={() => setTargetCategory(cat)}

@@ -35,19 +35,25 @@ export async function loadSharedClub(clubId: string): Promise<SharedClub | null>
   try {
     const snap = await get(sharedClubRef(clubId));
     if (!snap.exists()) return null;
-    const raw = snap.val();
-    // Normalizuj players a ageCategories (Firebase může vrátit objekt místo pole)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const players = ensureArray(raw.players).map((p: any) => ({
-      ...p,
-      categoryHistory: ensureArray(p?.categoryHistory),
-    }));
+    const raw = snap.val() as Record<string, unknown>;
+    if (!raw || typeof raw !== 'object') return null;
+
+    // Normalizuj players a ageCategories (Firebase může vrátit objekt místo pole
+    // pokud jsou indexy nesouvislé). Každý hráč může mít categoryHistory ve
+    // stejném problematickém formátu.
+    const players = ensureArray(raw.players).map(p => {
+      const player = (p && typeof p === 'object') ? (p as Record<string, unknown>) : {};
+      return {
+        ...player,
+        categoryHistory: ensureArray(player.categoryHistory),
+      };
+    });
     return {
       ...raw,
       players,
       ageCategories: ensureArray(raw.ageCategories),
       defaultPlayers: ensureArray(raw.defaultPlayers),
-    } as SharedClub;
+    } as unknown as SharedClub;
   } catch {
     return null;
   }

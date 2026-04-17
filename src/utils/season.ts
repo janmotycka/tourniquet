@@ -40,7 +40,10 @@ export interface Season {
 
 // ─── Internal helpers ──────────────────────────────────────────────────────
 
-function parseISO(date: string): { y: number; m: number; d: number } | null {
+function parseISO(date: string | null | undefined): { y: number; m: number; d: number } | null {
+  // Defensive — match může po Firebase round-tripu přijít bez date fieldu
+  // (undefined / null), hlavně u rozestavěných nebo orphaned records.
+  if (typeof date !== 'string' || !date) return null;
   const parts = date.split('-');
   if (parts.length !== 3) return null;
   const y = parseInt(parts[0], 10);

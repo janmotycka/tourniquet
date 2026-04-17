@@ -7,7 +7,7 @@ import { useTrainingsStore } from '../store/trainings.store';
 import { useExercisesStore } from '../store/exercises.store';
 import { useCoachesStore } from '../store/coaches.store';
 import { useClubsStore } from '../store/clubs.store';
-import { AGE_CATEGORIES, type AgeCategory as ClubAgeCategory } from '../types/club.types';
+import { AGE_CATEGORIES_BY_SPORT, type AgeCategory as ClubAgeCategory } from '../types/club.types';
 import { AttendanceSheet } from '../components/training/AttendanceSheet';
 import { ALL_EXERCISES } from '../data/exercises/index';
 import { CATEGORY_CONFIGS } from '../data/categories.data';
@@ -788,7 +788,7 @@ export function TrainingDetailPage({ training, navigate }: Props) {
 
             {showCategoryPicker && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {AGE_CATEGORIES.map((cat: ClubAgeCategory) => {
+                {AGE_CATEGORIES_BY_SPORT.football.map((cat: ClubAgeCategory) => {
                   const active = liveTraining.clubAgeCategory === cat;
                   return (
                     <button

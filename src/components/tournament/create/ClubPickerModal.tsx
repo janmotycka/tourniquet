@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useI18n } from '../../../i18n';
+import { useUserPrefsStore } from '../../../store/userPrefs.store';
 import type { Club, AgeCategory } from '../../../types/club.types';
 import { TEAM_COLORS, colorSwatch } from '../../../utils/team-colors';
 import { resizeLogoToBase64 } from './helpers';
@@ -14,6 +15,7 @@ interface ClubPickerModalProps {
 
 export function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: ClubPickerModalProps) {
   const { t } = useI18n();
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
   const [showNewClub, setShowNewClub] = useState(false);
   const [newClubName, setNewClubName] = useState('');
   const [newClubColor, setNewClubColor] = useState(TEAM_COLORS[0]);
@@ -186,6 +188,7 @@ export function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: Club
               value={newClubName}
               onChange={setNewClubName}
               placeholder={t('tournament.create.clubName')}
+              sport={preferredSport}
             />
             <div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('tournament.create.colorLabel')}</div>

@@ -26,6 +26,7 @@ export interface MatchLineupPlayer {
   isStarter: boolean;     // true = základní sestava, false = náhradník
   substituteOrder: number; // pořadí na lavičce (1 = první na střídání); 0 pro startéry
   attendance?: AttendanceStatus; // účast na zápase; default (unset) = 'tentative'
+  guestCategory?: string; // domovská kategorie, pokud hráč hostuje z jiné kategorie (např. U8 hraje za U9)
 }
 
 // ─── Events ───────────────────────────────────────────────────────────────────
@@ -78,14 +79,75 @@ export interface SubstitutionSettings {
   playersAtOnce: number;     // kolik hráčů najednou (1–4)
 }
 
+// ─── Tennis team match (ČTenis družstva) ────────────────────────────────────
+/**
+ * TennisSubMatch — jednotlivý zápas v rámci týmového zápasu.
+ *
+ * Český mládežnický tenis typicky hraje:
+ *   - 4× dvouhra (singles) + 2× čtyřhra (doubles) = 6 bodů
+ *   - nebo 3× dvouhra + 1× čtyřhra (mladší žactvo)
+ * Tým vyhraje zápas který má většinu bodů (4+ z 6, 3+ z 4).
+ */
+export interface TennisSubMatch {
+  id: string;
+  type: 'singles' | 'doubles';
+  /** Pořadí v rámci týmového zápasu (1–6) — řídí také zobrazení v tabulce */
+  order: number;
+  /** ID(s) hráčů domácího týmu (1 pro singles, 2 pro doubles) */
+  homePlayerIds: string[];
+  /** Jméno(na) soupeřova hráče/hráčů (free text) */
+  awayPlayerName: string;
+  /** Druhý soupeř pro doubles */
+  awayPlayerName2?: string;
+  /** Odehrané sety: [{ home: 6, away: 4 }, { home: 3, away: 6 }, ...] */
+  sets: Array<{ home: number; away: number }>;
+  /** Vítěz: 'home' | 'away' | null (dosud nehraje) */
+  winner: 'home' | 'away' | null;
+  /** Pokud byl zápas skrečován (retired) */
+  retired?: boolean;
+  /** Poznámka (optional) */
+  note?: string;
+}
+
+export type MatchType = 'single' | 'team';
+
 // ─── SeasonMatch (main entity) ────────────────────────────────────────────────
 
 export interface SeasonMatch {
   id: string;
+  sport?: import('./sport.types').Sport;  // 'football' | 'tennis' — default 'football'
+  /**
+   * Typ zápasu — 'single' = klasický 1v1 zápas, 'team' = týmový (ČTenis družstva).
+   * Default 'single' (backward-compat). Pro tennis team matches použij 'team'.
+   */
+  matchType?: MatchType;
+  /** Pro tennis team: jednotlivé sub-matches (4× singles + 2× doubles typicky) */
+  subMatches?: TennisSubMatch[];
+  /**
+   * Disclaimer pro neoficiální výsledky (tennis družstva — oficiální na ČTenis).
+   * Pokud vyplněno, zobrazuje se v detailu + veřejném view.
+   */
+  officialResultsNote?: string;
+  /**
+   * URL na oficiální stránku zápasu / turnaje v externím systému
+   * (např. `https://cztenis.cz/turnaj/{id}/sezona/{kod}/informace`).
+   * Zobrazí se jako tlačítko „🔗 Otevřít na ČTenis" v detailu + public view.
+   */
+  officialResultsUrl?: string;
+  /**
+   * Reference na MyPlayer (tenisový individuální mód — rodič/privátní trenér).
+   * Pokud je set, zápas patří k tomuto sledovanému hráči (ne ke klubu).
+   * `clubId` v tom případě může být prázdný string nebo "-" (backward-compat
+   * placeholder, Firebase rules neřeší scope přes clubId).
+   */
+  myPlayerId?: string;
   clubId: string;            // reference na náš klub (pro výběr hráčů)
   clubName?: string;         // název našeho klubu (pro zobrazení místo "My")
-  opponent: string;          // název soupeře
+  opponent: string;          // název soupeře (display name)
+  opponentClubId?: string;   // NEW: pokud soupeř je TORQ klub (propojení statistik)
+  opponentCatalogId?: string; // NEW: pokud soupeř je v katalogu (FAČR kluby)
   isHome: boolean;           // domácí / venkovní
+  venue?: string;            // místo konání (např. "Stadion U hřbitova, Nové Město na Moravě")
   date: string;              // "YYYY-MM-DD"
   kickoffTime: string;       // "HH:MM"
   competition: string;       // "Liga", "Pohár", "Přátelský"...
@@ -117,7 +179,58 @@ export interface SeasonMatch {
   ratings: PlayerRating[];   // hodnocení po zápase
   note?: string;             // trenérova poznámka k zápasu
 
+  /**
+   * Aktivní editor zápasu — soft lock pro multi-trainer koordinaci.
+   * Heartbeat se aktualizuje každých 15s; pokud `now - heartbeatAt > 45s` → lock je stale.
+   * Trenér uvidí banner "Spravuje X". Může kliknout „Převzít řízení" a stát se editorem.
+   * Je-li null, nikdo momentálně aktivně needituje.
+   */
+  activeEditor?: {
+    uid: string;
+    name: string;
+    startedAt: string;    // ISO
+    heartbeatAt: string;  // ISO
+  } | null;
+
+  /**
+   * Pairing s trenérem opozičního týmu (cross-team zápis zápasu).
+   *
+   * Flow:
+   *  1. Home coach (vytvořitel zápasu) vygeneruje PIN → získá share link
+   *  2. Opposition coach klikne na link → zadá PIN → systém nastaví `awayCoachUid`
+   *  3. Po párování obě strany mohou editovat ten samý match document
+   *     (Firebase rules ověřují `ownerUid` nebo `pairing.awayCoachUid`)
+   *
+   * Opposition coach vidí zápas s **zrcadlenou perspektivou** — `isHome` stays
+   * as-is v datech (perspektiva creator-e), ale UI používá `useMatchPerspective()`
+   * hook k určení "my team" vs "their team" pro aktuálně přihlášeného uživatele.
+   */
+  pairing?: {
+    /** Random token v URL — „kdo má tento zápas claimnout". Existuje pouze
+     *  během join windowu (před joinem); po joinu se smaže. */
+    joinToken?: string;
+    pinHash?: string;        // sha256(pin + salt) — klient-side ověření PINu
+    pinSalt?: string;
+    /** UID opozičního trenéra po zadání PINu. */
+    awayCoachUid?: string;
+    awayCoachName?: string;
+    awayClubId?: string;     // ID klubu opozičního trenéra (volitelné)
+    awayClubName?: string;   // přepisuje match.opponent pokud join proběhl
+    pairedAt?: string;       // ISO
+    /** UID trenéra, který pozvánku vygeneroval (pro audit). */
+    invitedBy?: string;
+    /** Scope, pod kterým zápas žije (`clubId` nebo `ownerUid`). Potřebné pro
+     *  away coach-e: single-doc subscribe k /matches/{ownerScope}/{id}. */
+    ownerScope?: string;
+  } | null;
+
   isPublic?: boolean;        // true = sdíleno přes veřejný odkaz pro rodiče
+  /**
+   * Kdy se veřejně ukáže sestava:
+   * - 'atStart' (default) — skryta dokud je status 'planned', odhalí se při začátku zápasu
+   * - 'always' — viditelná okamžitě (trenér ji chce ukázat rodičům dopředu)
+   */
+  lineupVisibility?: 'atStart' | 'always';
   veoUrl?: string;           // odkaz na VEO záznam zápasu
 
   createdAt: string;
@@ -129,9 +242,16 @@ export interface SeasonMatch {
 export interface PublicSeasonMatch {
   id: string;
   ownerUid: string;          // pro Firebase rules
+  sport?: import('./sport.types').Sport;
+  matchType?: MatchType;
+  subMatches?: TennisSubMatch[];
+  officialResultsNote?: string;
+  officialResultsUrl?: string;
+  myPlayerId?: string;
   clubName?: string;
   opponent: string;
   isHome: boolean;
+  venue?: string;
   date: string;
   kickoffTime: string;
   competition: string;
@@ -158,9 +278,11 @@ export interface PublicSeasonMatch {
 
 export interface MatchCatalogEntry {
   id: string;
+  sport?: import('./sport.types').Sport;  // NEW: pro sport filter na landing page
   clubName: string;
   opponent: string;
   isHome: boolean;
+  venue?: string;
   date: string;
   kickoffTime: string;
   competition: string;
@@ -169,15 +291,25 @@ export interface MatchCatalogEntry {
   awayScore: number;
   ownerUid: string;
   updatedAt: string;
+  ageCategory?: string;       // věková kategorie (U9, Muži, ...) pro filtry na landingu
 }
 
 // ─── Store input ──────────────────────────────────────────────────────────────
 
 export interface CreateSeasonMatchInput {
+  sport?: import('./sport.types').Sport;
+  matchType?: MatchType;
+  subMatches?: TennisSubMatch[];
+  officialResultsNote?: string;
+  officialResultsUrl?: string;
+  myPlayerId?: string;
   clubId: string;
   clubName?: string;
   opponent: string;
+  opponentClubId?: string;
+  opponentCatalogId?: string;
   isHome: boolean;
+  venue?: string;
   date: string;
   kickoffTime: string;
   competition: string;

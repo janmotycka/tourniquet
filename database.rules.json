@@ -199,9 +199,10 @@
         // (chrání osobní údaje trenérů — jméno, telefon, email)
         ".read": "auth != null && (root.child('public').child($tournamentId).child('ownerUid').val() === auth.uid || root.child('public').child($tournamentId).child('joinedUsers').child(auth.uid).val() === 'admin')",
         "$teamId": {
-          // Čtení jednotlivé soupisky: povoleno i nepřihlášeným
-          // (trenér přes odkaz s tokenem vidí "již odesláno")
-          ".read": true,
+          // Čtení jednotlivé soupisky: pouze přihlášený uživatel (i anonymně).
+          // Trenér klikne na odkaz → klient automaticky provede anonymous sign-in →
+          // může načíst roster pro pre-fill. Zabraňuje bulk-scrape PII.
+          ".read": "auth != null",
           // První zápis: kdokoli (trenér přes odkaz). Přepis: pouze owner nebo admin turnaje.
           ".write": "!data.exists() || (auth != null && (root.child('public').child($tournamentId).child('ownerUid').val() === auth.uid || root.child('public').child($tournamentId).child('joinedUsers').child(auth.uid).val() === 'admin'))",
           ".validate": "newData.hasChildren(['coach', 'players', 'submittedAt', 'teamId', 'teamName'])",
@@ -347,12 +348,19 @@
       }
     },
 
-    // ─── Zápasy sezóny (klubový scope — všichni členové klubu) ─────────────
-    // Scope key = clubId. Read = members, Write = non-viewer members.
+    // ─── Zápasy sezóny ──────────────────────────────────────────────────────
+    // Scope key = clubId (sdílený mezi trenéry klubu) NEBO uid (legacy).
+    // Multi-trainer modely:
+    //   - Klubový: všichni členové klubu (owner/coach) mohou edit
+    //   - Cross-team pairing: opoziční trenér (awayCoachUid) po join může edit
+    //   - Join window: pokud match má pairing.joinToken a ještě není awayCoachUid,
+    //     může se libovolný auth user nárokovat (claim) pozici awayCoach
     "matches": {
       "$scopeId": {
-        ".read":  "auth != null && (auth.uid === $scopeId || root.child('clubs').child($scopeId).child('members').child(auth.uid).exists())",
-        ".write": "auth != null && (auth.uid === $scopeId || (root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() && root.child('clubs').child($scopeId).child('members').child(auth.uid).child('role').val() !== 'viewer'))"
+        "$matchId": {
+          ".read":  "auth != null && (auth.uid === $scopeId || root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() || data.child('pairing').child('awayCoachUid').val() === auth.uid || (data.child('pairing').child('joinToken').exists() && !data.child('pairing').child('awayCoachUid').exists()))",
+          ".write": "auth != null && (auth.uid === $scopeId || (root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() && root.child('clubs').child($scopeId).child('members').child(auth.uid).child('role').val() !== 'viewer') || data.child('pairing').child('awayCoachUid').val() === auth.uid || (data.child('pairing').child('joinToken').exists() && !data.child('pairing').child('awayCoachUid').exists() && newData.child('pairing').child('awayCoachUid').val() === auth.uid))"
+        }
       }
     },
 
@@ -539,6 +547,12 @@
 
         // Fakturační profil — vlastník může číst i psát
         "billingProfile": {
+          ".write": "auth != null && auth.uid === $uid"
+        },
+
+        // Moji tenisoví hráči (individuální mód — rodič / privátní trenér).
+        // Flat list sledovaných hráčů. Vlastník může číst i psát.
+        "myTennisPlayers": {
           ".write": "auth != null && auth.uid === $uid"
         }
       }

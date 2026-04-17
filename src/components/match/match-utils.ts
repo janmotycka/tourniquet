@@ -17,8 +17,11 @@ export function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-');
+export function formatDate(dateStr: string | null | undefined): string {
+  if (typeof dateStr !== 'string' || !dateStr) return '—';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const [y, m, d] = parts;
   return `${d}.${m}.${y}`;
 }
 
@@ -59,6 +62,43 @@ export function computePlayingTime(match: SeasonMatch, elapsedMinutes: number): 
   for (const [playerId, enteredAt] of onFieldSince) {
     const prev = result.get(playerId) ?? 0;
     result.set(playerId, prev + (elapsedMinutes - enteredAt));
+  }
+
+  return result;
+}
+
+/**
+ * Aktuální "střih" — minuty uplynulé od posledního přesunu hráče
+ * (nastoupení nebo stažení). Pomáhá trenérovi vidět *čerstvou* zátěž:
+ * hráč může mít 14' celkem, ale teď je na hřišti nepřetržitě už 12'.
+ *
+ * - Pro hráče na hřišti → minuty od posledního nastoupení (0 pokud starter a nebylo střídání)
+ * - Pro hráče na lavici → minuty od posledního stažení (= total elapsed pro starter-na-lavici)
+ */
+export function computeCurrentStretch(match: SeasonMatch, elapsedMinutes: number): Map<string, number> {
+  const result = new Map<string, number>();
+  const lastEventAt = new Map<string, number>(); // playerId → minute last state change
+
+  // Starters start at minute 0 on field
+  for (const p of match.lineup) {
+    if (p.isStarter) lastEventAt.set(p.playerId, 0);
+  }
+
+  const sortedSubs = [...match.substitutions].sort((a, b) => a.minute - b.minute);
+  for (const sub of sortedSubs) {
+    lastEventAt.set(sub.playerOutId, sub.minute);
+    lastEventAt.set(sub.playerInId, sub.minute);
+  }
+
+  // Stretch = elapsed - last event minute
+  for (const p of match.lineup) {
+    const last = lastEventAt.get(p.playerId);
+    if (last === undefined) {
+      // Bench hráč který nikdy nebyl na hřišti — stretch = celá doba na lavici
+      result.set(p.playerId, Math.max(0, elapsedMinutes));
+    } else {
+      result.set(p.playerId, Math.max(0, elapsedMinutes - last));
+    }
   }
 
   return result;

@@ -18,7 +18,7 @@ const catalogEntryRef = (id: string) => ref(db, `catalog/${id}`);
 
 /** Vytvoří odlehčený záznam katalogu z plného turnaje */
 export function toCatalogEntry(tournament: Tournament): CatalogEntry {
-  return {
+  const entry: CatalogEntry = {
     id: tournament.id,
     name: tournament.name,
     status: tournament.status,
@@ -31,6 +31,8 @@ export function toCatalogEntry(tournament: Tournament): CatalogEntry {
     ownerUid: tournament.ownerUid,
     updatedAt: tournament.updatedAt,
   };
+  if (tournament.sport) entry.sport = tournament.sport;
+  return entry;
 }
 
 // ─── Zápis ───────────────────────────────────────────────────────────────────

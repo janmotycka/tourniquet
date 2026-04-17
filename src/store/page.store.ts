@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import type { Page } from '../App';
-import { parseTournamentHashFromUrl, parseRosterHashFromUrl, parseRegistrationHashFromUrl, parseMatchHashFromUrl } from '../utils/qr-code';
+import { parseTournamentHashFromUrl, parseRosterHashFromUrl, parseRegistrationHashFromUrl, parseMatchHashFromUrl, parseMatchPairingHashFromUrl } from '../utils/qr-code';
 
 function getInitialPage(): Page {
   // Roster form link (#roster={tournamentId}&k={token})
@@ -39,6 +39,10 @@ interface PageState {
   /** Pending invite for sdílený klub (z URL ?join=club&id=...) */
   clubJoinIntent: { inviteId: string } | null;
   setClubJoinIntent: (intent: { inviteId: string } | null) => void;
+
+  /** Pending cross-team pairing invite (z URL #pair-match=SCOPE:ID:TOKEN) */
+  matchPairingIntent: { scopeId: string; matchId: string; joinToken: string } | null;
+  setMatchPairingIntent: (intent: { scopeId: string; matchId: string; joinToken: string } | null) => void;
 }
 
 function getInitialClubJoinIntent(): { inviteId: string } | null {
@@ -75,4 +79,7 @@ export const usePageStore = create<PageState>(() => ({
 
   clubJoinIntent: getInitialClubJoinIntent(),
   setClubJoinIntent: (intent) => usePageStore.setState({ clubJoinIntent: intent }),
+
+  matchPairingIntent: parseMatchPairingHashFromUrl(),
+  setMatchPairingIntent: (intent) => usePageStore.setState({ matchPairingIntent: intent }),
 }));

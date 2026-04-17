@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { PublicSeasonMatch, MatchGoal, MatchCard, MatchSubstitution, MatchLineupPlayer } from '../../types/match.types';
 import { subscribeToPublicMatch } from '../../services/match.firebase';
+import { formatDate } from '../../components/match/match-utils';
 import { useI18n } from '../../i18n';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
+import { TennisTeamPublicView } from '../../modules/tennis/components/TennisTeamPublicView';
+import { TennisSinglesPublicView } from '../../modules/tennis/components/TennisSinglesPublicView';
+import { OfficialLinkButton } from '../../components/ui';
 import { spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
 // ─── Wake Lock hook ─────────────────────────────────────────────────────────
@@ -86,10 +90,6 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function formatDate(dateStr: string): string {
-  const [y, mo, d] = dateStr.split('-');
-  return `${d}.${mo}.${y}`;
-}
 
 // ─── Celebration durations ─────────────────────────────────────────────────
 
@@ -401,6 +401,32 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
 
   const headerTextColor = (isLive || isFinished) ? '#fff' : 'var(--text)';
 
+  // Tennis matches — completely different layout (no goals/cards/lineup).
+  // Rodiče tenisových hráčů vidí čistě tenisový UI.
+  if (match.sport === 'tennis') {
+    const clubName = match.clubName || t('matchPublic.us');
+    const wrapperStyle: React.CSSProperties = {
+      minHeight: '100dvh', background: 'var(--bg)',
+      display: 'flex', flexDirection: 'column', width: '100%',
+      maxWidth: isDesktop ? 560 : undefined,
+      alignSelf: isDesktop ? 'center' : undefined,
+      boxShadow: isDesktop ? 'var(--shadow-lg)' : undefined,
+    };
+    if (match.matchType === 'team') {
+      return (
+        <div style={wrapperStyle}>
+          <TennisTeamPublicView match={match} clubDisplayName={clubName} />
+        </div>
+      );
+    }
+    // Singles (default)
+    return (
+      <div style={wrapperStyle}>
+        <TennisSinglesPublicView match={match} clubDisplayName={clubName} />
+      </div>
+    );
+  }
+
   return (
     <div style={{
       minHeight: '100dvh',
@@ -540,6 +566,17 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           {match.competition && <span>{match.competition} · </span>}
           {formatDate(match.date)} · {match.kickoffTime}
         </div>
+
+        {/* Venue */}
+        {match.venue && (
+          <div style={{
+            fontSize: fontSize.sm, fontWeight: fontWeight.medium,
+            opacity: 0.85, marginTop: -spacing.xs, marginBottom: spacing.md,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+          }}>
+            📍 <span>{match.venue}</span>
+          </div>
+        )}
 
         {/* ── Score display ── */}
         <div style={{
@@ -838,7 +875,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         )}
 
         {/* ── Lineup ── */}
-        {match.lineup.length > 0 && (
+        {match.lineup.length > 0 ? (
           <EventSection title={t('matchPublic.lineup')} icon="👕">
             {starters.length > 0 && (
               <div style={{ marginBottom: spacing.xs + 2 }}>
@@ -868,6 +905,18 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
                 </div>
               </div>
             )}
+          </EventSection>
+        ) : match.status === 'planned' && (
+          <EventSection title={t('matchPublic.lineup')} icon="👕">
+            <div style={{
+              padding: `${spacing.md}px ${spacing.sm}px`,
+              textAlign: 'center',
+              color: 'var(--text-muted)',
+              fontSize: fontSize.sm,
+              lineHeight: 1.5,
+            }}>
+              🔒 {t('matchPublic.lineupHidden')}
+            </div>
           </EventSection>
         )}
 
@@ -995,6 +1044,13 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           </div>
         )}
       </div>
+
+      {/* Official link */}
+      {match.officialResultsUrl && (
+        <div style={{ padding: `${spacing.md}px ${spacing.lg}px 0` }}>
+          <OfficialLinkButton url={match.officialResultsUrl} />
+        </div>
+      )}
 
       {/* Footer */}
       <div style={{

@@ -3,6 +3,8 @@ import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
 import { useSubscriptionStore } from '../../store/subscription.store';
 import { useConfirmStore } from '../../store/confirm.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
+import { useClubsStore } from '../../store/clubs.store';
 import { FeatureGate } from '../../components/FeatureGate';
 import { useI18n } from '../../i18n';
 import { useToastStore } from '../../store/toast.store';
@@ -12,15 +14,11 @@ import { PageHeader } from '../../components/ui';
 import type { SeasonMatch } from '../../types/match.types';
 import { radius, fontSize, fontWeight, spacing } from '../../theme/tokens';
 import { groupMatchesBySeasonHalf } from '../../utils/season';
+import { formatDate } from '../../components/match/match-utils';
 
 interface Props { navigate: (p: Page) => void; }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-');
-  return `${d}.${m}.${y}`;
-}
 
 function matchResult(m: SeasonMatch, t: (key: string, params?: Record<string, string | number>) => string): { label: string; color: string; bg: string } | null {
   if (m.status !== 'finished') return null;
@@ -469,8 +467,21 @@ function CategoryChip({ label, active, onClick }: { label: string; active: boole
 export function MatchListPage({ navigate }: Props) {
   const { t } = useI18n();
   const { isDesktop } = useLayoutMode();
-  const matches = useMatchesStore(s => s.matches);
+  const allMatches = useMatchesStore(s => s.matches);
   const deleteMatch = useMatchesStore(s => s.deleteMatch);
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const activeClubId = useClubsStore(s => s.activeClubId);
+
+  // Ukaž jen zápasy vybraného sportu a vybraného klubu (legacy = football).
+  const matches = useMemo(() => {
+    return allMatches.filter(m => {
+      const mSport = m.sport ?? 'football';
+      if (mSport !== preferredSport) return false;
+      if (activeClubId && m.clubId && m.clubId !== activeClubId) return false;
+      return true;
+    });
+  }, [allMatches, preferredSport, activeClubId]);
+
   const getLimits = useSubscriptionStore(s => s.getLimits);
   const limits = getLimits();
   const [filter, setFilter] = useState<'all' | 'live' | 'planned' | 'finished'>('all');

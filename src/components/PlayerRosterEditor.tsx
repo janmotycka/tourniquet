@@ -250,9 +250,9 @@ export function PlayerRosterEditor({
                     )}
                     {hasStats && (
                       <>
-                        {stats.totalGoals > 0 && <StatBadge icon="\u26BD" value={stats.totalGoals} />}
-                        {stats.seasonAssists > 0 && <StatBadge icon="\uD83D\uDC5F" value={stats.seasonAssists} />}
-                        {stats.totalMatches > 0 && <StatBadge icon="\uD83D\uDCCB" value={stats.totalMatches} />}
+                        {stats.totalGoals > 0 && <StatBadge icon="⚽" value={stats.totalGoals} />}
+                        {stats.seasonAssists > 0 && <StatBadge icon="👟" value={stats.seasonAssists} />}
+                        {stats.totalMatches > 0 && <StatBadge icon="📋" value={stats.totalMatches} />}
                       </>
                     )}
                     {stats && stats.seasonAvgRating !== null && (
@@ -262,7 +262,7 @@ export function PlayerRosterEditor({
                         background: 'var(--surface-var)', borderRadius: radius.sm,
                         padding: '1px 6px', lineHeight: 1.4,
                       }}>
-                        \u2B50 {stats.seasonAvgRating}
+                        ⭐ {stats.seasonAvgRating}
                       </span>
                     )}
                   </div>

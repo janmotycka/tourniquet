@@ -10,7 +10,14 @@ import { submitRoster } from '../../services/roster.firebase';
 import { generateId } from '../../utils/id';
 import { textOnColor, isLightColor } from '../../utils/team-colors';
 
-interface AdminPlayerRow { id: string; name: string; jerseyNumber: string; birthYear: string; }
+interface AdminPlayerRow {
+  id: string;
+  name: string;
+  jerseyNumber: string;
+  birthYear: string;
+  /** ClubPlayer.id pokud byl hráč importován z klubu (propagates do Tournament.Player.clubPlayerId) */
+  clubPlayerId?: string;
+}
 
 const ADMIN_BIRTH_MIN = 1950;
 const ADMIN_BIRTH_MAX = new Date().getFullYear() - 3;
@@ -119,6 +126,7 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
           name: cp.name.trim(),
           jerseyNumber: jersey,
           birthYear: cp.birthYear ? String(cp.birthYear) : '',
+          clubPlayerId: cp.id,
         });
       }
       if (!toAdd.length) return prev;
@@ -171,6 +179,7 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
           name: p.name.trim(),
           jerseyNumber: p.jerseyNumber.trim() ? parseInt(p.jerseyNumber) : 0,
           birthYear: p.birthYear.trim() ? parseInt(p.birthYear) : null,
+          ...(p.clubPlayerId ? { clubPlayerId: p.clubPlayerId } : {}),
         })),
         submittedAt: new Date().toISOString(),
         teamId: team.id,

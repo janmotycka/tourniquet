@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { AgeCategory } from '../../types/club.types';
-import { AGE_CATEGORIES } from '../../types/club.types';
+import { AGE_CATEGORIES_BY_SPORT } from '../../types/club.types';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { TEAM_COLORS, colorSwatch } from '../../utils/team-colors';
 import { resizeLogoToBase64 } from './resize-logo';
 import { useToastStore } from '../../store/toast.store';
@@ -10,7 +11,11 @@ import { get as dbGet, ref as dbRef } from 'firebase/database';
 import { db } from '../../firebase';
 
 // ─── Catalog cache (shared with OpponentAutocomplete) ────────────────────────
-interface CatalogEntry { id: string; name: string; city?: string; logoUrl?: string; logoBase64?: string; torqClubId?: string; }
+interface CatalogEntry {
+  id: string; name: string; city?: string;
+  logoUrl?: string; logoBase64?: string; torqClubId?: string;
+  sport?: 'football' | 'tennis';
+}
 let _catalogCache: CatalogEntry[] | null = null;
 async function loadCatalog(): Promise<CatalogEntry[]> {
   if (_catalogCache) return _catalogCache;
@@ -23,7 +28,7 @@ async function loadCatalog(): Promise<CatalogEntry[]> {
 }
 
 interface ClubFormProps {
-  initial: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[] };
+  initial: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[]; sport?: 'football' | 'tennis' };
   onSave: (data: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[] }) => void;
   onCancel: () => void;
   title: string;
@@ -57,6 +62,12 @@ export function ClubForm({
   const [categories, setCategories] = useState<AgeCategory[]>(initial.ageCategories);
   const logoRef = useRef<HTMLInputElement>(null);
 
+  // Sport klubu — podle něho se filtrují nabízené věkové kategorie.
+  // Pokud klub má přiřazený sport, použij ten; jinak fallback na preferredSport.
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const clubSport = initial.sport ?? preferredSport;
+  const availableCategories = AGE_CATEGORIES_BY_SPORT[clubSport];
+
   // Catalog autocomplete
   const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
   const [suggestions, setSuggestions] = useState<CatalogEntry[]>([]);
@@ -70,6 +81,8 @@ export function ClubForm({
     if (v.length < 2 || catalog.length === 0) { setSuggestions([]); return; }
     const q = v.toLowerCase();
     const matches = catalog
+      // Filtr podle sportu — legacy záznamy bez `sport` = football.
+      .filter(c => (c.sport ?? 'football') === clubSport)
       .filter(c => c.name.toLowerCase().includes(q))
       .sort((a, b) => {
         const aStart = a.name.toLowerCase().startsWith(q) ? 0 : 1;
@@ -78,7 +91,7 @@ export function ClubForm({
       })
       .slice(0, 6);
     setSuggestions(matches);
-  }, [catalog]);
+  }, [catalog, clubSport]);
 
   const handleSelectCatalogClub = useCallback((club: CatalogEntry) => {
     setName(club.name);
@@ -286,7 +299,7 @@ export function ClubForm({
       {showCategories && (
         <Field label={t('clubs.selectCategories')}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {AGE_CATEGORIES.map(cat => {
+            {availableCategories.map(cat => {
               const isSelected = categories.includes(cat);
               return (
                 <button

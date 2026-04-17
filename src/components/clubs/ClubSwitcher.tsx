@@ -8,8 +8,9 @@
  * Použití: vlož do hlavičky / sidebaru kde je smysluplné měnit aktivní klub.
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useClubsStore } from '../../store/clubs.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useI18n } from '../../i18n';
 import type { Page } from '../../App';
 import { CreateClubModal } from './CreateClubModal';
@@ -21,10 +22,17 @@ interface Props {
 
 export function ClubSwitcher({ navigate }: Props) {
   const { t } = useI18n();
-  const clubs = useClubsStore(s => s.clubs);
+  const allClubs = useClubsStore(s => s.clubs);
   const activeClubId = useClubsStore(s => s.activeClubId);
   const setActiveClubId = useClubsStore(s => s.setActiveClubId);
   const memberOfClubs = useClubsStore(s => s.memberOfClubs);
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+
+  // Kluby filtrujeme podle vybraného sportu. Legacy kluby bez `sport` = football.
+  const clubs = useMemo(
+    () => allClubs.filter(c => (c.sport ?? 'football') === preferredSport),
+    [allClubs, preferredSport],
+  );
 
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -103,6 +111,9 @@ export function ClubSwitcher({ navigate }: Props) {
         }}>
           {activeClub?.name || '—'}
         </span>
+        {activeClub?.sport === 'tennis' && (
+          <span style={{ fontSize: 14, marginLeft: 2 }} title="Tenis">🎾</span>
+        )}
         <span style={{ fontSize: 10, opacity: 0.6 }}>▼</span>
         {myRole === 'owner' && (
           <span style={{

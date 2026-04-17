@@ -6,10 +6,12 @@ import { useMatchesStore } from '../store/matches.store';
 import { useTournamentStore } from '../store/tournament.store';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { useI18n } from '../i18n';
+import { useUserPrefsStore } from '../store/userPrefs.store';
 import { useLayoutMode } from '../hooks/useLayoutMode';
 import { DesktopPage } from '../components/desktop/DesktopPage';
 import { ClubSwitcher } from '../components/clubs/ClubSwitcher';
 import { useClubsStore } from '../store/clubs.store';
+import { useMyPlayersStore } from '../modules/tennis/store/myPlayers.store';
 import { OnboardingWizard, isOnboarded } from '../components/onboarding/OnboardingWizard';
 
 interface Props { navigate: (p: Page) => void; }
@@ -18,11 +20,31 @@ export function HomePage({ navigate }: Props) {
   const { user } = useAuth();
   const isPremium = useSubscriptionStore(s => s.isPremium);
   const { t } = useI18n();
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const sportOnboardingShown = useUserPrefsStore(s => s.sportOnboardingShown);
+  const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
+  const tennisUserType = useUserPrefsStore(s => s.tennisUserType);
+  const setTennisUserType = useUserPrefsStore(s => s.setTennisUserType);
+  const ensureActiveClubMatchesSport = useClubsStore(s => s.ensureActiveClubMatchesSport);
+  const isTennis = preferredSport === 'tennis';
+  const isTennisIndividual = isTennis && tennisUserType === 'individual';
+  // Aktivní klub vždy v rámci zvoleného sportu — fotbal a tenis se nemíchají.
+  // Pokud aktivní ID ukazuje na klub jiného sportu, fallback na první klub
+  // odpovídajícího sportu (může být null = žádný klub v tomto sportu).
   const activeClub = useClubsStore(s => {
+    const clubsOfSport = s.clubs.filter(c => (c.sport ?? 'football') === preferredSport);
     const id = s.activeClubId;
-    return id ? s.clubs.find(c => c.id === id) : s.clubs[0];
+    const found = id ? clubsOfSport.find(c => c.id === id) : undefined;
+    return found ?? clubsOfSport[0];
   });
-  const clubCount = useClubsStore(s => s.clubs.length);
+  // Počet klubů aktuálního sportu — rozhoduje o zobrazení onboardingu + ClubSwitcheru.
+  const clubCount = useClubsStore(
+    s => s.clubs.filter(c => (c.sport ?? 'football') === preferredSport).length,
+  );
+  // V individuálním tenisovém módu se onboarding spouští dle počtu mých hráčů.
+  // Zatím nepoužito v UI (budoucí CTA v empty stavech); tichý odkaz na store,
+  // aby persist middleware hydratoval local cache a data byla dostupná na route.
+  useMyPlayersStore(s => s.players.length);
   const { canInstall, install } = usePWAInstall();
   const { isDesktop } = useLayoutMode();
 
@@ -32,15 +54,57 @@ export function HomePage({ navigate }: Props) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   useEffect(() => {
     if (!user?.uid) return;
-    if (clubCount === 0 && !isOnboarded(user.uid)) {
+    // V tenisovém individuálním módu neřešíme klubový onboarding —
+    // rodič/privátní trenér si místo klubu přidá hráče přes TennisMyPlayersPage.
+    if (isTennis && tennisUserType === 'individual') return;
+    if (clubCount === 0 && !isOnboarded(user.uid, preferredSport)) {
       setShowOnboarding(true);
     }
-  }, [user?.uid, clubCount]);
+  }, [user?.uid, clubCount, preferredSport, isTennis, tennisUserType]);
+
+  // Když aktivní klub nepatří aktuálnímu sportu (legacy state), přepni.
+  // Např. user měl fotbalový klub aktivní a v Settings přepnul na tenis.
+  useEffect(() => {
+    void ensureActiveClubMatchesSport(preferredSport);
+  }, [preferredSport, ensureActiveClubMatchesSport]);
 
   // Live overview — currently running matches & active tournaments
-  const matches = useMatchesStore(s => s.matches);
-  const tournaments = useTournamentStore(s => s.tournaments);
-  const liveMatches = useMemo(() => matches.filter(m => m.status === 'live'), [matches]);
+  // Filtrováno podle preferovaného sportu + aktivního klubu (oddělené sporty).
+  const allMatchesRaw = useMatchesStore(s => s.matches);
+  const allTournamentsRaw = useTournamentStore(s => s.tournaments);
+  const activeClubId = useClubsStore(s => s.activeClubId);
+  // V individuálním tenisovém módu filtrujeme podle myPlayerId (ne clubu).
+  const myPlayersForFilter = useMyPlayersStore(s => s.players);
+  const matches = useMemo(() => allMatchesRaw.filter(m => {
+    const mSport = m.sport ?? 'football';
+    if (mSport !== preferredSport) return false;
+    if (isTennisIndividual) {
+      // Jen zápasy sledovaných hráčů
+      if (!m.myPlayerId) return false;
+      return myPlayersForFilter.some(p => p.id === m.myPlayerId);
+    }
+    // Klubový mód — vynech individuální zápasy
+    if (m.myPlayerId) return false;
+    if (activeClubId && m.clubId && m.clubId !== activeClubId) return false;
+    return true;
+  }), [allMatchesRaw, preferredSport, activeClubId, isTennisIndividual, myPlayersForFilter]);
+  const tournaments = useMemo(
+    () => allTournamentsRaw.filter(tt => (tt.sport ?? 'football') === preferredSport),
+    [allTournamentsRaw, preferredSport],
+  );
+  // Live matches: fotbal používá `status === 'live'` (timer běží), tenis nemá timer,
+  // takže "live" znamená rozehraný (má sety ale ne všechny výsledky).
+  const liveMatches = useMemo(() => matches.filter(m => {
+    if ((m.sport ?? 'football') === 'tennis') {
+      const subs = m.subMatches ?? [];
+      if (subs.length === 0) return false;
+      const hasWinner = subs.some(s => s.winner !== null);
+      const hasSets = subs.some(s => Array.isArray(s.sets) && s.sets.length > 0);
+      const allDecided = subs.every(s => s.winner !== null);
+      return !allDecided && (hasWinner || hasSets);
+    }
+    return m.status === 'live';
+  }), [matches]);
   const activeTournaments = useMemo(() => tournaments.filter(tt => tt.status === 'active'), [tournaments]);
   const hasLive = liveMatches.length > 0 || activeTournaments.length > 0;
 
@@ -52,6 +116,127 @@ export function HomePage({ navigate }: Props) {
     />
   ) : null;
 
+  // Sport picker — ukáže se PRVNÍ přihlášení (pokud nedoměstnaný), dřív než OnboardingWizard
+  const sportPicker = (!sportOnboardingShown && !showOnboarding) ? (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 500, padding: 20,
+    }}>
+      <div style={{
+        background: 'var(--surface)', borderRadius: 20, padding: 24,
+        maxWidth: 380, width: '100%', textAlign: 'center',
+        boxShadow: '0 20px 60px rgba(0,0,0,.25)',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🎯</div>
+        <h2 style={{ fontWeight: 800, fontSize: 22, margin: '0 0 6px' }}>
+          {t('sportPicker.title')}
+        </h2>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 20px', lineHeight: 1.5 }}>
+          {t('sportPicker.desc')}
+        </p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {(['football', 'tennis'] as const).map(sp => (
+            <button
+              key={sp}
+              onClick={() => { setPreferredSport(sp); void ensureActiveClubMatchesSport(sp); }}
+              style={{
+                flex: 1, padding: '18px 10px', borderRadius: 14,
+                background: 'var(--surface-var)',
+                border: '2px solid var(--border)',
+                cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center',
+                transition: 'all .15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--primary)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; }}
+            >
+              <span style={{ fontSize: 42 }}>{sp === 'football' ? '⚽' : '🎾'}</span>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>{t(`sport.${sp}`)}</span>
+            </button>
+          ))}
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '14px 0 0', lineHeight: 1.4 }}>
+          {t('sportPicker.hintLater')}
+        </p>
+      </div>
+    </div>
+  ) : null;
+
+  // Tennis user type picker — ukáže se po zvoleném tennis sport,
+  // pokud ještě nezvolil jestli je klubový trenér nebo individuální/rodič.
+  const tennisTypePicker = (isTennis && sportOnboardingShown && tennisUserType === null && !showOnboarding) ? (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 500, padding: 20,
+    }}>
+      <div style={{
+        background: 'var(--surface)', borderRadius: 20, padding: 24,
+        maxWidth: 420, width: '100%',
+        boxShadow: '0 20px 60px rgba(0,0,0,.25)',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 12, textAlign: 'center' }}>🎾</div>
+        <h2 style={{ fontWeight: 800, fontSize: 22, margin: '0 0 6px', textAlign: 'center' }}>
+          {t('tennisTypePicker.title')}
+        </h2>
+        <p style={{
+          fontSize: 13, color: 'var(--text-muted)',
+          margin: '0 0 20px', lineHeight: 1.5, textAlign: 'center',
+        }}>
+          {t('tennisTypePicker.desc')}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button
+            onClick={() => setTennisUserType('club')}
+            style={{
+              padding: '16px', borderRadius: 14, textAlign: 'left',
+              background: 'var(--surface-var)',
+              border: '2px solid var(--border)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 14,
+              transition: 'all .15s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#1565C0'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; }}
+          >
+            <span style={{ fontSize: 38 }}>🏟</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>{t('tennisTypePicker.clubTitle')}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.4 }}>
+                {t('tennisTypePicker.clubDesc')}
+              </div>
+            </div>
+          </button>
+          <button
+            onClick={() => setTennisUserType('individual')}
+            style={{
+              padding: '16px', borderRadius: 14, textAlign: 'left',
+              background: 'var(--surface-var)',
+              border: '2px solid var(--border)',
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 14,
+              transition: 'all .15s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = '#6A1B9A'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; }}
+          >
+            <span style={{ fontSize: 38 }}>👤</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>{t('tennisTypePicker.individualTitle')}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.4 }}>
+                {t('tennisTypePicker.individualDesc')}
+              </div>
+            </div>
+          </button>
+        </div>
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '14px 0 0', lineHeight: 1.4, textAlign: 'center' }}>
+          {t('tennisTypePicker.changeLater')}
+        </p>
+      </div>
+    </div>
+  ) : null;
+
   if (isDesktop) {
     const upcomingMatches = matches
       .filter(m => m.status !== 'finished' && m.status !== 'live')
@@ -60,6 +245,8 @@ export function HomePage({ navigate }: Props) {
 
     return (
       <>
+      {sportPicker}
+      {tennisTypePicker}
       {wizard}
       <DesktopPage
         title={t('home.greeting')}
@@ -244,6 +431,8 @@ export function HomePage({ navigate }: Props) {
 
   return (
     <>
+    {sportPicker}
+    {tennisTypePicker}
     {wizard}
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
@@ -254,13 +443,18 @@ export function HomePage({ navigate }: Props) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <div style={{
           width: 56, height: 56, borderRadius: 16,
-          background: activeClub?.logoBase64 ? 'transparent' : 'var(--primary-light)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0,
-          overflow: 'hidden',
+          background: isTennisIndividual
+            ? 'linear-gradient(135deg, #4A148C 0%, #6A1B9A 100%)'
+            : (activeClub?.logoBase64 ? 'transparent' : isTennis ? 'linear-gradient(135deg, #1565C0, #1976D2)' : 'var(--primary-light)'),
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 28, flexShrink: 0, overflow: 'hidden',
+          color: isTennis ? '#fff' : undefined,
         }}>
-          {activeClub?.logoBase64 ? (
-            <img src={activeClub.logoBase64} alt="" style={{ width: 56, height: 56, objectFit: 'cover' }} />
-          ) : '⚽'}
+          {isTennisIndividual ? '👤'
+            : activeClub?.logoBase64 ? (
+              <img src={activeClub.logoBase64} alt="" style={{ width: 56, height: 56, objectFit: 'cover' }} />
+            )
+            : isTennis ? '🎾' : '⚽'}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{t('home.greeting')}</h1>
@@ -283,8 +477,9 @@ export function HomePage({ navigate }: Props) {
         </button>
       </div>
 
-      {/* Active club switcher — only for multi-club users */}
-      {clubCount > 1 && <ClubSwitcher navigate={navigate} />}
+      {/* Active club switcher — jen pro klubové uživatele s víc než 1 klubem.
+          V individuálním tenisovém módu klubový switcher nedává smysl. */}
+      {!isTennisIndividual && clubCount > 1 && <ClubSwitcher navigate={navigate} />}
 
 
       {/* ─── LIVE NOW — currently running matches & tournaments ──────────── */}
@@ -450,39 +645,49 @@ export function HomePage({ navigate }: Props) {
       {/* Module cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* ⚽ Training */}
-        <button
-          onClick={() => navigate({ name: 'training-home' })}
-          style={{
-            background: 'var(--primary)', borderRadius: 22, padding: '24px',
-            display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
-            boxShadow: '0 4px 16px rgba(var(--primary-rgb, 0,100,0),.20)', width: '100%',
-            color: '#fff',
-          }}
-        >
-          <div style={{ fontSize: 44 }}>⚽</div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.training')}</div>
-            <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-              {t('home.trainingDesc')}
+        {/* ⚽ Training — zatím jen fotbal. V tenis módu skryté. */}
+        {!isTennis && (
+          <button
+            onClick={() => navigate({ name: 'training-home' })}
+            style={{
+              background: 'var(--primary)', borderRadius: 22, padding: '24px',
+              display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
+              boxShadow: '0 4px 16px rgba(var(--primary-rgb, 0,100,0),.20)', width: '100%',
+              color: '#fff',
+            }}
+          >
+            <div style={{ fontSize: 44 }}>⚽</div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.training')}</div>
+              <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
+                {t('home.trainingDesc')}
+              </div>
             </div>
-          </div>
-          <div style={{
-            background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '10px 16px',
-            fontWeight: 700, fontSize: 15, textAlign: 'center',
-          }}>
-            {t('common.open')}
-          </div>
-        </button>
+            <div style={{
+              background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '10px 16px',
+              fontWeight: 700, fontSize: 15, textAlign: 'center',
+            }}>
+              {t('common.open')}
+            </div>
+          </button>
+        )}
 
-        {/* 🏆 Tournament */}
+        {/* 🏆 Tournament — tenis má tyrkysovou, fotbal oranžovou.
+            V individuálním tenisovém módu skryto (uživatel turnaje neorganizuje,
+            tracking turnaje přes `competition` field na zápasech). */}
+        {!isTennisIndividual && (
         <button
           onClick={() => navigate({ name: 'tournament-list' })}
           style={{
-            background: 'linear-gradient(135deg, #E65100 0%, #FF6F00 100%)',
+            background: isTennis
+              ? 'linear-gradient(135deg, #00695C 0%, #00897B 100%)'
+              : 'linear-gradient(135deg, #E65100 0%, #FF6F00 100%)',
             borderRadius: 22, padding: '24px',
             display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
-            boxShadow: '0 4px 16px rgba(230,81,0,.25)', width: '100%',
+            boxShadow: isTennis
+              ? '0 4px 16px rgba(0,137,123,.25)'
+              : '0 4px 16px rgba(230,81,0,.25)',
+            width: '100%',
             color: '#fff',
           }}
         >
@@ -490,7 +695,7 @@ export function HomePage({ navigate }: Props) {
           <div>
             <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.tournament')}</div>
             <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-              {t('home.tournamentDesc')}
+              {isTennis ? t('home.tournamentDescTennis') : t('home.tournamentDesc')}
             </div>
           </div>
           <div style={{
@@ -500,8 +705,9 @@ export function HomePage({ navigate }: Props) {
             {t('common.open')}
           </div>
         </button>
+        )}
 
-        {/* 📋 Match */}
+        {/* 📋 Zápas — fotbal i tenis (singles, družstva) */}
         <button
           onClick={() => navigate({ name: 'match-list' })}
           style={{
@@ -512,11 +718,11 @@ export function HomePage({ navigate }: Props) {
             color: '#fff',
           }}
         >
-          <div style={{ fontSize: 44 }}>📋</div>
+          <div style={{ fontSize: 44 }}>{isTennis ? '🎾' : '📋'}</div>
           <div>
             <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.match')}</div>
             <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-              {t('home.matchDesc')}
+              {isTennis ? t('home.matchDescTennis') : t('home.matchDesc')}
             </div>
           </div>
           <div style={{
@@ -527,7 +733,7 @@ export function HomePage({ navigate }: Props) {
           </div>
         </button>
 
-        {/* 🏟 My Club */}
+        {/* 🏟 Klub / 👤 Moji hráči (individuální tenis) */}
         <button
           onClick={() => navigate({ name: 'clubs' })}
           style={{
@@ -538,11 +744,19 @@ export function HomePage({ navigate }: Props) {
             color: '#fff',
           }}
         >
-          <div style={{ fontSize: 44 }}>🏟</div>
+          <div style={{ fontSize: 44 }}>{isTennisIndividual ? '👤' : '🏟'}</div>
           <div>
-            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.club')}</div>
+            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>
+              {isTennisIndividual
+                ? t('tennisIndividual.home.myPlayers')
+                : t('home.club')}
+            </div>
             <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-              {t('home.clubDesc')}
+              {isTennisIndividual
+                ? t('tennisIndividual.home.myPlayersDesc')
+                : isTennis
+                  ? t('home.clubDescTennis')
+                  : t('home.clubDesc')}
             </div>
           </div>
           <div style={{

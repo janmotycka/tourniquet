@@ -19,6 +19,12 @@ export interface Player {
   name: string;
   jerseyNumber: number;  // 1–99
   birthYear: number | null; // rok narození, např. 2012
+  /**
+   * Volitelná reference na ClubPlayer.id (kanonický hráč v klubu).
+   * Pokud je vyplněná, statistiky (góly, karty, účast) se primárně matchují přes ID,
+   * ne přes jméno → spolehlivější u duplicitních jmen nebo po přejmenování.
+   */
+  clubPlayerId?: string;
 }
 
 export interface TeamCoach {
@@ -52,7 +58,13 @@ export interface CustomerBilling {
 
 export interface RosterSubmission {
   coach: TeamCoach;
-  players: Array<{ name: string; jerseyNumber: number; birthYear: number | null }>;
+  players: Array<{
+    name: string;
+    jerseyNumber: number;
+    birthYear: number | null;
+    /** Volitelná reference na ClubPlayer.id (pokud byl hráč importován z klubu). */
+    clubPlayerId?: string;
+  }>;
   submittedAt: string;  // ISO timestamp
   teamId: string;
   teamName: string;
@@ -249,6 +261,14 @@ export interface TournamentSettings {
 
   // ── Propozice (regulations) ─────────────────────────────────────
   regulations?: TournamentRegulations;
+
+  // ── External link (např. ČTenis oficiální stránka turnaje) ───────
+  /**
+   * URL na oficiální stránku turnaje v externím systému
+   * (např. `https://cztenis.cz/turnaj/{id}/sezona/{kod}/informace`).
+   * Zobrazí se jako tlačítko „🔗 Otevřít na ČTenis" v detailu i public view.
+   */
+  officialResultsUrl?: string;
 }
 
 /** Strukturované propozice turnaje — pro PDF a rozeslání trenérům */
@@ -293,6 +313,7 @@ export interface ChatMessage {
 
 export interface Tournament {
   id: string;
+  sport?: import('./sport.types').Sport;  // 'football' | 'tennis' — default 'football'
   name: string;
   ownerUid: string;        // UID tvůrce turnaje (pro sdílený přístup)
   status: TournamentStatus;
@@ -312,11 +333,12 @@ export interface Tournament {
 
 export interface CreateTournamentInput {
   name: string;
+  sport?: import('./sport.types').Sport;
   settings: TournamentSettings;
   teams: Array<{
     name: string;
     color: string;
-    players: Array<{ name: string; jerseyNumber: number; birthYear?: number | null }>;
+    players: Array<{ name: string; jerseyNumber: number; birthYear?: number | null; clubPlayerId?: string }>;
     clubId?: string | null;
     logoBase64?: string | null;
   }>;
@@ -330,6 +352,7 @@ export interface CreateTournamentInput {
 
 export interface CatalogEntry {
   id: string;
+  sport?: import('./sport.types').Sport;  // NEW: pro sport filter na landing page
   name: string;
   status: TournamentStatus;
   startDate: string;              // "YYYY-MM-DD"

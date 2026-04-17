@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTournamentStore } from '../../store/tournament.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useTemplatesStore } from '../../store/templates.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useI18n } from '../../i18n';
 import type { TournamentTemplate } from '../../types/tournament.types';
 import { hashPin, generatePinSalt, markPinVerified } from '../../utils/pin-hash';
@@ -14,6 +15,7 @@ import type { Club, AgeCategory } from '../../types/club.types';
 import { TEAM_COLORS } from '../../utils/team-colors';
 import { useToastStore } from '../../store/toast.store';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
+import { IconButton } from '../../components/ui';
 
 import {
   ClubPickerModal,
@@ -42,6 +44,10 @@ export function CreateTournamentPage({ navigate }: Props) {
   const deleteTemplate = useTemplatesStore(s => s.deleteTemplate);
   const [step, setStep] = useState(0);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+
+  // Sport — default z user preferences (zvolený v onboardingu), lze změnit zde
+  const userPreferredSport = useUserPrefsStore(s => s.preferredSport);
+  const [sport, setSport] = useState<'football' | 'tennis'>(userPreferredSport);
 
   // Step 0 — Typ turnaje
   const [tournamentType, setTournamentType] = useState<TournamentType | null>(null);
@@ -265,20 +271,21 @@ export function CreateTournamentPage({ navigate }: Props) {
   };
 
   const handleSelectClub = (teamIdx: number, club: Club, category?: AgeCategory) => {
-    let players: Array<{ name: string; jerseyNumber: number }>;
+    // Propaguj clubPlayerId pro spolehlivé matchování statistik napříč moduly.
+    let players: Array<{ name: string; jerseyNumber: number; clubPlayerId?: string }>;
     const allClubPlayers = club.players ?? [];
 
     if (category && allClubPlayers.length > 0) {
       // Konkrétní kategorie
       players = allClubPlayers
         .filter(p => p.ageCategory === category && p.active)
-        .map(p => ({ name: p.name, jerseyNumber: p.jerseyNumber }));
+        .map(p => ({ name: p.name, jerseyNumber: p.jerseyNumber, clubPlayerId: p.id }));
     } else if (!category && allClubPlayers.length > 0) {
       // "Všechny kategorie" (undefined) nebo klub s jedinou kategorií —
       // vezmi všechny aktivní hráče napříč kategoriemi.
       players = allClubPlayers
         .filter(p => p.active)
-        .map(p => ({ name: p.name, jerseyNumber: p.jerseyNumber }));
+        .map(p => ({ name: p.name, jerseyNumber: p.jerseyNumber, clubPlayerId: p.id }));
     } else {
       players = (club.defaultPlayers ?? []).map(p => ({ ...p }));
     }
@@ -318,6 +325,7 @@ export function CreateTournamentPage({ navigate }: Props) {
       const pinHash = await hashPin(pin, pinSalt);
       const tournament = await createTournament({
         name: name.trim(),
+        sport,
         settings,
         teams: teams.map(tm => ({
           name: tm.name,
@@ -416,10 +424,9 @@ export function CreateTournamentPage({ navigate }: Props) {
         display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px',
         borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0,
       }}>
-        <button onClick={goBack} aria-label="Back" style={{
-          width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
-          fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>←</button>
+        <IconButton variant="secondary" aria-label={t('common.back')} onClick={goBack}>
+          ←
+        </IconButton>
         <h1 style={{ fontWeight: 800, fontSize: 18, flex: 1 }}>
           {stepTitles[step]}
         </h1>
@@ -441,6 +448,28 @@ export function CreateTournamentPage({ navigate }: Props) {
         {/* ─── Step 0: Typ turnaje ─── */}
         {step === 0 && (
           <>
+            {/* Sport picker — multi-sport aplikace */}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+              {(['football', 'tennis'] as const).map(sp => {
+                const isActive = sport === sp;
+                return (
+                  <button
+                    key={sp}
+                    onClick={() => setSport(sp)}
+                    style={{
+                      padding: '10px 20px', borderRadius: 12, fontWeight: 700, fontSize: 14,
+                      background: isActive ? 'var(--primary)' : 'var(--surface)',
+                      color: isActive ? '#fff' : 'var(--text-muted)',
+                      border: isActive ? 'none' : '1.5px solid var(--border)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {sp === 'football' ? '⚽' : '🎾'} {t(`sport.${sp}`)}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Sablona */}
             {templates.length > 0 && (
               <button onClick={() => setShowTemplatePicker(true)} style={{

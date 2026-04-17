@@ -3,6 +3,7 @@ import type { Page } from '../../App';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n';
 import { useSubscriptionStore } from '../../store/subscription.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { ClubSwitcher } from '../clubs/ClubSwitcher';
 import { ADMIN_UID } from '../../constants/admin';
 
@@ -51,51 +52,66 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
   const { t } = useI18n();
   const { user, logout } = useAuth();
   const isPremium = useSubscriptionStore(s => s.isPremium);
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const tennisUserType = useUserPrefsStore(s => s.tennisUserType);
+  const isTennis = preferredSport === 'tennis';
+  const isTennisIndividual = isTennis && tennisUserType === 'individual';
 
   // Dashboard is standalone at the top (not a module).
   const dashboardItem: NavItem = { icon: '🏠', labelKey: 'sidebar.dashboard', page: 'home', target: { name: 'home' } };
 
-  // 4 brand-colored modules matching mobile HomePage
+  // 4 brand-colored modules matching mobile HomePage.
+  // Training modul je zatím jen pro fotbal — v tenis módu se skrývá.
   const baseModules: NavModule[] = [
-    {
+    ...(isTennis ? [] : [{
       key: 'training',
       labelKey: 'home.training',
       icon: '⚽',
       color: '#1B5E20',
       colorBg: 'rgba(27, 94, 32, 0.10)',
       items: [
-        { icon: '⚽', labelKey: 'sidebar.training', page: 'training-home', target: { name: 'training-home' } },
-        { icon: '📚', labelKey: 'sidebar.library',  page: 'library',       target: { name: 'library' } },
-        { icon: '💾', labelKey: 'sidebar.saved',    page: 'saved',         target: { name: 'saved' } },
-        { icon: '📅', labelKey: 'sidebar.calendar', page: 'calendar',      target: { name: 'calendar' } },
+        { icon: '⚽', labelKey: 'sidebar.training', page: 'training-home' as Page['name'], target: { name: 'training-home' } as Page },
+        { icon: '📚', labelKey: 'sidebar.library',  page: 'library' as Page['name'],       target: { name: 'library' } as Page },
+        { icon: '💾', labelKey: 'sidebar.saved',    page: 'saved' as Page['name'],         target: { name: 'saved' } as Page },
+        { icon: '📅', labelKey: 'sidebar.calendar', page: 'calendar' as Page['name'],      target: { name: 'calendar' } as Page },
       ],
-    },
-    {
+    } as NavModule]),
+    // Tournament — v individuálním tenisovém módu skryto (user turnaje neorganizuje).
+    ...(isTennisIndividual ? [] : [{
       key: 'tournament',
       labelKey: 'home.tournament',
       icon: '🏆',
       color: 'var(--warning)',
       colorBg: 'rgba(230, 81, 0, 0.10)',
-      single: { icon: '🏆', labelKey: 'sidebar.tournaments', page: 'tournament-list', target: { name: 'tournament-list' } },
-    },
+      single: { icon: '🏆', labelKey: 'sidebar.tournaments', page: 'tournament-list' as Page['name'], target: { name: 'tournament-list' } as Page },
+    } as NavModule]),
     {
       key: 'match',
       labelKey: 'home.match',
-      icon: '📋',
+      icon: isTennis ? '🎾' : '📋',
       color: 'var(--info)',
       colorBg: 'rgba(21, 101, 192, 0.10)',
-      items: [
+      // Tenis module: jen match-list (statistiky mají jiné metriky, zatím neimplementováno).
+      items: isTennis ? [
+        { icon: '🎾', labelKey: 'sidebar.matches', page: 'match-list' as Page['name'], target: { name: 'match-list' } as Page },
+      ] : [
         { icon: '📋', labelKey: 'sidebar.matches',    page: 'match-list',  target: { name: 'match-list' } },
         { icon: '📊', labelKey: 'sidebar.matchStats', page: 'match-stats', target: { name: 'match-stats' } },
       ],
     },
+    // Klub / Moji hráči — v individuálním módu má jinou ikonu + label.
     {
       key: 'club',
-      labelKey: 'home.club',
-      icon: '🏟',
+      labelKey: isTennisIndividual ? 'tennisIndividual.home.myPlayers' : 'home.club',
+      icon: isTennisIndividual ? '👤' : '🏟',
       color: '#4A148C',
       colorBg: 'rgba(74, 20, 140, 0.10)',
-      single: { icon: '🏟', labelKey: 'sidebar.clubs', page: 'clubs', target: { name: 'clubs' } },
+      single: {
+        icon: isTennisIndividual ? '👤' : '🏟',
+        labelKey: isTennisIndividual ? 'tennisIndividual.home.myPlayers' : 'sidebar.clubs',
+        page: 'clubs' as Page['name'],
+        target: { name: 'clubs' } as Page,
+      },
     },
   ];
 
@@ -209,11 +225,14 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
           flexShrink: 0,
         }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 10, background: 'var(--primary)',
+            width: 36, height: 36, borderRadius: 10,
+            background: isTennis ? '#1565C0' : 'var(--primary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', fontSize: 20,
-          }}>⚽</div>
-          <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: 0.5 }}>TORQ</span>
+          }}>{isTennis ? '🎾' : '⚽'}</div>
+          <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: 0.5 }}>
+            TORQ{isTennis && <span style={{ fontSize: 10, opacity: 0.65, marginLeft: 4, fontWeight: 600 }}>· TENNIS</span>}
+          </span>
         </div>
 
         {/* Nav */}

@@ -20,6 +20,7 @@ import { PinGate } from '../../components/tournament/PinGate';
 import { MvpAdminBanner } from '../../components/tournament/MvpAdminBanner';
 import { DashboardTab } from '../../components/tournament/DashboardTab';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
+import { IconButton } from '../../components/ui';
 
 // ─── Penalty Shootout Modal ──────────────────────────────────────────────────
 
@@ -432,13 +433,16 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
         borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexShrink: 0,
       }}>
         <div style={{ ...innerWrap, display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px 10px' }}>
-          <button onClick={() => navigate({ name: 'tournament-list' })} aria-label="Back" style={{
-            width: 36, height: 36, borderRadius: 10, background: 'var(--surface-var)',
-            fontSize: 18, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>←</button>
+          <IconButton
+            variant="secondary"
+            aria-label={t('common.back')}
+            onClick={() => navigate({ name: 'tournament-list' })}
+          >
+            ←
+          </IconButton>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 style={{ fontWeight: 800, fontSize: 17, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              🏆 {tournament.name}
+              {tournament.sport === 'tennis' ? '🎾' : '🏆'} {tournament.name}
             </h1>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
               {STATUS_LABELS[tournament.status]} · {tournament.teams.length} {t('tournament.detail.teamsCount')}

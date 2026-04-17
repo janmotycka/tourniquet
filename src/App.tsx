@@ -5,6 +5,7 @@ import { ThemeProvider } from './theme/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
 import { LandingPage } from './pages/LandingPage';
 import { HomePage } from './pages/HomePage';
+import { useUserPrefsStore } from './store/userPrefs.store';
 import { ToastContainer } from './components/ToastContainer';
 import { CookieConsent } from './components/CookieConsent';
 import { ConnectionStatus } from './components/ConnectionStatus';
@@ -12,15 +13,18 @@ import { ConfirmModal } from './components/ConfirmModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { JoinClubModal } from './components/clubs/JoinClubModal';
+import { JoinMatchPairingModal } from './components/match/JoinMatchPairingModal';
 import { useTournamentStore } from './store/tournament.store';
 import { useSubscriptionStore } from './store/subscription.store';
 import { useToastStore } from './store/toast.store';
 import { usePageStore } from './store/page.store';
 import { useContactsStore } from './store/contacts.store';
 import { useMatchesStore } from './store/matches.store';
+import { logger } from './utils/logger';
 import { useTemplatesStore } from './store/templates.store';
 import { useClubsStore } from './store/clubs.store';
 import { useTrainingsStore } from './store/trainings.store';
+import { useMyPlayersStore } from './modules/tennis/store/myPlayers.store';
 import type { TrainingUnit } from './types/training.types';
 
 // ─── Lazy-loaded stránky (sekundární, ne na kritické cestě) ─────────────────
@@ -41,6 +45,19 @@ const MatchListPage = lazy(() => import('./pages/match/MatchListPage').then(m =>
 const CreateMatchPage = lazy(() => import('./pages/match/CreateMatchPage').then(m => ({ default: m.CreateMatchPage })));
 const MatchDetailPage = lazy(() => import('./pages/match/MatchDetailPage').then(m => ({ default: m.MatchDetailPage })));
 const MatchStatsPage = lazy(() => import('./pages/match/MatchStatsPage').then(m => ({ default: m.MatchStatsPage })));
+
+// Tennis module pages — čistě tenisové, neřeší fotbal.
+const TennisMatchListPage = lazy(() => import('./modules/tennis/pages/TennisMatchListPage').then(m => ({ default: m.TennisMatchListPage })));
+const TennisCreateMatchPage = lazy(() => import('./modules/tennis/pages/TennisCreateMatchPage').then(m => ({ default: m.TennisCreateMatchPage })));
+const TennisMatchDetailPage = lazy(() => import('./modules/tennis/pages/TennisMatchDetailPage').then(m => ({ default: m.TennisMatchDetailPage })));
+const TennisClubsPage = lazy(() => import('./modules/tennis/pages/TennisClubsPage').then(m => ({ default: m.TennisClubsPage })));
+const TennisTournamentListPage = lazy(() => import('./modules/tennis/pages/TennisTournamentListPage').then(m => ({ default: m.TennisTournamentListPage })));
+const TennisCreateTournamentPage = lazy(() => import('./modules/tennis/pages/TennisCreateTournamentPage').then(m => ({ default: m.TennisCreateTournamentPage })));
+const TennisTournamentDetailPage = lazy(() => import('./modules/tennis/pages/TennisTournamentDetailPage').then(m => ({ default: m.TennisTournamentDetailPage })));
+const TennisMyPlayersPage = lazy(() => import('./modules/tennis/pages/TennisMyPlayersPage').then(m => ({ default: m.TennisMyPlayersPage })));
+const TennisIndividualCreateMatchPage = lazy(() => import('./modules/tennis/pages/TennisIndividualCreateMatchPage').then(m => ({ default: m.TennisIndividualCreateMatchPage })));
+const TennisPlayerDetailPage = lazy(() => import('./modules/tennis/pages/TennisPlayerDetailPage').then(m => ({ default: m.TennisPlayerDetailPage })));
+// TennisTournamentPublicView loaded via TournamentPublicView wrapper (sport-aware delegation)
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const ClubMembersPage = lazy(() => import('./pages/ClubMembersPage').then(m => ({ default: m.ClubMembersPage })));
@@ -77,6 +94,7 @@ export type Page =
   | { name: 'match-detail'; matchId: string }
   | { name: 'match-public'; matchId: string }
   | { name: 'match-stats' }
+  | { name: 'tennis-player'; playerId: string }
   | { name: 'settings' }
   | { name: 'admin' }
   | { name: 'privacy-policy' }
@@ -85,12 +103,15 @@ export type Page =
 // ─── Fallback spinner pro Suspense ──────────────────────────────────────────
 
 function PageSpinner() {
+  // Ikona se adaptuje podle sportu — fotbalový spinner by byl rušivý v tenis módu.
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const icon = preferredSport === 'tennis' ? '🎾' : '⚽';
   return (
     <div style={{
       flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
       minHeight: 200, flexDirection: 'column', gap: 12,
     }}>
-      <div style={{ fontSize: 32 }}>⚽</div>
+      <div style={{ fontSize: 32 }}>{icon}</div>
     </div>
   );
 }
@@ -101,19 +122,27 @@ function AppRouter() {
   const { user, loading } = useAuth();
   const { t } = useI18n();
   const loadFromFirebase = useTournamentStore(s => s.loadFromFirebase);
+  const subscribeTournaments = useTournamentStore(s => s.subscribeToFirebase);
   const setFirebaseUid = useTournamentStore(s => s.setFirebaseUid);
   const subscribeToStatus = useSubscriptionStore(s => s.subscribeToStatus);
   const showToast = useToastStore(s => s.show);
   const loadContacts = useContactsStore(s => s.loadFromFirebase);
-  const loadMatches = useMatchesStore(s => s.loadFromFirebase);
+  const subscribeMatches = useMatchesStore(s => s.subscribeToFirebase);
+  const retryPendingSync = useMatchesStore(s => s.retryPendingSync);
   const setMatchesFirebaseUid = useMatchesStore(s => s.setFirebaseUid);
   const loadTemplates = useTemplatesStore(s => s.loadFromFirebase);
   const loadClubs = useClubsStore(s => s.loadFromFirebase);
   const setClubsFirebaseUid = useClubsStore(s => s.setFirebaseUid);
-  const loadTrainings = useTrainingsStore(s => s.loadFromFirebase);
+  const subscribeTrainings = useTrainingsStore(s => s.subscribeToFirebase);
   const setTrainingsFirebaseUid = useTrainingsStore(s => s.setFirebaseUid);
+  const setMyPlayersFirebaseUid = useMyPlayersStore(s => s.setFirebaseUid);
 
-  const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin, adminJoinRole, setAdminJoinRole, clubJoinIntent } = usePageStore();
+  const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin, adminJoinRole, setAdminJoinRole, clubJoinIntent, matchPairingIntent } = usePageStore();
+  // Top-level sport + tenisový sub-mód (klubový × individuální).
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const tennisUserType = useUserPrefsStore(s => s.tennisUserType);
+  const isTennisMode = preferredSport === 'tennis';
+  const isTennisIndividual = isTennisMode && tennisUserType === 'individual';
 
   const navigate = (p: Page) => {
     if (p.name === 'tournament-public') {
@@ -128,6 +157,11 @@ function AppRouter() {
     window.scrollTo(0, 0);
   };
 
+  // Členství v klubech — určuje scope pro multi-trainer sdílení zápasů.
+  // Když přibude/ubere klub → znovu subscribneme matches ve všech scope.
+  const memberOfClubs = useClubsStore(s => s.memberOfClubs);
+  const memberClubIdsKey = Object.keys(memberOfClubs).sort().join(',');
+
   // Po přihlášení načteme data z Firebase + subscription listener + kontakty
   // Anonymní uživatelé (spolupořadatelé) potřebují jen firebaseUid pro joinTournament
   useEffect(() => {
@@ -138,20 +172,50 @@ function AppRouter() {
         loadFromFirebase(user.uid);
         loadContacts(user.uid);
         setMatchesFirebaseUid(user.uid); // set UID early so sync works even if load fails
-        loadMatches(user.uid);
+        const unsubscribeTournaments = subscribeTournaments(user.uid);
         loadTemplates(user.uid);
         void loadClubs(user.uid);
-        loadTrainings(user.uid);
-        const unsubscribe = subscribeToStatus(user.uid);
-        return () => unsubscribe();
+        // Realtime subscribe pro tréninky (sync mezi zařízeními)
+        const unsubscribeTrainings = subscribeTrainings(user.uid);
+        const unsubscribeStatus = subscribeToStatus(user.uid);
+        // MyPlayers (tenisový individuální mód) — realtime subscribe
+        setMyPlayersFirebaseUid(user.uid);
+        return () => {
+          unsubscribeTournaments();
+          unsubscribeTrainings();
+          unsubscribeStatus();
+          setMyPlayersFirebaseUid(null);
+        };
       }
     } else {
       setFirebaseUid(null);
       setMatchesFirebaseUid(null);
       setClubsFirebaseUid(null);
       setTrainingsFirebaseUid(null);
+      setMyPlayersFirebaseUid(null);
     }
-  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, loadMatches, setMatchesFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, loadTrainings, setTrainingsFirebaseUid]);
+  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, subscribeTournaments, setMatchesFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, subscribeTrainings, setTrainingsFirebaseUid, setMyPlayersFirebaseUid]);
+
+  // Matches subscription musí reagovat na změnu klubového členství —
+  // když user vstoupí do sdíleného klubu, musíme začít poslouchat jeho matches.
+  useEffect(() => {
+    if (!user || user.isAnonymous) return;
+    // Scope = [auth uid (legacy per-user), ...clubIds]
+    const scopes = [user.uid, ...Object.keys(memberOfClubs)];
+    const unsubscribe = subscribeMatches(scopes);
+    return () => unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, user?.isAnonymous, memberClubIdsKey, subscribeMatches]);
+
+  // Když prohlížeč obnoví spojení → retry pending match syncs (offline write queue)
+  useEffect(() => {
+    const handleOnline = () => {
+      logger.debug('[App] Back online — retrying pending sync');
+      retryPendingSync();
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [retryPendingSync]);
 
   // Po přihlášení + existuje joinIntent → přesměrovat zpět na public view
   useEffect(() => {
@@ -268,19 +332,64 @@ function AppRouter() {
       {page.name === 'library' && <ExerciseLibraryPage navigate={navigate} />}
       {page.name === 'manual-builder' && <ManualBuilderPage navigate={navigate} />}
       {page.name === 'calendar' && <CalendarPage navigate={navigate} />}
-      {page.name === 'tournament-list' && <TournamentListPage navigate={navigate} />}
-      {page.name === 'tournament-create-choice' && <TournamentCreateChoicePage navigate={navigate} />}
-      {page.name === 'tournament-create' && <CreateTournamentPage navigate={navigate} />}
-      {page.name === 'tournament-planner' && <TournamentPlannerPage navigate={navigate} />}
-      {page.name === 'tournament-detail' && (
-        <TournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
+      {page.name === 'tournament-list' && (
+        isTennisMode
+          ? <TennisTournamentListPage navigate={navigate} />
+          : <TournamentListPage navigate={navigate} />
       )}
-      {page.name === 'clubs' && <ClubsPage navigate={navigate} />}
+      {/* Tenis skipuje choice/planner — má vlastní jednoduchý create flow. */}
+      {page.name === 'tournament-create-choice' && (
+        isTennisMode
+          ? <TennisCreateTournamentPage navigate={navigate} />
+          : <TournamentCreateChoicePage navigate={navigate} />
+      )}
+      {page.name === 'tournament-create' && (
+        isTennisMode
+          ? <TennisCreateTournamentPage navigate={navigate} />
+          : <CreateTournamentPage navigate={navigate} />
+      )}
+      {page.name === 'tournament-planner' && (
+        isTennisMode
+          ? <TennisCreateTournamentPage navigate={navigate} />
+          : <TournamentPlannerPage navigate={navigate} />
+      )}
+      {page.name === 'tournament-detail' && (
+        isTennisMode
+          ? <TennisTournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
+          : <TournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
+      )}
+      {/* Clubs route — v tenisovém individuálním módu ukáže TennisMyPlayersPage
+          (místo klubu spravujeme flat list sledovaných hráčů). */}
+      {page.name === 'clubs' && (
+        isTennisIndividual
+          ? <TennisMyPlayersPage navigate={navigate} />
+          : isTennisMode
+            ? <TennisClubsPage navigate={navigate} />
+            : <ClubsPage navigate={navigate} />
+      )}
       {page.name === 'club-members' && <ClubMembersPage navigate={navigate} />}
-      {page.name === 'match-list' && <MatchListPage navigate={navigate} />}
-      {page.name === 'match-create' && <CreateMatchPage navigate={navigate} />}
-      {page.name === 'match-detail' && <MatchDetailPage matchId={page.matchId} navigate={navigate} />}
-      {page.name === 'match-stats' && <MatchStatsPage navigate={navigate} />}
+      {page.name === 'match-list' && (
+        isTennisMode
+          ? <TennisMatchListPage navigate={navigate} />
+          : <MatchListPage navigate={navigate} />
+      )}
+      {page.name === 'match-create' && (
+        isTennisIndividual
+          ? <TennisIndividualCreateMatchPage navigate={navigate} />
+          : isTennisMode
+            ? <TennisCreateMatchPage navigate={navigate} />
+            : <CreateMatchPage navigate={navigate} />
+      )}
+      {page.name === 'match-detail' && (
+        isTennisMode
+          ? <TennisMatchDetailPage matchId={page.matchId} navigate={navigate} />
+          : <MatchDetailPage matchId={page.matchId} navigate={navigate} />
+      )}
+      {/* match-stats je zatím jen fotbalová (tenisové statistiky budou mít vlastní metriky).
+          Tenisový user sem nedorazí přes UI — sidebar mu match-stats vůbec nenabízí. */}
+      {page.name === 'match-stats' && !isTennisMode && <MatchStatsPage navigate={navigate} />}
+      {page.name === 'match-stats' && isTennisMode && <TennisMatchListPage navigate={navigate} />}
+      {page.name === 'tennis-player' && <TennisPlayerDetailPage playerId={page.playerId} navigate={navigate} />}
       {page.name === 'settings' && <SettingsPage navigate={navigate} />}
       {page.name === 'admin' && <AdminPage />}
       {page.name === 'privacy-policy' && <PrivacyPolicyPage navigate={navigate} />}
@@ -294,6 +403,14 @@ function AppRouter() {
         {pageContent}
       </main>
       {clubJoinIntent && <JoinClubModal inviteId={clubJoinIntent.inviteId} />}
+      {matchPairingIntent && user && !user.isAnonymous && (
+        <JoinMatchPairingModal
+          scopeId={matchPairingIntent.scopeId}
+          matchId={matchPairingIntent.matchId}
+          joinToken={matchPairingIntent.joinToken}
+          navigate={navigate}
+        />
+      )}
     </div>
   );
 }

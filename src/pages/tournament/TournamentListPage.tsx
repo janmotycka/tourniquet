@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTournamentStore } from '../../store/tournament.store';
 import { useSubscriptionStore } from '../../store/subscription.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { computeStandings } from '../../utils/tournament-schedule';
 import { FeatureGate } from '../../components/FeatureGate';
 import { useI18n, getDateLocale } from '../../i18n';
@@ -202,6 +203,12 @@ export function TournamentListPage({ navigate }: Props) {
 
   // Vyhledávání
   const [searchQuery, setSearchQuery] = useState('');
+  // Sport filter — default = preferredSport (sporty jsou oddělené).
+  // Uživatel může přepnout na 'all' nebo druhý sport ručně chip barem.
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const [sportFilter, setSportFilter] = useState<'all' | 'football' | 'tennis'>(preferredSport);
+  // Když se přepne sport v Nastavení, aktualizuj filtr.
+  useEffect(() => { setSportFilter(preferredSport); }, [preferredSport]);
 
   // Rozdělit na aktivní (active/draft) a archivované (finished), filtrovat podle hledání
   const { activeTournaments, archivedTournaments } = useMemo(() => {
@@ -209,6 +216,8 @@ export function TournamentListPage({ navigate }: Props) {
       ...tournaments.map(t => ({ ...t, _isJoined: false })),
       ...joinedTournaments.map(t => ({ ...t, _isJoined: true })),
     ].filter(t => {
+      // Sport filter
+      if (sportFilter !== 'all' && (t.sport ?? 'football') !== sportFilter) return false;
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return t.name.toLowerCase().includes(q)
@@ -229,7 +238,16 @@ export function TournamentListPage({ navigate }: Props) {
     // finished: nejnovější nahoře (desc)
     archived.sort((a, b) => new Date(b.settings.startDate).getTime() - new Date(a.settings.startDate).getTime());
     return { activeTournaments: active, archivedTournaments: archived };
-  }, [tournaments, joinedTournaments, searchQuery]);
+  }, [tournaments, joinedTournaments, searchQuery, sportFilter]);
+
+  // Jaké sporty jsou v datech? (pro skrytí filtru když je jen 1 sport)
+  const availableSports = useMemo(() => {
+    const set = new Set<'football' | 'tennis'>();
+    for (const t of tournaments) set.add((t.sport ?? 'football') as 'football' | 'tennis');
+    for (const t of joinedTournaments) set.add((t.sport ?? 'football') as 'football' | 'tennis');
+    return [...set];
+  }, [tournaments, joinedTournaments]);
+  const showSportFilter = availableSports.length >= 2;
 
   // Shared join modal — used by both mobile and desktop variants
   const joinModal = showJoinModal && (
@@ -473,6 +491,32 @@ export function TournamentListPage({ navigate }: Props) {
             </div>
           </div>
           <button onClick={clearSyncError} style={{ fontSize: 16, color: 'var(--warning)', padding: 4 }}>✕</button>
+        </div>
+      )}
+
+      {/* Sport filter chips */}
+      {showSportFilter && (
+        <div style={{ padding: '12px 20px 0', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {([
+            { key: 'all' as const, label: t('landing.filterSportAll'), icon: '' },
+            { key: 'football' as const, label: t('sport.football'), icon: '⚽' },
+            { key: 'tennis' as const, label: t('sport.tennis'), icon: '🎾' },
+          ]).filter(chip => chip.key === 'all' || availableSports.includes(chip.key))
+            .map(chip => (
+              <button
+                key={chip.key}
+                onClick={() => setSportFilter(chip.key)}
+                style={{
+                  padding: '7px 12px', borderRadius: 10, fontWeight: 700, fontSize: 13,
+                  background: sportFilter === chip.key ? 'var(--primary)' : 'var(--surface)',
+                  color: sportFilter === chip.key ? '#fff' : 'var(--text-muted)',
+                  border: sportFilter === chip.key ? 'none' : '1px solid var(--border)',
+                  cursor: 'pointer',
+                }}
+              >
+                {chip.icon} {chip.label}
+              </button>
+            ))}
         </div>
       )}
 

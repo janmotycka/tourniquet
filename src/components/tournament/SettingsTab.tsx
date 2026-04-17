@@ -387,6 +387,34 @@ export function SettingsTab({ tournament, navigate, isOwner, isAdmin = isOwner, 
 
       {/* Registration, billing, rosters — managed in DashboardTab */}
 
+      {/* Official Results URL — pro tenis (ČTenis odkaz na oficiální stránku turnaje). */}
+      {(tournament.sport ?? 'football') === 'tennis' && isAdmin && (
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>
+            🔗 {t('tournament.settings.officialResultsUrlTitle')}
+          </h3>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+            {t('tournament.settings.officialResultsUrlDesc')}
+          </div>
+          <input
+            type="url"
+            inputMode="url"
+            autoComplete="url"
+            value={tournament.settings.officialResultsUrl ?? ''}
+            onChange={e => updateTournament(tournament.id, {
+              settings: { ...tournament.settings, officialResultsUrl: e.target.value.trim() || undefined },
+            })}
+            placeholder="https://cztenis.cz/…"
+            style={{
+              width: '100%', padding: '10px', borderRadius: 10,
+              border: '1.5px solid var(--border)', fontSize: 13,
+              background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box',
+              fontFamily: 'ui-monospace, monospace',
+            }}
+          />
+        </div>
+      )}
+
       {/* Propozice — collapsible regulations form */}
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div

@@ -123,8 +123,10 @@ export function ClubMembersPage({ navigate }: Props) {
     setLoadingInvites(true);
     try {
       const res = await listClubInvites(activeClubId);
-      const arr = (res as unknown as { invites: InviteRow[] }).invites ?? [];
-      setInvites(arr.filter(i => !i.used));
+      // Runtime guard — Cloud Function může vrátit { invites: [] } nebo nic
+      const data = (res && typeof res === 'object') ? (res as Record<string, unknown>) : {};
+      const raw = Array.isArray(data.invites) ? (data.invites as InviteRow[]) : [];
+      setInvites(raw.filter(i => !i.used));
     } catch (err) {
       logger.warn('[ClubMembers] listClubInvites failed:', err);
     } finally {
@@ -316,6 +318,13 @@ export function ClubMembersPage({ navigate }: Props) {
                 : t('clubs.shared.viewerBadge');
               const roleBg = m.role === 'owner' ? 'var(--success)' : 'var(--surface-var)';
               const roleColor = m.role === 'owner' ? '#fff' : 'var(--text-muted)';
+              // Pro mě vezmi jméno z auth profilu (Firebase), fallback na server-saved
+              // displayName, email, nebo UID prefix. Ostatní členové uvidí mé jméno
+              // jak je uložené na serveru při registraci/přihlášení do klubu.
+              const selfDisplayName = isMe
+                ? (user?.displayName || m.displayName || user?.email?.split('@')[0] || m.uid.slice(0, 8) + '…')
+                : null;
+              const memberDisplayName = selfDisplayName ?? m.displayName ?? (m.uid.slice(0, 8) + '…');
               return (
                 <div key={m.uid} style={{
                   display: 'flex', alignItems: 'center', gap: 10,
@@ -326,11 +335,24 @@ export function ClubMembersPage({ navigate }: Props) {
                     width: 32, height: 32, borderRadius: 16, background: 'var(--primary-light)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700,
                   }}>
-                    {((m.displayName || m.uid).slice(0, 2) || '?').toUpperCase()}
+                    {(memberDisplayName.slice(0, 2) || '?').toUpperCase()}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {isMe ? t('clubs.members.you') : (m.displayName || m.uid.slice(0, 8) + '…')}
+                    <div style={{
+                      fontWeight: 700, fontSize: 13,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      display: 'flex', alignItems: 'center', gap: 6,
+                    }}>
+                      <span>{memberDisplayName}</span>
+                      {isMe && (
+                        <span style={{
+                          fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
+                          background: 'var(--primary-light)', color: 'var(--primary)',
+                          letterSpacing: 0.3, textTransform: 'uppercase', flexShrink: 0,
+                        }}>
+                          {t('clubs.members.you')}
+                        </span>
+                      )}
                     </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                       {t('clubs.members.joinedAt').replace('{date}', new Date(m.joinedAt).toLocaleDateString())}

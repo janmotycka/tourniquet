@@ -3,7 +3,7 @@ import type { TournamentSettings, TournamentFormat, GroupDefinition } from '../.
 export interface TeamDraft {
   name: string;
   color: string;
-  players: Array<{ name: string; jerseyNumber: number }>;
+  players: Array<{ name: string; jerseyNumber: number; clubPlayerId?: string }>;
   expanded: boolean;
   clubId: string | null;
   logoBase64: string | null;

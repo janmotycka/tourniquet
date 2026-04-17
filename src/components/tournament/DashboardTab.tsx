@@ -16,6 +16,8 @@ import { generateInvoicePdf, createInvoiceDataFromApproval } from '../../utils/i
 import { TeamBadge } from './TeamBadge';
 import { AdminRosterSheet } from './AdminRosterSheet';
 import { exportTournamentPdf } from '../../utils/tournament-pdf';
+import { GroupDrawModal } from './GroupDrawModal';
+import { OfficialLinkButton } from '../ui';
 // import { exportRegulationsPdf } from '../../utils/tournament-regulations-pdf'; // TODO: propozice PDF
 import { useClubsStore } from '../../store/clubs.store';
 import { TEAM_COLORS } from '../../utils/team-colors';
@@ -65,6 +67,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
   const [adminRosterTeamId, setAdminRosterTeamId] = useState<string | null>(null);
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
   const [pdfExporting, setPdfExporting] = useState(false);
+  const [showGroupDraw, setShowGroupDraw] = useState(false);
   const [regShareOpen, setRegShareOpen] = useState(!(tournament.settings.registrationClosed ?? false));
   const [rejectedOpen, setRejectedOpen] = useState(false);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
@@ -343,7 +346,32 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
         >
           {pdfExporting ? `⏳ ${t('pdf.generating')}` : `📄 ${t('pdf.downloadPdf')}`}
         </button>
-        {/* PDF propozice — TODO: dokončit před zapnutím */}
+
+        {/* Official link (pokud vyplněn — ČTenis apod.) */}
+        {tournament.settings.officialResultsUrl && (
+          <OfficialLinkButton url={tournament.settings.officialResultsUrl} />
+        )}
+
+        {/* Rozlosovat skupiny — admin, jen v draft stavu */}
+        {isAdmin && tournament.status === 'draft' && tournament.teams.length >= 2 && (
+          <button
+            onClick={() => setShowGroupDraw(true)}
+            style={{
+              width: '100%',
+              padding: '10px 14px',
+              borderRadius: 10, fontSize: 14, fontWeight: 700,
+              background: 'var(--surface-var)', color: 'var(--text)',
+              border: '1.5px solid var(--primary)', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              marginTop: 8,
+            }}
+          >
+            {t('tournament.draw.openBtn')}
+          </button>
+        )}
+        {showGroupDraw && (
+          <GroupDrawModal tournament={tournament} onClose={() => setShowGroupDraw(false)} />
+        )}
       </div>
 
       {/* Registration sharing — collapsible */}
@@ -1120,6 +1148,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                   onChange={setAddTeamName}
                   placeholder={t('dashboard.teamNamePlaceholder')}
                   style={{ marginBottom: 10 }}
+                  sport={(tournament.sport ?? 'football') as 'football' | 'tennis'}
                 />
                 <button
                   onClick={async () => {

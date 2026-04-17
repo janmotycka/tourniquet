@@ -216,6 +216,32 @@ export async function loadTournamentsFromFirebase(uid: string): Promise<Tourname
   return Object.values(data).map(fromFirebase);
 }
 
+/**
+ * Realtime subscription na všechny vlastní turnaje uživatele.
+ * Pomůže synchronizovat nové/smazané turnaje mezi zařízeními.
+ */
+export function subscribeToUserTournaments(
+  uid: string,
+  callback: (tournaments: Tournament[]) => void,
+): () => void {
+  const r = userTournamentsRef(uid);
+  const handler = (snapshot: DataSnapshot) => {
+    if (!snapshot.exists()) { callback([]); return; }
+    const data = snapshot.val() as Record<string, unknown>;
+    try {
+      callback(Object.values(data).map(fromFirebase));
+    } catch (err) {
+      logger.error('[Firebase] subscribeToUserTournaments parse error:', err);
+      callback([]);
+    }
+  };
+  onValue(r, handler, (err) => {
+    logger.error('[Firebase] subscribeToUserTournaments error:', err.message);
+    callback([]);
+  });
+  return () => off(r, 'value', handler);
+}
+
 /** Načte jeden turnaj z public mirror (pro diváky, bez auth) */
 export async function loadPublicTournament(tournamentId: string): Promise<Tournament | null> {
   const snapshot = await get(publicRef(tournamentId));

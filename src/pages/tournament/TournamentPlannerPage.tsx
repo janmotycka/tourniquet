@@ -3,6 +3,7 @@ import type { Page } from '../../App';
 import { useI18n } from '../../i18n';
 import { useToastStore } from '../../store/toast.store';
 import { useTournamentStore } from '../../store/tournament.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { TEAM_COLORS } from '../../utils/team-colors';
 import { hashPin, generatePinSalt, markPinVerified } from '../../utils/pin-hash';
 import { planTournament, addMinutesToHHMM, type PlannerInput, type PlannerVariant, type MatchOrderEntry } from '../../utils/tournamentPlanner';
@@ -22,6 +23,7 @@ export function TournamentPlannerPage({ navigate }: Props) {
   const { t } = useI18n();
   const createTournament = useTournamentStore(s => s.createTournament);
   const showToast = useToastStore(s => s.show);
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
 
   // ── Wizard state ──────────────────────────────────────────────────────────
   const [step, setStep] = useState<WizardStep>(1);
@@ -171,6 +173,7 @@ export function TournamentPlannerPage({ navigate }: Props) {
 
       const tournament = await createTournament({
         name: name.trim(),
+        sport: preferredSport,
         settings,
         teams,
         pinHash,

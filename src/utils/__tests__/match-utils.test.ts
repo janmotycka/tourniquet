@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { computeElapsed, formatTime, computePlayingTime } from '../../components/match/match-utils';
+import { computeElapsed, formatTime, computePlayingTime, computeCurrentStretch } from '../../components/match/match-utils';
 import type { SeasonMatch } from '../../types/match.types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -177,5 +177,100 @@ describe('computePlayingTime', () => {
     expect(result.get('p1')).toBe(20); // played 0–20
     expect(result.get('p2')).toBe(20); // played 20–40
     expect(result.get('p3')).toBe(20); // played 40–60
+  });
+
+  it('handles a player subbed out and back in (double swap)', () => {
+    // p1 starter, vystřídaný v 15', vrátí se v 30', pořád na hřišti v 45'
+    const match = makeMatch({
+      lineup: [
+        { playerId: 'p1', jerseyNumber: 7, name: 'A', isStarter: true, substituteOrder: 0 },
+        { playerId: 'p2', jerseyNumber: 9, name: 'B', isStarter: false, substituteOrder: 1 },
+      ],
+      substitutions: [
+        { id: 's1', minute: 15, playerOutId: 'p1', playerInId: 'p2', recordedAt: '' },
+        { id: 's2', minute: 30, playerOutId: 'p2', playerInId: 'p1', recordedAt: '' },
+      ],
+    });
+
+    const result = computePlayingTime(match, 45);
+    expect(result.get('p1')).toBe(30); // 0–15 + 30–45 = 30 min
+    expect(result.get('p2')).toBe(15); // 15–30 = 15 min
+  });
+});
+
+// ─── computeCurrentStretch ───────────────────────────────────────────────────
+
+describe('computeCurrentStretch', () => {
+  it('returns elapsed for starter who was never subbed', () => {
+    const match = makeMatch({
+      lineup: [
+        { playerId: 'p1', jerseyNumber: 7, name: 'A', isStarter: true, substituteOrder: 0 },
+      ],
+      substitutions: [],
+    });
+    const result = computeCurrentStretch(match, 30);
+    expect(result.get('p1')).toBe(30); // still on field 30 min straight
+  });
+
+  it('returns elapsed for bench player who was never subbed in', () => {
+    const match = makeMatch({
+      lineup: [
+        { playerId: 'p1', jerseyNumber: 7, name: 'A', isStarter: true, substituteOrder: 0 },
+        { playerId: 'p2', jerseyNumber: 9, name: 'B', isStarter: false, substituteOrder: 1 },
+      ],
+      substitutions: [],
+    });
+    const result = computeCurrentStretch(match, 30);
+    expect(result.get('p2')).toBe(30); // on bench 30 min straight
+  });
+
+  it('computes time since last substitution for on-field player', () => {
+    const match = makeMatch({
+      lineup: [
+        { playerId: 'p1', jerseyNumber: 7, name: 'A', isStarter: true, substituteOrder: 0 },
+        { playerId: 'p2', jerseyNumber: 9, name: 'B', isStarter: false, substituteOrder: 1 },
+      ],
+      substitutions: [
+        { id: 's1', minute: 20, playerOutId: 'p1', playerInId: 'p2', recordedAt: '' },
+      ],
+    });
+    const result = computeCurrentStretch(match, 45);
+    expect(result.get('p1')).toBe(25); // been on bench 25 min since sub at 20
+    expect(result.get('p2')).toBe(25); // been on field 25 min since sub at 20
+  });
+
+  it('computes time since last substitution for returning player (double swap)', () => {
+    // p1 byl starter, vystřídaný v 15', zpátky v 30', teď je 45
+    const match = makeMatch({
+      lineup: [
+        { playerId: 'p1', jerseyNumber: 7, name: 'A', isStarter: true, substituteOrder: 0 },
+        { playerId: 'p2', jerseyNumber: 9, name: 'B', isStarter: false, substituteOrder: 1 },
+      ],
+      substitutions: [
+        { id: 's1', minute: 15, playerOutId: 'p1', playerInId: 'p2', recordedAt: '' },
+        { id: 's2', minute: 30, playerOutId: 'p2', playerInId: 'p1', recordedAt: '' },
+      ],
+    });
+    const result = computeCurrentStretch(match, 45);
+    // p1 má total playing 30 min (0-15 + 30-45), ale stretch je jen 15 (od 30')
+    expect(result.get('p1')).toBe(15);
+    // p2 je na lavici od 30', stretch 15
+    expect(result.get('p2')).toBe(15);
+  });
+
+  it('never returns negative stretch (rounding safety)', () => {
+    const match = makeMatch({
+      lineup: [
+        { playerId: 'p1', jerseyNumber: 7, name: 'A', isStarter: true, substituteOrder: 0 },
+        { playerId: 'p2', jerseyNumber: 9, name: 'B', isStarter: false, substituteOrder: 1 },
+      ],
+      substitutions: [
+        // Sub v 20.5, ale elapsedMinutes je 20.0 (zaokrouhlovací glitch)
+        { id: 's1', minute: 20, playerOutId: 'p1', playerInId: 'p2', recordedAt: '' },
+      ],
+    });
+    const result = computeCurrentStretch(match, 19.5);
+    expect(result.get('p1')).toBeGreaterThanOrEqual(0);
+    expect(result.get('p2')).toBeGreaterThanOrEqual(0);
   });
 });

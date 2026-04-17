@@ -2,8 +2,10 @@ import { useState, useMemo } from 'react';
 import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
 import { useClubsStore } from '../../store/clubs.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
+import { TEAM_MATCH_FORMATS, createDefaultSubMatches } from '../../modules/tennis/utils/tennis-team';
 import { useI18n } from '../../i18n';
-import type { MatchLineupPlayer, SubstitutionSettings, MatchFormat, AttendanceStatus } from '../../types/match.types';
+import type { MatchLineupPlayer, SubstitutionSettings, MatchFormat } from '../../types/match.types';
 import { MATCH_FORMATS, formatToStarterCount } from '../../types/match.types';
 import type { Club, AgeCategory } from '../../types/club.types';
 import { useToastStore } from '../../store/toast.store';
@@ -46,47 +48,8 @@ function nowTimeStr(): string {
 }
 
 // ─── Attendance chips ─────────────────────────────────────────────────────────
-const ATTENDANCE_OPTIONS: Array<{ status: AttendanceStatus; icon: string; labelKey: string }> = [
-  { status: 'confirmed', icon: '✅', labelKey: 'match.attendance.confirmed' },
-  { status: 'tentative', icon: '❔', labelKey: 'match.attendance.tentative' },
-  { status: 'absent', icon: '❌', labelKey: 'match.attendance.absent' },
-];
-
-function AttendanceChips({
-  value,
-  onChange,
-  t,
-}: {
-  value: AttendanceStatus;
-  onChange: (status: AttendanceStatus) => void;
-  t: (key: string, params?: Record<string, string | number>) => string;
-}) {
-  return (
-    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-      {ATTENDANCE_OPTIONS.map(opt => {
-        const active = value === opt.status;
-        return (
-          <button
-            key={opt.status}
-            onClick={() => onChange(opt.status)}
-            title={t(opt.labelKey)}
-            aria-label={t(opt.labelKey)}
-            aria-pressed={active}
-            style={{
-              fontSize: 13, padding: '5px 8px', borderRadius: 8,
-              background: active ? 'var(--primary)' : 'var(--surface-var)',
-              color: active ? '#fff' : 'var(--text-muted)',
-              border: 'none', cursor: 'pointer',
-              minWidth: 32, lineHeight: 1,
-            }}
-          >
-            {opt.icon}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+// Attendance chips removed from create flow — trenér nasype hráče až na místě
+// nebo pošle nominaci přes WhatsApp (viz MatchDetailPage).
 
 // ─── Club logo/color badge ────────────────────────────────────────────────────
 function ClubBadge({ club, size = 32 }: { club: Club; size?: number }) {
@@ -102,9 +65,22 @@ function ClubBadge({ club, size = 32 }: { club: Club; size?: number }) {
 export function CreateMatchPage({ navigate }: Props) {
   const { t } = useI18n();
   const { isDesktop } = useLayoutMode();
-  const clubs = useClubsStore(s => s.clubs);
+  const allClubs = useClubsStore(s => s.clubs);
   const createMatch = useMatchesStore(s => s.createMatch);
-  const allMatches = useMatchesStore(s => s.matches);
+  const allMatchesRaw = useMatchesStore(s => s.matches);
+  // Sport mode — default z user preferences (onboarding zvolený sport)
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const isTennis = preferredSport === 'tennis';
+
+  // Filtruj kluby a historii podle aktuálního sportu (oddělené moduly).
+  const clubs = useMemo(
+    () => allClubs.filter(c => (c.sport ?? 'football') === preferredSport),
+    [allClubs, preferredSport],
+  );
+  const allMatches = useMemo(
+    () => allMatchesRaw.filter(m => (m.sport ?? 'football') === preferredSport),
+    [allMatchesRaw, preferredSport],
+  );
 
   // Detekce domovského klubu (myClub = první s ageCategories > 0)
   const myClub = useMemo(
@@ -118,11 +94,34 @@ export function CreateMatchPage({ navigate }: Props) {
     return [...allMatches].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   }, [allMatches]);
 
+  // Historie zadaných hodnot — nabídneme ve <datalist> jako našeptávač.
+  // Uživatel tipicky hraje opakovaně na stejných místech / stejné soutěže.
+  const venueSuggestions = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of allMatches) {
+      if (m.venue && m.venue.trim()) set.add(m.venue.trim());
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [allMatches]);
+  const competitionSuggestions = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of allMatches) {
+      if (m.competition && m.competition.trim()) set.add(m.competition.trim());
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [allMatches]);
+
   const [step, setStep] = useState(0);
+
+  // Tennis: typ zápasu (singles vs družstvo)
+  const [tennisMatchType, setTennisMatchType] = useState<'single' | 'team'>('single');
+  const [teamFormatId, setTeamFormatId] = useState<string>('4s-2d');
 
   // Step 0: basic info
   const [opponent, setOpponent] = useState('');
+  const [opponentCatalogId, setOpponentCatalogId] = useState<string | undefined>();
   const [isHome, setIsHome] = useState(true);
+  const [venue, setVenue] = useState('');
   const [date, setDate] = useState(todayStr());
   const [kickoffTime, setKickoffTime] = useState(nowTimeStr());
   const [competition, setCompetition] = useState(lastMatch?.competition ?? '');
@@ -135,6 +134,8 @@ export function CreateMatchPage({ navigate }: Props) {
   const [selectedClubId, setSelectedClubId] = useState<string>(myClub?.id ?? clubs[0]?.id ?? '');
   const [selectedCategory, setSelectedCategory] = useState<AgeCategory | null>(null);
   const [selectedSquad, setSelectedSquad] = useState<string | null>(null);
+  // Extra kategorie — hráči z mladších (nebo jiných) kategorií, které chce trenér zahrnout
+  const [extraCategories, setExtraCategories] = useState<AgeCategory[]>([]);
   const [trackAssists, setTrackAssists] = useState(lastMatch?.trackAssists ?? true);
   // Step 1: lineup
   const [lineup, setLineup] = useState<MatchLineupPlayer[]>([]);
@@ -151,14 +152,27 @@ export function CreateMatchPage({ navigate }: Props) {
     return selectedClub.ageCategories ?? [];
   }, [selectedClub]);
 
-  const initLineupFromClub = (club: Club, category?: AgeCategory | null, squad?: string | null) => {
+  const initLineupFromClub = (
+    club: Club,
+    category?: AgeCategory | null,
+    squad?: string | null,
+    extras?: AgeCategory[],
+  ) => {
     const activePlayers = (club.players ?? []).filter(p => p.active);
 
-    let rosterPlayers: Array<{ id: string; name: string; jerseyNumber: number }>;
+    let rosterPlayers: Array<{ id: string; name: string; jerseyNumber: number; guestCategory?: string }>;
     if (activePlayers.length > 0 && category) {
       let filtered = activePlayers.filter(p => p.ageCategory === category);
       if (squad) filtered = filtered.filter(p => p.squad === squad);
       rosterPlayers = filtered.map(p => ({ id: p.id, name: p.name, jerseyNumber: p.jerseyNumber }));
+      // Přidat hráče z extra kategorií (označené jako hosté ze své domovské kategorie)
+      if (extras && extras.length > 0) {
+        const extraSet = new Set(extras);
+        const extraPlayers = activePlayers
+          .filter(p => p.ageCategory && extraSet.has(p.ageCategory as AgeCategory))
+          .map(p => ({ id: p.id, name: p.name, jerseyNumber: p.jerseyNumber, guestCategory: p.ageCategory }));
+        rosterPlayers = [...rosterPlayers, ...extraPlayers];
+      }
     } else if (activePlayers.length > 0) {
       rosterPlayers = activePlayers.map(p => ({ id: p.id, name: p.name, jerseyNumber: p.jerseyNumber }));
     } else {
@@ -172,6 +186,7 @@ export function CreateMatchPage({ navigate }: Props) {
       name: p.name,
       isStarter: idx < maxStarters,
       substituteOrder: idx >= maxStarters ? idx - maxStarters + 1 : 0,
+      ...(p.guestCategory ? { guestCategory: p.guestCategory } : {}),
     }));
     setLineup(newLineup);
   };
@@ -180,6 +195,7 @@ export function CreateMatchPage({ navigate }: Props) {
     setSelectedClubId(clubId);
     setSelectedCategory(null);
     setSelectedSquad(null);
+    setExtraCategories([]);
     const club = clubs.find(c => c.id === clubId);
     if (club) initLineupFromClub(club);
   };
@@ -187,12 +203,35 @@ export function CreateMatchPage({ navigate }: Props) {
   const handleCategoryChange = (cat: AgeCategory) => {
     setSelectedCategory(cat);
     setSelectedSquad(null);
-    if (selectedClub) initLineupFromClub(selectedClub, cat, null);
+    // reset extras — mohou obsahovat novou primární kategorii
+    const newExtras = extraCategories.filter(c => c !== cat);
+    setExtraCategories(newExtras);
+    if (selectedClub) initLineupFromClub(selectedClub, cat, null, newExtras);
+
+    // Smart defaults podle kategorie — najdi poslední zápas v této kategorii
+    // a nastav format/délku periody podle něj (U9 má obvykle 5+1, Muži 11+1 atd.)
+    const lastInCategory = [...allMatches]
+      .filter(m => m.ageCategory === cat)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    if (lastInCategory) {
+      if (lastInCategory.matchFormat) setMatchFormat(lastInCategory.matchFormat);
+      if (lastInCategory.periods) setPeriods(lastInCategory.periods);
+      if (lastInCategory.periodDurationMinutes) setPeriodDuration(lastInCategory.periodDurationMinutes);
+      if (lastInCategory.competition) setCompetition(lastInCategory.competition);
+    }
   };
 
   const handleSquadChange = (squad: string | null) => {
     setSelectedSquad(squad);
-    if (selectedClub) initLineupFromClub(selectedClub, selectedCategory, squad);
+    if (selectedClub) initLineupFromClub(selectedClub, selectedCategory, squad, extraCategories);
+  };
+
+  const toggleExtraCategory = (cat: AgeCategory) => {
+    const next = extraCategories.includes(cat)
+      ? extraCategories.filter(c => c !== cat)
+      : [...extraCategories, cat];
+    setExtraCategories(next);
+    if (selectedClub) initLineupFromClub(selectedClub, selectedCategory, selectedSquad, next);
   };
 
   // Dostupné squads v rámci vybrané kategorie
@@ -204,18 +243,6 @@ export function CreateMatchPage({ navigate }: Props) {
       .forEach(p => { if (p.squad) squads.add(p.squad); });
     return Array.from(squads).sort();
   }, [selectedClub, selectedCategory]);
-
-  const setAttendance = (playerId: string, status: AttendanceStatus) => {
-    setLineup(prev => prev.map(p => {
-      if (p.playerId !== playerId) return p;
-      // If moving to absent and player is a starter, move to bench automatically
-      if (status === 'absent' && p.isStarter) {
-        const benchCount = prev.filter(x => !x.isStarter).length;
-        return { ...p, attendance: status, isStarter: false, substituteOrder: benchCount + 1 };
-      }
-      return { ...p, attendance: status };
-    }));
-  };
 
   const toggleStarter = (playerId: string) => {
     setLineup(prev => {
@@ -266,11 +293,25 @@ export function CreateMatchPage({ navigate }: Props) {
       ? { intervalMinutes: subInterval, playersAtOnce: subCount }
       : undefined;
 
+    // Pokud je tennis team, vytvoř default sub-matches dle formátu
+    const teamFormat = isTennis && tennisMatchType === 'team'
+      ? TEAM_MATCH_FORMATS.find(f => f.id === teamFormatId) ?? TEAM_MATCH_FORMATS[0]
+      : null;
+    const subMatches = teamFormat ? createDefaultSubMatches(teamFormat) : undefined;
+
     createMatch({
+      sport: preferredSport,
+      matchType: isTennis ? tennisMatchType : 'single',
+      subMatches,
+      officialResultsNote: isTennis && tennisMatchType === 'team'
+        ? 'Výsledky jsou orientační. Oficiální výsledky zveřejněny na ČTenis.'
+        : undefined,
       clubId: selectedClubId,
       clubName: selectedClub?.name,
       opponent: opponent.trim(),
+      opponentCatalogId,
       isHome,
+      venue: venue.trim() || undefined,
       date,
       kickoffTime,
       competition: competition.trim(),
@@ -295,6 +336,65 @@ export function CreateMatchPage({ navigate }: Props) {
 
   const renderStep0 = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '16px' }}>
+      {/* Tennis: typ zápasu — singles vs. družstvo */}
+      {isTennis && (
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.tennisTypeTitle')}</h3>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {(['single', 'team'] as const).map(type => {
+              const isActive = tennisMatchType === type;
+              return (
+                <button
+                  key={type}
+                  onClick={() => setTennisMatchType(type)}
+                  style={{
+                    flex: 1, padding: '14px 10px', borderRadius: 12, fontWeight: 700, fontSize: 13,
+                    background: isActive ? 'var(--primary)' : 'var(--surface-var)',
+                    color: isActive ? '#fff' : 'var(--text-muted)',
+                    border: isActive ? 'none' : '1.5px solid var(--border)',
+                    cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center',
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>{type === 'single' ? '🎾' : '👥'}</span>
+                  <span>{t(type === 'single' ? 'match.create.tennisSingle' : 'match.create.tennisTeam')}</span>
+                </button>
+              );
+            })}
+          </div>
+          {tennisMatchType === 'team' && (
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                {t('match.create.teamFormat')}
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {TEAM_MATCH_FORMATS.map(fmt => {
+                  const isActive = teamFormatId === fmt.id;
+                  return (
+                    <button
+                      key={fmt.id}
+                      onClick={() => setTeamFormatId(fmt.id)}
+                      style={{
+                        padding: '10px 12px', borderRadius: 10, textAlign: 'left',
+                        background: isActive ? 'var(--primary-light)' : 'var(--surface-var)',
+                        color: isActive ? 'var(--primary)' : 'var(--text)',
+                        border: `1.5px solid ${isActive ? 'var(--primary)' : 'var(--border)'}`,
+                        fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      {fmt.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '8px 0 0', lineHeight: 1.4 }}>
+                {t('match.create.teamFormatHint')}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.basicInfo')}</h3>
 
@@ -305,9 +405,11 @@ export function CreateMatchPage({ navigate }: Props) {
           </label>
           <OpponentAutocomplete
             value={opponent}
-            onChange={setOpponent}
+            onChange={(v) => { setOpponent(v); setOpponentCatalogId(undefined); }}
+            onSelect={(club) => { setOpponent(club.name); setOpponentCatalogId(club.id); }}
             placeholder={t('match.create.opponentPlaceholder')}
             label={t('match.create.opponent')}
+            sport={preferredSport}
           />
         </div>
 
@@ -335,6 +437,31 @@ export function CreateMatchPage({ navigate }: Props) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Venue */}
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+            📍 {t('match.create.venue')}
+          </label>
+          <input
+            type="text"
+            value={venue}
+            onChange={e => setVenue(e.target.value)}
+            placeholder={t('match.create.venuePlaceholder')}
+            list="torq-venue-history"
+            autoComplete="off"
+            style={{
+              width: '100%', padding: '10px', borderRadius: 10,
+              border: '1.5px solid var(--border)', fontSize: 14,
+              background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box',
+            }}
+          />
+          {venueSuggestions.length > 0 && (
+            <datalist id="torq-venue-history">
+              {venueSuggestions.map(v => <option key={v} value={v} />)}
+            </datalist>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>
@@ -375,16 +502,24 @@ export function CreateMatchPage({ navigate }: Props) {
             value={competition}
             onChange={e => setCompetition(e.target.value)}
             placeholder={t('match.create.competitionPlaceholder')}
+            list="torq-competition-history"
+            autoComplete="off"
             style={{
               width: '100%', padding: '10px 12px', borderRadius: 10,
               border: '1.5px solid var(--border)', fontSize: 14,
               background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box',
             }}
           />
+          {competitionSuggestions.length > 0 && (
+            <datalist id="torq-competition-history">
+              {competitionSuggestions.map(c => <option key={c} value={c} />)}
+            </datalist>
+          )}
         </div>
       </div>
 
-      {/* Match settings — format, halves & duration */}
+      {/* Match settings — format, halves & duration. Tenis skrývá football-specific fields. */}
+      {!isTennis && (
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.settings')}</h3>
 
@@ -500,6 +635,7 @@ export function CreateMatchPage({ navigate }: Props) {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Náš klub — auto-selected, kompaktní zobrazení ── */}
       {selectedClub ? (
@@ -585,6 +721,39 @@ export function CreateMatchPage({ navigate }: Props) {
                   {t('match.create.categoryHint')}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* ── Extra kategorie — hráči z jiných věkových kategorií (hosté) ── */}
+          {selectedCategory && clubCategories.filter(c => c !== selectedCategory).length > 0 && (
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>
+                {t('match.create.extraCategoriesLabel')}
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {clubCategories.filter(c => c !== selectedCategory).map(cat => {
+                  const isActive = extraCategories.includes(cat);
+                  const playerCount = (selectedClub.players ?? []).filter(p => p.ageCategory === cat && p.active).length;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => toggleExtraCategory(cat)}
+                      style={{
+                        padding: '6px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                        background: isActive ? 'var(--primary-light, rgba(26,35,126,.12))' : 'transparent',
+                        color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                        border: isActive ? '1px solid var(--primary)' : '1px solid var(--border)',
+                        cursor: 'pointer', transition: 'all .15s',
+                      }}
+                    >
+                      {isActive ? '✓ ' : '+ '}{cat} ({playerCount})
+                    </button>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: '6px 0 0' }}>
+                {t('match.create.extraCategoriesHint')}
+              </p>
             </div>
           )}
 
@@ -762,7 +931,8 @@ export function CreateMatchPage({ navigate }: Props) {
                   }}
                 />
                 <span style={{ flex: 1, fontWeight: 600, fontSize: 14, minWidth: 100 }}>{p.name}</span>
-                <AttendanceChips value={att} onChange={s => setAttendance(p.playerId, s)} t={t} />
+                {/* Attendance chips schované — trenér na místě nasype kdo je. Nominace se
+                    bude řešit samostatnou funkcí "Sdílet nominaci" (rodiče potvrdí dopředu). */}
                 <button
                   onClick={() => toggleStarter(p.playerId)}
                   style={{
@@ -825,7 +995,8 @@ export function CreateMatchPage({ navigate }: Props) {
                   }}
                 />
                 <span style={{ flex: 1, fontWeight: 600, fontSize: 14, minWidth: 100 }}>{p.name}</span>
-                <AttendanceChips value={att} onChange={s => setAttendance(p.playerId, s)} t={t} />
+                {/* Attendance chips schované — trenér na místě nasype kdo je. Nominace se
+                    bude řešit samostatnou funkcí "Sdílet nominaci" (rodiče potvrdí dopředu). */}
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button
                     onClick={() => moveSubOrder(p.playerId, -1)}

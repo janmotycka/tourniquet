@@ -18,3 +18,7 @@ export { Field, Input, InfoBox } from './Field';
 export { PageHeader } from './PageHeader';
 
 export { Stepper } from './Stepper';
+
+export { BottomSheet } from './BottomSheet';
+
+export { OfficialLinkButton } from './OfficialLinkButton';

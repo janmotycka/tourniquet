@@ -8,11 +8,21 @@ export function today(): string {
 
 export function defaultTeams(t: (key: string, params?: Record<string, string | number>) => string, homeClub?: Club | null): TeamDraft[] {
   if (homeClub) {
+    // Preferovaně použij plný roster (ClubPlayer s id) — propaguje clubPlayerId
+    // pro spolehlivé matchování statistik. Fallback na defaultPlayers (legacy).
+    const fullRoster = (homeClub.players ?? []).filter(p => p.active);
+    const players = fullRoster.length > 0
+      ? fullRoster.map(p => ({
+          name: p.name,
+          jerseyNumber: p.jerseyNumber,
+          clubPlayerId: p.id,
+        }))
+      : (homeClub.defaultPlayers ?? []).map(p => ({ ...p }));
     return [
       {
         name: homeClub.name,
         color: homeClub.color,
-        players: (homeClub.defaultPlayers ?? []).map(p => ({ ...p })),
+        players,
         expanded: false,
         clubId: homeClub.id,
         logoBase64: homeClub.logoBase64,

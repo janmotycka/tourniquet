@@ -311,6 +311,41 @@ export const adminSetUserBlock = functions.region('europe-west1').https.onCall(a
 });
 
 /**
+ * Generate a password reset link for a user (admin-only).
+ *
+ * Returns a **one-time** action link that the admin can copy and send to the
+ * user via any channel (email, WhatsApp, SMS). This sidesteps Firebase's
+ * default email delivery, which is unreliable for certain providers (e.g.
+ * Czech `seznam.cz` / `outlook.com` mailboxes often mark firebase mails as
+ * spam or block them entirely).
+ *
+ * Security: only ADMIN_UID can call this. Link is single-use and expires after
+ * ~1 hour per Firebase defaults.
+ */
+export const adminGeneratePasswordResetLink = functions.region('europe-west1').https.onCall(async (data, context) => {
+  requireAdmin(context);
+  const { email, continueUrl } = data;
+  if (!email || typeof email !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'email required');
+  }
+  const normalized = email.trim().toLowerCase();
+  try {
+    const actionCodeSettings: admin.auth.ActionCodeSettings | undefined = continueUrl && typeof continueUrl === 'string'
+      ? { url: continueUrl, handleCodeInApp: false }
+      : undefined;
+    const link = await admin.auth().generatePasswordResetLink(normalized, actionCodeSettings);
+    await audit(context.auth!.uid, 'generatePasswordResetLink', null, { email: normalized });
+    return { success: true, email: normalized, link };
+  } catch (err) {
+    const e = err as { code?: string; message?: string };
+    if (e.code === 'auth/user-not-found') {
+      throw new functions.https.HttpsError('not-found', 'No user with that email');
+    }
+    throw new functions.https.HttpsError('internal', e.message || 'Failed to generate link');
+  }
+});
+
+/**
  * Delete all tournaments belonging to a user (cleanup spam).
  */
 export const adminPurgeUserTournaments = functions.region('europe-west1').https.onCall(async (data, context) => {

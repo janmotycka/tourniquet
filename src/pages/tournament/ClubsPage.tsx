@@ -6,6 +6,7 @@ import { useTournamentStore } from '../../store/tournament.store';
 import { useMatchesStore } from '../../store/matches.store';
 import { useTrainingsStore } from '../../store/trainings.store';
 import { useConfirmStore } from '../../store/confirm.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import type { AgeCategory, ClubPlayer } from '../../types/club.types';
 import type { Contact } from '../../types/contact.types';
 import { PlayerDetailSheet } from '../../components/PlayerDetailSheet';
@@ -37,16 +38,30 @@ interface Props { navigate: (p: Page) => void; }
 export function ClubsPage({ navigate }: Props) {
   const { t } = useI18n();
   const ask = useConfirmStore(s => s.ask);
-  const clubs = useClubsStore(s => s.clubs);
+  const allClubs = useClubsStore(s => s.clubs);
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  // Ukaž jen kluby vybraného sportu (legacy bez sportu = football).
+  const clubs = useMemo(
+    () => allClubs.filter(c => (c.sport ?? 'football') === preferredSport),
+    [allClubs, preferredSport],
+  );
   const createClub = useClubsStore(s => s.createClub);
   const updateClub = useClubsStore(s => s.updateClub);
   const deleteClub = useClubsStore(s => s.deleteClub);
   const setAgeCategories = useClubsStore(s => s.setAgeCategories);
   const movePlayerToCategory = useClubsStore(s => s.movePlayerToCategory);
 
-  // Data pro statistiky hráčů
-  const tournaments = useTournamentStore(s => s.tournaments);
-  const seasonMatches = useMatchesStore(s => s.matches);
+  // Data pro statistiky hráčů — filtrováno podle sportu, aby se nemíchala fotbal/tenis.
+  const allTournaments = useTournamentStore(s => s.tournaments);
+  const allSeasonMatches = useMatchesStore(s => s.matches);
+  const tournaments = useMemo(
+    () => allTournaments.filter(tt => (tt.sport ?? 'football') === preferredSport),
+    [allTournaments, preferredSport],
+  );
+  const seasonMatches = useMemo(
+    () => allSeasonMatches.filter(m => (m.sport ?? 'football') === preferredSport),
+    [allSeasonMatches, preferredSport],
+  );
   const trainings = useTrainingsStore(s => s.savedTrainings);
 
   // Contacts
@@ -179,7 +194,7 @@ export function ClubsPage({ navigate }: Props) {
     return (
       <ClubForm
         mode="page"
-        initial={{ name: '', color: '#E53935', logoBase64: null, ageCategories: [] }}
+        initial={{ name: '', color: '#E53935', logoBase64: null, ageCategories: [], sport: preferredSport }}
         onSave={handleCreate}
         onCancel={() => setShowCreate(false)}
         title={t('clubs.createMyClubTitle')}
@@ -198,6 +213,7 @@ export function ClubsPage({ navigate }: Props) {
           color: myClub.color,
           logoBase64: myClub.logoBase64,
           ageCategories: myClub.ageCategories ?? [],
+          sport: (myClub.sport ?? 'football') as 'football' | 'tennis',
         }}
         onSave={handleEdit}
         onCancel={() => setEditingClub(false)}

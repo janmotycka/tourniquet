@@ -1,11 +1,37 @@
 // ─── Věkové kategorie ──────────────────────────────────────────────────────
+// Fotbalové (U6–U19 + dospělí) a tenisové (ČTenis oficiální názvy)
 export const AGE_CATEGORIES = [
+  // Fotbal
   'U6', 'U7', 'U8', 'U9', 'U10', 'U11', 'U12',
   'U13', 'U14', 'U15', 'U17', 'U19',
   'Dorost', 'Muži', 'Muži B', 'Ženy',
+  // Tenis (ČTenis soutěžní řád, Článek 6)
+  'Minitenis',       // 6–7 let
+  'Babytenis',       // 8–9 let
+  'Mladší žactvo',   // 10–12 let
+  'Starší žactvo',   // 13–14 let
+  'Dorost (tenis)',  // 15–18 let
+  'Dospělí (tenis)', // 19+ let
 ] as const;
 
 export type AgeCategory = typeof AGE_CATEGORIES[number];
+
+/** Věkové kategorie dostupné pro daný sport. */
+export const AGE_CATEGORIES_BY_SPORT = {
+  football: [
+    'U6', 'U7', 'U8', 'U9', 'U10', 'U11', 'U12',
+    'U13', 'U14', 'U15', 'U17', 'U19',
+    'Dorost', 'Muži', 'Muži B', 'Ženy',
+  ] as AgeCategory[],
+  tennis: [
+    'Minitenis',
+    'Babytenis',
+    'Mladší žactvo',
+    'Starší žactvo',
+    'Dorost (tenis)',
+    'Dospělí (tenis)',
+  ] as AgeCategory[],
+};
 
 // ─── Historie kategorií ────────────────────────────────────────────────────
 // Sleduje, kdy hráč přešel z jedné kategorie do druhé. Otevřený interval
@@ -53,6 +79,7 @@ export interface ClubPlayer {
 // ─── Klub ──────────────────────────────────────────────────────────────────
 export interface Club {
   id: string;
+  sport?: import('./sport.types').Sport;  // 'football' | 'tennis' — default 'football'
   name: string;             // zkrácený zobrazovaný název (pro tabulky, rozpis)
   officialName?: string;    // plný oficiální název (pro PDF, dokumenty). Pokud chybí = name.
   color: string;            // hex barva
@@ -70,6 +97,7 @@ export interface CreateClubInput {
   logoBase64?: string | null;
   defaultPlayers?: Array<{ name: string; jerseyNumber: number }>;
   ageCategories?: AgeCategory[];
+  sport?: import('./sport.types').Sport;
 }
 
 // ─── Shared Club Workspaces ───────────────────────────────────────────────

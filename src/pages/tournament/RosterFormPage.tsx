@@ -10,6 +10,7 @@ import type { Page } from '../../App';
 import type { Tournament, Team, RosterSubmission, CustomerBilling } from '../../types/tournament.types';
 import { subscribeToPublicTournament } from '../../services/tournament.firebase';
 import { submitRoster, loadRoster } from '../../services/roster.firebase';
+import { useAuth } from '../../context/AuthContext';
 import { useI18n, getDateLocale } from '../../i18n';
 import { generateId } from '../../utils/id';
 import { logger } from '../../utils/logger';
@@ -78,6 +79,13 @@ const cardStyle: React.CSSProperties = {
 // ─── Main export ────────────────────────────────────────────────────────────
 
 export function RosterFormPage(props: Props) {
+  const { user, signInAnonymously } = useAuth();
+  // Bez auth nejde číst roster (Security Rules) → při prvním render anonymously sign-in
+  useEffect(() => {
+    if (!user) {
+      void signInAnonymously();
+    }
+  }, [user, signInAnonymously]);
   return <RosterFormPageInner {...props} />;
 }
 
@@ -85,6 +93,7 @@ export function RosterFormPage(props: Props) {
 
 function RosterFormPageInner({ tournamentId, teamToken }: Props) {
   const { t, locale } = useI18n();
+  const { user } = useAuth();
 
   // ── Tournament + team loading ─────────────────────────────────────────────
   const [tournament, setTournament] = useState<Tournament | null>(null);
@@ -172,7 +181,7 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
 
   // ── Load existing roster submission ───────────────────────────────────────
   useEffect(() => {
-    if (!team) return;
+    if (!team || !user) return; // počkej na anonymous auth (Security Rules vyžadují auth)
     loadRoster(tournamentId, team.id).then(roster => {
       if (roster) {
         setExistingRoster(roster);
@@ -218,7 +227,7 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
       setPlayers([createEmptyPlayer()]);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [team?.id, tournamentId]);
+  }, [team?.id, tournamentId, user?.uid]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 

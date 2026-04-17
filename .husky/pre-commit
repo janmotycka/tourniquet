@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+# Pre-commit: TS check + tests
+# Skip v CI (Github Actions běží tyhle kroky zvlášť)
+[ -n "$CI" ] && exit 0
+
+echo "🔍 Pre-commit: TS check..."
+npx tsc -b --noEmit 2>&1 | tail -5
+if [ $? -ne 0 ]; then echo "❌ TS check failed"; exit 1; fi
+
+echo "🧪 Pre-commit: tests..."
+npx vitest run --reporter=dot 2>&1 | tail -5
+if [ $? -ne 0 ]; then echo "❌ Tests failed"; exit 1; fi
+
+echo "✅ Pre-commit OK"

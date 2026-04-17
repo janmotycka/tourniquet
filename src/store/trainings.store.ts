@@ -6,6 +6,7 @@ import type { AgeCategory as ClubAgeCategory } from '../types/club.types';
 import {
   saveTraining as saveTrainingFb,
   loadTrainings as loadTrainingsFb,
+  subscribeToTrainings,
   deleteTrainingFb,
 } from '../services/training.firebase';
 import { logger } from '../utils/logger';
@@ -17,6 +18,7 @@ interface TrainingsState {
   // Firebase sync
   setFirebaseUid: (uid: string | null) => void;
   loadFromFirebase: (uid: string) => Promise<void>;
+  subscribeToFirebase: (uid: string) => () => void;
 
   // CRUD
   saveTraining: (unit: TrainingUnit) => void;
@@ -95,6 +97,45 @@ export const useTrainingsStore = create<TrainingsState>()(
         } catch (err) {
           logger.warn('[Trainings] Load failed:', err);
         }
+      },
+
+      /**
+       * Realtime subscription — sdílení mezi zařízeními (Mac ↔ mobil).
+       * Zachovává lokální tréninky, které ještě nejsou na serveru.
+       */
+      subscribeToFirebase: (uid) => {
+        set({ firebaseUid: uid });
+        const unsubscribe = subscribeToTrainings(uid, (remote) => {
+          const local = get().savedTrainings;
+          const remoteById = new Map(remote.map(t => [t.id, t]));
+          const localById = new Map(local.map(t => [t.id, t]));
+
+          // Merge last-write-wins podle updatedAt/createdAt
+          const allIds = new Set<string>();
+          remoteById.forEach((_, id) => allIds.add(id));
+          localById.forEach((_, id) => allIds.add(id));
+
+          const merged: TrainingUnit[] = [];
+          let localOnlyCount = 0;
+          allIds.forEach(id => {
+            const r = remoteById.get(id);
+            const l = localById.get(id);
+            if (r && l) {
+              const rT = r.updatedAt ?? r.createdAt ?? '';
+              const lT = l.updatedAt ?? l.createdAt ?? '';
+              merged.push(rT >= lT ? r : l);
+            } else if (r) {
+              merged.push(r);
+            } else if (l) {
+              merged.push(l);
+              localOnlyCount++;
+            }
+          });
+
+          set({ savedTrainings: merged });
+          logger.debug(`[Trainings] Subscription update: ${remote.length} remote, ${localOnlyCount} local-only preserved`);
+        });
+        return unsubscribe;
       },
 
       saveTraining: (unit) => {

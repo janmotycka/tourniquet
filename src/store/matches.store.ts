@@ -12,7 +12,13 @@ import type {
 } from '../types/match.types';
 
 import { generateId } from '../utils/id';
-import { saveMatchToFirebase, deleteMatchFromFirebase, loadMatchesFromFirebase, deletePublicMatch, saveMatchCatalogEntry, deleteMatchCatalogEntry } from '../services/match.firebase';
+import {
+  saveMatchToFirebase, deleteMatchFromFirebase, loadMatchesFromFirebase,
+  subscribeToMatchesMultiScope, deletePublicMatch, saveMatchCatalogEntry,
+  deleteMatchCatalogEntry, updateMatchActiveEditor,
+  writeMatchPairing, loadSingleMatch,
+} from '../services/match.firebase';
+import { generatePinSalt, hashPin } from '../utils/pin-hash';
 import { logger } from '../utils/logger';
 import { useToastStore } from './toast.store';
 
@@ -56,7 +62,17 @@ interface MatchesState {
 
   // Firebase
   setFirebaseUid: (uid: string | null) => void;
+  /** Soft-lock management pro multi-trenér koordinaci. */
+  claimMatchLock: (matchId: string, userName: string) => Promise<boolean>;
+  releaseMatchLock: (matchId: string) => Promise<void>;
+  refreshMatchLock: (matchId: string) => Promise<void>;
   loadFromFirebase: (uid: string) => Promise<void>;
+  /**
+   * Subscribe na zápasy napříč scope (legacy user uid + všechny kluby uživatele).
+   * Volající musí při změně klubového členství znovu zavolat s aktualizovaným
+   * seznamem scope.
+   */
+  subscribeToFirebase: (scopeIds: string[]) => () => void;
   retryPendingSync: () => void;
 
   // CRUD
@@ -78,8 +94,10 @@ interface MatchesState {
   removeGoal: (matchId: string, goalId: string) => void;
   addCard: (matchId: string, card: Omit<MatchCard, 'id' | 'recordedAt'>) => void;
   removeCard: (matchId: string, cardId: string) => void;
-  addSubstitution: (matchId: string, sub: Omit<MatchSubstitution, 'id' | 'recordedAt'>) => void;
+  addSubstitution: (matchId: string, sub: Omit<MatchSubstitution, 'id' | 'recordedAt'>) => string;
   removeSubstitution: (matchId: string, subId: string) => void;
+  /** Zruší více střídání najednou a vrátí lineup do původního stavu (swap isStarter zpět). */
+  undoSubstitutions: (matchId: string, subIds: string[]) => void;
 
   // Účast
   setLineupAttendance: (matchId: string, playerId: string, status: AttendanceStatus) => void;
@@ -89,6 +107,19 @@ interface MatchesState {
 
   // Sdílení
   togglePublicMatch: (matchId: string) => void;
+
+  // ─── Cross-team pairing (Option B) ──────────────────────────────────────
+  /** Vygeneruje PIN + joinToken pro zápas; uloží pairing do matche a vrátí PIN
+   *  + pairing URL (hash-route). Vrací null při chybě. */
+  createMatchPairingInvite: (matchId: string, invitedBy: string) => Promise<{ pin: string; joinUrl: string } | null>;
+  /** Zruší pairing invite (vymaže joinToken/pinHash); zachová awayCoachUid pokud
+   *  už někdo joinnul. */
+  revokeMatchPairingInvite: (matchId: string) => Promise<void>;
+  /** Opoziční trenér — claim po zadání PINu. Načte match ze scope, ověří
+   *  hash(pin+salt), zapíše awayCoachUid. */
+  joinMatchPairing: (scopeId: string, matchId: string, pin: string, awayCoachName: string, awayClubId?: string, awayClubName?: string) => Promise<{ ok: true; match: SeasonMatch } | { ok: false; error: 'not_found' | 'no_invite' | 'already_paired' | 'invalid_pin' | 'network' }>;
+  /** Home coach — odpárování opozičního trenéra (vymaže celý pairing). */
+  unlinkMatchPairing: (matchId: string) => Promise<void>;
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -116,6 +147,85 @@ export const useMatchesStore = create<MatchesState>()(
         }
       },
 
+      // ─── Active editor lock (multi-trainer koordinace) ────────────────────
+      // Jeden trenér "spravuje" zápas naráz. Ostatní vidí banner + mohou převzít
+      // řízení. Lock má heartbeat (15s) a auto-expiruje po 45s.
+
+      claimMatchLock: async (matchId, userName) => {
+        const uid = get().firebaseUid;
+        if (!uid) return false;
+        const match = get().matches.find(m => m.id === matchId);
+        if (!match) return false;
+
+        // Zkontroluj jestli už existuje aktivní lock od někoho jiného a není stale.
+        const now = Date.now();
+        const existing = match.activeEditor;
+        const STALE_MS = 45_000;
+        if (existing && existing.uid !== uid) {
+          const age = now - new Date(existing.heartbeatAt).getTime();
+          if (age < STALE_MS) {
+            // Aktivní editor — nebereme sílou
+            return false;
+          }
+        }
+
+        const scope = match.clubId && !match.clubId.startsWith('individual-') ? match.clubId : uid;
+        const editor = {
+          uid,
+          name: userName,
+          startedAt: existing?.uid === uid ? existing.startedAt : new Date(now).toISOString(),
+          heartbeatAt: new Date(now).toISOString(),
+        };
+        try {
+          await updateMatchActiveEditor(scope, matchId, editor);
+          set(s => ({
+            matches: s.matches.map(m => m.id === matchId ? { ...m, activeEditor: editor } : m),
+          }));
+          return true;
+        } catch (err) {
+          logger.warn('[Matches] claimMatchLock failed:', err);
+          return false;
+        }
+      },
+
+      releaseMatchLock: async (matchId) => {
+        const uid = get().firebaseUid;
+        if (!uid) return;
+        const match = get().matches.find(m => m.id === matchId);
+        if (!match) return;
+        // Release jen pokud jsem vlastník locku (neřezeme cizí session).
+        if (match.activeEditor?.uid !== uid) return;
+        const scope = match.clubId && !match.clubId.startsWith('individual-') ? match.clubId : uid;
+        try {
+          await updateMatchActiveEditor(scope, matchId, null);
+          set(s => ({
+            matches: s.matches.map(m => m.id === matchId ? { ...m, activeEditor: null } : m),
+          }));
+        } catch (err) {
+          logger.warn('[Matches] releaseMatchLock failed:', err);
+        }
+      },
+
+      refreshMatchLock: async (matchId) => {
+        const uid = get().firebaseUid;
+        if (!uid) return;
+        const match = get().matches.find(m => m.id === matchId);
+        if (!match || match.activeEditor?.uid !== uid) return;
+        const scope = match.clubId && !match.clubId.startsWith('individual-') ? match.clubId : uid;
+        const updated = {
+          ...match.activeEditor,
+          heartbeatAt: new Date().toISOString(),
+        };
+        try {
+          await updateMatchActiveEditor(scope, matchId, updated);
+          set(s => ({
+            matches: s.matches.map(m => m.id === matchId ? { ...m, activeEditor: updated } : m),
+          }));
+        } catch {
+          // Heartbeat fail je ne-kritický — další pokus za 15s
+        }
+      },
+
       loadFromFirebase: async (uid) => {
         logger.debug('[Matches] loadFromFirebase started, uid:', uid);
         let matches: SeasonMatch[] = [];
@@ -140,6 +250,48 @@ export const useMatchesStore = create<MatchesState>()(
         set({ matches: [...matches, ...localOnly], firebaseUid: uid, pendingSync: [] });
       },
 
+      /**
+       * Realtime subscription — pro sdílení mezi zařízeními (Mac ↔ mobil).
+       * Při každé změně v Firebase aktualizuje lokální store. Firebase data má
+       * přednost, lokální zápasy bez sync se zachovají (pendingSync).
+       */
+      subscribeToFirebase: (scopeIds) => {
+        logger.debug('[Matches] subscribeToFirebase started, scopes:', scopeIds.join(','));
+        // První scope by měl být vždy auth uid (legacy self-scope).
+        if (scopeIds[0]) set({ firebaseUid: scopeIds[0] });
+        const unsubscribe = subscribeToMatchesMultiScope(scopeIds, (firebaseMatches) => {
+          const { matches: localMatches } = get();
+          const fbById = new Map(firebaseMatches.map(m => [m.id, m]));
+          const localById = new Map(localMatches.map(m => [m.id, m]));
+
+          // Merge last-write-wins podle updatedAt; zachovat lokální zápasy,
+          // které ještě nejsou na serveru (tzv. "local-only" — vytvořeno offline
+          // nebo před dokončením prvního syncu).
+          const allIds = new Set<string>();
+          fbById.forEach((_, id) => allIds.add(id));
+          localById.forEach((_, id) => allIds.add(id));
+
+          const merged: SeasonMatch[] = [];
+          let localOnlyCount = 0;
+          allIds.forEach(id => {
+            const fb = fbById.get(id);
+            const local = localById.get(id);
+            if (fb && local) {
+              merged.push(fb.updatedAt >= local.updatedAt ? fb : local);
+            } else if (fb) {
+              merged.push(fb);
+            } else if (local) {
+              merged.push(local);
+              localOnlyCount++;
+            }
+          });
+
+          logger.debug(`[Matches] Subscription update: ${firebaseMatches.length} from Firebase, ${localOnlyCount} local-only preserved`);
+          set({ matches: merged });
+        });
+        return unsubscribe;
+      },
+
       retryPendingSync: () => {
         const { firebaseUid, pendingSync, matches } = get();
         if (!firebaseUid || pendingSync.length === 0) return;
@@ -154,10 +306,19 @@ export const useMatchesStore = create<MatchesState>()(
       createMatch: (input) => {
         const match: SeasonMatch = {
           id: generateId(),
+          sport: input.sport ?? 'football',
+          matchType: input.matchType ?? 'single',
+          subMatches: input.subMatches,
+          officialResultsNote: input.officialResultsNote,
+          officialResultsUrl: input.officialResultsUrl,
+          myPlayerId: input.myPlayerId,
           clubId: input.clubId,
           clubName: input.clubName,
           opponent: input.opponent,
+          opponentClubId: input.opponentClubId,
+          opponentCatalogId: input.opponentCatalogId,
           isHome: input.isHome,
+          venue: input.venue,
           date: input.date,
           kickoffTime: input.kickoffTime,
           competition: input.competition,
@@ -204,8 +365,13 @@ export const useMatchesStore = create<MatchesState>()(
 
       deleteMatch: (id) => {
         const uid = get().firebaseUid;
+        // Zjisti clubId před smazáním ze state (potřebujeme pro delete z klubového scope).
+        const existing = get().matches.find(m => m.id === id);
         set(state => ({ matches: state.matches.filter(m => m.id !== id) }));
-        if (uid) deleteMatchFromFirebase(uid, id).catch(err => logger.error('[Firebase] Delete match failed', err));
+        if (uid) {
+          deleteMatchFromFirebase(uid, id, existing?.clubId)
+            .catch(err => logger.error('[Firebase] Delete match failed', err));
+        }
       },
 
       getMatchById: (id) => get().matches.find(m => m.id === id),
@@ -436,6 +602,7 @@ export const useMatchesStore = create<MatchesState>()(
         }));
         const m = get().matches.find(x => x.id === matchId);
         if (m) syncMatchAndTrack(get().firebaseUid, m, set);
+        return newSub.id;
       },
 
       removeSubstitution: (matchId, subId) => {
@@ -443,6 +610,33 @@ export const useMatchesStore = create<MatchesState>()(
           matches: state.matches.map(m =>
             m.id !== matchId ? m : { ...m, substitutions: m.substitutions.filter(s => s.id !== subId), updatedAt: now() }
           ),
+        }));
+        const m = get().matches.find(x => x.id === matchId);
+        if (m) syncMatchAndTrack(get().firebaseUid, m, set);
+      },
+
+      undoSubstitutions: (matchId, subIds) => {
+        set(state => ({
+          matches: state.matches.map(m => {
+            if (m.id !== matchId) return m;
+            const toUndo = m.substitutions.filter(s => subIds.includes(s.id));
+            if (toUndo.length === 0) return m;
+            // Vrať lineup — každý hráč co šel ven je zpět starter, každý co šel dovnitř je zpět bench
+            const outIds = new Set(toUndo.map(s => s.playerOutId));
+            const inIds = new Set(toUndo.map(s => s.playerInId));
+            const benchCount = m.lineup.filter(p => !p.isStarter).length;
+            const updatedLineup = m.lineup.map(lp => {
+              if (outIds.has(lp.playerId)) return { ...lp, isStarter: true, substituteOrder: 0 };
+              if (inIds.has(lp.playerId)) return { ...lp, isStarter: false, substituteOrder: benchCount + 1 };
+              return lp;
+            });
+            return {
+              ...m,
+              substitutions: m.substitutions.filter(s => !subIds.includes(s.id)),
+              lineup: updatedLineup,
+              updatedAt: now(),
+            };
+          }),
         }));
         const m = get().matches.find(x => x.id === matchId);
         if (m) syncMatchAndTrack(get().firebaseUid, m, set);
@@ -477,6 +671,155 @@ export const useMatchesStore = create<MatchesState>()(
         }));
         const m = get().matches.find(x => x.id === matchId);
         if (m) syncMatchAndTrack(get().firebaseUid, m, set);
+      },
+
+      // ── Cross-team pairing ──────────────────────────────────────────────────
+      createMatchPairingInvite: async (matchId, invitedBy) => {
+        const uid = get().firebaseUid;
+        if (!uid) return null;
+        const match = get().matches.find(m => m.id === matchId);
+        if (!match) return null;
+
+        // 4-digit PIN + hash + random joinToken
+        const pin = String(Math.floor(1000 + Math.random() * 9000));
+        const pinSalt = generatePinSalt();
+        const pinHash = await hashPin(pin, pinSalt);
+        const joinToken = generatePinSalt(); // 128-bit random token
+
+        const scope = match.clubId && !match.clubId.startsWith('individual-') ? match.clubId : uid;
+
+        // Zachovat už-spárovaného away coache pokud nějaký existuje (regenerace PINu)
+        const existing = match.pairing ?? {};
+        const pairing = {
+          joinToken,
+          pinHash,
+          pinSalt,
+          invitedBy,
+          ownerScope: scope,
+          // awayCoach* fields zachováme (pokud nějaký join už proběhl)
+          ...(existing.awayCoachUid ? { awayCoachUid: existing.awayCoachUid } : {}),
+          ...(existing.awayCoachName ? { awayCoachName: existing.awayCoachName } : {}),
+          ...(existing.awayClubId ? { awayClubId: existing.awayClubId } : {}),
+          ...(existing.awayClubName ? { awayClubName: existing.awayClubName } : {}),
+          ...(existing.pairedAt ? { pairedAt: existing.pairedAt } : {}),
+        };
+        try {
+          await writeMatchPairing(scope, matchId, pairing);
+          set(s => ({
+            matches: s.matches.map(m => m.id === matchId ? { ...m, pairing, updatedAt: now() } : m),
+          }));
+          const base = window.location.origin + window.location.pathname;
+          const joinUrl = `${base}#pair-match=${scope}:${matchId}:${joinToken}`;
+          return { pin, joinUrl };
+        } catch (err) {
+          logger.error('[Matches] createMatchPairingInvite failed:', err);
+          return null;
+        }
+      },
+
+      revokeMatchPairingInvite: async (matchId) => {
+        const uid = get().firebaseUid;
+        if (!uid) return;
+        const match = get().matches.find(m => m.id === matchId);
+        if (!match) return;
+        const scope = match.clubId && !match.clubId.startsWith('individual-') ? match.clubId : uid;
+
+        // Smazat jen invite části, zachovat awayCoach* (pokud někdo joinnul)
+        const existing = match.pairing ?? {};
+        const next = existing.awayCoachUid ? {
+          awayCoachUid: existing.awayCoachUid,
+          ...(existing.awayCoachName ? { awayCoachName: existing.awayCoachName } : {}),
+          ...(existing.awayClubId ? { awayClubId: existing.awayClubId } : {}),
+          ...(existing.awayClubName ? { awayClubName: existing.awayClubName } : {}),
+          ...(existing.pairedAt ? { pairedAt: existing.pairedAt } : {}),
+        } : null;
+
+        try {
+          await writeMatchPairing(scope, matchId, next);
+          set(s => ({
+            matches: s.matches.map(m => m.id === matchId ? { ...m, pairing: next as SeasonMatch['pairing'], updatedAt: now() } : m),
+          }));
+        } catch (err) {
+          logger.error('[Matches] revokeMatchPairingInvite failed:', err);
+        }
+      },
+
+      joinMatchPairing: async (scopeId, matchId, pin, awayCoachName, awayClubId, awayClubName) => {
+        const uid = get().firebaseUid;
+        if (!uid) return { ok: false, error: 'network' };
+
+        // 1. Načti match z daného scope (Firebase rules dovolí čtení pokud
+        //    joinToken existuje + awayCoachUid ještě ne).
+        let match: SeasonMatch | null;
+        try {
+          match = await loadSingleMatch(scopeId, matchId);
+        } catch (err) {
+          logger.warn('[Matches] joinMatchPairing load failed:', err);
+          return { ok: false, error: 'network' };
+        }
+        if (!match) return { ok: false, error: 'not_found' };
+        const pairing = match.pairing;
+        if (!pairing || !pairing.joinToken || !pairing.pinHash || !pairing.pinSalt) {
+          return { ok: false, error: 'no_invite' };
+        }
+        if (pairing.awayCoachUid && pairing.awayCoachUid !== uid) {
+          return { ok: false, error: 'already_paired' };
+        }
+
+        // 2. Ověř PIN klient-side (hash(pin+salt) === pinHash)
+        const providedHash = await hashPin(pin, pairing.pinSalt);
+        if (providedHash !== pairing.pinHash) {
+          return { ok: false, error: 'invalid_pin' };
+        }
+
+        // 3. Zapiš awayCoachUid; smaž pinHash/pinSalt/joinToken
+        const nextPairing: Record<string, unknown> = {
+          awayCoachUid: uid,
+          awayCoachName,
+          pairedAt: now(),
+          ...(awayClubId ? { awayClubId } : {}),
+          ...(awayClubName ? { awayClubName } : {}),
+          ...(pairing.invitedBy ? { invitedBy: pairing.invitedBy } : {}),
+          // Zachovej ownerScope — away coach ho bude potřebovat pro single-doc
+          // subscribe při dalším otevření zápasu (po reloadu appky).
+          ownerScope: pairing.ownerScope ?? scopeId,
+        };
+
+        try {
+          await writeMatchPairing(scopeId, matchId, nextPairing);
+        } catch (err) {
+          logger.error('[Matches] joinMatchPairing write failed:', err);
+          return { ok: false, error: 'network' };
+        }
+
+        // 4. Přidej match do lokálního store (s novým pairing) — uživatel teď
+        //    má edit přístup díky Firebase rules.
+        const pairedMatch: SeasonMatch = { ...match, pairing: nextPairing as SeasonMatch['pairing'], updatedAt: now() };
+        set(s => {
+          const exists = s.matches.some(m => m.id === matchId);
+          return {
+            matches: exists
+              ? s.matches.map(m => m.id === matchId ? pairedMatch : m)
+              : [pairedMatch, ...s.matches],
+          };
+        });
+        return { ok: true, match: pairedMatch };
+      },
+
+      unlinkMatchPairing: async (matchId) => {
+        const uid = get().firebaseUid;
+        if (!uid) return;
+        const match = get().matches.find(m => m.id === matchId);
+        if (!match) return;
+        const scope = match.clubId && !match.clubId.startsWith('individual-') ? match.clubId : uid;
+        try {
+          await writeMatchPairing(scope, matchId, null);
+          set(s => ({
+            matches: s.matches.map(m => m.id === matchId ? { ...m, pairing: null, updatedAt: now() } : m),
+          }));
+        } catch (err) {
+          logger.error('[Matches] unlinkMatchPairing failed:', err);
+        }
       },
 
       togglePublicMatch: (matchId) => {

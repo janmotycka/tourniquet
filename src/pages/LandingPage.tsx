@@ -4,6 +4,9 @@ import type { CatalogEntry } from '../types/tournament.types';
 import type { MatchCatalogEntry } from '../types/match.types';
 import { subscribeToCatalog } from '../services/catalog.firebase';
 import { subscribeToMatchCatalog } from '../services/match.firebase';
+import { formatDate } from '../components/match/match-utils';
+import type { Sport } from '../types/sport.types';
+import { SPORTS, resolveSport } from '../types/sport.types';
 import { useI18n } from '../i18n';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,6 +16,13 @@ interface Props {
 }
 
 type Filter = 'all' | 'matches' | 'tournaments';
+type CategoryFilter = 'all' | 'youth' | 'adults' | string; // string = konkrétní kategorie (U9, Muži, ...)
+
+const ADULT_CATEGORIES = new Set(['Dorost', 'Muži', 'Muži B', 'Ženy']);
+function isYouthCategory(cat: string | undefined): boolean {
+  if (!cat) return false;
+  return !ADULT_CATEGORIES.has(cat);
+}
 
 // ─── Unified feed item ─────────────────────────────────────────────────────
 
@@ -30,6 +40,8 @@ export function LandingPage({ navigate, onLogin }: Props) {
   const [matches, setMatches] = useState<MatchCatalogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
+  const [sportFilter, setSportFilter] = useState<Sport | 'all'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [search, setSearch] = useState('');
   useEffect(() => {
     let tLoaded = false;
@@ -76,11 +88,28 @@ export function LandingPage({ navigate, onLogin }: Props) {
     return items;
   }, [tournaments, matches, todayStr]);
 
-  // Apply filter + search
+  // Apply sport + filter + category + search
   const filtered = useMemo(() => {
     let result = feed;
+
+    // Sport filter — primární rozhodnutí: který sport uživatel sleduje
+    if (sportFilter !== 'all') {
+      result = result.filter(i => resolveSport(i.data.sport) === sportFilter);
+    }
+
     if (filter === 'matches') result = result.filter(i => i.kind === 'match');
     if (filter === 'tournaments') result = result.filter(i => i.kind === 'tournament');
+
+    // Category filter (applies jen na zápasy; turnaje zůstávají pokud filter není matches)
+    if (categoryFilter !== 'all') {
+      result = result.filter(i => {
+        if (i.kind !== 'match') return filter !== 'matches'; // mimo 'matches' filter turnaje prochází
+        const cat = i.data.ageCategory;
+        if (categoryFilter === 'youth') return isYouthCategory(cat);
+        if (categoryFilter === 'adults') return cat && ADULT_CATEGORIES.has(cat);
+        return cat === categoryFilter;
+      });
+    }
 
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -90,7 +119,29 @@ export function LandingPage({ navigate, onLogin }: Props) {
       });
     }
     return result;
-  }, [feed, filter, search]);
+  }, [feed, filter, sportFilter, categoryFilter, search]);
+
+  // Jaké sporty existují v celém feedu?
+  const availableSports = useMemo(() => {
+    const set = new Set<Sport>();
+    for (const t of tournaments) set.add(resolveSport(t.sport));
+    for (const m of matches) set.add(resolveSport(m.sport));
+    return Array.from(set);
+  }, [tournaments, matches]);
+  const showSportChips = availableSports.length >= 2;
+
+  // Jaké kategorie existují v match feedu?
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of matches) {
+      if (m.ageCategory) set.add(m.ageCategory);
+    }
+    return Array.from(set).sort();
+  }, [matches]);
+
+  const hasYouthMatches = availableCategories.some(c => isYouthCategory(c));
+  const hasAdultMatches = availableCategories.some(c => ADULT_CATEGORIES.has(c));
+  const showCategoryChips = filter !== 'tournaments' && availableCategories.length > 0 && (hasYouthMatches || hasAdultMatches);
 
   const live = filtered.filter(i => i.status === 'live');
   const upcoming = filtered.filter(i => i.status === 'upcoming');
@@ -131,82 +182,114 @@ export function LandingPage({ navigate, onLogin }: Props) {
       minHeight: '100dvh',
       background: 'var(--bg)',
     }}>
-      {/* ─── Header — compact for logged-in, full hero for logged-out ─────── */}
-      {isLoggedOut ? (
-        <div style={{
-          background: 'linear-gradient(135deg, #1A237E 0%, #283593 50%, #3949AB 100%)',
-          color: '#fff',
-          padding: '32px 20px 28px',
-          textAlign: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
-          <div aria-hidden style={{
-            position: 'absolute', inset: 0, pointerEvents: 'none',
-            background: 'radial-gradient(circle at 85% 85%, rgba(121,134,203,.35), transparent 55%)',
-          }} />
-          <div style={{ position: 'relative', maxWidth: 520, margin: '0 auto' }}>
-            <div style={{ fontSize: 40, marginBottom: 10 }}>⚽</div>
-            <h1 style={{
-              fontSize: 'clamp(22px, 5.5vw, 28px)', fontWeight: 900,
-              margin: 0, lineHeight: 1.2, letterSpacing: '-0.02em',
-            }}>
-              {t('landing.hero.title')}
-            </h1>
-            <p style={{
-              fontSize: 'clamp(13px, 3.4vw, 15px)', opacity: 0.9,
-              marginTop: 8, marginBottom: 20, lineHeight: 1.4,
-            }}>
-              {t('landing.hero.subtitle')}
-            </p>
-            <button
-              onClick={onLogin}
-              style={{
-                padding: '12px 28px', borderRadius: 12, fontWeight: 800, fontSize: 14,
-                background: '#fff', color: '#1A237E', border: 'none', cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(0,0,0,.18)',
-                minHeight: 44,
-              }}
-            >
-              {t('landing.hero.ctaPrimary')}
-            </button>
-            <div style={{ fontSize: 10, opacity: 0.55, marginTop: 12 }}>
-              🚧 {t('home.betaNotice')}
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* Compact header for logged-in users — just navigation back */
-        <div style={{
-          background: 'var(--surface)',
-          borderBottom: '1px solid var(--border)',
-          padding: '12px 16px',
-          display: 'flex', alignItems: 'center', gap: 12,
-        }}>
+      {/* ─── Hero — vyvážené proporce, pro oba (CTA se liší) ─────────────── */}
+      <div style={{
+        background: 'linear-gradient(135deg, #1A237E 0%, #283593 50%, #3949AB 100%)',
+        color: '#fff',
+        padding: '28px 20px 24px',
+        textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {!isLoggedOut && (
           <button
             onClick={() => navigate({ name: 'home' })}
             aria-label="Zpět"
             style={{
+              position: 'absolute', top: 12, left: 12,
               width: 36, height: 36, borderRadius: 10,
-              background: 'var(--surface-var)', border: 'none',
+              background: 'rgba(255,255,255,.15)', border: '1px solid rgba(255,255,255,.2)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 16, cursor: 'pointer', color: 'var(--text)',
-              flexShrink: 0,
+              fontSize: 16, cursor: 'pointer', color: '#fff',
+              backdropFilter: 'blur(8px)',
+              zIndex: 2,
+            }}
+          >←</button>
+        )}
+        <div aria-hidden style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          background:
+            'radial-gradient(circle at 20% 10%, rgba(255,255,255,.12), transparent 45%), ' +
+            'radial-gradient(circle at 85% 90%, rgba(121,134,203,.35), transparent 55%)',
+        }} />
+
+        <div style={{ position: 'relative', maxWidth: 480, margin: '0 auto' }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 16,
+            background: 'rgba(255,255,255,.15)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 30, marginBottom: 12,
+            backdropFilter: 'blur(8px)',
+          }}>⚽</div>
+
+          <h1 style={{
+            fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: 900,
+            margin: 0, lineHeight: 1.2, letterSpacing: '-0.01em',
+          }}>
+            TORQ
+          </h1>
+          <p style={{
+            fontSize: 'clamp(13px, 3.2vw, 15px)', opacity: 0.9,
+            marginTop: 4, marginBottom: 18, lineHeight: 1.4,
+          }}>
+            {t('landing.hero.subtitle')}
+          </p>
+          <button
+            onClick={() => isLoggedOut ? onLogin() : navigate({ name: 'home' })}
+            style={{
+              padding: '11px 24px', borderRadius: 12, fontWeight: 800, fontSize: 14,
+              background: '#fff', color: '#1A237E', border: 'none', cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(0,0,0,.18)',
+              minHeight: 42,
             }}
           >
-            ←
+            {isLoggedOut ? t('landing.hero.ctaPrimary') : t('landing.hero.ctaBackToApp')}
           </button>
-          <h1 style={{
-            flex: 1, margin: 0, fontSize: 17, fontWeight: 800, color: 'var(--text)',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            📡 {t('landing.title')}
-          </h1>
+          <div style={{ fontSize: 10, opacity: 0.55, marginTop: 10 }}>
+            🚧 {t('home.betaNotice')}
+          </div>
         </div>
-      )}
+      </div>
 
-      {/* Anchor where the feed begins — used by "Browse examples" CTA */}
-      <div />
+      {/* ─── Feature highlights — kompaktnější a symetrické ─────────────── */}
+      <div style={{
+        maxWidth: 780, margin: '0 auto', width: '100%', boxSizing: 'border-box',
+        padding: '16px 16px 4px',
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 8,
+        }}>
+          {([
+            { icon: '🏆', title: t('landing.features.tournaments') },
+            { icon: '⚽', title: t('landing.features.matches') },
+            { icon: '👥', title: t('landing.features.clubs') },
+          ]).map((f) => (
+            <div key={f.title} style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              padding: '12px 8px',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 22, marginBottom: 4 }}>{f.icon}</div>
+              <div style={{
+                fontSize: 12, fontWeight: 800, color: 'var(--text)',
+              }}>{f.title}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{
+          textAlign: 'center',
+          marginTop: 10,
+          fontSize: 11,
+          color: 'var(--text-muted)',
+          fontWeight: 500,
+        }}>
+          ⭐ {t('landing.socialProof')}
+        </div>
+      </div>
 
 
       {/* ─── Catalog ──────────────────────────────────────────────────────── */}
@@ -230,6 +313,39 @@ export function LandingPage({ navigate, onLogin }: Props) {
             backdropFilter: 'blur(8px)',
             backgroundColor: 'rgba(248, 249, 252, 0.92)',
           }}>
+            {/* Primární filtr: sport — jen když jsou v datech alespoň 2 sporty */}
+            {showSportChips && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setSportFilter('all')}
+                  style={{
+                    padding: '7px 12px', borderRadius: 12, fontWeight: 700, fontSize: 13,
+                    background: sportFilter === 'all' ? 'var(--primary)' : 'var(--surface)',
+                    color: sportFilter === 'all' ? '#fff' : 'var(--text-muted)',
+                    border: sportFilter === 'all' ? 'none' : '1px solid var(--border)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {t('landing.filterSportAll')}
+                </button>
+                {SPORTS.filter(s => availableSports.includes(s.id)).map(sp => (
+                  <button
+                    key={sp.id}
+                    onClick={() => setSportFilter(sp.id)}
+                    style={{
+                      padding: '7px 12px', borderRadius: 12, fontWeight: 700, fontSize: 13,
+                      background: sportFilter === sp.id ? 'var(--primary)' : 'var(--surface)',
+                      color: sportFilter === sp.id ? '#fff' : 'var(--text-muted)',
+                      border: sportFilter === sp.id ? 'none' : '1px solid var(--border)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {sp.icon} {t(sp.labelKey)}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {([
                 { key: 'all' as Filter, label: t('landing.filterAll'), count: feed.length },
@@ -252,6 +368,32 @@ export function LandingPage({ navigate, onLogin }: Props) {
                 </button>
               ))}
             </div>
+
+            {/* Sekundární filtr: kategorie zápasů */}
+            {showCategoryChips && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {([
+                  { key: 'all' as const, label: t('landing.filterCategoryAll') },
+                  ...(hasYouthMatches ? [{ key: 'youth' as const, label: `👶 ${t('landing.filterYouth')}` }] : []),
+                  ...(hasAdultMatches ? [{ key: 'adults' as const, label: `👤 ${t('landing.filterAdults')}` }] : []),
+                  ...availableCategories.map(c => ({ key: c, label: c })),
+                ]).map(chip => (
+                  <button
+                    key={chip.key}
+                    onClick={() => setCategoryFilter(chip.key)}
+                    style={{
+                      padding: '6px 10px', borderRadius: 10, fontWeight: 600, fontSize: 12,
+                      background: categoryFilter === chip.key ? 'var(--primary-light, rgba(26,35,126,.12))' : 'transparent',
+                      color: categoryFilter === chip.key ? 'var(--primary)' : 'var(--text-muted)',
+                      border: categoryFilter === chip.key ? '1px solid var(--primary)' : '1px solid var(--border)',
+                      cursor: 'pointer', transition: 'all .15s',
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            )}
             {feed.length > 5 && (
               <input
                 type="text"
@@ -386,15 +528,7 @@ export function LandingPage({ navigate, onLogin }: Props) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatDate(dateStr: string): string {
-  try {
-    const [y, m, d] = dateStr.split('-');
-    return `${d}.${m}.${y}`;
-  } catch {
-    return dateStr;
-  }
-}
+// formatDate je sdílená utility, naimportováno z match-utils (viz import výše).
 
 // ─── Feed Section ──────────────────────────────────────────────────────────
 
@@ -484,7 +618,7 @@ function TournamentCard({
           <span style={{
             fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
             background: 'var(--warning-light)', color: 'var(--warning)', flexShrink: 0,
-          }}>🏆</span>
+          }}>{entry.sport === 'tennis' ? '🎾' : '🏆'}</span>
           <span style={{
             fontSize: 14, fontWeight: 700, color: 'var(--text)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -586,11 +720,20 @@ function MatchCard({
         </div>
         <div style={{
           fontSize: 12, color: 'var(--text-muted)', marginTop: 2,
-          display: 'flex', gap: 8, flexWrap: 'wrap',
+          display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center',
         }}>
           <span>{formatDate(entry.date)}</span>
           <span>{entry.kickoffTime}</span>
           {entry.competition && <span>{entry.competition}</span>}
+          {entry.ageCategory && (
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
+              background: 'var(--info-light)', color: 'var(--info)',
+              letterSpacing: 0.3,
+            }}>
+              {entry.ageCategory}
+            </span>
+          )}
         </div>
       </div>
 

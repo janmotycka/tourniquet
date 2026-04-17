@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { useI18n } from '../../i18n';
 import { useClubsStore } from '../../store/clubs.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useToastStore } from '../../store/toast.store';
 import { logger } from '../../utils/logger';
 import { OpponentAutocomplete, type CatalogClub } from './OpponentAutocomplete';
@@ -26,6 +27,7 @@ export function CreateClubModal({ onClose, onCreated }: Props) {
   const { t } = useI18n();
   const showToast = useToastStore(s => s.show);
   const createClub = useClubsStore(s => s.createClub);
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
 
   const [name, setName] = useState('');
   const [officialName, setOfficialName] = useState('');
@@ -48,7 +50,11 @@ export function CreateClubModal({ onClose, onCreated }: Props) {
       const newClub = await createClub({
         name: name.trim(),
         color,
+        sport: preferredSport,
       });
+      // Když je nový klub pro aktuální sport a uživatel má aktivní klub z jiného
+      // sportu, přepni na ten nový — jinak klub "zmizí" ve switcheru.
+      await useClubsStore.getState().ensureActiveClubMatchesSport(preferredSport);
       showToast('success', t('clubs.shared.createPersonalTitle'));
       onCreated?.(newClub.id);
       onClose();
@@ -120,6 +126,7 @@ export function CreateClubModal({ onClose, onCreated }: Props) {
               onSelect={handleCatalogSelect}
               placeholder="Začni psát název klubu..."
               autoFocus
+              sport={preferredSport}
             />
             {selectedCatalog && (
               <div style={{

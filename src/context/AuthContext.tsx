@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   signInAnonymously as firebaseSignInAnonymously,
   updateProfile, sendPasswordResetEmail, sendEmailVerification,
+  fetchSignInMethodsForEmail,
   type User,
 } from 'firebase/auth';
 import { ref as dbRef, get as dbGet } from 'firebase/database';
@@ -143,22 +144,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPassword = async (email: string): Promise<string | null> => {
+    const trimmedEmail = email.trim().toLowerCase();
+    // Zjistíme, jakým způsobem uživatel založil účet. Pokud má POUZE Google
+    // provider (bez hesla), `sendPasswordResetEmail` by vrátil user-not-found
+    // a my bychom uživateli lhali, že email dorazí.
+    try {
+      const methods = await fetchSignInMethodsForEmail(auth, trimmedEmail);
+      logger.debug('[Auth] Sign-in methods for email:', methods);
+      if (methods.length > 0 && !methods.includes('password')) {
+        // Účet existuje, ale jen přes Google / jiný provider → password reset
+        // nemá smysl (Firebase by stejně nic neposlal).
+        if (methods.includes('google.com')) return t('auth.resetUseGoogle');
+        return t('auth.resetNoPassword');
+      }
+    } catch (err) {
+      // fetchSignInMethodsForEmail může selhat pokud je zapnutá "Email
+      // Enumeration Protection". V takovém případě pokračujeme dál a spoléháme
+      // na sendPasswordResetEmail, který v tichosti uspěje i pro neexistující
+      // účty.
+      logger.debug('[Auth] fetchSignInMethodsForEmail failed (enumeration protection?):', err);
+    }
+
     try {
       const actionCodeSettings = {
         url: window.location.origin + window.location.pathname,
         handleCodeInApp: false,
       };
-      await sendPasswordResetEmail(auth, email, actionCodeSettings);
+      logger.debug('[Auth] Sending password reset email to:', trimmedEmail, 'continueUrl:', actionCodeSettings.url);
+      await sendPasswordResetEmail(auth, trimmedEmail, actionCodeSettings);
+      logger.debug('[Auth] Password reset email request accepted by Firebase');
       return null;
     } catch (err: unknown) {
       const code = (err as { code?: string }).code ?? '';
-      logger.error('[Auth] resetPassword error:', code);
+      const message = (err as { message?: string }).message ?? '';
+      logger.error('[Auth] resetPassword error:', code, message);
       // Bezpečnost: nesdělujeme zda účet existuje (prevence user enumeration)
       if (code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
         return null; // tváříme se že email byl odeslán
       }
       if (code === 'auth/invalid-email') return t('auth.invalidEmail');
       if (code === 'auth/too-many-requests') return t('auth.tooManyAttempts');
+      if (code === 'auth/unauthorized-continue-uri') {
+        // URL pro continueUrl není v Firebase Console → Auth → Settings →
+        // Authorized domains. Toto je config bug, ne uživatelská chyba.
+        logger.error('[Auth] continueUrl not in authorized domains:', window.location.origin);
+        return t('auth.resetFailed');
+      }
       return t('auth.resetFailed');
     }
   };

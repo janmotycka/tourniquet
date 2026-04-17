@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
 import { useClubsStore } from '../../store/clubs.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useI18n } from '../../i18n';
 import { computePlayerStats, computeTeamStats } from '../../utils/match-stats';
 import { exportSeasonPlayerStatsCSV } from '../../utils/export-csv';
@@ -77,8 +78,18 @@ function StatTile({ label, value, color }: { label: string; value: string | numb
 
 export function MatchStatsPage({ navigate }: Props) {
   const { t } = useI18n();
-  const matches = useMatchesStore(s => s.matches);
-  const clubs = useClubsStore(s => s.clubs);
+  const allMatches = useMatchesStore(s => s.matches);
+  const allClubs = useClubsStore(s => s.clubs);
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  // Stats rozděluj podle sportu — fotbal a tenis se nemíchají.
+  const matches = useMemo(
+    () => allMatches.filter(m => (m.sport ?? 'football') === preferredSport),
+    [allMatches, preferredSport],
+  );
+  const clubs = useMemo(
+    () => allClubs.filter(c => (c.sport ?? 'football') === preferredSport),
+    [allClubs, preferredSport],
+  );
   const [clubFilter, setClubFilter] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   // Season filter: null = all seasons; otherwise season id (e.g. "2025-2026").

@@ -27,6 +27,8 @@ export interface CatalogClub {
   logoUrl?: string;
   logoBase64?: string;
   source?: string;
+  /** Sport katalogového záznamu. Legacy záznamy bez sport = 'football'. */
+  sport?: 'football' | 'tennis';
 }
 
 // Module-level cache — shared napříč všemi instancemi
@@ -66,10 +68,15 @@ interface Props {
   autoFocus?: boolean;
   /** Reference na wrapping label pro accessibility */
   label?: string;
+  /**
+   * Filtr katalogu podle sportu. Legacy záznamy bez `sport` jsou považovány
+   * za fotbalové. V tenis módu se tak nenabízí fotbalové kluby a naopak.
+   */
+  sport?: 'football' | 'tennis';
 }
 
 export function OpponentAutocomplete({
-  value, onChange, onSelect, placeholder, style, inputStyle, autoFocus, label,
+  value, onChange, onSelect, placeholder, style, inputStyle, autoFocus, label, sport,
 }: Props) {
   const [catalog, setCatalog] = useState<CatalogClub[]>([]);
   const [focused, setFocused] = useState(false);
@@ -102,6 +109,9 @@ export function OpponentAutocomplete({
     const q = value.trim().toLowerCase();
     if (q.length < 2) return [];
     return catalog
+      // Filtr podle sportu (legacy bez `sport` = 'football'). Tenisoví uživatelé
+      // nevidí fotbalové kluby ve výsledcích a naopak.
+      .filter(c => !sport || (c.sport ?? 'football') === sport)
       .filter(c => c.name.toLowerCase().includes(q) || (c.city ?? '').toLowerCase().includes(q))
       .sort((a, b) => {
         // Prefix match first, then alphabetical
@@ -111,7 +121,7 @@ export function OpponentAutocomplete({
         return a.name.localeCompare(b.name);
       })
       .slice(0, 8);
-  }, [catalog, value]);
+  }, [catalog, value, sport]);
 
   const pick = (club: CatalogClub) => {
     onChange(club.name);

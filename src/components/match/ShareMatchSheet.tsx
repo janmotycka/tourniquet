@@ -13,25 +13,41 @@ import { getMatchPublicUrl, generateMatchQRCodeDataUrl } from '../../utils/qr-co
 import { formatDate } from './match-utils';
 import type { SeasonMatch } from '../../types/match.types';
 import { useToastStore } from '../../store/toast.store';
+import { useMatchesStore } from '../../store/matches.store';
+import { useAuth } from '../../context/AuthContext';
 
 interface Props {
   match: SeasonMatch;
   clubDisplayName: string;
   isPublic: boolean;
   onTogglePublic: () => void;
+  onToggleLineupEarly: () => void;
   onClose: () => void;
 }
 
-export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePublic, onClose }: Props) {
+export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePublic, onToggleLineupEarly, onClose }: Props) {
   const { t } = useI18n();
+  const { user } = useAuth();
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [pairingOpen, setPairingOpen] = useState(false);
+  const [pairingBusy, setPairingBusy] = useState(false);
+  const [pairingData, setPairingData] = useState<{ pin: string; joinUrl: string } | null>(null);
+  const createMatchPairingInvite = useMatchesStore(s => s.createMatchPairingInvite);
+  const revokeMatchPairingInvite = useMatchesStore(s => s.revokeMatchPairingInvite);
+  const unlinkMatchPairing = useMatchesStore(s => s.unlinkMatchPairing);
+
+  const pairing = match.pairing;
+  const isPaired = !!(pairing?.awayCoachUid);
+  const hasActiveInvite = !!(pairing?.joinToken && !isPaired);
 
   const url = getMatchPublicUrl(match.id);
   const home = match.isHome ? clubDisplayName : match.opponent;
   const away = match.isHome ? match.opponent : clubDisplayName;
   const dateStr = formatDate(match.date);
   const homeAway = match.isHome ? t('matchShare.home') : t('matchShare.away');
+  // Pokud je místo konání zadané, použijeme ho. Jinak fallback: "Doma" / "Venku".
+  const venueForMessage = match.venue?.trim() || homeAway;
 
   // Generate QR on open (only when public)
   useEffect(() => {
@@ -59,6 +75,7 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
     time: match.kickoffTime,
     competition: match.competition,
     homeAway,
+    venue: venueForMessage,
     url,
   });
 
@@ -80,6 +97,55 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
     const subject = t('matchShare.emailSubject', { home, away });
     const body = buildWhatsappMessage();
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  // ─── Cross-team pairing handlers ──────────────────────────────────────────
+  const handleGenerateInvite = async () => {
+    setPairingBusy(true);
+    const invitedBy = user?.displayName || user?.email?.split('@')[0] || 'Trenér';
+    const result = await createMatchPairingInvite(match.id, invitedBy);
+    setPairingBusy(false);
+    if (result) {
+      setPairingData(result);
+      setPairingOpen(true);
+    } else {
+      useToastStore.getState().show('error', t('matchPairing.generateFailed'));
+    }
+  };
+
+  const handleRevokeInvite = async () => {
+    setPairingBusy(true);
+    await revokeMatchPairingInvite(match.id);
+    setPairingBusy(false);
+    setPairingData(null);
+    useToastStore.getState().show('success', t('matchPairing.inviteRevoked'));
+  };
+
+  const handleUnlink = async () => {
+    if (!window.confirm(t('matchPairing.confirmUnlink'))) return;
+    setPairingBusy(true);
+    await unlinkMatchPairing(match.id);
+    setPairingBusy(false);
+    useToastStore.getState().show('success', t('matchPairing.unlinked'));
+  };
+
+  const handleCopyPairingUrl = async () => {
+    if (!pairingData) return;
+    try {
+      const message = t('matchPairing.whatsappMessage', {
+        home, away, date: dateStr, pin: pairingData.pin, url: pairingData.joinUrl,
+      });
+      await navigator.clipboard.writeText(message);
+      useToastStore.getState().show('success', t('matchShare.copied'));
+    } catch { /* clipboard not available */ }
+  };
+
+  const handleShareWhatsappPairing = () => {
+    if (!pairingData) return;
+    const msg = t('matchPairing.whatsappMessage', {
+      home, away, date: dateStr, pin: pairingData.pin, url: pairingData.joinUrl,
+    });
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   return (
@@ -138,6 +204,158 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
         </div>
 
         <div style={{ padding: '0 18px' }}>
+          {/* ─── Cross-team pairing section ───────────────────────────────── */}
+          <div style={{
+            background: isPaired ? 'var(--success-light)' : 'var(--primary-light)',
+            borderRadius: 14, padding: '12px 14px', marginBottom: 14,
+            border: `1px solid ${isPaired ? 'var(--success, #22c55e)' : 'var(--primary)'}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span style={{ fontSize: 20 }}>{isPaired ? '🤝' : '👥'}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: 14, color: isPaired ? 'var(--success, #22c55e)' : 'var(--primary)' }}>
+                  {isPaired ? t('matchPairing.pairedTitle') : t('matchPairing.inviteTitle')}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+                  {isPaired
+                    ? t('matchPairing.pairedWith', { name: pairing?.awayCoachName || t('matchPairing.opposingCoach') })
+                    : t('matchPairing.inviteHint')}
+                </div>
+              </div>
+            </div>
+
+            {/* Paired state — action buttons */}
+            {isPaired && (
+              <button
+                onClick={handleUnlink}
+                disabled={pairingBusy}
+                style={{
+                  width: '100%', padding: '8px 12px', borderRadius: 10,
+                  background: 'var(--surface)', color: 'var(--danger)',
+                  border: '1px solid var(--danger-light, #fecaca)',
+                  fontSize: 12, fontWeight: 700, cursor: pairingBusy ? 'default' : 'pointer',
+                  opacity: pairingBusy ? 0.6 : 1,
+                }}
+              >
+                {t('matchPairing.unlinkButton')}
+              </button>
+            )}
+
+            {/* Invite active — show PIN + URL + share buttons */}
+            {!isPaired && (hasActiveInvite || pairingData) && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* PIN display — only if we still have it (just generated) */}
+                {pairingData && pairingOpen && (
+                  <div style={{
+                    background: 'var(--surface)', borderRadius: 10, padding: '10px 12px',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        {t('matchPairing.pinLabel')}
+                      </div>
+                      <div style={{ fontWeight: 900, fontSize: 28, color: 'var(--primary)', letterSpacing: 4, fontFamily: 'monospace' }}>
+                        {pairingData.pin}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(pairingData.pin).then(() => useToastStore.getState().show('success', t('matchShare.copied')))}
+                      aria-label={t('matchShare.copyLink')}
+                      style={{
+                        width: 40, height: 40, borderRadius: 10, border: 'none',
+                        background: 'var(--primary)', color: '#fff', cursor: 'pointer',
+                        fontSize: 16, flexShrink: 0,
+                      }}
+                    >
+                      📋
+                    </button>
+                  </div>
+                )}
+                {hasActiveInvite && !pairingData && (
+                  <div style={{
+                    background: 'var(--surface)', borderRadius: 10, padding: '10px 12px',
+                    fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4,
+                  }}>
+                    {t('matchPairing.inviteActiveNoPin')}
+                  </div>
+                )}
+
+                {/* Share buttons — only when we have the URL */}
+                {pairingData && pairingOpen && (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={handleShareWhatsappPairing}
+                      style={{
+                        flex: 1, padding: '10px 8px', borderRadius: 10,
+                        background: '#25D366', color: '#fff', border: 'none',
+                        fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}
+                    >
+                      💬 WhatsApp
+                    </button>
+                    <button
+                      onClick={handleCopyPairingUrl}
+                      style={{
+                        flex: 1, padding: '10px 8px', borderRadius: 10,
+                        background: 'var(--primary)', color: '#fff', border: 'none',
+                        fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}
+                    >
+                      📋 {t('matchPairing.copyMessage')}
+                    </button>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={handleGenerateInvite}
+                    disabled={pairingBusy}
+                    style={{
+                      flex: 1, padding: '8px 12px', borderRadius: 10,
+                      background: 'var(--surface)', color: 'var(--primary)',
+                      border: '1px solid var(--primary)',
+                      fontSize: 12, fontWeight: 700, cursor: pairingBusy ? 'default' : 'pointer',
+                      opacity: pairingBusy ? 0.6 : 1,
+                    }}
+                  >
+                    🔄 {t('matchPairing.regeneratePin')}
+                  </button>
+                  <button
+                    onClick={handleRevokeInvite}
+                    disabled={pairingBusy}
+                    style={{
+                      flex: 1, padding: '8px 12px', borderRadius: 10,
+                      background: 'var(--surface)', color: 'var(--text-muted)',
+                      border: '1px solid var(--border)',
+                      fontSize: 12, fontWeight: 700, cursor: pairingBusy ? 'default' : 'pointer',
+                      opacity: pairingBusy ? 0.6 : 1,
+                    }}
+                  >
+                    {t('matchPairing.revokeInvite')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* No invite yet — big CTA */}
+            {!isPaired && !hasActiveInvite && !pairingData && (
+              <button
+                onClick={handleGenerateInvite}
+                disabled={pairingBusy}
+                style={{
+                  width: '100%', padding: '10px 12px', borderRadius: 10,
+                  background: 'var(--primary)', color: '#fff', border: 'none',
+                  fontSize: 13, fontWeight: 800, cursor: pairingBusy ? 'default' : 'pointer',
+                  opacity: pairingBusy ? 0.6 : 1,
+                }}
+              >
+                {pairingBusy ? t('common.loading') : `📡 ${t('matchPairing.generateButton')}`}
+              </button>
+            )}
+          </div>
+
           {/* Public toggle */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
@@ -179,6 +397,46 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
               }} />
             </button>
           </div>
+
+          {/* Sestava — toggle "zveřejnit hned" (jen pokud je zápas naplánovaný a veřejný) */}
+          {isPublic && match.status === 'planned' && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 14px', borderRadius: 12, marginBottom: 14,
+              background: 'var(--surface-var)', border: '1px solid var(--border)',
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
+                  {t('matchShare.lineupEarlyToggle')}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                  {(match.lineupVisibility ?? 'atStart') === 'always'
+                    ? t('matchShare.lineupEarlyOn')
+                    : t('matchShare.lineupEarlyOff')}
+                </div>
+              </div>
+              <button
+                onClick={onToggleLineupEarly}
+                aria-pressed={(match.lineupVisibility ?? 'atStart') === 'always'}
+                style={{
+                  position: 'relative',
+                  width: 44, height: 24, borderRadius: 12,
+                  background: (match.lineupVisibility ?? 'atStart') === 'always' ? 'var(--primary)' : 'var(--border)',
+                  border: 'none', cursor: 'pointer', flexShrink: 0,
+                  transition: 'background .18s ease',
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 2,
+                  left: (match.lineupVisibility ?? 'atStart') === 'always' ? 22 : 2,
+                  width: 20, height: 20, borderRadius: '50%',
+                  background: '#fff',
+                  transition: 'left .18s ease',
+                  boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+                }} />
+              </button>
+            </div>
+          )}
 
           {isPublic ? (
             <>

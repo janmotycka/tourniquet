@@ -262,6 +262,35 @@ export function AdminPage() {
     }
   };
 
+  const generatePasswordResetLink = async (user: UserInfo) => {
+    if (!user.email) {
+      alert('User has no email address on record.');
+      return;
+    }
+    try {
+      setUpdating(user.uid);
+      const fn = httpsCallable<{ email: string; continueUrl?: string }, { success: boolean; link: string; email: string }>(
+        functions,
+        'adminGeneratePasswordResetLink',
+      );
+      const continueUrl = window.location.origin + window.location.pathname;
+      const r = await fn({ email: user.email, continueUrl });
+      // Kopírovat do clipboardu — admin pak odešle uživateli přes preferovaný kanál
+      try {
+        await navigator.clipboard.writeText(r.data.link);
+        alert(`Reset link pro ${r.data.email} zkopírovaný do schránky.\n\nPošli ho uživateli přes WhatsApp / SMS / jiný e-mail. Link vyprší za cca 1 hodinu.`);
+      } catch {
+        // Clipboard fallback — prompt
+        window.prompt(`Reset link pro ${r.data.email} (expiruje za ~1h). Zkopíruj a pošli:`, r.data.link);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed';
+      alert(`Nepodařilo se vygenerovat reset link: ${msg}`);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const purgeTournaments = async (user: UserInfo) => {
     const name = user.displayName || user.email || user.uid.substring(0, 8);
     if (!window.confirm(t('admin.user.purgeConfirm', { name }))) return;
@@ -413,6 +442,7 @@ export function AdminPage() {
           onGrantPremium={grant30DayPremium}
           onToggleBlock={toggleBlock}
           onPurge={purgeTournaments}
+          onPasswordReset={generatePasswordResetLink}
         />
       );
     }
@@ -559,7 +589,7 @@ export function AdminPage() {
 // ─── Users list (mobile-friendly cards) ─────────────────────────────────────
 
 function UsersList({
-  users, updating, onTogglePremium, onGrantPremium, onToggleBlock, onPurge,
+  users, updating, onTogglePremium, onGrantPremium, onToggleBlock, onPurge, onPasswordReset,
 }: {
   users: UserInfo[];
   updating: string | null;
@@ -567,6 +597,7 @@ function UsersList({
   onGrantPremium: (u: UserInfo) => void;
   onToggleBlock: (u: UserInfo) => void;
   onPurge: (u: UserInfo) => void;
+  onPasswordReset: (u: UserInfo) => void;
 }) {
   const { t } = useI18n();
   if (users.length === 0) {
@@ -661,6 +692,16 @@ function UsersList({
                 >
                   {isBlocked ? t('admin.user.unblock') : t('admin.user.block')}
                 </button>
+                {user.email && (
+                  <button
+                    onClick={() => onPasswordReset(user)}
+                    disabled={updating === user.uid}
+                    style={actionBtnStyle('neutral')}
+                    title="Vygenerovat reset-password link (zkopírovaný do schránky)"
+                  >
+                    🔑
+                  </button>
+                )}
                 {user.activity.tournamentCount > 0 && (
                   <button
                     onClick={() => onPurge(user)}

@@ -24,6 +24,8 @@ import {
 } from '../../components/tournament/public';
 import { MvpVoting } from '../../components/tournament/public/MvpVoting';
 import { ChatPollsList } from '../../components/tournament/public/ChatPollsList';
+import { OfficialLinkButton } from '../../components/ui';
+import { TennisTournamentPublicView } from '../../modules/tennis/pages/TennisTournamentPublicView';
 import { translateAwardTitle } from '../../components/tournament/SettingsTab';
 
 interface Props {
@@ -95,6 +97,12 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
 
   // Preferujeme Firebase data, fallback na lokální (pro případ offline)
   const tournament = firebaseTournament ?? localTournament;
+
+  // Tenis turnaj → deleguj na tenisový public view (oddělené UI).
+  // Rodiče tenisové hráče nemají vidět žádné fotbalové sekce (chat, MVP, ...).
+  if (tournament && (tournament.sport ?? 'football') === 'tennis') {
+    return <TennisTournamentPublicView tournamentId={tournamentId} navigate={navigate} />;
+  }
 
   // ── Join as referee flow ────────────────────────────────────────────────────
   const { user, signInAnonymously } = useAuth();
@@ -521,6 +529,9 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
         padding: '12px 16px', borderTop: '1px solid var(--border)', background: 'var(--surface)',
         display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0,
       }}>
+        {tournament.settings.officialResultsUrl && (
+          <OfficialLinkButton url={tournament.settings.officialResultsUrl} />
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ flex: 1, fontSize: 12, color: 'var(--text-muted)' }}>
             {t('tournament.public.lastUpdate')}: {timeSinceLabel}

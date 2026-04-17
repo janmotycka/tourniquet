@@ -23,21 +23,42 @@ import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 import { useClubsStore } from '../../store/clubs.store';
 import { useToastStore } from '../../store/toast.store';
-import { AGE_CATEGORIES, type AgeCategory } from '../../types/club.types';
+import { AGE_CATEGORIES_BY_SPORT, type AgeCategory } from '../../types/club.types';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { resizeLogoToBase64 } from '../clubs/resize-logo';
 import { logger } from '../../utils/logger';
 import { radius, fontSize, fontWeight, spacing } from '../../theme/tokens';
 
 // ─── Storage helpers ───────────────────────────────────────────────────────
+// Onboarding flag je per-sport: tenis a fotbal mají oddělený onboarding,
+// protože uživatel může začít jedním sportem a později přepnout na druhý
+// bez odepsání původního kroku.
 const ONBOARDED_KEY_PREFIX = 'torq-onboarded-';
-export function isOnboarded(uid: string): boolean {
+/**
+ * @param uid Uživatelské UID
+ * @param sport Volitelně omezit dotaz na konkrétní sport. Pro zpětnou kompat
+ *   bez argumentu = legacy (sdílené mezi sporty) — používat jen tam, kde
+ *   není znám kontext sportu.
+ */
+export function isOnboarded(uid: string, sport?: 'football' | 'tennis'): boolean {
   try {
+    // Nový klíč per sport. Fallback na legacy (bez sportu) pro uživatele,
+    // kteří už měli onboarding hotový před zavedením multi-sport separace.
+    if (sport) {
+      const sportKey = `${ONBOARDED_KEY_PREFIX}${uid}-${sport}`;
+      if (localStorage.getItem(sportKey)) return true;
+    }
     return !!localStorage.getItem(`${ONBOARDED_KEY_PREFIX}${uid}`);
   } catch {
     return true; // safe default — pokud nejde číst, neotravujeme
   }
 }
-function markOnboarded(uid: string) {
+function markOnboarded(uid: string, sport?: 'football' | 'tennis') {
+  try {
+    if (sport) {
+      localStorage.setItem(`${ONBOARDED_KEY_PREFIX}${uid}-${sport}`, '1');
+    }
+  } catch { /* ignore */ }
   try {
     localStorage.setItem(`${ONBOARDED_KEY_PREFIX}${uid}`, '1');
   } catch {
@@ -84,7 +105,7 @@ interface Props {
   onComplete: () => void;
 }
 
-type Step = 'welcome' | 'club' | 'done';
+type Step = 'welcome' | 'sport' | 'club' | 'done';
 
 // ─── Component ─────────────────────────────────────────────────────────────
 export function OnboardingWizard({ navigate, onComplete }: Props) {
@@ -92,6 +113,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   const { user } = useAuth();
   const createClub = useClubsStore(s => s.createClub);
   const showToast = useToastStore(s => s.show);
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
 
   const [step, setStep] = useState<Step>('welcome');
 
@@ -177,9 +199,9 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   };
 
   const finish = useCallback(() => {
-    if (user?.uid) markOnboarded(user.uid);
+    if (user?.uid) markOnboarded(user.uid, preferredSport);
     onComplete();
-  }, [user, onComplete]);
+  }, [user, onComplete, preferredSport]);
 
   const skip = useCallback(() => {
     finish();
@@ -194,7 +216,11 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
         color: clubColor,
         logoBase64,
         ageCategories: selectedCategories.length > 0 ? selectedCategories : undefined,
+        sport: preferredSport,
       });
+      // Zajisti, že aktivní klub odpovídá aktuálnímu sportu (když uživatel
+      // měl aktivní fotbalový klub a teď si udělal první tenisový, přepneme).
+      await useClubsStore.getState().ensureActiveClubMatchesSport(preferredSport);
       showToast('success', t('onboarding.clubCreated'));
       setStep('done');
     } catch (err) {
@@ -277,9 +303,18 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
     border: 'none',
   };
 
-  // ─── Step indicator (jen pro step "club") ──────────────────────────────
-  const showProgress = step === 'club';
-  const stepIndex = step === 'welcome' ? 0 : step === 'club' ? 1 : 2;
+  // ─── Step indicator ───────────────────────────────────────────────────
+  const showProgress = step === 'sport' || step === 'club';
+  const stepIndex = step === 'welcome' ? 0 : step === 'sport' ? 1 : step === 'club' ? 2 : 3;
+
+  // Pomocníci z userPrefs pro sport picker step
+  const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
+  const markSportOnboardingShown = useUserPrefsStore(s => s.markSportOnboardingShown);
+  const handleSportPick = (sport: 'football' | 'tennis') => {
+    setPreferredSport(sport);
+    markSportOnboardingShown();
+    setStep('club');
+  };
 
   // ─── Step rendering helpers ────────────────────────────────────────────
 
@@ -314,7 +349,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
         width: '100%', maxWidth: 320, display: 'flex',
         flexDirection: 'column', gap: spacing.sm + 2, marginTop: spacing.md,
       }}>
-        <button onClick={() => setStep('club')} style={btnPrimary}>
+        <button onClick={() => setStep('sport')} style={btnPrimary}>
           {t('onboarding.welcome.start')}
         </button>
         <button onClick={skip} style={btnSecondary}>
@@ -332,10 +367,10 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
         @keyframes torq-onb-bounce { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
       `}</style>
       <div style={{ ...modalStyle, ...desktopModalStyle }}>
-        {/* Progress bar */}
+        {/* Progress bar (3 stages: sport, club, done) */}
         {showProgress && (
           <div style={{ padding: `${spacing.md}px ${spacing.lg}px 0`, display: 'flex', gap: 6 }}>
-            {[0, 1, 2].map(i => (
+            {[1, 2, 3].map(i => (
               <div key={i} style={{
                 flex: 1, height: 4, borderRadius: 2,
                 background: i <= stepIndex ? 'var(--primary)' : 'var(--border)',
@@ -348,6 +383,54 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
         {/* Step content (scroll inside) */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           {step === 'welcome' && welcomeView}
+
+          {/* ── Step 1: Sport picker ── */}
+          {step === 'sport' && (
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column',
+              padding: `${spacing.xl}px ${spacing.lg}px ${spacing.lg}px`,
+              gap: spacing.lg,
+              animation: 'torq-onb-in .35s ease-out',
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 56, marginBottom: spacing.md }}>🎯</div>
+                <h2 style={{ margin: 0, fontWeight: 900, fontSize: 22, color: 'var(--text)' }}>
+                  {t('sportPicker.title')}
+                </h2>
+                <p style={{
+                  margin: `${spacing.sm}px auto 0`, color: 'var(--text-muted)',
+                  fontSize: fontSize.sm, lineHeight: 1.5, maxWidth: 320,
+                }}>
+                  {t('sportPicker.desc')}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: spacing.md }}>
+                {(['football', 'tennis'] as const).map(sp => (
+                  <button
+                    key={sp}
+                    onClick={() => handleSportPick(sp)}
+                    style={{
+                      flex: 1, padding: '22px 10px', borderRadius: 16,
+                      background: 'var(--surface-var)',
+                      border: `2px solid ${preferredSport === sp ? 'var(--primary)' : 'var(--border)'}`,
+                      cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center',
+                      transition: 'all .15s',
+                    }}
+                  >
+                    <span style={{ fontSize: 48 }}>{sp === 'football' ? '⚽' : '🎾'}</span>
+                    <span style={{ fontWeight: 800, fontSize: 15 }}>{t(`sport.${sp}`)}</span>
+                  </button>
+                ))}
+              </div>
+              <p style={{
+                fontSize: fontSize.xs, color: 'var(--text-muted)',
+                textAlign: 'center', marginTop: spacing.sm, lineHeight: 1.4,
+              }}>
+                {t('sportPicker.hintLater')}
+              </p>
+            </div>
+          )}
 
           {/* ── Step 2: Create Club ── */}
           {step === 'club' && (
@@ -510,7 +593,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                   {t('onboarding.club.categories')}
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {AGE_CATEGORIES.map(cat => {
+                  {AGE_CATEGORIES_BY_SPORT[preferredSport].map(cat => {
                     const isSelected = selectedCategories.includes(cat);
                     return (
                       <button

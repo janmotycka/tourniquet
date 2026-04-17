@@ -13,6 +13,7 @@ import {
   loadTournamentsFromFirebase,
   loadPublicTournament,
   subscribeToPublicTournament,
+  subscribeToUserTournaments,
 } from '../services/tournament.firebase';
 import { saveCatalogEntry } from '../services/catalog.firebase';
 import {
@@ -57,6 +58,7 @@ interface TournamentState {
   // Inicializace po přihlášení
   setFirebaseUid: (uid: string | null) => void;
   loadFromFirebase: (uid: string) => Promise<void>;
+  subscribeToFirebase: (uid: string) => () => void;
   clearSyncError: () => void;
 
   // Sdílený přístup
@@ -117,6 +119,15 @@ interface TournamentState {
 
   // Přegenerování harmonogramu
   regenerateSchedule: (tournamentId: string, newSettings: TournamentSettings) => Promise<void>;
+
+  /**
+   * Rozlosuje týmy do skupin a REGENERUJE matches podle nového rozdělení.
+   * Použití: tennis tournament s draw-at-site workflow, fotbalový turnaj s pozdním losem.
+   *
+   * @param teamIds — IDs týmů které se účastní (filtr podle docházky)
+   * @param groupAssignments — mapa { [groupId]: teamId[] }. Pokud null → random rovnoměrně.
+   */
+  drawGroups: (tournamentId: string, teamIds: string[], groupCount: number, groupAssignments?: Record<string, string[]>) => Promise<void>;
 
   /** Vygeneruje rozpis pro turnaj bez zápasů (registrační flow) */
   generateInitialSchedule: (tournamentId: string) => Promise<void>;
@@ -327,6 +338,41 @@ export const useTournamentStore = create<TournamentState>()(
         }
       },
 
+      /**
+       * Realtime subscription na cestu /tournaments/{uid} — odchytí nové turnaje
+       * vytvořené z jiného zařízení. Existing subscribeToOwnedPublic stále běží
+       * paralelně pro per-tournament sync skrz public mirror.
+       */
+      subscribeToFirebase: (uid) => {
+        const unsubscribe = subscribeToUserTournaments(uid, (remote) => {
+          const local = get().tournaments;
+          const remoteById = new Map(remote.map(t => [t.id, t]));
+          const localById = new Map(local.map(t => [t.id, t]));
+
+          // Last-write-wins merge podle updatedAt; lokální bez serverové kopie
+          // zachovat (offline creation dosud neuploadnutá).
+          const allIds = new Set<string>();
+          remoteById.forEach((_, id) => allIds.add(id));
+          localById.forEach((_, id) => allIds.add(id));
+
+          const merged: Tournament[] = [];
+          allIds.forEach(id => {
+            const r = remoteById.get(id);
+            const l = localById.get(id);
+            if (r && l) {
+              merged.push(new Date(r.updatedAt) >= new Date(l.updatedAt) ? r : l);
+            } else if (r) {
+              merged.push(r);
+            } else if (l) {
+              merged.push(l);
+            }
+          });
+
+          set({ tournaments: merged });
+        });
+        return unsubscribe;
+      },
+
       // ── Sdílený přístup ─────────────────────────────────────────────────
 
       joinTournament: async (tournamentId, pin, role?) => {
@@ -468,6 +514,7 @@ export const useTournamentStore = create<TournamentState>()(
             name: p.name,
             jerseyNumber: p.jerseyNumber,
             birthYear: p.birthYear ?? null,
+            ...(p.clubPlayerId ? { clubPlayerId: p.clubPlayerId } : {}),
           })),
         }));
 
@@ -529,6 +576,7 @@ export const useTournamentStore = create<TournamentState>()(
 
         const tournament: Tournament = {
           id: generateId(),
+          sport: input.sport ?? 'football',
           name: input.name,
           ownerUid: uid ?? '',
           status: 'draft',
@@ -1086,6 +1134,7 @@ export const useTournamentStore = create<TournamentState>()(
                 name: p.name,
                 jerseyNumber: p.jerseyNumber,
                 birthYear: p.birthYear ?? null,
+                ...(p.clubPlayerId ? { clubPlayerId: p.clubPlayerId } : {}),
               })),
               rosterSubmittedAt: submission.submittedAt,
             };
@@ -1231,6 +1280,59 @@ export const useTournamentStore = create<TournamentState>()(
           logger.error('[Firebase] deleteRegistration failed (reject):', err);
           useToastStore.getState().show('error', 'Nepodařilo se smazat registraci — zkuste to znovu.', 5000);
         }
+      },
+
+      drawGroups: async (tournamentId, teamIds, groupCount, groupAssignments) => {
+        const tournament = get().getTournamentById(tournamentId);
+        if (!tournament) return;
+        if (teamIds.length < 2) return;
+
+        // Assign teams to groups — buď ručně zadané, nebo náhodně rovnoměrně
+        const groups: { id: string; name: string; teamIds: string[] }[] = [];
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+        if (groupAssignments) {
+          // Manuální: použij dané rozdělení
+          for (let i = 0; i < groupCount; i++) {
+            const groupId = `group-${letters[i]}`;
+            groups.push({
+              id: groupId,
+              name: `Skupina ${letters[i]}`,
+              teamIds: groupAssignments[groupId] ?? [],
+            });
+          }
+        } else {
+          // Náhodný los: shuffle + distribute rovnoměrně
+          const shuffled = [...teamIds].sort(() => Math.random() - 0.5);
+          for (let i = 0; i < groupCount; i++) {
+            groups.push({ id: `group-${letters[i]}`, name: `Skupina ${letters[i]}`, teamIds: [] });
+          }
+          shuffled.forEach((id, idx) => {
+            groups[idx % groupCount].teamIds.push(id);
+          });
+        }
+
+        const newSettings: TournamentSettings = {
+          ...tournament.settings,
+          format: 'groups-knockout',
+          groups,
+        };
+
+        // Regenerate matches — smaž nezahájené, vygeneruj nové podle nových skupin
+        const playingTeams = tournament.teams.filter(team => teamIds.includes(team.id));
+        const newMatches = generateGroupsKnockoutSchedule(playingTeams, newSettings);
+
+        set(state => mutateBothArrays(state, tournamentId, t => ({
+          ...t,
+          updatedAt: new Date().toISOString(),
+          settings: newSettings,
+          // Zachovat jen matches co už byly hrané (finished/live), nahradit plánované
+          matches: [
+            ...t.matches.filter(m => m.status === 'finished' || m.status === 'live'),
+            ...newMatches,
+          ],
+        })));
+        await syncById(get, set, tournamentId);
       },
 
       regenerateSchedule: async (tournamentId, newSettings) => {

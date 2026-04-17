@@ -107,7 +107,12 @@ export function RatingsTab({ match }: { match: SeasonMatch }) {
       )}
 
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
-        <h3 style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>⭐ {t('match.ratings.playerRatings')}</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 12 }}>
+          <h3 style={{ fontWeight: 700, fontSize: 15 }}>⭐ {t('match.ratings.playerRatings')}</h3>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+            {t('match.ratings.quickHint')}
+          </p>
+        </div>
         {allPlayers.length === 0 && (
           <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)' }}>
             <div style={{ fontSize: 36, marginBottom: 8 }}>👕</div>

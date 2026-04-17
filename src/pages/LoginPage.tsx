@@ -130,8 +130,12 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
           <div style={{
             background: 'var(--success-light)', borderRadius: 12, padding: '12px 14px',
             fontSize: 14, color: 'var(--success)', fontWeight: 600, lineHeight: 1.5,
+            display: 'flex', flexDirection: 'column', gap: 6,
           }}>
-            ✅ {t('login.resetSent', { email })}
+            <span>✅ {t('login.resetSent', { email })}</span>
+            <span style={{ fontSize: 12, fontWeight: 500, opacity: 0.85 }}>
+              ℹ️ {t('login.resetSentHint')}
+            </span>
           </div>
         )}
 

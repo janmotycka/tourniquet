@@ -5,6 +5,9 @@ import { useSubscriptionStore } from '../store/subscription.store';
 import { useTournamentStore } from '../store/tournament.store';
 import { useMatchesStore } from '../store/matches.store';
 import { useClubsStore } from '../store/clubs.store';
+import { useTrainingsStore } from '../store/trainings.store';
+import { useContactsStore } from '../store/contacts.store';
+import { useUserPrefsStore } from '../store/userPrefs.store';
 import { useToastStore } from '../store/toast.store';
 import { useI18n, getCurrencyForLocale, getDateLocale } from '../i18n';
 import type { Locale } from '../i18n';
@@ -20,11 +23,24 @@ export function SettingsPage({ navigate }: Props) {
   const { user, logout } = useAuth();
   const subscription = useSubscriptionStore(s => s.subscription);
   const isPremium = useSubscriptionStore(s => s.isPremium);
+  const getLimits = useSubscriptionStore(s => s.getLimits);
   const createCheckoutSession = useSubscriptionStore(s => s.createCheckoutSession);
   const openCustomerPortal = useSubscriptionStore(s => s.openCustomerPortal);
   const tournaments = useTournamentStore(s => s.tournaments);
   const matches = useMatchesStore(s => s.matches);
   const clubs = useClubsStore(s => s.clubs);
+  const trainings = useTrainingsStore(s => s.savedTrainings);
+  const contacts = useContactsStore(s => s.contacts);
+  const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
+  const tennisUserType = useUserPrefsStore(s => s.tennisUserType);
+  const setTennisUserType = useUserPrefsStore(s => s.setTennisUserType);
+  const ensureActiveClubMatchesSport = useClubsStore(s => s.ensureActiveClubMatchesSport);
+  // Wrapper — po změně sportu přepne aktivní klub na klub daného sportu.
+  const handleSportSwitch = async (sp: 'football' | 'tennis') => {
+    setPreferredSport(sp);
+    await ensureActiveClubMatchesSport(sp);
+  };
   const showToast = useToastStore(s => s.show);
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useTheme();
@@ -130,6 +146,67 @@ export function SettingsPage({ navigate }: Props) {
           </div>
         </div>
 
+        {/* 1.5 Sport preference */}
+        <div style={cardStyle}>
+          <h2 style={{ fontWeight: 700, fontSize: 16 }}>🎯 {t('settings.sport')}</h2>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+            {t('settings.sportDesc')}
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {(['football', 'tennis'] as const).map(sp => {
+              const isActive = preferredSport === sp;
+              return (
+                <button
+                  key={sp}
+                  onClick={() => void handleSportSwitch(sp)}
+                  style={{
+                    flex: 1, padding: '14px 10px', borderRadius: 12, fontWeight: 700, fontSize: 14,
+                    background: isActive ? 'var(--primary)' : 'var(--surface-var)',
+                    color: isActive ? '#fff' : 'var(--text-muted)',
+                    border: isActive ? 'none' : '1.5px solid var(--border)',
+                    cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center',
+                  }}
+                >
+                  <span style={{ fontSize: 28 }}>{sp === 'football' ? '⚽' : '🎾'}</span>
+                  <span>{t(`sport.${sp}`)}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tennis sub-mód — klubový vs individuální */}
+          {preferredSport === 'tennis' && (
+            <div style={{ marginTop: 10, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                {t('settings.tennisUserType')}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {(['club', 'individual'] as const).map(type => {
+                  const active = tennisUserType === type;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => setTennisUserType(type)}
+                      style={{
+                        flex: 1, padding: '12px 10px', borderRadius: 10, fontWeight: 700, fontSize: 12,
+                        background: active ? (type === 'club' ? '#1565C0' : '#6A1B9A') : 'var(--surface-var)',
+                        color: active ? '#fff' : 'var(--text-muted)',
+                        border: active ? 'none' : '1.5px solid var(--border)',
+                        cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center',
+                      }}
+                    >
+                      <span style={{ fontSize: 22 }}>{type === 'club' ? '🏟' : '👤'}</span>
+                      <span>{t(`tennisTypePicker.${type}Title`)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* 2. Subscription */}
         <div style={{ ...cardStyle, gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -184,6 +261,50 @@ export function SettingsPage({ navigate }: Props) {
                 <div style={{ fontSize: 13, color: '#BF360C', lineHeight: 1.5 }}>
                   {t('settings.freePlanDesc')}
                 </div>
+                {/* Usage bars — napříč sporty (sport-agnostic limity).
+                    V tenis módu skrýváme řádek Tréninky (tenis modul je nepoužívá). */}
+                {(() => {
+                  const limits = getLimits();
+                  const isTennis = preferredSport === 'tennis';
+                  // Počty filtrujeme podle aktuálního sportu — aby trenér neviděl
+                  // cizí limity. Limity jsou sport-agnostic (sdílené pro oba sporty),
+                  // ale počet ukazujeme jen pro ten, na který se teď dívá.
+                  const tournamentsForSport = tournaments.filter(tt => (tt.sport ?? 'football') === preferredSport);
+                  const matchesForSport = matches.filter(m => (m.sport ?? 'football') === preferredSport);
+                  const items = [
+                    { label: t('settings.usageTournaments'), count: tournamentsForSport.length, max: limits.maxTournaments },
+                    { label: t('settings.usageMatches'), count: matchesForSport.length, max: limits.maxMatches },
+                    ...(isTennis ? [] : [
+                      { label: t('settings.usageTrainings'), count: trainings.length, max: limits.maxSavedTrainings },
+                    ]),
+                  ];
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                      {items.map(item => {
+                        const pct = Math.min(100, (item.count / item.max) * 100);
+                        const atLimit = item.count >= item.max;
+                        return (
+                          <div key={item.label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6D4C41', fontWeight: 600 }}>
+                              <span>{item.label}</span>
+                              <span>{item.count} / {item.max}</span>
+                            </div>
+                            <div style={{ height: 4, background: 'rgba(191,54,12,.15)', borderRadius: 2, overflow: 'hidden' }}>
+                              <div style={{
+                                width: `${pct}%`, height: '100%',
+                                background: atLimit ? 'var(--danger)' : 'var(--warning)',
+                                transition: 'width .3s',
+                              }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div style={{ fontSize: 10, color: '#8D6E63', fontStyle: 'italic', marginTop: 2 }}>
+                        {t('settings.usageAcrossSports')}
+                      </div>
+                    </div>
+                  );
+                })()}
                 <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--warning)', marginTop: 4 }}>
                   {t('settings.premiumOffer', { price: t('subscription.price') })}
                 </div>
@@ -342,17 +463,20 @@ export function SettingsPage({ navigate }: Props) {
                   try {
                     const data = {
                       exportedAt: new Date().toISOString(),
+                      schemaVersion: 1,
                       user: { email: user?.email, displayName: user?.displayName },
                       tournaments,
                       seasonMatches: matches,
                       clubs,
+                      trainings,
+                      contacts,
                     };
                     const json = JSON.stringify(data, null, 2);
                     const blob = new Blob([json], { type: 'application/json' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `torq-export-${new Date().toISOString().slice(0, 10)}.json`;
+                    a.download = `torq-backup-${new Date().toISOString().slice(0, 10)}.json`;
                     a.click();
                     URL.revokeObjectURL(url);
                     showToast('success', t('settings.exportDone'));
@@ -370,10 +494,86 @@ export function SettingsPage({ navigate }: Props) {
                   opacity: exporting ? 0.6 : 1,
                 }}
               >
-                {exporting ? t('settings.exporting') : t('settings.exportData')}
+                💾 {exporting ? t('settings.exporting') : t('settings.exportData')}
               </button>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
                 {t('settings.exportDataDesc')}
+              </p>
+
+              {/* CSV export soupisky klubu — pro FAČR / email rodičům */}
+              {clubs.length > 0 && (
+                <button
+                  onClick={() => {
+                    try {
+                      // Exportuje soupisky všech klubů do jednoho CSV
+                      const rows: (string | number)[][] = [];
+                      for (const club of clubs) {
+                        for (const player of (club.players ?? [])) {
+                          if (!player.active) continue;
+                          const birthYear = player.birthYear ?? '';
+                          rows.push([
+                            club.name,
+                            player.ageCategory ?? '',
+                            player.squad ?? '',
+                            player.jerseyNumber,
+                            player.name,
+                            birthYear,
+                            player.position ?? '',
+                            player.phone ?? '',
+                            player.email ?? '',
+                          ]);
+                        }
+                      }
+                      if (rows.length === 0) {
+                        showToast('error', t('settings.rosterCsvEmpty'));
+                        return;
+                      }
+                      const headers = [
+                        t('settings.rosterCsv.club'),
+                        t('settings.rosterCsv.category'),
+                        t('settings.rosterCsv.squad'),
+                        t('settings.rosterCsv.jersey'),
+                        t('settings.rosterCsv.name'),
+                        t('settings.rosterCsv.birthYear'),
+                        t('settings.rosterCsv.position'),
+                        t('settings.rosterCsv.phone'),
+                        t('settings.rosterCsv.email'),
+                      ];
+                      // Escape přesně jako export-csv.ts
+                      const escape = (v: string | number): string => {
+                        let s = String(v);
+                        if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+                        if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+                          return `"${s.replace(/"/g, '""')}"`;
+                        }
+                        return s;
+                      };
+                      const csv = '\uFEFF' + [headers, ...rows]
+                        .map(row => row.map(escape).join(','))
+                        .join('\r\n');
+                      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `torq-soupisky-${new Date().toISOString().slice(0, 10)}.csv`;
+                      a.click();
+                      URL.revokeObjectURL(url);
+                      showToast('success', t('settings.rosterCsvDone'));
+                    } catch {
+                      showToast('error', t('settings.exportFailed'));
+                    }
+                  }}
+                  style={{
+                    background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600,
+                    fontSize: 14, padding: '12px', borderRadius: 12,
+                    border: '1.5px solid var(--border)', textAlign: 'center',
+                  }}
+                >
+                  📋 {t('settings.exportRosterCsv')}
+                </button>
+              )}
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                {t('settings.exportRosterCsvDesc')}
               </p>
 
               {/* Smazani uctu */}

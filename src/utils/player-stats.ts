@@ -90,9 +90,10 @@ export function aggregatePlayerStats(
     const team = tournament.teams.find(t => t.clubId === clubId);
     if (!team) continue;
 
-    // Najdi hráče v týmu podle jména
-    const tournamentPlayer = team.players.find(
-      p => p.name.toLowerCase().trim() === playerName,
+    // Primárně match podle clubPlayerId (spolehlivé), fallback na jméno
+    const tournamentPlayer = team.players.find(p =>
+      (p.clubPlayerId && p.clubPlayerId === player.id)
+      || p.name.toLowerCase().trim() === playerName,
     );
     if (!tournamentPlayer) continue;
 
