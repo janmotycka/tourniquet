@@ -291,9 +291,22 @@ export function subscribeToMatchesMultiScope(
   // Map scope → matches[] (udržujeme aktuální state z každého scope)
   const byScope = new Map<string, SeasonMatch[]>();
   const emit = () => {
+    // Merge pravidlo: pokud existují duplicity v různých scope (legacy per-user
+    // + klubový scope po migraci), **vyhraje nejnovější podle `updatedAt`**.
+    // To zabraňuje, aby zastaralá legacy verze přepsala aktuální klubovou.
     const merged = new Map<string, SeasonMatch>();
     for (const list of byScope.values()) {
-      for (const m of list) merged.set(m.id, m);  // poslední scope vyhrává (měl by být konzistentní)
+      for (const m of list) {
+        const existing = merged.get(m.id);
+        if (!existing) {
+          merged.set(m.id, m);
+        } else {
+          // Vyhraje větší updatedAt (ISO string porovnání je správné lex-ordering)
+          const a = existing.updatedAt ?? '';
+          const b = m.updatedAt ?? '';
+          if (b >= a) merged.set(m.id, m);
+        }
+      }
     }
     callback([...merged.values()]);
   };
