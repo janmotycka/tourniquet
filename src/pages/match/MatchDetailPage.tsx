@@ -220,6 +220,16 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
     return () => unsubscribe();
   }, [isPairedAwayCoach, ownerScopeForSubscribe, matchId]);
 
+  // Auto-claim při idle — pokud jsem otevřel zápas v klubu/paired a nikdo
+  // aktivně needituje, automaticky se stanu editorem. Tím se skryje matoucí
+  // banner „Nikdo nespravuje" + jiný trenér hned uvidí že jsem v zápase.
+  useEffect(() => {
+    if (!needsLock) return;
+    if (lock.status !== 'idle') return;
+    void lock.claim();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsLock, lock.status]);
+
   const handleClaim = useCallback(async () => {
     if (lock.status === 'other' && lock.editor) {
       const ok = await ask({
@@ -345,35 +355,21 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 20 }}>
-        {/* Multi-trainer lock banner — jen pro klubové zápasy.
-            Ukazuje kdo aktuálně "spravuje" zápas + claim tlačítko. */}
-        {needsLock && lock.status !== 'mine' && (
+        {/* Multi-trainer lock banner — jen když zápas aktivně spravuje NĚKDO JINÝ.
+            Pro idle stav automaticky claim-ujeme (níže v useEffect), takže
+            banner se prakticky objeví jen v konfliktu (other/stale). */}
+        {needsLock && (lock.status === 'other' || lock.status === 'stale') && (
           <div style={{
             margin: '10px 16px 0',
             padding: '10px 14px', borderRadius: 12,
-            background: lock.status === 'idle'
-              ? 'var(--surface-var)'
-              : lock.status === 'stale'
-                ? 'var(--warning-light)'
-                : 'var(--danger-light)',
-            border: `1px solid ${lock.status === 'idle'
-              ? 'var(--border)'
-              : lock.status === 'stale'
-                ? 'var(--warning)'
-                : 'var(--danger)'}`,
+            background: lock.status === 'stale'
+              ? 'var(--warning-light)'
+              : 'var(--danger-light)',
+            border: `1px solid ${lock.status === 'stale' ? 'var(--warning)' : 'var(--danger)'}`,
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              {lock.status === 'idle' ? (
-                <>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                    {t('matchLock.idleTitle')}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
-                    {t('matchLock.idleHint')}
-                  </div>
-                </>
-              ) : lock.status === 'stale' ? (
+              {lock.status === 'stale' ? (
                 <>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning)' }}>
                     ⚠️ {t('matchLock.staleTitle', { name: lock.editor?.name || '?' })}
