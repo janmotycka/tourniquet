@@ -108,23 +108,28 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
   };
 
   // ── Open preview modal: image + text, user sám rozhodne jak share ────────
+  // Pokud zápas ještě není public, automaticky ho přepneme — trenér chce
+  // sdílet, tzn. implicitně chce aby link fungoval. Toggle zůstane viditelný
+  // ve ShareMatchSheet, může ho později vypnout.
   const handleOpenSharePreview = async () => {
     if (imageSharing) return;
     setImageSharing(true);
     try {
+      // Auto-enable public sharing pokud není
+      if (!isPublic) {
+        onTogglePublic();
+      }
       const blob = await generateMatchShareImage({
         match,
         clubDisplayName,
         lang: locale,
         clubColor: activeClub?.color,
       });
-      // Text — zahrnuj link VŽDY (pokud není public, link nebude fungovat pro
-      // externí diváky, ale zpráva má smysl i tak). Trenér si může zprávu
-      // zkopírovat a přidat link ručně.
+      // Link vždy — po auto-enable bude fungovat.
       const text = generateMatchSummaryText({
         match,
         clubDisplayName,
-        publicUrl: match.isPublic ? url : undefined,
+        publicUrl: url,
       }, locale);
       const fileName = `${home}-${away}-${match.date}.png`.replace(/\s+/g, '_');
       setPreviewData({ blob, text, fileName });

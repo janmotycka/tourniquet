@@ -85,7 +85,8 @@ export function HomePage({ navigate }: Props) {
     }
     // Klubový mód — vynech individuální zápasy
     if (m.myPlayerId) return false;
-    if (activeClubId && m.clubId && m.clubId !== activeClubId) return false;
+    // 'individual-*' scope = zápas bez klubu (rychlý zápas apod.), nefiltruj ven.
+    if (activeClubId && m.clubId && !m.clubId.startsWith('individual-') && m.clubId !== activeClubId) return false;
     return true;
   }), [allMatchesRaw, preferredSport, activeClubId, isTennisIndividual, myPlayersForFilter]);
   const tournaments = useMemo(

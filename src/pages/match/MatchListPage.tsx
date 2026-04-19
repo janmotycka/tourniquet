@@ -513,11 +513,13 @@ export function MatchListPage({ navigate }: Props) {
   };
 
   // Ukaž jen zápasy vybraného sportu a vybraného klubu (legacy = football).
+  // Výjimka: zápasy se scope 'individual-*' (rychlé zápasy / tenisové individuální)
+  // nepatří žádnému klubu a musí být viditelné bez ohledu na aktivní klub.
   const matches = useMemo(() => {
     return allMatches.filter(m => {
       const mSport = m.sport ?? 'football';
       if (mSport !== preferredSport) return false;
-      if (activeClubId && m.clubId && m.clubId !== activeClubId) return false;
+      if (activeClubId && m.clubId && !m.clubId.startsWith('individual-') && m.clubId !== activeClubId) return false;
       return true;
     });
   }, [allMatches, preferredSport, activeClubId]);
