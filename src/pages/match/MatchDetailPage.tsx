@@ -103,10 +103,12 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
     }
   }, [currentMatch, clubDisplayName, t, locale]);
 
-  // Post-match summary — krátký, WhatsApp-friendly
+  // Post-match summary — krátký, WhatsApp-friendly.
+  // Link vždy — ať si rodič může kliknout na detail. Pokud zápas ještě není
+  // public, link v tu chvíli nezafunguje; trenér si ho zveřejní přes Share.
   const buildSummaryText = useCallback((): string | null => {
     if (!currentMatch) return null;
-    const publicUrl = currentMatch.isPublic ? getMatchPublicUrl(currentMatch.id) : undefined;
+    const publicUrl = getMatchPublicUrl(currentMatch.id);
     // Tennis team match → vlastní formát
     if (currentMatch.sport === 'tennis' && currentMatch.matchType === 'team') {
       const players = activeClub?.players ?? [];
@@ -144,12 +146,13 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
 
   // Nominace — pozvánka rodičům před zápasem. Funguje dokud má lineup > 0
   // a zápas ještě nezačal (typicky se posílá 2-3 dny předem).
+  // Link vždy — ať si rodič klikne na detail / sledování zápasu.
   const buildNominationText = useCallback((): string | null => {
     if (!currentMatch || currentMatch.lineup.length === 0) return null;
     return generateNominationText({
       match: currentMatch,
       clubDisplayName,
-      publicUrl: currentMatch.isPublic ? getMatchPublicUrl(currentMatch.id) : undefined,
+      publicUrl: getMatchPublicUrl(currentMatch.id),
     }, locale);
   }, [currentMatch, clubDisplayName, locale]);
 

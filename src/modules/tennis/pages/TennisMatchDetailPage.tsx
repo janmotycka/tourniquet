@@ -77,7 +77,7 @@ export function TennisMatchDetailPage({ matchId, navigate }: Props) {
       match: currentMatch,
       clubDisplayName,
       playerNameResolver: (id: string) => players.find(p => p.id === id)?.name ?? null,
-      publicUrl: currentMatch.isPublic ? getMatchPublicUrl(currentMatch.id) : undefined,
+      publicUrl: getMatchPublicUrl(currentMatch.id),
       lang: locale,
     });
   }, [currentMatch, clubDisplayName, activeClub, locale]);
