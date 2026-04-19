@@ -357,7 +357,13 @@
     //     může se libovolný auth user nárokovat (claim) pozici awayCoach
     "matches": {
       "$scopeId": {
+        // Scope-level read: owner nebo klubový člen — umožňuje listovat
+        // všechny zápasy scope. Paired away coach-i tahle větev pokrývá
+        // NE (nejsou v klubu), pro ně platí per-match read níž.
+        ".read":  "auth != null && (auth.uid === $scopeId || root.child('clubs').child($scopeId).child('members').child(auth.uid).exists())",
         "$matchId": {
+          // Per-match read: to samé + paired away coach + join window.
+          // (Parent-level read cascade: pokud projde scope, tohle se neřeší.)
           ".read":  "auth != null && (auth.uid === $scopeId || root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() || data.child('pairing').child('awayCoachUid').val() === auth.uid || (data.child('pairing').child('joinToken').exists() && !data.child('pairing').child('awayCoachUid').exists()))",
           ".write": "auth != null && (auth.uid === $scopeId || (root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() && root.child('clubs').child($scopeId).child('members').child(auth.uid).child('role').val() !== 'viewer') || data.child('pairing').child('awayCoachUid').val() === auth.uid || (data.child('pairing').child('joinToken').exists() && !data.child('pairing').child('awayCoachUid').exists() && newData.child('pairing').child('awayCoachUid').val() === auth.uid))"
         }
