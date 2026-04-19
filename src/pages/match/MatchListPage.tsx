@@ -469,8 +469,48 @@ export function MatchListPage({ navigate }: Props) {
   const { isDesktop } = useLayoutMode();
   const allMatches = useMatchesStore(s => s.matches);
   const deleteMatch = useMatchesStore(s => s.deleteMatch);
+  const createMatch = useMatchesStore(s => s.createMatch);
+  const startMatch = useMatchesStore(s => s.startMatch);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
   const activeClubId = useClubsStore(s => s.activeClubId);
+  const clubs = useClubsStore(s => s.clubs);
+
+  // ── Rychlý zápas ─────────────────────────────────────────────────────────
+  // Pro casual / přátelák / plácek — trenér nechce dělat setup (lineup, čas,
+  // soutěž). Jen zadá soupeře a hraje se. Lineup, kategorie apod. se dají doplnit
+  // později (edit), pokud chce zápas uchovat v historii.
+  const handleQuickMatch = () => {
+    if (preferredSport === 'tennis') {
+      navigate({ name: 'match-create' });
+      return;
+    }
+    const opponent = window.prompt(t('match.list.quickMatchPrompt'), '');
+    if (opponent === null) return; // user cancelled
+    const activeClub = clubs.find(c => c.id === activeClubId);
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    // Reasonable defaults pro U11 youth football
+    const match = createMatch({
+      sport: 'football',
+      matchType: 'single',
+      clubId: activeClub?.id ?? 'individual-quick',
+      clubName: activeClub?.name,
+      opponent: (opponent || '').trim() || t('match.list.quickMatchDefaultOpponent'),
+      isHome: true,
+      date: today,
+      kickoffTime: timeStr,
+      competition: '',
+      durationMinutes: 60,
+      periods: 2,
+      periodDurationMinutes: 30,
+      matchFormat: '7+1',
+      lineup: [],
+      trackAssists: false,
+    });
+    startMatch(match.id);
+    navigate({ name: 'match-detail', matchId: match.id });
+  };
 
   // Ukaž jen zápasy vybraného sportu a vybraného klubu (legacy = football).
   const matches = useMemo(() => {
@@ -683,6 +723,22 @@ export function MatchListPage({ navigate }: Props) {
               >
                 📊
               </button>
+              {preferredSport === 'football' && (
+                <button
+                  onClick={handleQuickMatch}
+                  disabled={matches.length >= limits.maxMatches}
+                  style={{
+                    background: 'var(--surface-var)', color: 'var(--text)', borderRadius: 12,
+                    padding: '10px 12px', fontWeight: 700, fontSize: 13,
+                    border: '1.5px solid var(--border)',
+                    opacity: matches.length >= limits.maxMatches ? 0.5 : 1,
+                    cursor: matches.length >= limits.maxMatches ? 'not-allowed' : 'pointer',
+                  }}
+                  title={t('match.list.quickMatchHint')}
+                >
+                  ⚡ {t('match.list.quickMatch')}
+                </button>
+              )}
               <button
                 onClick={() => navigate({ name: 'match-create' })}
                 style={{

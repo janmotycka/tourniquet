@@ -15,6 +15,9 @@ import type { SeasonMatch } from '../../types/match.types';
 import { useToastStore } from '../../store/toast.store';
 import { useMatchesStore } from '../../store/matches.store';
 import { useAuth } from '../../context/AuthContext';
+import { useClubsStore } from '../../store/clubs.store';
+import { generateMatchShareImage, shareMatchImage } from '../../utils/match-share-image';
+import { generateMatchSummaryText } from '../../utils/match-summary';
 
 interface Props {
   match: SeasonMatch;
@@ -33,9 +36,12 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
   const [pairingOpen, setPairingOpen] = useState(false);
   const [pairingBusy, setPairingBusy] = useState(false);
   const [pairingData, setPairingData] = useState<{ pin: string; joinUrl: string } | null>(null);
+  const [imageSharing, setImageSharing] = useState(false);
   const createMatchPairingInvite = useMatchesStore(s => s.createMatchPairingInvite);
   const revokeMatchPairingInvite = useMatchesStore(s => s.revokeMatchPairingInvite);
   const unlinkMatchPairing = useMatchesStore(s => s.unlinkMatchPairing);
+  const activeClub = useClubsStore(s => s.clubs.find(c => c.id === match.clubId));
+  const locale = (useI18n().locale as 'cs' | 'en' | 'de') ?? 'cs';
 
   const pairing = match.pairing;
   const isPaired = !!(pairing?.awayCoachUid);
@@ -97,6 +103,36 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
     const subject = t('matchShare.emailSubject', { home, away });
     const body = buildWhatsappMessage();
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  // ── Share jako obrázek + text (Web Share API) ────────────────────────────
+  const handleShareImage = async () => {
+    if (imageSharing) return;
+    setImageSharing(true);
+    try {
+      const blob = await generateMatchShareImage({
+        match,
+        clubDisplayName,
+        lang: locale,
+        clubColor: activeClub?.color,
+      });
+      const text = generateMatchSummaryText({
+        match,
+        clubDisplayName,
+        publicUrl: match.isPublic ? url : undefined,
+      }, locale);
+      const fileName = `${home}-${away}-${match.date}.png`.replace(/\s+/g, '_');
+      const shared = await shareMatchImage(blob, text, fileName);
+      if (shared) {
+        useToastStore.getState().show('success', t('matchShare.imageShared'));
+      }
+    } catch (err) {
+      useToastStore.getState().show('error', t('matchShare.imageFailed'));
+      // eslint-disable-next-line no-console
+      console.error('[ShareMatchSheet] generateMatchShareImage failed:', err);
+    } finally {
+      setImageSharing(false);
+    }
   };
 
   // ─── Cross-team pairing handlers ──────────────────────────────────────────
@@ -494,7 +530,29 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
                 </button>
               </div>
 
-              {/* Share buttons */}
+              {/* Primární CTA: share jako obrázek + text (Web Share API).
+                  Na mobilu otevře chooser (WhatsApp, Messages, e-mail) s připojeným obrázkem. */}
+              <button
+                onClick={handleShareImage}
+                disabled={imageSharing}
+                style={{
+                  width: '100%', marginBottom: 10,
+                  padding: '14px', borderRadius: 12,
+                  background: imageSharing
+                    ? 'var(--surface-var)'
+                    : 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+                  color: imageSharing ? 'var(--text-muted)' : '#fff',
+                  border: 'none', cursor: imageSharing ? 'default' : 'pointer',
+                  fontWeight: 800, fontSize: 14,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  boxShadow: imageSharing ? 'none' : '0 4px 12px rgba(37,211,102,.3)',
+                }}
+              >
+                <span style={{ fontSize: 20 }}>{imageSharing ? '⏳' : '📷'}</span>
+                {imageSharing ? t('matchShare.generatingImage') : t('matchShare.shareAsImage')}
+              </button>
+
+              {/* Share buttons — textová/link varianta (pro fallback + desktop) */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
                 <button
                   onClick={handleWhatsApp}
