@@ -90,9 +90,14 @@ export function CreateMatchPage({ navigate }: Props) {
 
   // Smart defaults: pre-fill from the most recent match
   const lastMatch = useMemo(() => {
-    if (allMatches.length === 0) return null;
-    // Defensive: createdAt může chybět u starých zápasů / po Firebase round-trip
-    return [...allMatches].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0];
+    // Defensive: filter out nullish entries, fallback na '' pro missing createdAt
+    const valid = allMatches.filter(m => m != null);
+    if (valid.length === 0) return null;
+    return [...valid].sort((a, b) => {
+      const ac = a?.createdAt ?? '';
+      const bc = b?.createdAt ?? '';
+      return bc.localeCompare(ac);
+    })[0];
   }, [allMatches]);
 
   // Historie zadaných hodnot — nabídneme ve <datalist> jako našeptávač.
@@ -212,8 +217,12 @@ export function CreateMatchPage({ navigate }: Props) {
     // Smart defaults podle kategorie — najdi poslední zápas v této kategorii
     // a nastav format/délku periody podle něj (U9 má obvykle 5+1, Muži 11+1 atd.)
     const lastInCategory = [...allMatches]
-      .filter(m => m.ageCategory === cat)
-      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0];
+      .filter(m => m != null && m.ageCategory === cat)
+      .sort((a, b) => {
+        const ac = a?.createdAt ?? '';
+        const bc = b?.createdAt ?? '';
+        return bc.localeCompare(ac);
+      })[0];
     if (lastInCategory) {
       if (lastInCategory.matchFormat) setMatchFormat(lastInCategory.matchFormat);
       if (lastInCategory.periods) setPeriods(lastInCategory.periods);
