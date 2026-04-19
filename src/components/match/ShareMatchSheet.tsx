@@ -16,8 +16,9 @@ import { useToastStore } from '../../store/toast.store';
 import { useMatchesStore } from '../../store/matches.store';
 import { useAuth } from '../../context/AuthContext';
 import { useClubsStore } from '../../store/clubs.store';
-import { generateMatchShareImage, shareMatchImage } from '../../utils/match-share-image';
+import { generateMatchShareImage } from '../../utils/match-share-image';
 import { generateMatchSummaryText } from '../../utils/match-summary';
+import { SharePreviewModal } from './SharePreviewModal';
 
 interface Props {
   match: SeasonMatch;
@@ -37,6 +38,7 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
   const [pairingBusy, setPairingBusy] = useState(false);
   const [pairingData, setPairingData] = useState<{ pin: string; joinUrl: string } | null>(null);
   const [imageSharing, setImageSharing] = useState(false);
+  const [previewData, setPreviewData] = useState<{ blob: Blob; text: string; fileName: string } | null>(null);
   const createMatchPairingInvite = useMatchesStore(s => s.createMatchPairingInvite);
   const revokeMatchPairingInvite = useMatchesStore(s => s.revokeMatchPairingInvite);
   const unlinkMatchPairing = useMatchesStore(s => s.unlinkMatchPairing);
@@ -105,8 +107,8 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
-  // ── Share jako obrázek + text (Web Share API) ────────────────────────────
-  const handleShareImage = async () => {
+  // ── Open preview modal: image + text, user sám rozhodne jak share ────────
+  const handleOpenSharePreview = async () => {
     if (imageSharing) return;
     setImageSharing(true);
     try {
@@ -116,16 +118,16 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
         lang: locale,
         clubColor: activeClub?.color,
       });
+      // Text — zahrnuj link VŽDY (pokud není public, link nebude fungovat pro
+      // externí diváky, ale zpráva má smysl i tak). Trenér si může zprávu
+      // zkopírovat a přidat link ručně.
       const text = generateMatchSummaryText({
         match,
         clubDisplayName,
         publicUrl: match.isPublic ? url : undefined,
       }, locale);
       const fileName = `${home}-${away}-${match.date}.png`.replace(/\s+/g, '_');
-      const shared = await shareMatchImage(blob, text, fileName);
-      if (shared) {
-        useToastStore.getState().show('success', t('matchShare.imageShared'));
-      }
+      setPreviewData({ blob, text, fileName });
     } catch (err) {
       useToastStore.getState().show('error', t('matchShare.imageFailed'));
       // eslint-disable-next-line no-console
@@ -530,10 +532,9 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
                 </button>
               </div>
 
-              {/* Primární CTA: share jako obrázek + text (Web Share API).
-                  Na mobilu otevře chooser (WhatsApp, Messages, e-mail) s připojeným obrázkem. */}
+              {/* Primární CTA: otevřít preview modal s obrázkem + textem */}
               <button
-                onClick={handleShareImage}
+                onClick={handleOpenSharePreview}
                 disabled={imageSharing}
                 style={{
                   width: '100%', marginBottom: 10,
@@ -614,6 +615,16 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
           )}
         </div>
       </div>
+
+      {/* Preview modal — ukáže obrázek + text + tlačítka (sdílet/download/copy) */}
+      {previewData && (
+        <SharePreviewModal
+          imageBlob={previewData.blob}
+          textMessage={previewData.text}
+          fileName={previewData.fileName}
+          onClose={() => setPreviewData(null)}
+        />
+      )}
     </div>
   );
 }

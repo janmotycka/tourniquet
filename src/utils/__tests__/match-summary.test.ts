@@ -55,11 +55,11 @@ describe('generateMatchSummaryText', () => {
     expect(text).toContain('FC Vrchovina 3:1 Rival FC');
     expect(text).toContain('15.4.');
     expect(text).toContain('Liga U11');
-    expect(text).toContain('*Střelci:*');
+    expect(text).toContain('*Naši střelci:*');
     expect(text).toContain('Karel Novák');
     expect(text).toContain("(12', 45')");
     expect(text).toContain('Jakub Dvořák');
-    expect(text).toContain('Soupeř: 1×');
+    expect(text).toContain('*Gól soupeře:* 1×');
     expect(text).toContain('*Karty:*');
     expect(text).toContain('🟨 Tomáš Malý');
   });
@@ -90,14 +90,14 @@ describe('generateMatchSummaryText', () => {
       homeScore: 0, awayScore: 0,
     });
     const text = generateMatchSummaryText({ match, clubDisplayName: 'FC Vrchovina' }, 'cs');
-    expect(text).not.toContain('*Střelci:*');
+    expect(text).not.toContain('*Naši střelci:*');
     expect(text).not.toContain('*Karty:*');
   });
 
   it('includes trainer note when present', () => {
     const match = makeMatch({ note: 'Skvělý výkon kluci, hlavně Karel!' });
     const text = generateMatchSummaryText({ match, clubDisplayName: 'FC Vrchovina' }, 'cs');
-    expect(text).toContain('*Trenér:*');
+    expect(text).toContain('*Od trenéra:*');
     expect(text).toContain('Skvělý výkon kluci, hlavně Karel!');
   });
 
@@ -107,7 +107,7 @@ describe('generateMatchSummaryText', () => {
       clubDisplayName: 'FC Vrchovina',
       publicUrl: 'https://torq.cz/#match=abc',
     }, 'cs');
-    expect(text).toContain('📡 https://torq.cz/#match=abc');
+    expect(text).toContain('https://torq.cz/#match=abc');
   });
 
   it('uses unknown scorer label when scorerId is null', () => {

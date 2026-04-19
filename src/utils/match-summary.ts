@@ -83,9 +83,14 @@ function cardIcon(type: string): string {
 }
 
 /**
- * Formátuje post-match zprávu pro rodiče do WhatsApp — **neutrální tón**.
- * Jen fakta: skóre, týmy, datum, střelci, karty. Trenérova poznámka (match.note)
- * se přidá na konec pokud existuje — tam může dát vlastní slovo pro rodiče.
+ * Formátuje post-match zprávu pro rodiče do WhatsApp.
+ *
+ * Styl je v duchu pozvánky (`generateNominationText`) — bohatý formát s
+ * bullet listy, tučným nadpisem a sekcemi. Jazykově zůstává **neutrální**
+ * (žádné „DRTIVÁ VÝHRA"), ale není strohý.
+ *
+ * Trenérova poznámka (match.note) se přidá pokud existuje — tam může dát
+ * vlastní slovo pro rodiče (děkuji klukům apod.).
  */
 export function generateMatchSummaryText(
   opts: SummaryOptions,
@@ -93,70 +98,122 @@ export function generateMatchSummaryText(
 ): string {
   const { match, clubDisplayName, publicUrl } = opts;
 
+  const labels = lang === 'cs'
+    ? {
+        headerLive: '🔴 *PRŮBĚH ZÁPASU*',
+        headerPlanned: '📅 *NADCHÁZEJÍCÍ ZÁPAS*',
+        headerFinished: '📊 *KONEC ZÁPASU*',
+        result: 'Výsledek',
+        ourScorers: '*Naši střelci:*',
+        opponentGoal: '*Gól soupeře:*',
+        cards: '*Karty:*',
+        coachNote: '*Od trenéra:*',
+        linkIntro: 'Detail zápasu:',
+        unknown: 'Neznámý',
+        opponentLabel: 'Soupeř',
+        vs: 'vs',
+      }
+    : lang === 'de'
+    ? {
+        headerLive: '🔴 *SPIELVERLAUF*',
+        headerPlanned: '📅 *KOMMENDES SPIEL*',
+        headerFinished: '📊 *SPIELENDE*',
+        result: 'Ergebnis',
+        ourScorers: '*Unsere Torschützen:*',
+        opponentGoal: '*Tor des Gegners:*',
+        cards: '*Karten:*',
+        coachNote: '*Vom Trainer:*',
+        linkIntro: 'Details zum Spiel:',
+        unknown: 'Unbekannt',
+        opponentLabel: 'Gegner',
+        vs: 'vs',
+      }
+    : {
+        headerLive: '🔴 *MATCH IN PROGRESS*',
+        headerPlanned: '📅 *UPCOMING MATCH*',
+        headerFinished: '📊 *FULL TIME*',
+        result: 'Result',
+        ourScorers: '*Our scorers:*',
+        opponentGoal: '*Opponent goal:*',
+        cards: '*Cards:*',
+        coachNote: '*Coach note:*',
+        linkIntro: 'Match details:',
+        unknown: 'Unknown',
+        opponentLabel: 'Opponent',
+        vs: 'vs',
+      };
+
   const homeTeam = match.isHome ? clubDisplayName : match.opponent;
   const awayTeam = match.isHome ? match.opponent : clubDisplayName;
 
   const lines: string[] = [];
 
-  // Hlavička — neutrální výsledek (bez hype jazyka)
-  lines.push(`⚽ *${homeTeam} ${match.homeScore}:${match.awayScore} ${awayTeam}*`);
+  // Header podle statusu zápasu
+  const header = match.status === 'finished'
+    ? labels.headerFinished
+    : match.status === 'live'
+      ? labels.headerLive
+      : labels.headerPlanned;
+  lines.push(header);
+
+  // Skóre / matchup
+  if (match.status === 'planned') {
+    lines.push(`⚽ *${homeTeam} ${labels.vs} ${awayTeam}*`);
+  } else {
+    lines.push(`⚽ *${homeTeam} ${match.homeScore}:${match.awayScore} ${awayTeam}*`);
+  }
 
   // Meta (datum, čas, soutěž, kategorie, místo)
   const metaBits: string[] = [];
   metaBits.push(`📅 ${formatShortDate(match.date)}${match.kickoffTime ? ' ' + match.kickoffTime : ''}`);
   if (match.competition) metaBits.push(`🏆 ${match.competition}`);
   if (match.ageCategory) metaBits.push(`👶 ${match.ageCategory}`);
-  if (match.venue) metaBits.push(`📍 ${match.venue}`);
   lines.push(metaBits.join(' · '));
+  if (match.venue) lines.push(`📍 ${match.venue}`);
 
   // Naši střelci
   const { ours, theirs } = aggregateScorers(match);
-  const labelGoals = lang === 'cs' ? '*Střelci:*' : lang === 'de' ? '*Torschützen:*' : '*Scorers:*';
-  const labelOpponentGoals = lang === 'cs' ? 'Soupeř' : lang === 'de' ? 'Gegner' : 'Opponent';
-  const labelUnknown = lang === 'cs' ? 'Neznámý' : lang === 'de' ? 'Unbekannt' : 'Unknown';
 
-  if (ours.length > 0 || theirs > 0) {
+  if (ours.length > 0) {
     lines.push('');
-    lines.push(labelGoals);
-    // Naši
+    lines.push(labels.ourScorers);
     const sortedOurs = [...ours].sort((a, b) => a.minutes[0] - b.minutes[0]);
     for (const s of sortedOurs) {
       const mins = s.minutes.map(m => `${m}'`).join(', ');
-      const name = s.name === 'Neznámý' ? labelUnknown : s.name;
-      const bonus = s.minutes.length >= 3
-        ? (lang === 'cs' ? ` · ${s.minutes.length}× 🔥` : lang === 'de' ? ` · ${s.minutes.length}× 🔥` : ` · ${s.minutes.length}× 🔥`)
-        : '';
-      lines.push(`⚽ ${name} (${mins})${bonus}`);
+      const name = s.name === 'Neznámý' ? labels.unknown : s.name;
+      const bonus = s.minutes.length >= 3 ? ` · ${s.minutes.length}× 🔥` : '';
+      lines.push(`• ${name} (${mins})${bonus}`);
     }
-    if (theirs > 0) {
-      lines.push(`⚽ ${labelOpponentGoals}: ${theirs}×`);
-    }
+  }
+  if (theirs > 0) {
+    lines.push('');
+    lines.push(`${labels.opponentGoal} ${theirs}×`);
   }
 
   // Karty — jen pokud jsou
   const cards = formatCards(match);
   if (cards.length > 0) {
-    const labelCards = lang === 'cs' ? '*Karty:*' : lang === 'de' ? '*Karten:*' : '*Cards:*';
     lines.push('');
-    lines.push(labelCards);
+    lines.push(labels.cards);
     for (const c of cards) {
-      const name = playerName(match, c.playerId) ?? labelUnknown;
+      const name = playerName(match, c.playerId) ?? labels.unknown;
       lines.push(`${cardIcon(c.type)} ${name} (${c.minute}')`);
     }
   }
 
-  // Trenérova poznámka — jeho vlastní slovo pro rodiče (pokud zapsal).
+  // Trenérova poznámka
   if (match.note && match.note.trim()) {
-    const labelNote = lang === 'cs' ? '*Trenér:*' : lang === 'de' ? '*Trainer:*' : '*Coach:*';
     lines.push('');
-    lines.push(labelNote);
+    lines.push(labels.coachNote);
     lines.push(match.note.trim());
   }
 
-  // Link na detail
+  // Link na detail — **vždy přiložit pokud je k dispozici**, to je primární
+  // hodnota pro rodiče: kliknou a vidí real-time statistiky i po zápase.
   if (publicUrl) {
     lines.push('');
-    lines.push(`📡 ${publicUrl}`);
+    lines.push(`📱 ${labels.linkIntro}`);
+    lines.push(publicUrl);
   }
 
   return lines.join('\n');
