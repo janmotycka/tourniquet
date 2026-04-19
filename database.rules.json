@@ -340,11 +340,16 @@
     },
 
     // ─── Veřejný zápas (sdílení s rodiči) ──────────────────────────────────
-    // Čtení: kdokoli; Zápis: pouze vlastník zápasu
+    // Čtení: kdokoli; Zápis: vlastník zápasu napříč scope (legacy uid + klubový).
     "public-matches": {
       "$matchId": {
         ".read": true,
-        ".write": "auth != null && root.child('matches').child(auth.uid).child($matchId).exists()"
+        ".write": "auth != null && (
+          root.child('matches').child(auth.uid).child($matchId).exists() ||
+          root.child('match-catalog').child($matchId).child('ownerUid').val() === auth.uid ||
+          (!data.exists() && newData.child('ownerUid').val() === auth.uid) ||
+          (data.exists() && data.child('ownerUid').val() === auth.uid)
+        )"
       }
     },
 

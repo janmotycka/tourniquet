@@ -53,6 +53,10 @@ function normalizeMatch(raw: Record<string, unknown>): SeasonMatch {
       })
     : undefined;
 
+  // Některé starší záznamy v Firebase nemají createdAt/updatedAt (před zavedením
+  // těchto polí). Používají se jako sort klíče, takže musí být string.
+  const fallbackISO = new Date(0).toISOString();
+
   return {
     ...raw,
     lineup: ensureArray(raw.lineup),
@@ -68,6 +72,8 @@ function normalizeMatch(raw: Record<string, unknown>): SeasonMatch {
     startedAt: (raw.startedAt as string) ?? null,
     pausedAt: (raw.pausedAt as string) ?? null,
     finishedAt: (raw.finishedAt as string) ?? null,
+    createdAt: (raw.createdAt as string) ?? fallbackISO,
+    updatedAt: (raw.updatedAt as string) ?? fallbackISO,
   } as SeasonMatch;
 }
 

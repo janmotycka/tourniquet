@@ -91,7 +91,8 @@ export function CreateMatchPage({ navigate }: Props) {
   // Smart defaults: pre-fill from the most recent match
   const lastMatch = useMemo(() => {
     if (allMatches.length === 0) return null;
-    return [...allMatches].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    // Defensive: createdAt může chybět u starých zápasů / po Firebase round-trip
+    return [...allMatches].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0];
   }, [allMatches]);
 
   // Historie zadaných hodnot — nabídneme ve <datalist> jako našeptávač.
@@ -212,7 +213,7 @@ export function CreateMatchPage({ navigate }: Props) {
     // a nastav format/délku periody podle něj (U9 má obvykle 5+1, Muži 11+1 atd.)
     const lastInCategory = [...allMatches]
       .filter(m => m.ageCategory === cat)
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0];
     if (lastInCategory) {
       if (lastInCategory.matchFormat) setMatchFormat(lastInCategory.matchFormat);
       if (lastInCategory.periods) setPeriods(lastInCategory.periods);
