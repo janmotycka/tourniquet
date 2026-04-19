@@ -152,9 +152,12 @@ export function TennisClubsPage({ navigate }: Props) {
 
   const handleDeleteClub = async () => {
     const ok = await ask({
-      title: t('common.delete'),
-      message: t('clubs.deleteConfirm', { name: myClub.name }),
+      title: t('clubs.deleteTitle'),
+      message: t('clubs.deleteConfirmHard', { name: myClub.name }),
       destructive: true,
+      confirmLabel: t('clubs.deleteBtnFinal'),
+      requireTypeText: myClub.name,
+      requireTypeTextLabel: t('confirm.typeToConfirm', { text: myClub.name }),
     });
     if (ok) await deleteClub(myClub.id);
   };

@@ -18,6 +18,14 @@ export interface ConfirmOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   destructive?: boolean;
+  /**
+   * Extra ochrana pro ničivé akce — uživatel musí přepsat tento text
+   * (case-sensitive) do inputu, aby se odemklo Confirm tlačítko.
+   * Typicky: název klubu, „SMAZAT" apod.
+   */
+  requireTypeText?: string;
+  /** Popisek labelu nad inputem. Default „Pro potvrzení napiš: {text}". */
+  requireTypeTextLabel?: string;
 }
 
 interface ConfirmState {
