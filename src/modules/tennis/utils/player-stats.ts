@@ -51,7 +51,7 @@ export function computePlayerStats(
   let totalSetsAll = 0;
 
   // Seřaď zápasy chronologicky pro výpočet streaku (starší → novější)
-  const sorted = [...matches].sort((a, b) => a.date.localeCompare(b.date));
+  const sorted = [...matches].sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
   let currentStreak = 0;
   let bestStreak = 0;
 

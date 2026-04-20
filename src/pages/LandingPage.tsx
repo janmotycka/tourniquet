@@ -156,7 +156,7 @@ export function LandingPage({ navigate, onLogin }: Props) {
 
   const allFinished = filtered
     .filter(i => i.status === 'finished')
-    .sort((a, b) => b.data.updatedAt.localeCompare(a.data.updatedAt));
+    .sort((a, b) => (b.data.updatedAt ?? '').localeCompare(a.data.updatedAt ?? ''));
 
   const recent = allFinished.filter(i => {
     const dateStr = i.kind === 'tournament' ? i.data.startDate : i.data.date;

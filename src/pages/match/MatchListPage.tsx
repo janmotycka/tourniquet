@@ -545,7 +545,7 @@ export function MatchListPage({ navigate }: Props) {
       const oa = order[a.status] ?? 99;
       const ob = order[b.status] ?? 99;
       if (oa !== ob) return oa - ob;
-      return b.date.localeCompare(a.date);
+      return (b.date ?? '').localeCompare(a.date ?? '');
     });
   }, [matches]);
 

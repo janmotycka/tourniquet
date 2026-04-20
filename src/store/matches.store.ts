@@ -212,7 +212,9 @@ export const useMatchesStore = create<MatchesState>()(
         const uid = get().firebaseUid;
         if (!uid) return;
         const match = get().matches.find(m => m.id === matchId);
-        if (!match || match.activeEditor?.uid !== uid) return;
+        // Guard: bez activeEditor (null) nebylo co refreshovat. Bez tohoto
+        // by se {...null} zapsal do Firebase a vznikl by stub bez uid/name.
+        if (!match || !match.activeEditor || match.activeEditor.uid !== uid) return;
         const scope = match.clubId && !match.clubId.startsWith('individual-') ? match.clubId : uid;
         const updated = {
           ...match.activeEditor,

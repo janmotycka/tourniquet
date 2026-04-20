@@ -81,7 +81,7 @@ export function TennisMatchListPage({ navigate }: Props) {
       const oa = order[effectiveStatus(a)] ?? 99;
       const ob = order[effectiveStatus(b)] ?? 99;
       if (oa !== ob) return oa - ob;
-      return b.date.localeCompare(a.date);
+      return (b.date ?? '').localeCompare(a.date ?? '');
     });
   }, [matches]);
 

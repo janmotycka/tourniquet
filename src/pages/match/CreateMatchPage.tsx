@@ -182,7 +182,11 @@ export function CreateMatchPage({ navigate }: Props) {
     } else if (activePlayers.length > 0) {
       rosterPlayers = activePlayers.map(p => ({ id: p.id, name: p.name, jerseyNumber: p.jerseyNumber }));
     } else {
-      rosterPlayers = (club.defaultPlayers ?? []).map((p, i) => ({ id: `default-${i}`, name: p.name, jerseyNumber: p.jerseyNumber }));
+      // Legacy fallback — `defaultPlayers` už nepoužíváme. Pokud klub nemá žádné
+      // hráče, necháme lineup prázdný; user musí nejdřív přidat hráče do klubu.
+      // (Dřívější fallback generoval synthetic ID "default-N" co nikdy nematchl
+      //  ClubPlayer → rozbíjel statistiky/ratings.)
+      rosterPlayers = [];
     }
     const sorted = rosterPlayers.sort((a, b) => a.jerseyNumber - b.jerseyNumber);
     const maxStarters = starterCount;
@@ -844,7 +848,7 @@ export function CreateMatchPage({ navigate }: Props) {
   const previousMatches = useMemo(() =>
     allMatches
       .filter(m => m.clubId === selectedClubId && m.lineup.length > 0)
-      .sort((a, b) => b.date.localeCompare(a.date))
+      .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
       .slice(0, 5),
     [allMatches, selectedClubId],
   );

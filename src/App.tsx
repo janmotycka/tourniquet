@@ -160,7 +160,10 @@ function AppRouter() {
   // Členství v klubech — určuje scope pro multi-trainer sdílení zápasů.
   // Když přibude/ubere klub → znovu subscribneme matches ve všech scope.
   const memberOfClubs = useClubsStore(s => s.memberOfClubs);
-  const memberClubIdsKey = Object.keys(memberOfClubs).sort().join(',');
+  // Stable string ref pro useEffect deps. Pipe oddělovač protože clubId
+  // teoreticky může obsahovat čárku (Firebase push-id obvykle ne, ale zbytečně
+  // fragilní; pipe v Firebase push-id neexistuje).
+  const memberClubIdsKey = Object.keys(memberOfClubs).sort().join('|');
 
   // Po přihlášení načteme data z Firebase + subscription listener + kontakty
   // Anonymní uživatelé (spolupořadatelé) potřebují jen firebaseUid pro joinTournament

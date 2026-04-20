@@ -39,7 +39,7 @@ export function TennisPlayerDetailPage({ playerId, navigate }: Props) {
   const playerMatches = useMemo(
     () => allMatches
       .filter(m => (m.sport ?? 'football') === 'tennis' && m.myPlayerId === playerId)
-      .sort((a, b) => b.date.localeCompare(a.date)),
+      .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? '')),
     [allMatches, playerId],
   );
 

@@ -191,8 +191,8 @@ export function computeTeamStats(
   let wins = 0, draws = 0, losses = 0;
   let goalsFor = 0, goalsAgainst = 0, cleanSheets = 0;
 
-  // Seřaď podle data pro formu
-  const sorted = [...finished].sort((a, b) => a.date.localeCompare(b.date));
+  // Seřaď podle data pro formu (defensive — date může chybět u partial záznamů)
+  const sorted = [...finished].sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
 
   const form: ('W' | 'D' | 'L')[] = [];
 

@@ -1,13 +1,33 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+// Mock Firebase config module — zabrání initializeApp s prázdnými env vars v CI
+vi.mock('../../firebase', () => ({
+  db: {},
+  auth: {},
+  functions: {},
+  app: {},
+  googleProvider: {},
+  firebaseConnected: false,
+}));
+
+// Mock firebase/functions — matches.store importuje httpsCallable pro pairing CF
+vi.mock('firebase/functions', () => ({
+  httpsCallable: vi.fn(() => vi.fn().mockResolvedValue({ data: {} })),
+  getFunctions: vi.fn(),
+}));
+
 // Mock Firebase service — prevent any real Firebase calls
 vi.mock('../../services/match.firebase', () => ({
   saveMatchToFirebase: vi.fn().mockResolvedValue(undefined),
   deleteMatchFromFirebase: vi.fn().mockResolvedValue(undefined),
   loadMatchesFromFirebase: vi.fn().mockResolvedValue([]),
+  subscribeToMatchesMultiScope: vi.fn(() => () => {}),
   deletePublicMatch: vi.fn().mockResolvedValue(undefined),
   saveMatchCatalogEntry: vi.fn().mockResolvedValue(undefined),
   deleteMatchCatalogEntry: vi.fn().mockResolvedValue(undefined),
+  updateMatchActiveEditor: vi.fn().mockResolvedValue(undefined),
+  writeMatchPairing: vi.fn().mockResolvedValue(undefined),
+  writeMatchPairingAuth: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../utils/logger', () => ({

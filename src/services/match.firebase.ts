@@ -302,10 +302,14 @@ export function subscribeToPublicMatch(
 /**
  * Filter "stub" záznamů — Firebase může mít partial záznamy pokud se někdy
  * zapisoval jen sub-field (např. activeEditor) do neexistujícího matche.
- * Validní match MUSÍ mít aspoň `id` + `date`.
+ * Validní match MUSÍ mít všechna povinná pole, aby downstream readers
+ * nepadali na `undefined.toLowerCase()` / `.localeCompare` apod.
  */
 function isValidMatch(m: Partial<SeasonMatch>): m is SeasonMatch {
-  return typeof m.id === 'string' && typeof m.date === 'string' && m.date.length > 0;
+  return typeof m.id === 'string' && m.id.length > 0
+    && typeof m.date === 'string' && m.date.length > 0
+    && typeof m.opponent === 'string'
+    && typeof m.clubId === 'string' && m.clubId.length > 0;
 }
 
 /** Načte všechny zápasy z daného scope (uid nebo clubId). */
@@ -334,25 +338,37 @@ export function subscribeToMatchesMultiScope(
 
   // Map scope → matches[] (udržujeme aktuální state z každého scope)
   const byScope = new Map<string, SeasonMatch[]>();
+  // Map matchId → scope, kde byl match uložen. Při tie v updatedAt vyhraje
+  // kanonický scope = match.clubId (ne legacy uid scope).
   const emit = () => {
-    // Merge pravidlo: pokud existují duplicity v různých scope (legacy per-user
-    // + klubový scope po migraci), **vyhraje nejnovější podle `updatedAt`**.
-    // To zabraňuje, aby zastaralá legacy verze přepsala aktuální klubovou.
-    const merged = new Map<string, SeasonMatch>();
-    for (const list of byScope.values()) {
+    // Merge pravidlo:
+    //   1) Pokud existují duplicity v různých scope (legacy per-user + klubový
+    //      scope po migraci), **vyhraje nejnovější podle `updatedAt`**.
+    //   2) Pokud se updatedAt shoduje (tie), vyhraje varianta ze scope, který
+    //      odpovídá `match.clubId` (kanonický klubový scope). To brání tomu,
+    //      aby zastaralá legacy verze přepsala aktuální klubovou při ties.
+    const merged = new Map<string, { match: SeasonMatch; scope: string }>();
+    for (const [scope, list] of byScope) {
       for (const m of list) {
         const existing = merged.get(m.id);
         if (!existing) {
-          merged.set(m.id, m);
-        } else {
-          // Vyhraje větší updatedAt (ISO string porovnání je správné lex-ordering)
-          const a = existing.updatedAt ?? '';
-          const b = m.updatedAt ?? '';
-          if (b >= a) merged.set(m.id, m);
+          merged.set(m.id, { match: m, scope });
+          continue;
+        }
+        const a = existing.match.updatedAt ?? '';
+        const b = m.updatedAt ?? '';
+        if (b > a) {
+          merged.set(m.id, { match: m, scope });
+        } else if (b === a) {
+          // Tie break: preferuj scope === match.clubId (kanonický).
+          const canonical = m.clubId && !m.clubId.startsWith('individual-') ? m.clubId : null;
+          if (canonical && scope === canonical && existing.scope !== canonical) {
+            merged.set(m.id, { match: m, scope });
+          }
         }
       }
     }
-    callback([...merged.values()]);
+    callback([...merged.values()].map(e => e.match));
   };
 
   const handlers: Array<{ r: ReturnType<typeof matchesRef>; h: (s: DataSnapshot) => void }> = [];
