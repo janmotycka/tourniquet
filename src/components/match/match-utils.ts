@@ -17,11 +17,26 @@ export function formatTime(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-export function formatDate(dateStr: string | null | undefined): string {
+/**
+ * Formátuje ISO datum (`YYYY-MM-DD`) podle jazyka.
+ * - cs: 15.4.2026 (default)
+ * - en: 15 Apr 2026
+ * - de: 15.04.2026
+ *
+ * Pokud je vstup null/undefined/neplatný, vrací „—".
+ */
+export function formatDate(dateStr: string | null | undefined, lang: 'cs' | 'en' | 'de' = 'cs'): string {
   if (typeof dateStr !== 'string' || !dateStr) return '—';
   const parts = dateStr.split('-');
   if (parts.length !== 3) return dateStr;
   const [y, m, d] = parts;
+  if (lang === 'en') {
+    try {
+      return new Date(Number(y), Number(m) - 1, Number(d))
+        .toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch { /* fallback */ }
+  }
+  if (lang === 'de') return `${d.padStart(2, '0')}.${m.padStart(2, '0')}.${y}`;
   return `${d}.${m}.${y}`;
 }
 

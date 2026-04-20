@@ -472,6 +472,9 @@ function Step2Variants({
   ceremonyMin: number;
   t: (k: string) => string;
 }) {
+  // Hooks musí být volané vždy ve stejném pořadí — nesmí být po early returnu.
+  const [filters, setFilters] = useState<Record<string, boolean>>({});
+
   if (variants.length === 0) {
     return (
       <div style={cardContainerStyle}>
@@ -490,9 +493,6 @@ function Step2Variants({
       </div>
     );
   }
-
-  // ── Filter chips ──────────────────────────────────────────────────────
-  const [filters, setFilters] = useState<Record<string, boolean>>({});
 
   const toggleFilter = (key: string) => {
     setFilters(prev => {

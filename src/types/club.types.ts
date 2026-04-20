@@ -111,6 +111,8 @@ export interface ClubMember {
   role: ClubRole;
   joinedAt: string;       // ISO
   invitedBy?: string;     // uid
+  /** Jméno člena uložené při join (z displayName Firebase Auth). */
+  displayName?: string;
 }
 
 /**

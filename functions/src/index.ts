@@ -12,6 +12,7 @@
 export { createCheckoutSession, createPortalSession } from './stripe';
 export { stripeWebhook } from './webhook';
 export { joinTournamentByPin, verifyTournamentPin } from './tournament-auth';
+export { joinMatchPairingByPin } from './match-pairing';
 export { onNewRegistration, rosterReminder } from './notifications';
 export {
   adminSetSubscription,

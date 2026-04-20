@@ -77,7 +77,31 @@ function normalizeMatch(raw: Record<string, unknown>): SeasonMatch {
   } as SeasonMatch;
 }
 
-/** Převede SeasonMatch na PublicSeasonMatch (GDPR: bez ratings, note, clubId) */
+/**
+ * Redukuje PII v lineupu pro veřejný mirror. Rodiče vidí „Karel N." místo
+ * „Karel Novák" — stačí k rozpoznání vlastního dítěte, ale bez full-text
+ * fulltext PII leaku pro kohokoli s veřejným linkem.
+ * Stripuje i `attendance` a `guestCategory` (může prozrazovat věk / osobní info).
+ */
+function sanitizeLineupForPublic(lineup: SeasonMatch['lineup']): SeasonMatch['lineup'] {
+  return lineup.map(p => {
+    const parts = (p.name ?? '').trim().split(/\s+/);
+    const first = parts[0] ?? '';
+    const rest = parts.slice(1).filter(Boolean);
+    const lastInitials = rest.map(w => (w.charAt(0) + '.').toUpperCase()).join(' ');
+    const publicName = lastInitials ? `${first} ${lastInitials}` : first;
+    return {
+      playerId: p.playerId,
+      name: publicName,
+      jerseyNumber: p.jerseyNumber,
+      isStarter: p.isStarter,
+      substituteOrder: p.substituteOrder,
+      ...(p.position ? { position: p.position } : {}),
+    };
+  });
+}
+
+/** Převede SeasonMatch na PublicSeasonMatch (GDPR: bez ratings, note, clubId, full names) */
 function toPublicMatch(match: SeasonMatch, ownerUid: string): PublicSeasonMatch {
   // Sestava se veřejně skrývá dokud je zápas 'planned', pokud trenér výslovně neřekl jinak
   const visibility = match.lineupVisibility ?? 'atStart';
@@ -104,7 +128,7 @@ function toPublicMatch(match: SeasonMatch, ownerUid: string): PublicSeasonMatch 
     finishedAt: match.finishedAt,
     homeScore: match.homeScore,
     awayScore: match.awayScore,
-    lineup: lineupHidden ? [] : match.lineup,
+    lineup: lineupHidden ? [] : sanitizeLineupForPublic(match.lineup),
     goals: match.goals,
     substitutions: match.substitutions,
     cards: match.cards,
@@ -169,6 +193,8 @@ export async function updateMatchActiveEditor(
 
 const matchPairingRef = (scopeId: string, matchId: string) =>
   ref(db, `matches/${scopeId}/${matchId}/pairing`);
+const matchPairingAuthRef = (matchId: string) =>
+  ref(db, `match-pairing-auth/${matchId}`);
 
 /** Přepíše celý pairing objekt (pro invite create, join claim, unlink). */
 export async function writeMatchPairing(
@@ -186,6 +212,18 @@ export async function writeMatchPairing(
     if (v !== undefined) clean[k] = v;
   }
   await set(matchPairingRef(scopeId, matchId), clean);
+}
+
+/** Zapíše nebo smaže PIN auth uzel. Klient ho NEČTE (rules). */
+export async function writeMatchPairingAuth(
+  matchId: string,
+  auth: { pinHash: string; pinSalt: string } | null,
+): Promise<void> {
+  if (auth === null) {
+    await remove(matchPairingAuthRef(matchId));
+    return;
+  }
+  await set(matchPairingAuthRef(matchId), auth);
 }
 
 /** Load single match (for join flow, když uživatel ještě není předplacen na scope). */
@@ -340,12 +378,6 @@ export function subscribeToMatchesMultiScope(
   return () => {
     for (const { r, h } of handlers) off(r, 'value', h);
   };
-}
-
-/** Backward-compat: subscribe na jeden scope (uid), používá se když nejsou kluby.
- *  @deprecated použij subscribeToMatchesMultiScope */
-export function subscribeToMatches(uid: string, callback: (matches: SeasonMatch[]) => void): () => void {
-  return subscribeToMatchesMultiScope([uid], callback);
 }
 
 // ─── Match Catalog (lightweight index for landing page) ─────────────────────

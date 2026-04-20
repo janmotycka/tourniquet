@@ -7,6 +7,7 @@ import type { ClubPlayer, Club, AgeCategory } from '../types/club.types';
 import { AGE_CATEGORIES_BY_SPORT } from '../types/club.types';
 import type { PlayerStats } from '../utils/player-stats';
 import { useI18n } from '../i18n';
+import { useConfirmStore } from '../store/confirm.store';
 
 interface Props {
   player: ClubPlayer;
@@ -38,10 +39,13 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
   const [moveOpen, setMoveOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  const handleMove = (cat: AgeCategory) => {
+  const handleMove = async (cat: AgeCategory) => {
     if (cat === player.ageCategory) { setMoveOpen(false); return; }
-    const msg = t('clubs.moveCategoryConfirm', { name: player.name, from: player.ageCategory, to: cat });
-    if (window.confirm(msg)) {
+    const ok = await useConfirmStore.getState().ask({
+      title: t('clubs.moveCategoryTitle') || t('clubs.moveCategory'),
+      message: t('clubs.moveCategoryConfirm', { name: player.name, from: player.ageCategory, to: cat }),
+    });
+    if (ok) {
       onMoveCategory?.(cat);
       setMoveOpen(false);
     }

@@ -103,15 +103,15 @@ export function ClubMembersPage({ navigate }: Props) {
         role: m.role,
         joinedAt: m.joinedAt,
         invitedBy: m.invitedBy,
-        displayName: (m as ClubMember & { displayName?: string }).displayName,
+        displayName: m.displayName,
       }));
-      // Self first, then owners, then by joinedAt
+      // Self first, then owners, then by joinedAt (defensive — joinedAt může chybět)
       list.sort((a, b) => {
         if (a.uid === user?.uid) return -1;
         if (b.uid === user?.uid) return 1;
         if (a.role === 'owner' && b.role !== 'owner') return -1;
         if (b.role === 'owner' && a.role !== 'owner') return 1;
-        return a.joinedAt.localeCompare(b.joinedAt);
+        return (a.joinedAt ?? '').localeCompare(b.joinedAt ?? '');
       });
       setMembers(list);
     });

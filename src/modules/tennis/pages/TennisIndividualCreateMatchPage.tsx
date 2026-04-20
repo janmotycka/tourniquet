@@ -10,7 +10,7 @@
  *  - ČTenis URL pro propojení
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Page } from '../../../App';
 import { useI18n } from '../../../i18n';
 import { useMyPlayersStore } from '../store/myPlayers.store';
@@ -55,8 +55,9 @@ export function TennisIndividualCreateMatchPage({ navigate }: Props) {
   const selectedPlayer = sortedPlayers.find(p => p.id === myPlayerId);
   const canSave = myPlayerId && opponent.trim().length > 0;
 
-  // Pokud nemáme vybraného hráče, pre-fill kategorii podle jeho
-  useMemo(() => {
+  // Pre-fill kategorii podle vybraného hráče. useMemo byl nesprávně použitý
+  // (setState v memo může způsobit re-render smyčku). useEffect je správně.
+  useEffect(() => {
     if (selectedPlayer?.category && !ageCategory) {
       setAgeCategory(selectedPlayer.category);
     }

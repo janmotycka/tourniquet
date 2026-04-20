@@ -13,6 +13,7 @@ import { getMatchPublicUrl, generateMatchQRCodeDataUrl } from '../../utils/qr-co
 import { formatDate } from './match-utils';
 import type { SeasonMatch } from '../../types/match.types';
 import { useToastStore } from '../../store/toast.store';
+import { useConfirmStore } from '../../store/confirm.store';
 import { useMatchesStore } from '../../store/matches.store';
 import { useAuth } from '../../context/AuthContext';
 import { useClubsStore } from '../../store/clubs.store';
@@ -135,7 +136,7 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
       setPreviewData({ blob, text, fileName });
     } catch (err) {
       useToastStore.getState().show('error', t('matchShare.imageFailed'));
-      // eslint-disable-next-line no-console
+       
       console.error('[ShareMatchSheet] generateMatchShareImage failed:', err);
     } finally {
       setImageSharing(false);
@@ -165,7 +166,12 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
   };
 
   const handleUnlink = async () => {
-    if (!window.confirm(t('matchPairing.confirmUnlink'))) return;
+    const ok = await useConfirmStore.getState().ask({
+      title: t('matchPairing.unlinkButton'),
+      message: t('matchPairing.confirmUnlink'),
+      destructive: true,
+    });
+    if (!ok) return;
     setPairingBusy(true);
     await unlinkMatchPairing(match.id);
     setPairingBusy(false);

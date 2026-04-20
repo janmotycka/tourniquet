@@ -25,6 +25,24 @@ interface Props { navigate: (p: Page) => void; }
 
 type StatusFilter = 'all' | 'planned' | 'live' | 'finished';
 
+/**
+ * Tenisový zápas je "finished" když má aspoň jeden sub-match rozhodnutého vítěze,
+ * "live" pokud má zadané sety (ale ještě ne dokončený), jinak "planned".
+ * Extrahováno mimo komponent — stabilní identita pro useMemo deps.
+ */
+function effectiveStatus(m: SeasonMatch): 'planned' | 'live' | 'finished' {
+  const subs = m.subMatches ?? [];
+  if (subs.length === 0) return 'planned';
+  const hasWinner = subs.some(s => s.winner !== null);
+  const hasSets = subs.some(s => Array.isArray(s.sets) && s.sets.length > 0);
+  if (hasWinner) {
+    const allDecided = subs.every(s => s.winner !== null);
+    return allDecided ? 'finished' : 'live';
+  }
+  if (hasSets) return 'live';
+  return 'planned';
+}
+
 export function TennisMatchListPage({ navigate }: Props) {
   const { t } = useI18n();
   const allMatches = useMatchesStore(s => s.matches);
@@ -57,23 +75,6 @@ export function TennisMatchListPage({ navigate }: Props) {
   }, [allMatches, activeClubId, tennisUserType, myPlayers]);
 
   // Pro tenis určujeme "effective status" z výsledků, ne z match.status.
-  // Tenisový zápas je "finished" když má aspoň jeden sub-match rozhodnutého vítěze,
-  // "live" pokud má zadané sety (ale ještě ne dokončený), jinak "planned".
-  const effectiveStatus = (m: typeof matches[number]): 'planned' | 'live' | 'finished' => {
-    const subs = m.subMatches ?? [];
-    if (subs.length === 0) return 'planned';
-    const hasWinner = subs.some(s => s.winner !== null);
-    // Sety mohou být undefined po Firebase round-tripu — defensive check.
-    const hasSets = subs.some(s => Array.isArray(s.sets) && s.sets.length > 0);
-    if (hasWinner) {
-      // Team match je finished když všechny rozhodnuté; singles když ten jeden.
-      const allDecided = subs.every(s => s.winner !== null);
-      return allDecided ? 'finished' : 'live';
-    }
-    if (hasSets) return 'live';
-    return 'planned';
-  };
-
   const sorted = useMemo(() => {
     const order: Record<string, number> = { live: 0, planned: 1, finished: 2 };
     return [...matches].sort((a, b) => {

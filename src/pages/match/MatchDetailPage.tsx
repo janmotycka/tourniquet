@@ -187,7 +187,7 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
   }, [isLive, currentMatch?.pausedAt, currentMatch]);
   useEffect(() => {
     if (!currentMatch) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setHeaderElapsed(computeElapsed(currentMatch));
   }, [currentMatch]);
 

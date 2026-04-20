@@ -46,6 +46,23 @@ export function TennisClubsPage({ navigate }: Props) {
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<ClubPlayer | null>(null);
 
+  // Group players by category (null-safe, musí být před early returns).
+  const activeCategoriesForMemo = myClub?.ageCategories && myClub.ageCategories.length > 0
+    ? myClub.ageCategories
+    : TENNIS_CATEGORIES;
+  const playersByCategory = useMemo(() => {
+    const map = new Map<AgeCategory, ClubPlayer[]>();
+    if (!myClub) return map;
+    for (const cat of activeCategoriesForMemo) map.set(cat, []);
+    for (const p of myClub.players) {
+      if (!p.active) continue;
+      if (!map.has(p.ageCategory)) map.set(p.ageCategory, []);
+      map.get(p.ageCategory)!.push(p);
+    }
+    for (const arr of map.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
+    return map;
+  }, [myClub, activeCategoriesForMemo]);
+
   // ─── No tennis club yet → prompt to create ────────────────────────────────
   if (tennisClubs.length === 0 && !showCreate) {
     return (
@@ -162,22 +179,8 @@ export function TennisClubsPage({ navigate }: Props) {
     if (ok) await deleteClub(myClub.id);
   };
 
-  // Group players by category (jen pro tenisové kategorie)
-  const activeCategories = myClub.ageCategories && myClub.ageCategories.length > 0
-    ? myClub.ageCategories
-    : TENNIS_CATEGORIES;
-  const playersByCategory = useMemo(() => {
-    const map = new Map<AgeCategory, ClubPlayer[]>();
-    for (const cat of activeCategories) map.set(cat, []);
-    for (const p of myClub.players) {
-      if (!p.active) continue;
-      if (!map.has(p.ageCategory)) map.set(p.ageCategory, []);
-      map.get(p.ageCategory)!.push(p);
-    }
-    // Abecední řazení v rámci kategorie
-    for (const arr of map.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
-    return map;
-  }, [myClub.players, activeCategories]);
+  // Aliasy pro render (myClub už není nullable díky earlier guard).
+  const activeCategories = activeCategoriesForMemo;
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh', paddingBottom: 40 }}>

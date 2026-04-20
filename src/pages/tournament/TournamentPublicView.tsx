@@ -97,12 +97,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
 
   // Preferujeme Firebase data, fallback na lokální (pro případ offline)
   const tournament = firebaseTournament ?? localTournament;
-
-  // Tenis turnaj → deleguj na tenisový public view (oddělené UI).
-  // Rodiče tenisové hráče nemají vidět žádné fotbalové sekce (chat, MVP, ...).
-  if (tournament && (tournament.sport ?? 'football') === 'tennis') {
-    return <TennisTournamentPublicView tournamentId={tournamentId} navigate={navigate} />;
-  }
+  const isTennisTournament = !!(tournament && (tournament.sport ?? 'football') === 'tennis');
 
   // ── Join as referee flow ────────────────────────────────────────────────────
   const { user, signInAnonymously } = useAuth();
@@ -218,6 +213,13 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
   const handleRefresh = useCallback(() => {
     setLastRefresh(new Date());
   }, []);
+
+  // Tenis turnaj → deleguj na tenisový public view (oddělené UI).
+  // Rodiče tenisových hráčů nemají vidět fotbalové sekce (chat, MVP, ...).
+  // Delegaci děláme až za všechny hooky (React rules of hooks).
+  if (isTennisTournament) {
+    return <TennisTournamentPublicView tournamentId={tournamentId} navigate={navigate} />;
+  }
 
   const timeSince = Math.round((Date.now() - lastRefresh.getTime()) / 1000);
   const timeSinceLabel = timeSince < 10

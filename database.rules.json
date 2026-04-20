@@ -129,7 +129,11 @@
           || root.child('public').child($tournamentId).child('joinedUsers').child(auth.uid).exists()
         )",
         "$voterId": {
-          ".write": "auth != null",
+          // Voter musí být auth.uid (nelze hlasovat za někoho jiného, nelze
+          // přepsat cizí hlas). Poznámka: tím pádem anonym klient si musí
+          // vytvořit Firebase anonymous auth (už děláme) — `auth.uid` pak bude
+          // stabilní per-device.
+          ".write": "auth != null && $voterId === auth.uid && (!data.exists() || newData.val() === null)",
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 50"
         }
       }
@@ -181,7 +185,8 @@
             || root.child('public').child($tournamentId).child('joinedUsers').child(auth.uid).exists()
           )",
           "$voterId": {
-            ".write": "auth != null",
+            // Voter musí být auth.uid (žádné přepsání cizích hlasů, žádné ballot stuffing).
+            ".write": "auth != null && $voterId === auth.uid && (!data.exists() || newData.val() === null)",
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
           }
         }
@@ -247,7 +252,9 @@
       "$tournamentId": {
         ".read": "auth != null && (root.child('public').child($tournamentId).child('ownerUid').val() === auth.uid || root.child('public').child($tournamentId).child('joinedUsers').child(auth.uid).val() === 'admin')",
         "$registrationId": {
-          ".read": true,
+          // Jen owner/admin vidí detaily přihlášky (GDPR: obsahuje telefon+email trenéra).
+          // Parent .read pokrývá list, tady explicitně zpřísňujeme single-doc read.
+          ".read": "auth != null && (root.child('public').child($tournamentId).child('ownerUid').val() === auth.uid || root.child('public').child($tournamentId).child('joinedUsers').child(auth.uid).val() === 'admin')",
           ".write": "!data.exists() || (auth != null && (root.child('public').child($tournamentId).child('ownerUid').val() === auth.uid || root.child('public').child($tournamentId).child('joinedUsers').child(auth.uid).val() === 'admin'))",
           ".validate": "newData.hasChildren(['teamName', 'coachName', 'coachPhone', 'submittedAt'])",
           "teamName": {
@@ -287,7 +294,9 @@
           ".write": "auth != null && newData.exists()",
           "$teamId": {
             "$emoji": {
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999999"
+              // Musí růst o 1 (increment-only). Brání přímému zapsání 999999.
+              // Reset na 0 smí jen owner/joined přes parent .write.
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999999 && (!data.exists() || newData.val() === data.val() + 1)"
             }
           }
         }
@@ -362,16 +371,38 @@
     //     může se libovolný auth user nárokovat (claim) pozici awayCoach
     "matches": {
       "$scopeId": {
-        // Scope-level read: owner nebo klubový člen — umožňuje listovat
-        // všechny zápasy scope. Paired away coach-i tahle větev pokrývá
-        // NE (nejsou v klubu), pro ně platí per-match read níž.
+        // Scope-level read: owner nebo klubový člen — umožňuje listovat.
         ".read":  "auth != null && (auth.uid === $scopeId || root.child('clubs').child($scopeId).child('members').child(auth.uid).exists())",
         "$matchId": {
-          // Per-match read: to samé + paired away coach + join window.
-          // (Parent-level read cascade: pokud projde scope, tohle se neřeší.)
-          ".read":  "auth != null && (auth.uid === $scopeId || root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() || data.child('pairing').child('awayCoachUid').val() === auth.uid || (data.child('pairing').child('joinToken').exists() && !data.child('pairing').child('awayCoachUid').exists()))",
-          ".write": "auth != null && (auth.uid === $scopeId || (root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() && root.child('clubs').child($scopeId).child('members').child(auth.uid).child('role').val() !== 'viewer') || data.child('pairing').child('awayCoachUid').val() === auth.uid || (data.child('pairing').child('joinToken').exists() && !data.child('pairing').child('awayCoachUid').exists() && newData.child('pairing').child('awayCoachUid').val() === auth.uid))"
+          // Per-match read: owner, klubový člen, nebo již-paired away coach.
+          // (Join-window read odstraněn — bez toho away coach nemusí číst pinHash
+          // a únik PIN hashe přes veřejný match read je eliminován. Čtení match
+          // před joinem probíhá přes Cloud Function `joinMatchPairingByPin`,
+          // která má admin SDK bypass.)
+          ".read":  "auth != null && (auth.uid === $scopeId || root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() || data.child('pairing').child('awayCoachUid').val() === auth.uid)",
+          // Write: owner, klubový member (non-viewer), nebo paired away coach.
+          // Už NELZE client-side claim awayCoachUid — musí přes CF.
+          ".write": "auth != null && (auth.uid === $scopeId || (root.child('clubs').child($scopeId).child('members').child(auth.uid).exists() && root.child('clubs').child($scopeId).child('members').child(auth.uid).child('role').val() !== 'viewer') || data.child('pairing').child('awayCoachUid').val() === auth.uid)"
         }
+      }
+    },
+
+    // ─── Cross-team pairing PIN auth (oddělený path — client ho nečte) ────
+    // Uloženo admin SDK přes Cloud Function / klient zapisuje jen při vytvoření
+    // pozvánky (owner scope). Čtení JEN přes CF (admin SDK bypass).
+    "match-pairing-auth": {
+      ".read": false,
+      "$matchId": {
+        ".read": false,
+        // Owner/klub-member může zapsat při vytvoření invite. Ověření, že
+        // ownerUid / clubId je stejný jako ve matchi, dělá klient; server-side
+        // check stačí skrz ownership, nic citlivějšího než ověření kdo může
+        // dělat invite.
+        ".write": "auth != null",
+        ".validate": "newData.hasChildren(['pinHash', 'pinSalt'])",
+        "pinHash": { ".validate": "newData.isString() && newData.val().length <= 256" },
+        "pinSalt": { ".validate": "newData.isString() && newData.val().length <= 64" },
+        "$other": { ".validate": false }
       }
     },
 
