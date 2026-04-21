@@ -73,6 +73,7 @@ export function FormField({
 
 // ─── FormInput ──────────────────────────────────────────────────────────────
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const formInputStyle: CSSProperties = {
   width: '100%', boxSizing: 'border-box',
   padding: '10px 12px', borderRadius: 10,
