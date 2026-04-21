@@ -25,6 +25,8 @@ export function HomePage({ navigate }: Props) {
   const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
   const tennisUserType = useUserPrefsStore(s => s.tennisUserType);
   const setTennisUserType = useUserPrefsStore(s => s.setTennisUserType);
+  const appMode = useUserPrefsStore(s => s.appMode);
+  const setAppMode = useUserPrefsStore(s => s.setAppMode);
   const ensureActiveClubMatchesSport = useClubsStore(s => s.ensureActiveClubMatchesSport);
   const isTennis = preferredSport === 'tennis';
   const isTennisIndividual = isTennis && tennisUserType === 'individual';
@@ -61,6 +63,22 @@ export function HomePage({ navigate }: Props) {
       setShowOnboarding(true);
     }
   }, [user?.uid, clubCount, preferredSport, isTennis, tennisUserType]);
+
+  // ─── App mode auto-migrace pro existing users ────────────────────────────
+  // Existing user (má kluby / zápasy) dostane automaticky 'advanced' mode.
+  // Noví uživatelé projdou onboarding mode pickerem.
+  const matchesCount = useMatchesStore(s => s.matches.length);
+  useEffect(() => {
+    if (appMode !== null) return; // už nastavené — nezasahovat
+    if (!user?.uid) return;
+    // Legacy user: má existující data → Advanced
+    if (clubCount > 0 || matchesCount > 0) {
+      setAppMode('advanced');
+    }
+    // Noví s žádnými daty nechají null a projde onboarding
+  }, [appMode, user?.uid, clubCount, matchesCount, setAppMode]);
+
+  const isSimpleMode = appMode === 'simple';
 
   // Když aktivní klub nepatří aktuálnímu sportu (legacy state), přepni.
   // Např. user měl fotbalový klub aktivní a v Settings přepnul na tenis.
@@ -646,8 +664,8 @@ export function HomePage({ navigate }: Props) {
       {/* Module cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* ⚽ Training — zatím jen fotbal. V tenis módu skryté. */}
-        {!isTennis && (
+        {/* ⚽ Training — jen fotbal + advanced mode. */}
+        {!isTennis && !isSimpleMode && (
           <button
             onClick={() => navigate({ name: 'training-home' })}
             style={{
@@ -675,8 +693,9 @@ export function HomePage({ navigate }: Props) {
 
         {/* 🏆 Tournament — tenis má tyrkysovou, fotbal oranžovou.
             V individuálním tenisovém módu skryto (uživatel turnaje neorganizuje,
-            tracking turnaje přes `competition` field na zápasech). */}
-        {!isTennisIndividual && (
+            tracking turnaje přes `competition` field na zápasech).
+            V simple módu taky skryto (zatím — brzy přijde jednoduchá varianta). */}
+        {!isTennisIndividual && !isSimpleMode && (
         <button
           onClick={() => navigate({ name: 'tournament-list' })}
           style={{
@@ -734,7 +753,8 @@ export function HomePage({ navigate }: Props) {
           </div>
         </button>
 
-        {/* 🏟 Klub / 👤 Moji hráči (individuální tenis) */}
+        {/* 🏟 Klub / 👤 Moji hráči (individuální tenis) — jen v advanced módu */}
+        {!isSimpleMode && (
         <button
           onClick={() => navigate({ name: 'clubs' })}
           style={{
@@ -767,6 +787,32 @@ export function HomePage({ navigate }: Props) {
             {t('common.open')}
           </div>
         </button>
+        )}
+
+        {/* Upgrade teaser — jen v simple módu, zve k Advanced funkcím */}
+        {isSimpleMode && (
+          <button
+            onClick={() => navigate({ name: 'settings' })}
+            style={{
+              background: 'var(--surface)',
+              border: '1.5px dashed var(--border)',
+              borderRadius: 16, padding: '16px 18px',
+              display: 'flex', alignItems: 'center', gap: 12,
+              textAlign: 'left', cursor: 'pointer',
+            }}
+          >
+            <div style={{ fontSize: 28 }}>⚙️</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                {t('home.upgradeTeaserTitle')}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+                {t('home.upgradeTeaserDesc')}
+              </div>
+            </div>
+            <div style={{ fontSize: 18, color: 'var(--text-muted)' }}>›</div>
+          </button>
+        )}
 
       </div>
 

@@ -35,6 +35,8 @@ export function SettingsPage({ navigate }: Props) {
   const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
   const tennisUserType = useUserPrefsStore(s => s.tennisUserType);
   const setTennisUserType = useUserPrefsStore(s => s.setTennisUserType);
+  const appMode = useUserPrefsStore(s => s.appMode);
+  const setAppMode = useUserPrefsStore(s => s.setAppMode);
   const ensureActiveClubMatchesSport = useClubsStore(s => s.ensureActiveClubMatchesSport);
   // Wrapper — po změně sportu přepne aktivní klub na klub daného sportu.
   const handleSportSwitch = async (sp: 'football' | 'tennis') => {
@@ -143,6 +145,48 @@ export function SettingsPage({ navigate }: Props) {
                 {user?.email ?? ''}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* 1.4 Režim aplikace — simple vs advanced */}
+        <div style={cardStyle}>
+          <h2 style={{ fontWeight: 700, fontSize: 16 }}>🎛 {t('settings.mode')}</h2>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+            {t('settings.modeDesc')}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {(['simple', 'advanced'] as const).map(mode => {
+              const isActive = appMode === mode;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setAppMode(mode)}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                    padding: '12px 14px', borderRadius: 12,
+                    background: isActive ? 'var(--primary-light)' : 'var(--surface-var)',
+                    border: isActive ? '2px solid var(--primary)' : '1.5px solid var(--border)',
+                    cursor: 'pointer', textAlign: 'left', width: '100%',
+                  }}
+                >
+                  <span style={{ fontSize: 22, lineHeight: 1 }}>
+                    {mode === 'simple' ? '🟢' : '⚙️'}
+                  </span>
+                  <span style={{ flex: 1 }}>
+                    <span style={{
+                      display: 'block', fontWeight: 700, fontSize: 14,
+                      color: isActive ? 'var(--primary)' : 'var(--text)',
+                    }}>
+                      {mode === 'simple' ? t('settings.modeSimple') : t('settings.modeAdvanced')}
+                    </span>
+                    <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+                      {mode === 'simple' ? t('settings.modeSimpleDesc') : t('settings.modeAdvancedDesc')}
+                    </span>
+                  </span>
+                  {isActive && <span style={{ color: 'var(--primary)', fontSize: 18, fontWeight: 800 }}>✓</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
 

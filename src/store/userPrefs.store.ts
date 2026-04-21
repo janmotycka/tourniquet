@@ -25,6 +25,18 @@ import type { Sport } from '../types/sport.types';
  */
 export type TennisUserType = 'club' | 'individual';
 
+/**
+ * Režim aplikace:
+ * - 'simple' — jen zápasy + turnaje + sdílení s rodiči. Pro laiky / učitele TV /
+ *   amatérský turnaj. Žádné kluby, sestavy, tréninky, statistiky.
+ * - 'advanced' — plný trenérský nástroj: kluby s hráči, tréninky, sestavy,
+ *   hodnocení, FAČR export, multi-trainer workspace, cross-team pairing.
+ *
+ * null = ještě nezvoleno (onboarding ho vybere).
+ * Lze kdykoli přepnout v Settings.
+ */
+export type AppMode = 'simple' | 'advanced';
+
 interface UserPrefsState {
   /** Výchozí sport pro přihlášeného trenéra. Default 'football'. */
   preferredSport: Sport;
@@ -32,10 +44,13 @@ interface UserPrefsState {
   sportOnboardingShown: boolean;
   /** Tenisový sub-mód. null = ještě nevybráno (ukáže se picker). */
   tennisUserType: TennisUserType | null;
+  /** Režim aplikace (jednoduchý vs. pokročilý). null = ještě nezvoleno. */
+  appMode: AppMode | null;
 
   setPreferredSport: (sport: Sport) => void;
   markSportOnboardingShown: () => void;
   setTennisUserType: (type: TennisUserType) => void;
+  setAppMode: (mode: AppMode) => void;
   /** Reset pro testy / pokud user se chce znovu dostat k sport pickeru. */
   reset: () => void;
 }
@@ -46,11 +61,13 @@ export const useUserPrefsStore = create<UserPrefsState>()(
       preferredSport: 'football',
       sportOnboardingShown: false,
       tennisUserType: null,
+      appMode: null,
 
       setPreferredSport: (sport) => set({ preferredSport: sport, sportOnboardingShown: true }),
       markSportOnboardingShown: () => set({ sportOnboardingShown: true }),
       setTennisUserType: (type) => set({ tennisUserType: type }),
-      reset: () => set({ preferredSport: 'football', sportOnboardingShown: false, tennisUserType: null }),
+      setAppMode: (mode) => set({ appMode: mode }),
+      reset: () => set({ preferredSport: 'football', sportOnboardingShown: false, tennisUserType: null, appMode: null }),
     }),
     {
       name: 'torq-user-prefs',
