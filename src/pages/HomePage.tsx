@@ -498,7 +498,7 @@ export function HomePage({ navigate }: Props) {
 
       {/* Active club switcher — jen pro klubové uživatele s víc než 1 klubem.
           V individuálním tenisovém módu klubový switcher nedává smysl. */}
-      {!isTennisIndividual && clubCount > 1 && <ClubSwitcher navigate={navigate} />}
+      {!isTennisIndividual && !isSimpleMode && clubCount > 1 && <ClubSwitcher navigate={navigate} />}
 
 
       {/* ─── LIVE NOW — currently running matches & tournaments ──────────── */}

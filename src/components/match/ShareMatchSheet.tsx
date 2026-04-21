@@ -17,6 +17,7 @@ import { useConfirmStore } from '../../store/confirm.store';
 import { useMatchesStore } from '../../store/matches.store';
 import { useAuth } from '../../context/AuthContext';
 import { useClubsStore } from '../../store/clubs.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { generateMatchShareImage } from '../../utils/match-share-image';
 import { generateMatchSummaryText } from '../../utils/match-summary';
 import { SharePreviewModal } from './SharePreviewModal';
@@ -39,6 +40,7 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
   const [pairingBusy, setPairingBusy] = useState(false);
   const [pairingData, setPairingData] = useState<{ pin: string; joinUrl: string } | null>(null);
   const [imageSharing, setImageSharing] = useState(false);
+  const isSimpleMode = useUserPrefsStore(s => s.appMode === 'simple');
   const [previewData, setPreviewData] = useState<{ blob: Blob; text: string; fileName: string } | null>(null);
   const createMatchPairingInvite = useMatchesStore(s => s.createMatchPairingInvite);
   const revokeMatchPairingInvite = useMatchesStore(s => s.revokeMatchPairingInvite);
@@ -253,7 +255,9 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
         </div>
 
         <div style={{ padding: '0 18px' }}>
-          {/* ─── Cross-team pairing section ───────────────────────────────── */}
+          {/* ─── Cross-team pairing section ─────────────────────────────────
+              V Simple módu skryto — laik nemá opozičního klubového trenéra. */}
+          {!isSimpleMode && (
           <div style={{
             background: isPaired ? 'var(--success-light)' : 'var(--primary-light)',
             borderRadius: 14, padding: '12px 14px', marginBottom: 14,
@@ -404,6 +408,7 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
               </button>
             )}
           </div>
+          )}
 
           {/* Public toggle */}
           <div style={{

@@ -321,7 +321,9 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
             hráče + skóre jsou v sub-match řádcích). Schováváme je. */}
         {(() => {
           const isTennisTeam = currentMatch.sport === 'tennis' && currentMatch.matchType === 'team';
-          const tabs = isTennisTeam
+          // V Simple módu zobrazujeme jen 'live' tab — sestavu a hodnocení laik
+          // nepotřebuje, matou ho (vyžadují klubovou vazbu, ratings atd.).
+          const tabs = (isTennisTeam || isSimpleMode)
             ? ([['live', isLive ? `● ${t('match.detail.tabLive')}` : t('match.detail.tabMatch')]] as const)
             : ([['live', isLive ? `● ${t('match.detail.tabLive')}` : t('match.detail.tabMatch')], ['lineup', t('match.detail.tabLineup')], ['ratings', t('match.detail.tabRatings')]] as const);
           return (
