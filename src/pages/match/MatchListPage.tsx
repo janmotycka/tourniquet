@@ -633,17 +633,20 @@ export function MatchListPage({ navigate }: Props) {
         title={t('match.list.title')}
         subtitle={t('match.list.matchesLabel')}
         secondaryActions={
-          <button
-            onClick={() => navigate({ name: 'match-stats' })}
-            style={desktopSecondaryButtonStyle}
-            title={t('matchStats.title')}
-          >
-            <span>📊</span> {t('matchStats.title')}
-          </button>
+          // Statistiky v simple módu neexistují (bez klubu, bez lineupu).
+          !isSimpleMode ? (
+            <button
+              onClick={() => navigate({ name: 'match-stats' })}
+              style={desktopSecondaryButtonStyle}
+              title={t('matchStats.title')}
+            >
+              <span>📊</span> {t('matchStats.title')}
+            </button>
+          ) : null
         }
         primaryAction={
           <button
-            onClick={() => navigate({ name: 'match-create' })}
+            onClick={handleNewMatchCta}
             style={desktopPrimaryButtonStyle}
             disabled={matches.length >= limits.maxMatches}
           >
@@ -700,7 +703,7 @@ export function MatchListPage({ navigate }: Props) {
             description={t('match.list.noMatchesYetDesc')}
             action={
               <button
-                onClick={() => navigate({ name: 'match-create' })}
+                onClick={handleNewMatchCta}
                 style={desktopPrimaryButtonStyle}
               >
                 {t('match.list.createFirst')}
@@ -714,7 +717,7 @@ export function MatchListPage({ navigate }: Props) {
             description={categoryFilter !== 'all' ? t('match.list.noMatchesForCategoryDesc') : (filter === 'all' ? t('match.list.emptyDesc') : t('match.list.emptyFilter'))}
             action={filter === 'all' && categoryFilter === 'all' ? (
               <button
-                onClick={() => navigate({ name: 'match-create' })}
+                onClick={handleNewMatchCta}
                 style={desktopPrimaryButtonStyle}
               >
                 {t('match.list.addFirst')}
@@ -747,16 +750,19 @@ export function MatchListPage({ navigate }: Props) {
           onBack={() => navigate({ name: 'home' })}
           action={
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button
-                onClick={() => navigate({ name: 'match-stats' })}
-                style={{
-                  background: 'var(--surface-var)', borderRadius: 10,
-                  padding: '8px 12px', fontWeight: 700, fontSize: 16,
-                }}
-                title={t('matchStats.title')}
-              >
-                📊
-              </button>
+              {/* Statistiky: v simple módu se nezobrazují (žádný klub / lineup) */}
+              {!isSimpleMode && (
+                <button
+                  onClick={() => navigate({ name: 'match-stats' })}
+                  style={{
+                    background: 'var(--surface-var)', borderRadius: 10,
+                    padding: '8px 12px', fontWeight: 700, fontSize: 16,
+                  }}
+                  title={t('matchStats.title')}
+                >
+                  📊
+                </button>
+              )}
               <button
                 onClick={handleNewMatchCta}
                 style={{

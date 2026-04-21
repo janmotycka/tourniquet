@@ -14,6 +14,7 @@ import { useI18n } from '../../i18n';
 import { useMatchesStore } from '../../store/matches.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useToastStore } from '../../store/toast.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import type { SeasonMatch, MatchFormat } from '../../types/match.types';
 import { MATCH_FORMATS } from '../../types/match.types';
 
@@ -29,6 +30,9 @@ export function EditMatchSheet({ match, onClose }: Props) {
   const clubs = useClubsStore(s => s.clubs);
   const matchClub = clubs.find(c => c.id === match.clubId);
   const clubCategories = matchClub?.ageCategories ?? [];
+  // Simple mode = laik bez klubu: skrýváme kategorie, formát a periody
+  // (ty se v Simple módu vůbec nenastavují — zápas je jen skóre + WhatsApp share).
+  const isSimpleMode = useUserPrefsStore(s => s.appMode === 'simple');
 
   // Historie pro našeptávač — venue + competition z minulých zápasů stejného sportu.
   const matchSport = match.sport ?? 'football';
@@ -289,8 +293,8 @@ export function EditMatchSheet({ match, onClose }: Props) {
             </div>
           )}
 
-          {/* Kategorie — jen pokud planned a klub má víc kategorií */}
-          {!structuralLocked && clubCategories.length > 0 && (
+          {/* Kategorie — jen pokud planned a klub má víc kategorií; v simple módu se nezobrazuje */}
+          {!structuralLocked && !isSimpleMode && clubCategories.length > 0 && (
             <div>
               <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
                 {t('match.create.selectCategory')}
@@ -325,8 +329,8 @@ export function EditMatchSheet({ match, onClose }: Props) {
             </div>
           )}
 
-          {/* Formát + periods + duration — jen pokud planned */}
-          {!structuralLocked && (
+          {/* Formát + periods + duration — jen pokud planned; v simple módu skryto (není relevantní) */}
+          {!structuralLocked && !isSimpleMode && (
             <>
               <div>
                 <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>

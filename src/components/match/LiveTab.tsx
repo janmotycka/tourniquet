@@ -4,6 +4,7 @@ import { formatToStarterCount } from '../../types/match.types';
 import { useMatchesStore } from '../../store/matches.store';
 import { useConfirmStore } from '../../store/confirm.store';
 import { useClubsStore } from '../../store/clubs.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useI18n } from '../../i18n';
 import { computeElapsed, formatTime, computePlayingTime, computeCurrentStretch } from './match-utils';
 import { GoalModal } from './GoalModal';
@@ -511,7 +512,11 @@ function getPeriodLabel(t: (k: string, p?: Record<string, string | number>) => s
 
 export function LiveTab({ match }: { match: SeasonMatch }) {
   const { t } = useI18n();
-  // Název klubu — z match dat, nebo z aktivního klubu v store
+  // Simple mode = laik bez klubu: skrýváme karty/střídání/VEO/playing-time tracker
+  // (laik chce jen skóre + tlačítka, žádné fotbalové pokročilosti).
+  const isSimpleMode = useUserPrefsStore(s => s.appMode === 'simple');
+  // Název klubu — z match dat, nebo z aktivního klubu v store.
+  // V Simple módu je `clubName` vždy prázdný → fallback "naši" (t('match.detail.us')).
   const activeClub = useClubsStore(s => s.clubs.find(c => c.id === match.clubId));
   const clubDisplayName = match.clubName || activeClub?.name || t('match.detail.us');
   const [elapsed, setElapsed] = useState(() => computeElapsed(match));
@@ -805,8 +810,10 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
   const theirScore = perspective.theirScore;
 
   const hasBench = match.lineup.some(p => !p.isStarter);
-  const showCards = enabledPanels.has('cards');
-  const showSubs = enabledPanels.has('subs') && hasBench;
+  // V Simple módu skrýváme karty i střídání (laik/McDonald's Cup scénář je nechce —
+  // dělá jen skóre a má jednu sestavu). Toggly v settings jsou taky skryté níž.
+  const showCards = enabledPanels.has('cards') && !isSimpleMode;
+  const showSubs = enabledPanels.has('subs') && hasBench && !isSimpleMode;
 
   // Remember if hint was already shown
   const [hintDismissed] = useState(() => {
@@ -1655,40 +1662,48 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             );
           })()}
 
-          {/* ── Panel settings — only show toggle, not always visible ── */}
-          <button
-            onClick={() => setShowSettings(s => !s)}
-            style={{
-              alignSelf: 'center', padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-              background: 'transparent', color: 'var(--text-disabled)',
-            }}
-          >
-            ⚙️ {t('match.field.settings')}
-          </button>
+          {/* ── Panel settings — only show toggle, not always visible.
+              V Simple módu je celé nastavení skryté (jediné přepínače jsou karty/střídání,
+              a ty v laik režimu nedává smysl nabízet). */}
+          {!isSimpleMode && (
+            <>
+              <button
+                onClick={() => setShowSettings(s => !s)}
+                style={{
+                  alignSelf: 'center', padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                  background: 'transparent', color: 'var(--text-disabled)',
+                }}
+              >
+                ⚙️ {t('match.field.settings')}
+              </button>
 
-          {showSettings && (
-            <div style={{
-              background: 'var(--surface)', borderRadius: 12, padding: '10px 14px',
-              display: 'flex', gap: 16,
-            }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                <input type="checkbox" checked={enabledPanels.has('cards')} onChange={() => togglePanel('cards')} style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
-                🟨 {t('match.field.panelCards')}
-              </label>
-              {hasBench && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={enabledPanels.has('subs')} onChange={() => togglePanel('subs')} style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
-                  🔄 {t('match.field.panelSubs')}
-                </label>
+              {showSettings && (
+                <div style={{
+                  background: 'var(--surface)', borderRadius: 12, padding: '10px 14px',
+                  display: 'flex', gap: 16,
+                }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={enabledPanels.has('cards')} onChange={() => togglePanel('cards')} style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
+                    🟨 {t('match.field.panelCards')}
+                  </label>
+                  {hasBench && (
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={enabledPanels.has('subs')} onChange={() => togglePanel('subs')} style={{ width: 18, height: 18, accentColor: 'var(--primary)' }} />
+                      🔄 {t('match.field.panelSubs')}
+                    </label>
+                  )}
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
       )}
       </div>{/* end sticky action buttons */}
 
-      {/* ── Playing time tracker ── */}
-      {match.status !== 'planned' && match.lineup.length > 0 && (() => {
+      {/* ── Playing time tracker ──
+          V Simple módu skryté: synthetické playerIds, žádný smysl vysledovat fair-play,
+          a laik to nečte. */}
+      {!isSimpleMode && match.status !== 'planned' && match.lineup.length > 0 && (() => {
         const elapsedMin = Math.max(0, Math.floor(elapsed / 60));
         const playingTime = computePlayingTime(match, elapsedMin);
         const maxTime = Math.max(1, elapsedMin);
@@ -1911,8 +1926,10 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
           sbalitelné sekce). Shrnutí pro rodiče se posílá přes WhatsApp — viz
           MatchDetailPage "📢 Shrnutí pro rodiče". */}
 
-      {/* ── VEO recording ── */}
-      {match.veoUrl ? (
+      {/* ── VEO recording ──
+          V Simple módu skryté: VEO je pokročilá klubová feature (kamerový systém na hřišti),
+          laik z McDonald's Cupu ji nemá ani nepotřebuje. */}
+      {!isSimpleMode && (match.veoUrl ? (
         <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 15 }}>🎥</span>
@@ -2001,7 +2018,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             </>
           )}
         </div>
-      )}
+      ))}
 
       {/* ── Modals ── */}
       {goalModal !== null && (
