@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
-import { useMatchEventsStore } from '../../store/matchEvents.store';
 import { useSubscriptionStore } from '../../store/subscription.store';
 import { useConfirmStore } from '../../store/confirm.store';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
@@ -15,7 +14,6 @@ import { PageHeader } from '../../components/ui';
 import { NewMatchPicker } from '../../components/match/NewMatchPicker';
 import { QuickMatchSheet } from '../../components/match/QuickMatchSheet';
 import type { SeasonMatch } from '../../types/match.types';
-import type { MatchEvent } from '../../types/matchEvent.types';
 import { radius, fontSize, fontWeight, spacing } from '../../theme/tokens';
 import { groupMatchesBySeasonHalf } from '../../utils/season';
 import { formatDate } from '../../components/match/match-utils';
@@ -531,17 +529,6 @@ export function MatchListPage({ navigate }: Props) {
     });
   }, [allMatches, preferredSport, activeClubId]);
 
-  // Match Events („Den zápasů") — zobrazí se nahoře seznamu
-  const allMatchEvents = useMatchEventsStore(s => s.events);
-  const matchEvents = useMemo(() => {
-    // Seřadit: nejnovější nahoře (podle date desc, poté createdAt desc)
-    return [...allMatchEvents].sort((a, b) => {
-      const dateCmp = (b.date ?? '').localeCompare(a.date ?? '');
-      if (dateCmp !== 0) return dateCmp;
-      return (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
-    });
-  }, [allMatchEvents]);
-
   const getLimits = useSubscriptionStore(s => s.getLimits);
   const limits = getLimits();
   const [filter, setFilter] = useState<'all' | 'live' | 'planned' | 'finished'>('all');
@@ -550,8 +537,6 @@ export function MatchListPage({ navigate }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [quickSheetOpen, setQuickSheetOpen] = useState(false);
 
-  // Helpery pro picker actions
-  const handleCreateMatchEvent = () => navigate({ name: 'match-event-create' });
   const handleCreateFullMatch = () => navigate({ name: 'match-create' });
 
   useEffect(() => {
@@ -816,37 +801,9 @@ export function MatchListPage({ navigate }: Props) {
           </FeatureGate>
         )}
 
-        {/* Dny zápasů — zobrazí se nahoře pokud nějaké jsou */}
-        {matchEvents.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 6 }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '2px 0', fontSize: 11, fontWeight: 800,
-              color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.8,
-            }}>
-              📊 {t('match.list.matchEventsSection')}
-              <span style={{
-                background: 'var(--surface-var)', color: 'var(--text-muted)',
-                borderRadius: 8, padding: '1px 7px', fontSize: 10, fontWeight: 700,
-                marginLeft: 4,
-              }}>
-                {matchEvents.length}
-              </span>
-            </div>
-            {matchEvents.map(ev => (
-              <MatchEventCard
-                key={ev.id}
-                event={ev}
-                t={t}
-                onClick={() => navigate({ name: 'match-event-detail', eventId: ev.id })}
-              />
-            ))}
-          </div>
-        )}
-
         {isHydrating ? (
           <MatchListSkeleton />
-        ) : matches.length === 0 && matchEvents.length === 0 ? (
+        ) : matches.length === 0 ? (
           /* No matches at all — prominent CTA */
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -873,7 +830,7 @@ export function MatchListPage({ navigate }: Props) {
               {t('match.list.createFirst')}
             </button>
           </div>
-        ) : filtered.length === 0 && matches.length > 0 ? (
+        ) : filtered.length === 0 ? (
           /* Matches exist but filter yields nothing */
           <div style={{
             flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -932,7 +889,6 @@ export function MatchListPage({ navigate }: Props) {
           onClose={() => setPickerOpen(false)}
           onFullMatch={handleCreateFullMatch}
           onQuickMatch={handleQuickMatchOpen}
-          onMatchEvent={handleCreateMatchEvent}
           showQuickMatch={preferredSport === 'football'}
         />
       )}
@@ -948,61 +904,3 @@ export function MatchListPage({ navigate }: Props) {
   );
 }
 
-// ─── MatchEventCard — kompaktní řádek pro „Den zápasů" v seznamu ──────────────
-
-function MatchEventCard({
-  event, t, onClick,
-}: {
-  event: MatchEvent;
-  t: (k: string, p?: Record<string, string | number>) => string;
-  onClick: () => void;
-}) {
-  const liveCount = event.matches.filter(m => m.status === 'live').length;
-  const finishedCount = event.matches.filter(m => m.status === 'finished').length;
-  const plannedCount = event.matches.length - liveCount - finishedCount;
-
-  const statusBadge = liveCount > 0
-    ? { label: `● ${t('match.live')}`, bg: 'var(--danger)', color: '#fff' }
-    : finishedCount === event.matches.length && event.matches.length > 0
-    ? { label: t('match.played'), bg: 'var(--surface-var)', color: 'var(--text-muted)' }
-    : { label: `📊 ${event.matches.length}×`, bg: 'var(--primary-light)', color: 'var(--primary)' };
-
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        background: 'var(--surface)', borderRadius: 14,
-        padding: '12px 14px',
-        borderLeft: '3.5px solid var(--primary)',
-        display: 'flex', flexDirection: 'column', gap: 6,
-        textAlign: 'left', cursor: 'pointer', width: '100%',
-        boxShadow: 'var(--shadow-sm)',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 18 }}>📊</span>
-        <div style={{ flex: 1, fontWeight: 800, fontSize: 15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {event.name}
-        </div>
-        <span style={{
-          fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 6,
-          background: statusBadge.bg, color: statusBadge.color,
-          textTransform: 'uppercase', letterSpacing: 0.5, whiteSpace: 'nowrap',
-        }}>
-          {statusBadge.label}
-        </span>
-      </div>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <span>📅 {formatDate(event.date)}</span>
-        {event.venue && <span>📍 {event.venue}</span>}
-        {event.matches.length > 0 && (
-          <span style={{ marginLeft: 'auto', fontWeight: 600 }}>
-            {liveCount > 0 && <span style={{ color: 'var(--danger)' }}>● {liveCount} </span>}
-            {finishedCount > 0 && <span>✓ {finishedCount} </span>}
-            {plannedCount > 0 && <span style={{ color: 'var(--text-muted)' }}>⏱ {plannedCount}</span>}
-          </span>
-        )}
-      </div>
-    </button>
-  );
-}

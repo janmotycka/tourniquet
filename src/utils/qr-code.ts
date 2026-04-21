@@ -93,12 +93,6 @@ export function parseMatchPairingHashFromUrl(): { scopeId: string; matchId: stri
   return { scopeId: m[1], matchId: m[2], joinToken: m[3] };
 }
 
-/** Parsuje match-event ID z URL hashe: #match-event={id} */
-export function parseMatchEventHashFromUrl(): string | null {
-  const hash = window.location.hash;
-  const m = hash.match(/^#match-event=([a-zA-Z0-9_-]+)/);
-  return m ? m[1] : null;
-}
 
 /** Vygeneruje QR kód pro sdílení zápasu */
 export async function generateMatchQRCodeDataUrl(matchId: string): Promise<string> {

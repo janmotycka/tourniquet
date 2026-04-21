@@ -1,10 +1,9 @@
 /**
- * NewMatchPicker — bottom sheet s výběrem typu nového zápasu.
+ * NewMatchPicker — bottom sheet s výběrem: jednoduchá nebo podrobná cesta.
  *
- * 3 varianty:
- *   1. Plný zápas (sezónní, lineup, ratings) — standardní flow
- *   2. Rychlý zápas — bez sestavy, rovnou LIVE (jeden zápas)
- *   3. Den zápasů — ultra-jednoduchý turnaj (víc zápasů + skóre, bez lineupu)
+ * 2 varianty:
+ *   1. Rychlý zápas — jednoduchá cesta (soupeř + skóre, bez sestavy)
+ *   2. Plný zápas — podrobná cesta (lineup, ratings, karty, střídání)
  */
 
 import { useEffect } from 'react';
@@ -14,13 +13,12 @@ interface Props {
   onClose: () => void;
   onFullMatch: () => void;
   onQuickMatch: () => void;
-  onMatchEvent: () => void;
   /** Pokud false, skryje rychlý zápas (tenis ho nemá). */
   showQuickMatch?: boolean;
 }
 
 export function NewMatchPicker({
-  onClose, onFullMatch, onQuickMatch, onMatchEvent, showQuickMatch = true,
+  onClose, onFullMatch, onQuickMatch, showQuickMatch = true,
 }: Props) {
   const { t } = useI18n();
 
@@ -83,31 +81,23 @@ export function NewMatchPicker({
         </div>
 
         <div style={{ padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Plný zápas */}
-          <Option
-            icon="⚽"
-            title={t('match.picker.fullTitle')}
-            desc={t('match.picker.fullDesc')}
-            onClick={() => { onClose(); onFullMatch(); }}
-            primary
-          />
-
-          {/* Rychlý zápas (jen fotbal) */}
+          {/* Jednoduchá cesta: rychlý zápas (zvýrazněná — nejčastější volba) */}
           {showQuickMatch && (
             <Option
               icon="⚡"
               title={t('match.picker.quickTitle')}
               desc={t('match.picker.quickDesc')}
               onClick={() => { onClose(); onQuickMatch(); }}
+              primary
             />
           )}
 
-          {/* Den zápasů */}
+          {/* Podrobná cesta: plný zápas se sestavou */}
           <Option
-            icon="📊"
-            title={t('match.picker.eventTitle')}
-            desc={t('match.picker.eventDesc')}
-            onClick={() => { onClose(); onMatchEvent(); }}
+            icon="⚽"
+            title={t('match.picker.fullTitle')}
+            desc={t('match.picker.fullDesc')}
+            onClick={() => { onClose(); onFullMatch(); }}
           />
         </div>
       </div>
