@@ -708,7 +708,7 @@ export function HomePage({ navigate }: Props) {
         </button>
         )}
 
-        {/* 📋 Zápas — fotbal i tenis (singles, družstva) */}
+        {/* 📋 Zápas — fotbal i tenis (singles, družstva) + Den zápasů (v modulu) */}
         <button
           onClick={() => navigate({ name: 'match-list' })}
           style={{
@@ -731,32 +731,6 @@ export function HomePage({ navigate }: Props) {
             fontWeight: 700, fontSize: 15, textAlign: 'center',
           }}>
             {t('common.open')}
-          </div>
-        </button>
-
-        {/* 📊 Den zápasů — pro učitele TV / rychlé turnaje pro děti */}
-        <button
-          onClick={() => navigate({ name: 'match-event-create' })}
-          style={{
-            background: 'linear-gradient(135deg, #EF6C00 0%, #F57C00 100%)',
-            borderRadius: 22, padding: '24px',
-            display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
-            boxShadow: '0 4px 16px rgba(239,108,0,.25)', width: '100%',
-            color: '#fff',
-          }}
-        >
-          <div style={{ fontSize: 44 }}>📊</div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.matchEvent')}</div>
-            <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-              {t('home.matchEventDesc')}
-            </div>
-          </div>
-          <div style={{
-            background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '10px 16px',
-            fontWeight: 700, fontSize: 15, textAlign: 'center',
-          }}>
-            + {t('home.matchEventCta')}
           </div>
         </button>
 
