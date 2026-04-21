@@ -20,6 +20,7 @@ import { useToastStore } from './store/toast.store';
 import { usePageStore } from './store/page.store';
 import { useContactsStore } from './store/contacts.store';
 import { useMatchesStore } from './store/matches.store';
+import { useSimpleSquadsStore } from './store/simpleSquads.store';
 import { logger } from './utils/logger';
 import { useTemplatesStore } from './store/templates.store';
 import { useClubsStore } from './store/clubs.store';
@@ -132,6 +133,8 @@ function AppRouter() {
   const subscribeMatches = useMatchesStore(s => s.subscribeToFirebase);
   const retryPendingSync = useMatchesStore(s => s.retryPendingSync);
   const setMatchesFirebaseUid = useMatchesStore(s => s.setFirebaseUid);
+  const subscribeSimpleSquads = useSimpleSquadsStore(s => s.subscribeToFirebase);
+  const setSimpleSquadsFirebaseUid = useSimpleSquadsStore(s => s.setFirebaseUid);
   const loadTemplates = useTemplatesStore(s => s.loadFromFirebase);
   const loadClubs = useClubsStore(s => s.loadFromFirebase);
   const setClubsFirebaseUid = useClubsStore(s => s.setFirebaseUid);
@@ -185,21 +188,25 @@ function AppRouter() {
         const unsubscribeStatus = subscribeToStatus(user.uid);
         // MyPlayers (tenisový individuální mód) — realtime subscribe
         setMyPlayersFirebaseUid(user.uid);
+        // Simple squads — lehké soupisky pro Simple mode (McDonald's cup scénář)
+        const unsubscribeSimpleSquads = subscribeSimpleSquads(user.uid);
         return () => {
           unsubscribeTournaments();
           unsubscribeTrainings();
           unsubscribeStatus();
+          unsubscribeSimpleSquads();
           setMyPlayersFirebaseUid(null);
         };
       }
     } else {
       setFirebaseUid(null);
       setMatchesFirebaseUid(null);
+      setSimpleSquadsFirebaseUid(null);
       setClubsFirebaseUid(null);
       setTrainingsFirebaseUid(null);
       setMyPlayersFirebaseUid(null);
     }
-  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, subscribeTournaments, setMatchesFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, subscribeTrainings, setTrainingsFirebaseUid, setMyPlayersFirebaseUid]);
+  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, subscribeTournaments, setMatchesFirebaseUid, subscribeSimpleSquads, setSimpleSquadsFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, subscribeTrainings, setTrainingsFirebaseUid, setMyPlayersFirebaseUid]);
 
   // Matches subscription musí reagovat na změnu klubového členství —
   // když user vstoupí do sdíleného klubu, musíme začít poslouchat jeho matches.

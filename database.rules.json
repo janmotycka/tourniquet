@@ -348,6 +348,15 @@
       }
     },
 
+    // ─── Simple Squads — znovupoužitelné soupisky pro Simple mode ─────────
+    // Privátní per-user (bez sharing). Jen owner čte/píše.
+    "simple-squads": {
+      "$ownerUid": {
+        ".read":  "auth != null && auth.uid === $ownerUid",
+        ".write": "auth != null && auth.uid === $ownerUid"
+      }
+    },
+
     // ─── Veřejný zápas (sdílení s rodiči) ──────────────────────────────────
     // Čtení: kdokoli; Zápis: vlastník zápasu napříč scope (legacy uid + klubový).
     "public-matches": {

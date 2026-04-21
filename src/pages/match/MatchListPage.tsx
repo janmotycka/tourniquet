@@ -492,7 +492,8 @@ export function MatchListPage({ navigate }: Props) {
     setQuickSheetOpen(true);
   };
 
-  const handleQuickMatchCreate = (opponent: string, roster: string[]) => {
+  const handleQuickMatchCreate = (opponent: string, roster: string[], _squadId?: string) => {
+    void _squadId; // pro budoucí audit trail (squad → match)
     const activeClub = clubs.find(c => c.id === activeClubId);
     const now = new Date();
     const today = now.toISOString().split('T')[0];

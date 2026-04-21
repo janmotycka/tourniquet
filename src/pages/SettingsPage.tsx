@@ -5,6 +5,8 @@ import { useSubscriptionStore } from '../store/subscription.store';
 import { useTournamentStore } from '../store/tournament.store';
 import { useMatchesStore } from '../store/matches.store';
 import { useClubsStore } from '../store/clubs.store';
+import { useSimpleSquadsStore } from '../store/simpleSquads.store';
+import { useConfirmStore } from '../store/confirm.store';
 import { useTrainingsStore } from '../store/trainings.store';
 import { useContactsStore } from '../store/contacts.store';
 import { useUserPrefsStore } from '../store/userPrefs.store';
@@ -37,6 +39,10 @@ export function SettingsPage({ navigate }: Props) {
   const setTennisUserType = useUserPrefsStore(s => s.setTennisUserType);
   const appMode = useUserPrefsStore(s => s.appMode);
   const setAppMode = useUserPrefsStore(s => s.setAppMode);
+  const simpleSquads = useSimpleSquadsStore(s => s.squads);
+  const deleteSquad = useSimpleSquadsStore(s => s.deleteSquad);
+  const updateSquad = useSimpleSquadsStore(s => s.updateSquad);
+  const confirmAsk = useConfirmStore(s => s.ask);
   const ensureActiveClubMatchesSport = useClubsStore(s => s.ensureActiveClubMatchesSport);
   // Wrapper — po změně sportu přepne aktivní klub na klub daného sportu.
   const handleSportSwitch = async (sp: 'football' | 'tennis') => {
@@ -189,6 +195,60 @@ export function SettingsPage({ navigate }: Props) {
             })}
           </div>
         </div>
+
+        {/* 1.45 Uložené party (Simple mode) */}
+        {appMode === 'simple' && simpleSquads.length > 0 && (
+          <div style={cardStyle}>
+            <h2 style={{ fontWeight: 700, fontSize: 16 }}>👥 {t('settings.squadsTitle')}</h2>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+              {t('settings.squadsDesc')}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {simpleSquads.map(squad => (
+                <div key={squad.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', borderRadius: 10,
+                  background: 'var(--surface-var)', border: '1px solid var(--border)',
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <input
+                      type="text"
+                      value={squad.name}
+                      onChange={e => updateSquad(squad.id, { name: e.target.value })}
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        background: 'transparent', border: 'none', outline: 'none',
+                        fontWeight: 700, fontSize: 14, color: 'var(--text)', padding: 0,
+                      }}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {t('settings.squadsPlayerCount', { n: squad.players.length })}
+                      {(squad.usageCount ?? 0) > 0 && ` · ${t('settings.squadsUsedN', { n: squad.usageCount ?? 0 })}`}
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const ok = await confirmAsk({
+                        title: t('settings.squadsDeleteConfirm'),
+                        message: t('settings.squadsDeleteMsg', { name: squad.name }),
+                        destructive: true,
+                      });
+                      if (ok) deleteSquad(squad.id);
+                    }}
+                    aria-label={t('common.delete')}
+                    style={{
+                      width: 32, height: 32, borderRadius: 8, border: 'none',
+                      background: 'transparent', color: 'var(--danger)',
+                      fontSize: 14, cursor: 'pointer', fontWeight: 700,
+                    }}
+                  >
+                    🗑
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 1.5 Sport preference */}
         <div style={cardStyle}>
