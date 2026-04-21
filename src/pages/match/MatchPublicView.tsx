@@ -1006,9 +1006,6 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           </div>
         )}
 
-        {/* Silence unused variable warning — isFinished je stále užívané jinde */}
-        {false && isFinished}
-
         {/* Empty state — planned match */}
         {match.status === 'planned' && timeline.length === 0 && match.lineup.length === 0 && (
           <div style={{
