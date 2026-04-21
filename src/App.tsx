@@ -38,6 +38,7 @@ const CalendarPage = lazy(() => import('./pages/CalendarPage').then(m => ({ defa
 const TournamentListPage = lazy(() => import('./pages/tournament/TournamentListPage').then(m => ({ default: m.TournamentListPage })));
 const CreateTournamentPage = lazy(() => import('./pages/tournament/CreateTournamentPage').then(m => ({ default: m.CreateTournamentPage })));
 const TournamentCreateChoicePage = lazy(() => import('./pages/tournament/TournamentCreateChoicePage').then(m => ({ default: m.TournamentCreateChoicePage })));
+const QuickTournamentPage = lazy(() => import('./pages/tournament/QuickTournamentPage').then(m => ({ default: m.QuickTournamentPage })));
 const TournamentPlannerPage = lazy(() => import('./pages/tournament/TournamentPlannerPage').then(m => ({ default: m.TournamentPlannerPage })));
 const TournamentDetailPage = lazy(() => import('./pages/tournament/TournamentDetailPage').then(m => ({ default: m.TournamentDetailPage })));
 const ClubsPage = lazy(() => import('./pages/tournament/ClubsPage').then(m => ({ default: m.ClubsPage })));
@@ -82,6 +83,7 @@ export type Page =
   | { name: 'tournament-list' }
   | { name: 'tournament-create-choice' }
   | { name: 'tournament-create' }
+  | { name: 'tournament-quick' }
   | { name: 'tournament-planner' }
   | { name: 'tournament-detail'; tournamentId: string }
   | { name: 'tournament-public'; tournamentId: string }
@@ -351,6 +353,7 @@ function AppRouter() {
           ? <TennisCreateTournamentPage navigate={navigate} />
           : <CreateTournamentPage navigate={navigate} />
       )}
+      {page.name === 'tournament-quick' && <QuickTournamentPage navigate={navigate} />}
       {page.name === 'tournament-planner' && (
         isTennisMode
           ? <TennisCreateTournamentPage navigate={navigate} />

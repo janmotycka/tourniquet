@@ -727,7 +727,7 @@ export function HomePage({ navigate }: Props) {
         </button>
         )}
 
-        {/* 📋 Zápas — fotbal i tenis (singles, družstva) + Den zápasů (v modulu) */}
+        {/* 📋 Zápas — v Simple módu vede rovnou na rychlý zápas (MatchListPage to pozná) */}
         <button
           onClick={() => navigate({ name: 'match-list' })}
           style={{
@@ -742,7 +742,9 @@ export function HomePage({ navigate }: Props) {
           <div>
             <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.match')}</div>
             <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-              {isTennis ? t('home.matchDescTennis') : t('home.matchDesc')}
+              {isSimpleMode
+                ? t('home.matchDescSimple')
+                : isTennis ? t('home.matchDescTennis') : t('home.matchDesc')}
             </div>
           </div>
           <div style={{
@@ -752,6 +754,34 @@ export function HomePage({ navigate }: Props) {
             {t('common.open')}
           </div>
         </button>
+
+        {/* 🏆 Jednoduchý turnaj — jen v simple módu */}
+        {isSimpleMode && !isTennisIndividual && (
+          <button
+            onClick={() => navigate({ name: 'tournament-quick' })}
+            style={{
+              background: 'linear-gradient(135deg, #E65100 0%, #FF6F00 100%)',
+              borderRadius: 22, padding: '24px',
+              display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
+              boxShadow: '0 4px 16px rgba(230,81,0,.25)', width: '100%',
+              color: '#fff',
+            }}
+          >
+            <div style={{ fontSize: 44 }}>🏆</div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.quickTournament')}</div>
+              <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
+                {t('home.quickTournamentDesc')}
+              </div>
+            </div>
+            <div style={{
+              background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '10px 16px',
+              fontWeight: 700, fontSize: 15, textAlign: 'center',
+            }}>
+              + {t('home.quickTournamentCta')}
+            </div>
+          </button>
+        )}
 
         {/* 🏟 Klub / 👤 Moji hráči (individuální tenis) — jen v advanced módu */}
         {!isSimpleMode && (
