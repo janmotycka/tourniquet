@@ -976,18 +976,19 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           </EventSection>
         )}
 
-        {/* Finished match promo banner */}
-        {isFinished && (
+        {/* Viral promo banner — vždy, nejen po zápase. Rodič/soused co vidí
+            public view má jedno kliknutí k vytvoření vlastního zápasu. */}
+        {(
           <div style={{
             padding: `${spacing.md + 2}px ${spacing.lg}px`, borderRadius: radius.xl,
             background: 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)',
             color: '#fff', textAlign: 'center',
           }}>
             <div style={{ fontWeight: fontWeight.extrabold, fontSize: fontSize.base, marginBottom: spacing.xs }}>
-              ⚽ {t('promo.finishedTitle')}
+              ⚡ {t('promo.viralTitle')}
             </div>
             <div style={{ fontSize: fontSize.sm, opacity: 0.85, marginBottom: spacing.sm + 2, lineHeight: 1.4 }}>
-              {t('promo.finishedDesc')}
+              {t('promo.viralDesc')}
             </div>
             <a
               href="https://torq.cz"
@@ -1004,6 +1005,9 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
             </a>
           </div>
         )}
+
+        {/* Silence unused variable warning — isFinished je stále užívané jinde */}
+        {false && isFinished}
 
         {/* Empty state — planned match */}
         {match.status === 'planned' && timeline.length === 0 && match.lineup.length === 0 && (

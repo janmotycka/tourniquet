@@ -1046,6 +1046,8 @@ export const de: Record<TranslationKey, string> = {
   // ─── Promo ───────────────────────────────────────────────────────────────────
   'promo.finishedTitle': 'Eigenes Turnier organisieren?',
   'promo.finishedDesc': 'Mit TORQ bekommen Sie Live-Ergebnisse, Spielpläne, Tabellen & QR-Code für Zuschauer — in nur 5 Minuten.',
+  'promo.viralTitle': 'Trainierst du auch? Mach dein eigenes',
+  'promo.viralDesc': 'Spiel in 30 Sekunden einrichten, Ergebnisse tippen, Eltern schauen live zu. Kostenlos für Sportlehrer / Hobby.',
   'promo.tryCta': 'TORQ ausprobieren →',
   'promo.shareSummary': 'Turnier-Zusammenfassung teilen',
   'promo.shareSummaryCopied': 'Kopiert!',

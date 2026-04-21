@@ -1056,6 +1056,8 @@ export const cs = {
   // ─── Promo ───────────────────────────────────────────────────────────────────
   'promo.finishedTitle': 'Pořádáte vlastní turnaj?',
   'promo.finishedDesc': 'S TORQ zvládnete živé skóre, rozpis, tabulky i QR kód pro diváky — za 5 minut.',
+  'promo.viralTitle': 'Trénuješ taky? Udělej si vlastní',
+  'promo.viralDesc': 'Zadej zápas za 30 sekund, klikej skóre a rodiče vidí live. Zdarma pro TV / amatéry.',
   'promo.tryCta': 'Vyzkoušet TORQ →',
   'promo.shareSummary': 'Sdílet shrnutí turnaje',
   'promo.shareSummaryCopied': 'Zkopírováno!',
