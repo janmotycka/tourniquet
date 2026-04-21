@@ -21,6 +21,7 @@ import { getMatchPublicUrl } from '../../utils/qr-code';
 import { useMatchLock } from '../../hooks/useMatchLock';
 import { useMatchPerspective } from '../../hooks/useMatchPerspective';
 import { subscribeToSingleMatch } from '../../services/match.firebase';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 
 interface Props { matchId: string; navigate: (p: Page) => void; }
 
@@ -196,12 +197,15 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
     : currentMatch ? `${formatDate(currentMatch.date)} · ${currentMatch.kickoffTime}` : '';
 
   // Multi-trainer soft lock — oba hooks jsou null-safe (zvládají undefined match).
+  // V Simple módu (laik/učitel TV) lock úplně vypínáme — nepotřebuje řešit
+  // „Spravuji" / „Převzít řízení" bannery, matou ho.
+  const isSimpleMode = useUserPrefsStore(s => s.appMode === 'simple');
   const lock = useMatchLock(currentMatch);
   const perspective = useMatchPerspective(currentMatch);
   const isClubMatch = !!(currentMatch?.clubId && !currentMatch.clubId.startsWith('individual-'));
   const isPairedAwayCoach = perspective.role === 'away';
   const isPairedMatch = !!(currentMatch?.pairing?.awayCoachUid);
-  const needsLock = isClubMatch || isPairedMatch;
+  const needsLock = (isClubMatch || isPairedMatch) && !isSimpleMode;
   const canEdit = !needsLock || lock.status === 'mine' || lock.status === 'idle';
 
   // Real-time subscribe na single match pro paired away coach-e.

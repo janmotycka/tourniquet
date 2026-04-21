@@ -1074,6 +1074,10 @@ export const cs = {
   'match.list.quickMatchHint': 'Okamžitě start — bez sestavy a nastavení. Pro přátelák nebo plácek.',
   'match.list.quickMatchPrompt': 'Proti komu hrajete? (nech prázdné pokud nevíš)',
   'match.list.quickMatchDefaultOpponent': 'Soupeř',
+  'match.quickSheet.opponentLabel': 'Soupeř',
+  'match.quickSheet.opponentPlaceholder': 'Proti komu hrajete?',
+  'match.quickSheet.opponentHint': 'Nech prázdné pokud ještě nevíš — můžeš doplnit později.',
+  'match.quickSheet.startCta': 'Spustit zápas',
   'match.list.matchEventsSection': 'Dny zápasů',
 
   'match.picker.title': 'Co chceš vytvořit?',

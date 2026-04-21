@@ -1064,6 +1064,10 @@ export const de: Record<TranslationKey, string> = {
   'match.list.quickMatchHint': 'Sofort starten — ohne Aufstellung, ohne Setup. Für Freundschaftsspiele.',
   'match.list.quickMatchPrompt': 'Gegen wen spielt ihr? (leer lassen wenn unbekannt)',
   'match.list.quickMatchDefaultOpponent': 'Gegner',
+  'match.quickSheet.opponentLabel': 'Gegner',
+  'match.quickSheet.opponentPlaceholder': 'Gegen wen spielt ihr?',
+  'match.quickSheet.opponentHint': 'Leer lassen wenn unbekannt — später ergänzbar.',
+  'match.quickSheet.startCta': 'Spiel starten',
   'match.list.matchEventsSection': 'Spieltage',
 
   'match.picker.title': 'Was möchtest du erstellen?',

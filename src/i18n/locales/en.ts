@@ -1064,6 +1064,10 @@ export const en: Record<TranslationKey, string> = {
   'match.list.quickMatchHint': 'Instant start — no lineup, no setup. For pickup games.',
   'match.list.quickMatchPrompt': 'Who are you playing? (leave empty if unknown)',
   'match.list.quickMatchDefaultOpponent': 'Opponent',
+  'match.quickSheet.opponentLabel': 'Opponent',
+  'match.quickSheet.opponentPlaceholder': 'Who are you playing?',
+  'match.quickSheet.opponentHint': 'Leave empty if unknown — you can add it later.',
+  'match.quickSheet.startCta': 'Start match',
   'match.list.matchEventsSection': 'Match days',
 
   'match.picker.title': 'What do you want to create?',

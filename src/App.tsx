@@ -243,6 +243,24 @@ function AppRouter() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Zpracování ?mode=simple nebo ?mode=advanced — deep link pro marketing.
+  // Example: torq.cz/?mode=simple → nový uživatel rovnou dostane simple mode,
+  // přeskočí mode picker v onboardingu (jde rovnou na club nebo done).
+  const setAppModeFromUrl = useUserPrefsStore(s => s.setAppMode);
+  const currentAppMode = useUserPrefsStore(s => s.appMode);
+  useEffect(() => {
+    if (currentAppMode !== null) return; // už rozhodnuto — nepřepisovat
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get('mode');
+    if (mode === 'simple' || mode === 'advanced') {
+      setAppModeFromUrl(mode);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('mode');
+      history.replaceState(null, '', url.pathname + url.search + url.hash);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Sync body[data-page] for CSS hooks
   useEffect(() => {
     document.body.dataset.page = page.name;
