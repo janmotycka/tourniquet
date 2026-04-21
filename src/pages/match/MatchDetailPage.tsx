@@ -501,15 +501,16 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
               Zobrazí se dokud zápas nezačal a má aspoň 1 hráče v soupisce. */}
           {currentMatch.status === 'planned' && currentMatch.lineup.length > 0 && (
             <div style={{
-              background: 'linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%)',
+              background: 'var(--primary-light)',
+              border: '1px solid var(--primary-light)',
               borderRadius: 14, padding: '12px 14px',
               display: 'flex', flexDirection: 'column', gap: 10,
               marginBottom: 4,
             }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#0D47A1' }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--primary)' }}>
                 📣 {t('match.detail.nominationTitle')}
               </div>
-              <div style={{ fontSize: 12, color: '#1565C0', lineHeight: 1.4 }}>
+              <div style={{ fontSize: 12, color: 'var(--primary)', opacity: 0.85, lineHeight: 1.4 }}>
                 {t('match.detail.nominationDesc')}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -526,8 +527,8 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
                   onClick={handleCopyNomination}
                   style={{
                     flex: '1 1 140px', padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                    background: '#fff', color: '#0D47A1', border: '1px solid #90CAF9',
-                    cursor: 'pointer',
+                    background: 'var(--surface)', color: 'var(--primary)',
+                    border: '1px solid var(--primary)', cursor: 'pointer',
                   }}
                 >
                   📋 {t('match.detail.nominationCopy')}
@@ -542,15 +543,16 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
             (currentMatch.sport === 'tennis' && currentMatch.matchType === 'team' &&
              (currentMatch.subMatches ?? []).some(s => s.winner !== null))) && (
             <div style={{
-              background: 'linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%)',
+              background: 'var(--success-light)',
+              border: '1px solid var(--success-light)',
               borderRadius: 14, padding: '12px 14px',
               display: 'flex', flexDirection: 'column', gap: 10,
               marginBottom: 4,
             }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#1B5E20' }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--success)' }}>
                 📢 {t('match.detail.summaryTitle')}
               </div>
-              <div style={{ fontSize: 12, color: '#2E7D32', lineHeight: 1.4 }}>
+              <div style={{ fontSize: 12, color: 'var(--success)', opacity: 0.85, lineHeight: 1.4 }}>
                 {t('match.detail.summaryDesc')}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -567,8 +569,8 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
                   onClick={handleCopySummary}
                   style={{
                     flex: '1 1 140px', padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                    background: '#fff', color: '#1B5E20', border: '1px solid #A5D6A7',
-                    cursor: 'pointer',
+                    background: 'var(--surface)', color: 'var(--success)',
+                    border: '1px solid var(--success)', cursor: 'pointer',
                   }}
                 >
                   📋 {t('match.detail.summaryCopy')}

@@ -20,6 +20,7 @@ import { useToastStore } from './store/toast.store';
 import { usePageStore } from './store/page.store';
 import { useContactsStore } from './store/contacts.store';
 import { useMatchesStore } from './store/matches.store';
+import { useMatchEventsStore } from './store/matchEvents.store';
 import { logger } from './utils/logger';
 import { useTemplatesStore } from './store/templates.store';
 import { useClubsStore } from './store/clubs.store';
@@ -68,6 +69,11 @@ const RosterFormPage = lazy(() => import('./pages/tournament/RosterFormPage').th
 const RegistrationFormPage = lazy(() => import('./pages/tournament/RegistrationFormPage').then(m => ({ default: m.RegistrationFormPage })));
 const MatchPublicView = lazy(() => import('./pages/match/MatchPublicView').then(m => ({ default: m.MatchPublicView })));
 
+// Match Events ("Den zápasů") — samostatná jednoduchá feature pro učitele TV
+const CreateMatchEventPage = lazy(() => import('./pages/matchEvent/CreateMatchEventPage').then(m => ({ default: m.CreateMatchEventPage })));
+const MatchEventDetailPage = lazy(() => import('./pages/matchEvent/MatchEventDetailPage').then(m => ({ default: m.MatchEventDetailPage })));
+const MatchEventPublicView = lazy(() => import('./pages/matchEvent/MatchEventPublicView').then(m => ({ default: m.MatchEventPublicView })));
+
 export type Page =
   | { name: 'home' }
   | { name: 'public-feed' }
@@ -94,6 +100,9 @@ export type Page =
   | { name: 'match-detail'; matchId: string }
   | { name: 'match-public'; matchId: string }
   | { name: 'match-stats' }
+  | { name: 'match-event-create' }
+  | { name: 'match-event-detail'; eventId: string }
+  | { name: 'match-event-public'; eventId: string }
   | { name: 'tennis-player'; playerId: string }
   | { name: 'settings' }
   | { name: 'admin' }
@@ -130,6 +139,8 @@ function AppRouter() {
   const subscribeMatches = useMatchesStore(s => s.subscribeToFirebase);
   const retryPendingSync = useMatchesStore(s => s.retryPendingSync);
   const setMatchesFirebaseUid = useMatchesStore(s => s.setFirebaseUid);
+  const subscribeMatchEvents = useMatchEventsStore(s => s.subscribeToFirebase);
+  const setMatchEventsFirebaseUid = useMatchEventsStore(s => s.setFirebaseUid);
   const loadTemplates = useTemplatesStore(s => s.loadFromFirebase);
   const loadClubs = useClubsStore(s => s.loadFromFirebase);
   const setClubsFirebaseUid = useClubsStore(s => s.setFirebaseUid);
@@ -149,7 +160,9 @@ function AppRouter() {
       window.location.hash = `tournament=${p.tournamentId}`;
     } else if (p.name === 'match-public') {
       window.location.hash = `match=${p.matchId}`;
-    } else if (window.location.hash.startsWith('#tournament=') || window.location.hash.startsWith('#match=')) {
+    } else if (p.name === 'match-event-public') {
+      window.location.hash = `match-event=${p.eventId}`;
+    } else if (window.location.hash.startsWith('#tournament=') || window.location.hash.startsWith('#match=') || window.location.hash.startsWith('#match-event=')) {
       history.replaceState(null, '', window.location.pathname + window.location.search);
     }
     setPage(p);
@@ -183,21 +196,25 @@ function AppRouter() {
         const unsubscribeStatus = subscribeToStatus(user.uid);
         // MyPlayers (tenisový individuální mód) — realtime subscribe
         setMyPlayersFirebaseUid(user.uid);
+        // Match Events („Den zápasů") — realtime subscribe
+        const unsubscribeMatchEvents = subscribeMatchEvents(user.uid);
         return () => {
           unsubscribeTournaments();
           unsubscribeTrainings();
           unsubscribeStatus();
+          unsubscribeMatchEvents();
           setMyPlayersFirebaseUid(null);
         };
       }
     } else {
       setFirebaseUid(null);
       setMatchesFirebaseUid(null);
+      setMatchEventsFirebaseUid(null);
       setClubsFirebaseUid(null);
       setTrainingsFirebaseUid(null);
       setMyPlayersFirebaseUid(null);
     }
-  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, subscribeTournaments, setMatchesFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, subscribeTrainings, setTrainingsFirebaseUid, setMyPlayersFirebaseUid]);
+  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, subscribeTournaments, setMatchesFirebaseUid, subscribeMatchEvents, setMatchEventsFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, subscribeTrainings, setTrainingsFirebaseUid, setMyPlayersFirebaseUid]);
 
   // Matches subscription musí reagovat na změnu klubového členství —
   // když user vstoupí do sdíleného klubu, musíme začít poslouchat jeho matches.
@@ -301,6 +318,10 @@ function AppRouter() {
     return <Suspense fallback={<PageSpinner />}><MatchPublicView matchId={page.matchId} /></Suspense>;
   }
 
+  if (page.name === 'match-event-public') {
+    return <Suspense fallback={<PageSpinner />}><MatchEventPublicView eventId={page.eventId} navigate={navigate} /></Suspense>;
+  }
+
   // Načítání Firebase auth stavu — jen pro autentizované stránky
   if (loading) {
     return (
@@ -392,6 +413,8 @@ function AppRouter() {
           Tenisový user sem nedorazí přes UI — sidebar mu match-stats vůbec nenabízí. */}
       {page.name === 'match-stats' && !isTennisMode && <MatchStatsPage navigate={navigate} />}
       {page.name === 'match-stats' && isTennisMode && <TennisMatchListPage navigate={navigate} />}
+      {page.name === 'match-event-create' && <CreateMatchEventPage navigate={navigate} />}
+      {page.name === 'match-event-detail' && <MatchEventDetailPage eventId={page.eventId} navigate={navigate} />}
       {page.name === 'tennis-player' && <TennisPlayerDetailPage playerId={page.playerId} navigate={navigate} />}
       {page.name === 'settings' && <SettingsPage navigate={navigate} />}
       {page.name === 'admin' && <AdminPage />}

@@ -348,6 +348,26 @@
       }
     },
 
+    // ─── Match Events („Den zápasů") — ultra-jednoduché turnaje pro učitele ─
+    // Owner může číst/psát svoje events. Veřejný mirror (pro rodiče) níž.
+    "match-events": {
+      "$ownerUid": {
+        ".read":  "auth != null && auth.uid === $ownerUid",
+        ".write": "auth != null && auth.uid === $ownerUid"
+      }
+    },
+
+    // ─── Veřejné Match Events (odkaz pro rodiče) ────────────────────────────
+    "public-match-events": {
+      "$eventId": {
+        ".read": true,
+        ".write": "auth != null && (
+          (!data.exists() && newData.child('ownerUid').val() === auth.uid) ||
+          (data.exists() && data.child('ownerUid').val() === auth.uid)
+        )"
+      }
+    },
+
     // ─── Veřejný zápas (sdílení s rodiči) ──────────────────────────────────
     // Čtení: kdokoli; Zápis: vlastník zápasu napříč scope (legacy uid + klubový).
     "public-matches": {

@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import type { Page } from '../App';
-import { parseTournamentHashFromUrl, parseRosterHashFromUrl, parseRegistrationHashFromUrl, parseMatchHashFromUrl, parseMatchPairingHashFromUrl } from '../utils/qr-code';
+import { parseTournamentHashFromUrl, parseRosterHashFromUrl, parseRegistrationHashFromUrl, parseMatchHashFromUrl, parseMatchPairingHashFromUrl, parseMatchEventHashFromUrl } from '../utils/qr-code';
 
 function getInitialPage(): Page {
   // Roster form link (#roster={tournamentId}&k={token})
@@ -20,6 +20,9 @@ function getInitialPage(): Page {
   // Public match view (#match={id})
   const matchId = parseMatchHashFromUrl();
   if (matchId) return { name: 'match-public', matchId };
+  // Public match event view (#match-event={id})
+  const eventId = parseMatchEventHashFromUrl();
+  if (eventId) return { name: 'match-event-public', eventId };
   return { name: 'home' };
 }
 
