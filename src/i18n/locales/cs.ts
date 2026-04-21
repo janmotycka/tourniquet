@@ -1078,6 +1078,9 @@ export const cs = {
   'match.quickSheet.opponentPlaceholder': 'Proti komu hrajete?',
   'match.quickSheet.opponentHint': 'Nech prázdné pokud ještě nevíš — můžeš doplnit později.',
   'match.quickSheet.startCta': 'Spustit zápas',
+  'match.quickSheet.rosterToggle': 'Přidat hráče (volitelné)',
+  'match.quickSheet.rosterPlaceholder': 'Karel Novák\nJakub Dvořák\nTomáš Malý\n…',
+  'match.quickSheet.rosterHint': 'Jedno jméno na řádek. Použije se pro zápis střelců gólů. Bez klubu — stačí napsat.',
   'match.list.matchEventsSection': 'Dny zápasů',
 
   'match.picker.title': 'Co chceš vytvořit?',

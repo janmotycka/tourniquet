@@ -10,12 +10,13 @@ import { useI18n } from '../../i18n';
 
 interface Props {
   onClose: () => void;
-  onCreate: (opponent: string) => void;
+  onCreate: (opponent: string, roster: string[]) => void;
 }
 
 export function QuickMatchSheet({ onClose, onCreate }: Props) {
   const { t } = useI18n();
   const [opponent, setOpponent] = useState('');
+  const [rosterText, setRosterText] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -31,7 +32,12 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
   }, [onClose]);
 
   const handleStart = () => {
-    onCreate(opponent);
+    // Roster: jedno jméno na řádek. Prázdné řádky vynecháme.
+    const roster = rosterText
+      .split(/\r?\n/)
+      .map(n => n.trim())
+      .filter(n => n.length > 0);
+    onCreate(opponent, roster);
   };
 
   return (
@@ -104,7 +110,6 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
               type="text"
               value={opponent}
               onChange={e => setOpponent(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleStart(); }}
               placeholder={t('match.quickSheet.opponentPlaceholder')}
               style={{
                 width: '100%', boxSizing: 'border-box',
@@ -118,6 +123,32 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
               {t('match.quickSheet.opponentHint')}
             </div>
           </div>
+
+          {/* Roster (volitelné) — hráči se dají manuálně zadat bez vazby na klub */}
+          <details>
+            <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', padding: '6px 0' }}>
+              👥 {t('match.quickSheet.rosterToggle')}
+            </summary>
+            <div style={{ marginTop: 10 }}>
+              <textarea
+                value={rosterText}
+                onChange={e => setRosterText(e.target.value)}
+                placeholder={t('match.quickSheet.rosterPlaceholder')}
+                rows={5}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '10px 12px', borderRadius: 10,
+                  border: '1.5px solid var(--border)',
+                  background: 'var(--surface)', color: 'var(--text)',
+                  fontSize: 14, outline: 'none', resize: 'vertical',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 }}>
+                {t('match.quickSheet.rosterHint')}
+              </div>
+            </div>
+          </details>
 
           <button
             onClick={handleStart}

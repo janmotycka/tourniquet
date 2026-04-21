@@ -1068,6 +1068,9 @@ export const de: Record<TranslationKey, string> = {
   'match.quickSheet.opponentPlaceholder': 'Gegen wen spielt ihr?',
   'match.quickSheet.opponentHint': 'Leer lassen wenn unbekannt — später ergänzbar.',
   'match.quickSheet.startCta': 'Spiel starten',
+  'match.quickSheet.rosterToggle': 'Spieler hinzufügen (optional)',
+  'match.quickSheet.rosterPlaceholder': 'Max Mustermann\nAnna Schmidt\nTim Weber\n…',
+  'match.quickSheet.rosterHint': 'Ein Name pro Zeile. Für das Erfassen von Torschützen. Kein Verein nötig — einfach eintippen.',
   'match.list.matchEventsSection': 'Spieltage',
 
   'match.picker.title': 'Was möchtest du erstellen?',

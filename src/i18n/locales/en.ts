@@ -1068,6 +1068,9 @@ export const en: Record<TranslationKey, string> = {
   'match.quickSheet.opponentPlaceholder': 'Who are you playing?',
   'match.quickSheet.opponentHint': 'Leave empty if unknown — you can add it later.',
   'match.quickSheet.startCta': 'Start match',
+  'match.quickSheet.rosterToggle': 'Add players (optional)',
+  'match.quickSheet.rosterPlaceholder': 'John Smith\nJane Doe\nAlex Chen\n…',
+  'match.quickSheet.rosterHint': 'One name per line. Used for recording goal scorers. No club needed — just type.',
   'match.list.matchEventsSection': 'Match days',
 
   'match.picker.title': 'What do you want to create?',

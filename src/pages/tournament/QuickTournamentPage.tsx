@@ -16,7 +16,11 @@ import { useAuth } from '../../context/AuthContext';
 import { useTournamentStore } from '../../store/tournament.store';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useToastStore } from '../../store/toast.store';
-import { PageHeader } from '../../components/ui';
+import {
+  PageHeader,
+  FormCard, SectionTitle, FormField, SelectionTile, SelectionTiles, PrimaryButton,
+  formInputStyle,
+} from '../../components/ui';
 import { generatePinSalt, hashPin } from '../../utils/pin-hash';
 
 interface Props { navigate: (p: Page) => void; }
@@ -25,25 +29,7 @@ function todayStr(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-// Konzistentní styly s CreateMatchEventPage / CreateMatchPage (karty)
-const cardStyle: React.CSSProperties = {
-  background: 'var(--surface)', borderRadius: 14, padding: 16,
-  display: 'flex', flexDirection: 'column', gap: 12,
-};
-const sectionTitleStyle: React.CSSProperties = {
-  fontWeight: 700, fontSize: 15, color: 'var(--text)', margin: 0,
-};
-const inputStyle: React.CSSProperties = {
-  width: '100%', boxSizing: 'border-box',
-  padding: '10px 12px', borderRadius: 10,
-  border: '1.5px solid var(--border)',
-  background: 'var(--bg)', color: 'var(--text)',
-  fontSize: 14, outline: 'none',
-};
-const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: 12, fontWeight: 600,
-  color: 'var(--text-muted)', marginBottom: 6,
-};
+// Form styles z ../../components/ui/Form — sdílené napříč create stránkami.
 
 const TEAM_COLORS = [
   '#1565C0', '#C62828', '#2E7D32', '#E65100',
@@ -144,85 +130,70 @@ export function QuickTournamentPage({ navigate }: Props) {
         </div>
 
         {/* Základní info */}
-        <div style={cardStyle}>
-          <h3 style={sectionTitleStyle}>{t('tournament.quick.sectionBasic')}</h3>
+        <FormCard>
+          <SectionTitle>{t('tournament.quick.sectionBasic')}</SectionTitle>
 
-          <div>
-            <label htmlFor="qt-name" style={labelStyle}>
-              {t('tournament.quick.nameLabel')} <span style={{ color: 'var(--danger)' }}>*</span>
-            </label>
+          <FormField id="qt-name" label={t('tournament.quick.nameLabel')} required>
             <input
               id="qt-name"
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder={t('tournament.quick.namePlaceholder')}
-              style={inputStyle}
+              style={formInputStyle}
               autoFocus
             />
-          </div>
+          </FormField>
 
           <div style={{ display: 'flex', gap: 10 }}>
             <div style={{ flex: 1 }}>
-              <label htmlFor="qt-date" style={labelStyle}>
-                {t('tournament.quick.dateLabel')}
-              </label>
-              <input
-                id="qt-date"
-                type="date"
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                style={inputStyle}
-              />
+              <FormField id="qt-date" label={t('tournament.quick.dateLabel')}>
+                <input
+                  id="qt-date"
+                  type="date"
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
+                  style={formInputStyle}
+                />
+              </FormField>
             </div>
             <div style={{ flex: 1 }}>
-              <label htmlFor="qt-venue" style={labelStyle}>
-                {t('tournament.quick.venueLabel')}
-              </label>
-              <input
-                id="qt-venue"
-                type="text"
-                value={venue}
-                onChange={e => setVenue(e.target.value)}
-                placeholder={t('tournament.quick.venuePlaceholder')}
-                style={inputStyle}
-              />
+              <FormField id="qt-venue" label={t('tournament.quick.venueLabel')}>
+                <input
+                  id="qt-venue"
+                  type="text"
+                  value={venue}
+                  onChange={e => setVenue(e.target.value)}
+                  placeholder={t('tournament.quick.venuePlaceholder')}
+                  style={formInputStyle}
+                />
+              </FormField>
             </div>
           </div>
-        </div>
+        </FormCard>
 
         {/* Počet týmů */}
-        <div style={cardStyle}>
-          <h3 style={sectionTitleStyle}>{t('tournament.quick.teamCountLabel')}</h3>
+        <FormCard>
+          <SectionTitle>{t('tournament.quick.teamCountLabel')}</SectionTitle>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
             {t('tournament.quick.teamCountHint')}
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
-            {teamCountOptions.map(n => {
-              const active = teamCount === n;
-              return (
-                <button
-                  key={n}
-                  onClick={() => handleTeamCountChange(n)}
-                  style={{
-                    padding: '10px 4px', borderRadius: 10, fontWeight: 700, fontSize: 14,
-                    background: active ? 'var(--primary)' : 'var(--surface-var)',
-                    color: active ? '#fff' : 'var(--text-muted)',
-                    border: active ? 'none' : '1.5px solid var(--border)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {n}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+          <SelectionTiles style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+            {teamCountOptions.map(n => (
+              <SelectionTile
+                key={n}
+                active={teamCount === n}
+                onClick={() => handleTeamCountChange(n)}
+                label={n}
+              />
+            ))}
+          </SelectionTiles>
+        </FormCard>
 
         {/* Jména týmů */}
-        <div style={cardStyle}>
+        <FormCard>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={sectionTitleStyle}>{t('tournament.quick.teamsLabel')}</h3>
+            <SectionTitle>{t('tournament.quick.teamsLabel')}</SectionTitle>
             <button
               type="button"
               onClick={autoFillDefaults}
@@ -254,12 +225,12 @@ export function QuickTournamentPage({ navigate }: Props) {
                   value={teamNames[i] ?? ''}
                   onChange={e => updateTeamName(i, e.target.value)}
                   placeholder={t('tournament.quick.teamPlaceholder', { letter: String.fromCharCode(65 + i) })}
-                  style={{ ...inputStyle, padding: '8px 10px', fontSize: 13, flex: 1, minWidth: 0 }}
+                  style={{ ...formInputStyle, padding: '8px 10px', fontSize: 13, flex: 1, minWidth: 0 }}
                 />
               </div>
             ))}
           </div>
-        </div>
+        </FormCard>
 
         {/* Info o rozpisu */}
         <div style={{
@@ -270,22 +241,13 @@ export function QuickTournamentPage({ navigate }: Props) {
         </div>
 
         {/* Submit */}
-        <button
+        <PrimaryButton
           onClick={handleCreate}
           disabled={!canCreate || busy}
-          style={{
-            padding: '14px', borderRadius: 12,
-            background: canCreate && !busy ? 'var(--primary)' : 'var(--border)',
-            color: canCreate && !busy ? '#fff' : 'var(--text-muted)',
-            border: 'none',
-            fontSize: 15, fontWeight: 800,
-            cursor: canCreate && !busy ? 'pointer' : 'not-allowed',
-            marginTop: 4,
-            boxShadow: canCreate && !busy ? 'var(--shadow-sm)' : 'none',
-          }}
+          style={{ marginTop: 4 }}
         >
           {busy ? t('common.loading') : t('tournament.quick.createCta')}
-        </button>
+        </PrimaryButton>
       </div>
     </div>
   );

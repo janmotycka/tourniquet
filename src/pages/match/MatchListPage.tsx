@@ -474,6 +474,8 @@ export function MatchListPage({ navigate }: Props) {
   const createMatch = useMatchesStore(s => s.createMatch);
   const startMatch = useMatchesStore(s => s.startMatch);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const appMode = useUserPrefsStore(s => s.appMode);
+  const isSimpleMode = appMode === 'simple';
   const activeClubId = useClubsStore(s => s.activeClubId);
   const clubs = useClubsStore(s => s.clubs);
 
@@ -490,11 +492,21 @@ export function MatchListPage({ navigate }: Props) {
     setQuickSheetOpen(true);
   };
 
-  const handleQuickMatchCreate = (opponent: string) => {
+  const handleQuickMatchCreate = (opponent: string, roster: string[]) => {
     const activeClub = clubs.find(c => c.id === activeClubId);
     const now = new Date();
     const today = now.toISOString().split('T')[0];
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    // Manuální roster (bez klubu) — každý řádek = hráč.
+    // Všichni jsou „starters" (trenér si později přepne pokud chce), bez
+    // čísel dresu (user je nezadával).
+    const lineup = roster.map((name, i) => ({
+      playerId: `manual-${i}-${now.getTime()}`,
+      jerseyNumber: 0,
+      name,
+      isStarter: true,
+      substituteOrder: 0,
+    }));
     const match = createMatch({
       sport: 'football',
       matchType: 'single',
@@ -509,7 +521,7 @@ export function MatchListPage({ navigate }: Props) {
       periods: 2,
       periodDurationMinutes: 30,
       matchFormat: '7+1',
-      lineup: [],
+      lineup,
       trackAssists: false,
     });
     startMatch(match.id);
@@ -538,6 +550,16 @@ export function MatchListPage({ navigate }: Props) {
   const [quickSheetOpen, setQuickSheetOpen] = useState(false);
 
   const handleCreateFullMatch = () => navigate({ name: 'match-create' });
+
+  // V simple módu rovnou otevřít rychlý zápas (pro laika = žádný výběr mezi
+  // „plný s klubovou sestavou" a „rychlý bez sestavy" — jen rychlý).
+  const handleNewMatchCta = () => {
+    if (isSimpleMode) {
+      handleQuickMatchOpen();
+    } else {
+      setPickerOpen(true);
+    }
+  };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -735,7 +757,7 @@ export function MatchListPage({ navigate }: Props) {
                 📊
               </button>
               <button
-                onClick={() => setPickerOpen(true)}
+                onClick={handleNewMatchCta}
                 style={{
                   background: 'var(--primary)', color: '#fff', borderRadius: 12,
                   padding: '10px 16px', fontWeight: 700, fontSize: 14,
@@ -820,7 +842,7 @@ export function MatchListPage({ navigate }: Props) {
               {t('match.list.noMatchesYetDesc')}
             </div>
             <button
-              onClick={() => setPickerOpen(true)}
+              onClick={handleNewMatchCta}
               style={{
                 background: 'var(--primary)', color: '#fff', borderRadius: 14,
                 padding: '14px 28px', fontWeight: 700, fontSize: 16, marginTop: 8,
