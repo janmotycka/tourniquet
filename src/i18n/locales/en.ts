@@ -2796,6 +2796,7 @@ export const en: Record<TranslationKey, string> = {
   // ─── Match Events („Match day") ──────────────────────────────────────────
   'matchEvent.createTitle': 'New match day',
   'matchEvent.createIntro': 'For PE teachers, school tournaments, camps or amateur friendlies. No lineups, no stats — just a list of matches and scores. Parents watch live via a link.',
+  'matchEvent.sectionBasic': 'Basic info',
   'matchEvent.nameLabel': 'Name',
   'matchEvent.namePlaceholder': 'e.g. 3rd grade football tournament',
   'matchEvent.dateLabel': 'Date',

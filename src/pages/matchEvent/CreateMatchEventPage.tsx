@@ -1,14 +1,9 @@
 /**
  * CreateMatchEventPage — vytvoření „Dne zápasů".
  *
- * Minimalistický wizard:
- *   1. Název (povinný)
- *   2. Datum (default = dnes)
- *   3. Sport (default = user preferred nebo football)
- *   4. Volitelně: místo, první zápasy (2 týmy)
- *
- * Po vytvoření → navigace na detail, kde učitel přidává další zápasy
- * a kliká na skóre během turnaje.
+ * Design sjednocený se stylem CreateMatchPage: sekce v „kartách"
+ * (background: var(--surface), borderRadius: 14, padding: 16), section title
+ * jako `<h3>`, selection tiles stejný vzhled jako tam (active=primary, inactive=surface-var).
  */
 
 import { useState } from 'react';
@@ -32,8 +27,28 @@ function todayStr(): string {
 const SPORTS: Array<{ value: Sport | 'other'; label: string; icon: string }> = [
   { value: 'football', label: 'Fotbal', icon: '⚽' },
   { value: 'tennis', label: 'Tenis', icon: '🎾' },
-  { value: 'other', label: 'Jiný sport', icon: '🏆' },
+  { value: 'other', label: 'Jiný', icon: '🏆' },
 ];
+
+// Společné form styly (sjednocené s CreateMatchPage)
+const cardStyle: React.CSSProperties = {
+  background: 'var(--surface)', borderRadius: 14, padding: 16,
+  display: 'flex', flexDirection: 'column', gap: 12,
+};
+const sectionTitleStyle: React.CSSProperties = {
+  fontWeight: 700, fontSize: 15, color: 'var(--text)', margin: 0,
+};
+const inputStyle: React.CSSProperties = {
+  width: '100%', boxSizing: 'border-box',
+  padding: '10px 12px', borderRadius: 10,
+  border: '1.5px solid var(--border)',
+  background: 'var(--bg)', color: 'var(--text)',
+  fontSize: 14, outline: 'none',
+};
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: 12, fontWeight: 600,
+  color: 'var(--text-muted)', marginBottom: 6,
+};
 
 export function CreateMatchEventPage({ navigate }: Props) {
   const { t } = useI18n();
@@ -58,7 +73,6 @@ export function CreateMatchEventPage({ navigate }: Props) {
 
   const handleCreate = () => {
     if (!canCreate || !user) return;
-    // Odfiltruj prázdné řádky (both teamy prázdné = nechceme)
     const validMatches = matches
       .filter(m => m.teamA.trim() || m.teamB.trim())
       .map(m => ({
@@ -77,23 +91,15 @@ export function CreateMatchEventPage({ navigate }: Props) {
     navigate({ name: 'match-event-detail', eventId: event.id });
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', boxSizing: 'border-box',
-    padding: '12px 14px', borderRadius: 12,
-    border: '1.5px solid var(--border)',
-    background: 'var(--surface)', color: 'var(--text)',
-    fontSize: 15, outline: 'none',
-  };
-
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100dvh', background: 'var(--bg)' }}>
       <PageHeader
         title={t('matchEvent.createTitle')}
-        onBack={() => navigate({ name: 'home' })}
+        onBack={() => navigate({ name: 'match-list' })}
       />
 
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-        {/* Intro */}
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Intro — laděn stylem jako ostatní info hlášky */}
         <div style={{
           background: 'var(--primary-light)', borderRadius: 12, padding: '12px 14px',
           fontSize: 13, color: 'var(--primary)', lineHeight: 1.45,
@@ -101,92 +107,95 @@ export function CreateMatchEventPage({ navigate }: Props) {
           💡 {t('matchEvent.createIntro')}
         </div>
 
-        {/* Název */}
-        <div>
-          <label htmlFor="me-name" style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6, color: 'var(--text)' }}>
-            {t('matchEvent.nameLabel')} <span style={{ color: 'var(--danger)' }}>*</span>
-          </label>
-          <input
-            id="me-name"
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder={t('matchEvent.namePlaceholder')}
-            style={inputStyle}
-            autoFocus
-          />
-        </div>
+        {/* Základní info — karta */}
+        <div style={cardStyle}>
+          <h3 style={sectionTitleStyle}>{t('matchEvent.sectionBasic')}</h3>
 
-        {/* Datum + Sport (row) */}
-        <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: 1 }}>
-            <label htmlFor="me-date" style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6, color: 'var(--text)' }}>
-              {t('matchEvent.dateLabel')}
+          <div>
+            <label htmlFor="me-name" style={labelStyle}>
+              {t('matchEvent.nameLabel')} <span style={{ color: 'var(--danger)' }}>*</span>
             </label>
             <input
-              id="me-date"
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
+              id="me-name"
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder={t('matchEvent.namePlaceholder')}
               style={inputStyle}
+              autoFocus
             />
           </div>
-          <div style={{ flex: 1 }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6, color: 'var(--text)' }}>
-              {t('matchEvent.sportLabel')}
-            </label>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {SPORTS.map(s => (
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="me-date" style={labelStyle}>
+                {t('matchEvent.dateLabel')}
+              </label>
+              <input
+                id="me-date"
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="me-venue" style={labelStyle}>
+                {t('matchEvent.venueLabel')}
+              </label>
+              <input
+                id="me-venue"
+                type="text"
+                value={venue}
+                onChange={e => setVenue(e.target.value)}
+                placeholder={t('matchEvent.venuePlaceholder')}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Sport — karta s tiles (stejný pattern jako CreateMatchPage tennis type) */}
+        <div style={cardStyle}>
+          <h3 style={sectionTitleStyle}>{t('matchEvent.sportLabel')}</h3>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {SPORTS.map(s => {
+              const isActive = sport === s.value;
+              return (
                 <button
                   key={s.value}
                   type="button"
                   onClick={() => setSport(s.value)}
                   style={{
-                    flex: 1, padding: '10px 4px', borderRadius: 10,
-                    border: sport === s.value ? '2px solid var(--primary)' : '1.5px solid var(--border)',
-                    background: sport === s.value ? 'var(--primary-light)' : 'var(--surface)',
-                    color: sport === s.value ? 'var(--primary)' : 'var(--text)',
-                    fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                    flex: 1, padding: '14px 10px', borderRadius: 12, fontWeight: 700, fontSize: 13,
+                    background: isActive ? 'var(--primary)' : 'var(--surface-var)',
+                    color: isActive ? '#fff' : 'var(--text-muted)',
+                    border: isActive ? 'none' : '1.5px solid var(--border)',
+                    cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center',
                   }}
-                  title={s.label}
                 >
-                  {s.icon}
+                  <span style={{ fontSize: 20 }}>{s.icon}</span>
+                  <span>{s.label}</span>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Venue */}
-        <div>
-          <label htmlFor="me-venue" style={{ display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6, color: 'var(--text)' }}>
-            {t('matchEvent.venueLabel')}
-          </label>
-          <input
-            id="me-venue"
-            type="text"
-            value={venue}
-            onChange={e => setVenue(e.target.value)}
-            placeholder={t('matchEvent.venuePlaceholder')}
-            style={inputStyle}
-          />
-        </div>
-
-        {/* Zápasy */}
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <label style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>
-              {t('matchEvent.matchesLabel')}
-            </label>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+        {/* Zápasy — karta */}
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={sectionTitleStyle}>{t('matchEvent.matchesLabel')}</h3>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
               {t('matchEvent.matchesHint')}
-            </div>
+            </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {matches.map((m, i) => (
               <div key={i} style={{
                 display: 'flex', gap: 6, alignItems: 'center',
-                background: 'var(--surface)', borderRadius: 10, padding: 8,
+                background: 'var(--surface-var)', borderRadius: 10, padding: 8,
                 border: '1px solid var(--border)',
               }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', minWidth: 18 }}>
@@ -197,7 +206,7 @@ export function CreateMatchEventPage({ navigate }: Props) {
                   value={m.teamA}
                   onChange={e => updateRow(i, { teamA: e.target.value })}
                   placeholder={t('matchEvent.teamA')}
-                  style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', minWidth: 0 }}
+                  style={{ ...inputStyle, minWidth: 0, flex: 1, padding: '8px 10px', fontSize: 13 }}
                 />
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>vs</span>
                 <input
@@ -205,7 +214,7 @@ export function CreateMatchEventPage({ navigate }: Props) {
                   value={m.teamB}
                   onChange={e => updateRow(i, { teamB: e.target.value })}
                   placeholder={t('matchEvent.teamB')}
-                  style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13, outline: 'none', minWidth: 0 }}
+                  style={{ ...inputStyle, minWidth: 0, flex: 1, padding: '8px 10px', fontSize: 13 }}
                 />
                 {matches.length > 1 && (
                   <button
@@ -214,7 +223,7 @@ export function CreateMatchEventPage({ navigate }: Props) {
                     aria-label={t('common.delete')}
                     style={{
                       width: 32, height: 32, borderRadius: 8, border: 'none',
-                      background: 'var(--surface-var)', color: 'var(--text-muted)',
+                      background: 'var(--surface)', color: 'var(--text-muted)',
                       fontSize: 14, cursor: 'pointer', flexShrink: 0,
                     }}
                   >
@@ -228,7 +237,7 @@ export function CreateMatchEventPage({ navigate }: Props) {
             type="button"
             onClick={addRow}
             style={{
-              marginTop: 8, width: '100%', padding: '10px',
+              width: '100%', padding: '10px',
               borderRadius: 10, border: '1.5px dashed var(--border)',
               background: 'transparent', color: 'var(--text-muted)',
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -250,6 +259,7 @@ export function CreateMatchEventPage({ navigate }: Props) {
             fontSize: 15, fontWeight: 800,
             cursor: canCreate ? 'pointer' : 'not-allowed',
             marginTop: 4,
+            boxShadow: canCreate ? 'var(--shadow-sm)' : 'none',
           }}
         >
           {t('matchEvent.createCta')}

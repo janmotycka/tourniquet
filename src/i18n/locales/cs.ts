@@ -2815,6 +2815,7 @@ export const cs = {
   // ─── Match Events („Den zápasů") ─────────────────────────────────────────
   'matchEvent.createTitle': 'Nový den zápasů',
   'matchEvent.createIntro': 'Pro učitele TV, tábory, školní turnaje nebo amatérský přátelák. Žádné sestavy ani statistiky — jen seznam zápasů a skóre. Rodiče vidí živě přes odkaz.',
+  'matchEvent.sectionBasic': 'Základní údaje',
   'matchEvent.nameLabel': 'Název',
   'matchEvent.namePlaceholder': 'např. Turnaj 3. tříd ve fotbale',
   'matchEvent.dateLabel': 'Datum',

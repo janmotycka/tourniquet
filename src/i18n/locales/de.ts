@@ -2796,6 +2796,7 @@ export const de: Record<TranslationKey, string> = {
   // ─── Match Events („Spieltag") ────────────────────────────────────────────
   'matchEvent.createTitle': 'Neuer Spieltag',
   'matchEvent.createIntro': 'Für Sportlehrer, Schulturniere, Camps oder Hobbyspiele. Keine Aufstellungen, keine Statistiken — nur Spielliste und Ergebnisse. Eltern verfolgen live via Link.',
+  'matchEvent.sectionBasic': 'Grundinfos',
   'matchEvent.nameLabel': 'Name',
   'matchEvent.namePlaceholder': 'z. B. Fußballturnier 3. Klassen',
   'matchEvent.dateLabel': 'Datum',

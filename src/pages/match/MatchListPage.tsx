@@ -13,6 +13,7 @@ import { useLayoutMode } from '../../hooks/useLayoutMode';
 import { DesktopPage, FilterPill, desktopPrimaryButtonStyle, desktopSecondaryButtonStyle } from '../../components/desktop/DesktopPage';
 import { PageHeader } from '../../components/ui';
 import { NewMatchPicker } from '../../components/match/NewMatchPicker';
+import { QuickMatchSheet } from '../../components/match/QuickMatchSheet';
 import type { SeasonMatch } from '../../types/match.types';
 import type { MatchEvent } from '../../types/matchEvent.types';
 import { radius, fontSize, fontWeight, spacing } from '../../theme/tokens';
@@ -480,26 +481,28 @@ export function MatchListPage({ navigate }: Props) {
 
   // ── Rychlý zápas ─────────────────────────────────────────────────────────
   // Pro casual / přátelák / plácek — trenér nechce dělat setup (lineup, čas,
-  // soutěž). Jen zadá soupeře a hraje se. Lineup, kategorie apod. se dají doplnit
-  // později (edit), pokud chce zápas uchovat v historii.
-  const handleQuickMatch = () => {
+  // soutěž). Jen zadá soupeře a hraje se. Otevře se přes QuickMatchSheet
+  // (konzistentní bottom sheet místo window.prompt).
+  const handleQuickMatchOpen = () => {
     if (preferredSport === 'tennis') {
+      // Tenis nemá rychlý zápas — pošle rovnou na create
       navigate({ name: 'match-create' });
       return;
     }
-    const opponent = window.prompt(t('match.list.quickMatchPrompt'), '');
-    if (opponent === null) return; // user cancelled
+    setQuickSheetOpen(true);
+  };
+
+  const handleQuickMatchCreate = (opponent: string) => {
     const activeClub = clubs.find(c => c.id === activeClubId);
     const now = new Date();
     const today = now.toISOString().split('T')[0];
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    // Reasonable defaults pro U11 youth football
     const match = createMatch({
       sport: 'football',
       matchType: 'single',
       clubId: activeClub?.id ?? 'individual-quick',
       clubName: activeClub?.name,
-      opponent: (opponent || '').trim() || t('match.list.quickMatchDefaultOpponent'),
+      opponent: opponent.trim() || t('match.list.quickMatchDefaultOpponent'),
       isHome: true,
       date: today,
       kickoffTime: timeStr,
@@ -512,6 +515,7 @@ export function MatchListPage({ navigate }: Props) {
       trackAssists: false,
     });
     startMatch(match.id);
+    setQuickSheetOpen(false);
     navigate({ name: 'match-detail', matchId: match.id });
   };
 
@@ -544,6 +548,7 @@ export function MatchListPage({ navigate }: Props) {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isHydrating, setIsHydrating] = useState(matches.length === 0);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [quickSheetOpen, setQuickSheetOpen] = useState(false);
 
   // Helpery pro picker actions
   const handleCreateMatchEvent = () => navigate({ name: 'match-event-create' });
@@ -926,9 +931,17 @@ export function MatchListPage({ navigate }: Props) {
         <NewMatchPicker
           onClose={() => setPickerOpen(false)}
           onFullMatch={handleCreateFullMatch}
-          onQuickMatch={handleQuickMatch}
+          onQuickMatch={handleQuickMatchOpen}
           onMatchEvent={handleCreateMatchEvent}
           showQuickMatch={preferredSport === 'football'}
+        />
+      )}
+
+      {/* Rychlý zápas — inline bottom sheet (místo window.prompt) */}
+      {quickSheetOpen && (
+        <QuickMatchSheet
+          onClose={() => setQuickSheetOpen(false)}
+          onCreate={handleQuickMatchCreate}
         />
       )}
     </div>
