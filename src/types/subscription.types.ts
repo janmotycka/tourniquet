@@ -19,10 +19,16 @@ export interface FeatureLimits {
   maxMatches: number;
 }
 
+// Audit 2026-04-24: Zvýšeno z 1/3/3 na 1/5/10.
+// Důvod: 3 zápasy je fatálně malé — user narazí na paywall ještě než
+// zažije aha-moment (sezónní statistiky, 4+ zápas McDonald's Cupu). Všechny
+// tři persony auditu (Honza laik, Petr trenér, analyst) se shodly, že
+// current limit zabíjí akvizici. Pro Simple mód je limit úplně vypnutý
+// (viz useSubscriptionLimits) — Simple user nemá z čeho řešit quota frustraci.
 export const FREE_LIMITS: FeatureLimits = {
   maxTournaments: 1,
-  maxSavedTrainings: 3,
-  maxMatches: 3,
+  maxSavedTrainings: 5,
+  maxMatches: 10,
 };
 
 export const PREMIUM_LIMITS: FeatureLimits = {

@@ -11,6 +11,7 @@ import type {
 } from '../types/subscription.types';
 import { FREE_LIMITS, PREMIUM_LIMITS } from '../types/subscription.types';
 import type { PriceCurrency } from '../types/subscription.types';
+import { useUserPrefsStore } from './userPrefs.store';
 import { logger } from '../utils/logger';
 
 // ─── State interface ──────────────────────────────────────────────────────────
@@ -121,14 +122,28 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 
       // ── Computed ────────────────────────────────────────────────────────
       isPremium: () => {
-        // DEV override — odstraň před produkčním deployem
-        if (import.meta.env.DEV) return true;
+        // DEV override — jen pokud explicitně opt-in přes VITE_DEV_PREMIUM=1.
+        // Drží dev prostředí free-plan by default, takže se quota/paywall flows
+        // dají testovat bez přepínání kódu. Audit 2026-04-24 našel, že dříve to
+        // bylo `if (DEV) return true` — to byl bezpečnostní problém, pokud by
+        // build nezamaskoval import.meta.env.DEV správně.
+        if (import.meta.env.DEV && import.meta.env.VITE_DEV_PREMIUM === '1') {
+          return true;
+        }
         const { status } = get().subscription;
         return status === 'active' || status === 'past_due';
       },
 
       getLimits: () => {
-        return get().isPremium() ? PREMIUM_LIMITS : FREE_LIMITS;
+        // Audit 2026-04-24: Simple mode user (laik, McDonald's Cup scénář)
+        // nemá z čeho řešit quota — pro něj je kvóta skrytá (unlimited).
+        // Monetizuje se skrze brand removal, cloud backup a premium share.
+        // Pro Advanced je free plán 1 turnaj / 5 tréninků / 10 zápasů (viz
+        // FREE_LIMITS v subscription.types.ts).
+        if (get().isPremium()) return PREMIUM_LIMITS;
+        const appMode = useUserPrefsStore.getState().appMode;
+        if (appMode === 'simple') return PREMIUM_LIMITS;
+        return FREE_LIMITS;
       },
 
       getStatus: () => {
