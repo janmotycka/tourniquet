@@ -115,6 +115,7 @@ export const en: Record<TranslationKey, string> = {
 
   // ─── Home ──────────────────────────────────────────────────────────────────
   'home.greeting': 'Hello, Coach!',
+  'home.greetingSimple': 'Hi there! 👋',
   'home.loggedIn': 'Signed in user',
   'home.settings': 'Settings',
   'home.premiumBanner': 'Try Premium — 30 days free',

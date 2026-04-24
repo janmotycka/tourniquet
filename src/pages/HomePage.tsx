@@ -268,7 +268,7 @@ export function HomePage({ navigate }: Props) {
       {tennisTypePicker}
       {wizard}
       <DesktopPage
-        title={t('home.greeting')}
+        title={t(isSimpleMode ? 'home.greetingSimple' : 'home.greeting')}
         subtitle={user?.displayName ?? user?.email ?? t('home.loggedIn')}
       >
         {/* ─── Live now — prominent only when something is live ──────────── */}
@@ -476,7 +476,7 @@ export function HomePage({ navigate }: Props) {
             : isTennis ? '🎾' : '⚽'}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{t('home.greeting')}</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{t(isSimpleMode ? 'home.greetingSimple' : 'home.greeting')}</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user?.displayName ?? user?.email ?? t('home.loggedIn')}
           </p>

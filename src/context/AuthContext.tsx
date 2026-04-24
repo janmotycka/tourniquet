@@ -127,7 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthError(null);
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(credential.user, { displayName: displayName.trim() || 'Trenér' });
+      // Audit 2026-04-24 (Martina): default displayName „Trenér" je divný pro
+      // Simple-mode uživatele (rodič, laik). Pokud user nezadal jméno,
+      // extrahujeme local-part z emailu místo role-stereotypu.
+      const fallbackName = email.split('@')[0]?.trim() || 'Uživatel';
+      await updateProfile(credential.user, { displayName: displayName.trim() || fallbackName });
       // Pošli ověřovací email (fire-and-forget — i kdyby selhal, uživatel se může přihlásit)
       sendEmailVerification(credential.user).catch((err) => {
         logger.error('[Auth] sendEmailVerification failed:', err);

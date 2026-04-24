@@ -113,6 +113,7 @@ export const cs = {
 
   // ─── Home ──────────────────────────────────────────────────────────────────
   'home.greeting': 'Ahoj, trenére!',
+  'home.greetingSimple': 'Ahoj! 👋',
   'home.loggedIn': 'Přihlášený uživatel',
   'home.settings': 'Nastavení',
   'home.premiumBanner': 'Vyzkoušejte Premium — 30 dní zdarma',

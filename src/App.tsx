@@ -122,7 +122,7 @@ function PageSpinner() {
 // ─── Vnitřní router (vyžaduje auth, kromě public view) ───────────────────────
 
 function AppRouter() {
-  const { user, loading } = useAuth();
+  const { user, loading, signInAnonymously } = useAuth();
   const { t } = useI18n();
   const loadFromFirebase = useTournamentStore(s => s.loadFromFirebase);
   const subscribeTournaments = useTournamentStore(s => s.subscribeToFirebase);
@@ -265,8 +265,50 @@ function AppRouter() {
       url.searchParams.delete('mode');
       history.replaceState(null, '', url.pathname + url.search + url.hash);
     }
+    // Stejný handling pro hash `#mode=simple` (používá viral banner na
+    // MatchPublicView). Nechceme url.search, ale hash.
+    const hash = window.location.hash || '';
+    if (hash.includes('mode=simple') && currentAppMode === null) {
+      setAppModeFromUrl('simple');
+    } else if (hash.includes('mode=advanced') && currentAppMode === null) {
+      setAppModeFromUrl('advanced');
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Audit 2026-04-24 (Martina viral loop test):
+  // Rodič, co kliknul na viral banner „Vytvořit zápas za 30 s" v public view,
+  // končil na LoginPage (banner slibuje „bez přihlašování" → ale App.tsx:345
+  // gate ho posílá na login). Fix: pokud user dorazí s deep-linkem
+  // (?ref=public-match nebo #mode=simple), automaticky ho přihlásíme
+  // anonymně — onboarding pak projde bez jediného kliku. Plné registraci
+  // ho vystavíme jenom když bude chtít premium / cross-device sync.
+  useEffect(() => {
+    if (user) return; // už přihlášený (nebo anonymně) — nic neděláme
+    if (loading) return; // čekáme na auth resolve
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    const hash = window.location.hash || '';
+    const hasDeepLink =
+      ref === 'public-match' ||
+      hash.includes('mode=simple') ||
+      hash.includes('mode=advanced');
+    if (!hasDeepLink) return;
+    // Anonymně přihlásíme — AuthContext se postará o zbytek (firebaseUid atd.)
+    void signInAnonymously().catch(err => {
+      logger.error('[App] anonymous sign-in pro deep-link failed:', err);
+    });
+    // Cleanup ?ref= z URL, ať nezůstává v address baru po onboardingu
+    // (hash #mode=simple je čistěno v OnboardingWizard po spotřebování).
+    if (ref) {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('ref');
+        history.replaceState(null, '', url.pathname + url.search + url.hash);
+      } catch { /* noop */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, loading]);
 
   // Sync body[data-page] for CSS hooks
   useEffect(() => {
@@ -328,8 +370,21 @@ function AppRouter() {
     return <Suspense fallback={<PageSpinner />}><MatchPublicView matchId={page.matchId} /></Suspense>;
   }
 
+  // Deep-link detection — pro viral loop (Martina): pokud user dorazí s
+  // ?ref=public-match nebo #mode=simple, nechceme ho ani na vteřinu přepadnout
+  // LandingPage/LoginPage. Místo toho spinner „Zakládám anonymní účet…"
+  // dokud anon sign-in (spouštěný v useEffect výše) neprojde.
+  const hasViralDeepLink = (() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search);
+    const hash = window.location.hash || '';
+    return params.get('ref') === 'public-match'
+      || hash.includes('mode=simple')
+      || hash.includes('mode=advanced');
+  })();
+
   // Načítání Firebase auth stavu — jen pro autentizované stránky
-  if (loading) {
+  if (loading || (!user && hasViralDeepLink)) {
     return (
       <div style={{
         flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
