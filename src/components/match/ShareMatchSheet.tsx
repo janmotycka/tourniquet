@@ -19,7 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useClubsStore } from '../../store/clubs.store';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { generateMatchShareImage } from '../../utils/match-share-image';
-import { generateMatchSummaryText } from '../../utils/match-summary';
+import { generateMatchSummaryText, generateMatchSocialText } from '../../utils/match-summary';
 import { SharePreviewModal } from './SharePreviewModal';
 
 interface Props {
@@ -56,6 +56,7 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
   const pairing = match.pairing;
   const isPaired = !!(pairing?.awayCoachUid);
   const hasActiveInvite = !!(pairing?.joinToken && !isPaired);
+  const isFinished = match.status === 'finished';
 
   const url = getMatchPublicUrl(match.id);
   const home = match.isHome ? clubDisplayName : match.opponent;
@@ -147,7 +148,9 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
   // Pokud zápas ještě není public, automaticky ho přepneme — trenér chce
   // sdílet, tzn. implicitně chce aby link fungoval. Toggle zůstane viditelný
   // ve ShareMatchSheet, může ho později vypnout.
-  const handleOpenSharePreview = async () => {
+  // `mode` určuje styl textu: 'whatsapp' (dlouhý pro rodiče) nebo 'social'
+  // (krátký emoji-heavy pro Instagram/FB).
+  const handleOpenSharePreview = async (mode: 'whatsapp' | 'social' = 'whatsapp') => {
     if (imageSharing) return;
     setImageSharing(true);
     try {
@@ -162,16 +165,22 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
         clubColor: activeClub?.color,
       });
       // Link vždy — po auto-enable bude fungovat.
-      const text = generateMatchSummaryText({
-        match,
-        clubDisplayName,
-        publicUrl: url,
-      }, locale);
+      const text = mode === 'social'
+        ? generateMatchSocialText({
+            match,
+            clubDisplayName,
+            publicUrl: url,
+          }, locale)
+        : generateMatchSummaryText({
+            match,
+            clubDisplayName,
+            publicUrl: url,
+          }, locale);
       const fileName = `${home}-${away}-${match.date}.png`.replace(/\s+/g, '_');
       setPreviewData({ blob, text, fileName });
     } catch (err) {
       useToastStore.getState().show('error', t('matchShare.imageFailed'));
-       
+
       console.error('[ShareMatchSheet] generateMatchShareImage failed:', err);
     } finally {
       setImageSharing(false);
@@ -596,7 +605,7 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
                   drží obecnější „Sdílet obrázek + text", protože trenér má
                   víc možností (email, FAČR apod.). */}
               <button
-                onClick={handleOpenSharePreview}
+                onClick={() => handleOpenSharePreview('whatsapp')}
                 disabled={imageSharing}
                 style={{
                   width: '100%', marginBottom: 10,
@@ -616,6 +625,32 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
                   ? t('matchShare.generatingImage')
                   : (isSimpleMode ? t('matchShare.shareSimpleCta') : t('matchShare.shareAsImage'))}
               </button>
+
+              {/* Social media CTA — jen v Simple módu (Advanced user ma jiné
+                  cesty). STRATEG.B: amatérský trenér / rodič-organizátor často
+                  postuje na Instagram nebo Facebook — generujeme krátký
+                  emoji-heavy text a otevřeme nativní share sheet přes
+                  SharePreviewModal. User si vybere kam (IG/FB/cokoli). */}
+              {isSimpleMode && isFinished && (
+                <button
+                  onClick={() => handleOpenSharePreview('social')}
+                  disabled={imageSharing}
+                  style={{
+                    width: '100%', marginBottom: 10,
+                    padding: '12px', borderRadius: 12,
+                    background: imageSharing
+                      ? 'var(--surface-var)'
+                      : 'linear-gradient(135deg, #833AB4 0%, #C13584 50%, #E1306C 100%)',
+                    color: imageSharing ? 'var(--text-muted)' : '#fff',
+                    border: 'none', cursor: imageSharing ? 'default' : 'pointer',
+                    fontWeight: 700, fontSize: 13,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  }}
+                >
+                  <span style={{ fontSize: 17 }}>📲</span>
+                  {t('matchShare.shareSocialCta')}
+                </button>
+              )}
 
               {/* Share buttons — textová/link varianta (pro fallback + desktop).
                   V Simple módu skryté: laik chce jedno zelené tlačítko, ne tři

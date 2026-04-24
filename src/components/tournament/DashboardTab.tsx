@@ -20,9 +20,11 @@ import { GroupDrawModal } from './GroupDrawModal';
 import { OfficialLinkButton } from '../ui';
 // import { exportRegulationsPdf } from '../../utils/tournament-regulations-pdf'; // TODO: propozice PDF
 import { useClubsStore } from '../../store/clubs.store';
+import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { TEAM_COLORS } from '../../utils/team-colors';
 import { OpponentAutocomplete } from '../clubs/OpponentAutocomplete';
 import type { Club, AgeCategory } from '../../types/club.types';
+import { getTournamentPublicUrl } from '../../utils/qr-code';
 
 interface Props {
   tournament: Tournament;
@@ -36,6 +38,11 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
   const { t, locale } = useI18n();
   const { isDesktop } = useLayoutMode();
   const [copied, setCopied] = useState(false);
+  // Audit 2026-04-24 strategic (user explicit): Simple mode amatérský trenér
+  // potřebuje hlavně: vytisknout rozpis/pavouka + sdílet odkaz rodičům.
+  // Přidáváme prominent „Quick actions" card nahoře v Simple módu.
+  const isSimpleMode = useUserPrefsStore(s => s.appMode === 'simple');
+  const [simpleLinkCopied, setSimpleLinkCopied] = useState(false);
   const [registrations, setRegistrations] = useState<Record<string, RegistrationSubmission>>({});
   const approveRegistration = useTournamentStore(s => s.approveRegistration);
   const rejectRegistration = useTournamentStore(s => s.rejectRegistration);
@@ -253,6 +260,72 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
       margin: isDesktop ? '0 auto' : undefined,
       width: '100%',
     }}>
+
+      {/* Simple Quick Actions — STRATEG.A: „amatérský trenér chce vytisknout
+          pavouka a zadávat výsledky online". Zobrazí se jen v Simple módu
+          jako prominent karta nahoře — dvě hlavní akce: vytisknout rozpis/
+          pavouka a sdílet odkaz rodičům. */}
+      {isSimpleMode && (
+        <div style={{
+          background: 'linear-gradient(135deg, #E65100 0%, #FF6F00 100%)',
+          borderRadius: 16, padding: '14px 16px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+          color: '#fff',
+          boxShadow: '0 4px 12px rgba(230,81,0,0.2)',
+        }}>
+          <div style={{ fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+            ⚡ {t('tournament.simpleQuick.title')}
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.9, lineHeight: 1.45, marginBottom: 2 }}>
+            {t('tournament.simpleQuick.desc')}
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              onClick={async () => {
+                setPdfExporting(true);
+                try {
+                  await exportTournamentPdf(tournament, t, locale);
+                } catch {
+                  showToast('error', t('pdf.exportFailed'));
+                } finally {
+                  setPdfExporting(false);
+                }
+              }}
+              disabled={pdfExporting}
+              style={{
+                flex: '1 1 140px',
+                padding: '12px 14px', borderRadius: 10,
+                background: '#fff', color: '#E65100',
+                fontSize: 13, fontWeight: 800, cursor: pdfExporting ? 'wait' : 'pointer',
+                border: 'none', opacity: pdfExporting ? 0.6 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}
+            >
+              📄 {pdfExporting ? t('pdf.generating') : t('tournament.simpleQuick.printBtn')}
+            </button>
+            <button
+              onClick={async () => {
+                const url = getTournamentPublicUrl(tournament.id);
+                await copyToClipboard(url);
+                setSimpleLinkCopied(true);
+                setTimeout(() => setSimpleLinkCopied(false), 2000);
+                showToast('success', t('matchShare.copied'));
+              }}
+              style={{
+                flex: '1 1 140px',
+                padding: '12px 14px', borderRadius: 10,
+                background: simpleLinkCopied ? '#fff' : 'rgba(255,255,255,0.18)',
+                color: simpleLinkCopied ? '#E65100' : '#fff',
+                fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                border: `1.5px solid ${simpleLinkCopied ? '#fff' : 'rgba(255,255,255,0.35)'}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}
+            >
+              {simpleLinkCopied ? '✓' : '🔗'} {t('tournament.simpleQuick.shareBtn')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Welcome banner — only after creation */}
       {justCreated && (

@@ -786,6 +786,105 @@ export function HomePage({ navigate }: Props) {
           </div>
         )}
 
+        {/* Nedávná aktivita — STRATEG.C: user (strategic prompt) říká
+            „historie zápasů a turnajů je hodnota". V Simple módu ukážeme
+            max 3 poslední finished zápasy + 1 poslední turnaj.
+            Tento blok nahrazuje prázdný prostor mezi party a match cardem
+            pokud user už něco odehrál — vrací mu to pocit „je tu má data". */}
+        {isSimpleMode && (matches.some(m => m.status === 'finished') || tournaments.length > 0) && (
+          <div style={{
+            background: 'var(--surface)',
+            borderRadius: 16, padding: '12px 14px',
+            border: '1px solid var(--border)',
+          }}>
+            <div style={{
+              fontWeight: 700, fontSize: 13, color: 'var(--text)',
+              marginBottom: 8,
+            }}>
+              📚 {t('home.recentActivity')}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {/* Poslední turnaj (pokud nějaký) */}
+              {tournaments.slice(0, 1).map(tour => (
+                <button
+                  key={`t-${tour.id}`}
+                  onClick={() => navigate({ name: 'tournament-detail', tournamentId: tour.id })}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '8px 10px', borderRadius: 10,
+                    background: 'rgba(230, 81, 0, 0.08)',
+                    border: '1px solid rgba(230, 81, 0, 0.25)',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>🏆</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontWeight: 700, fontSize: 13, color: 'var(--text)',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>
+                      {tour.name}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {tour.teams.length} {t('home.recentTeams')} · {t(tour.status === 'finished' ? 'home.recentFinished' : 'home.recentOngoing')}
+                    </div>
+                  </div>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
+                </button>
+              ))}
+              {/* Poslední 3 dohrané zápasy */}
+              {matches
+                .filter(m => m.status === 'finished')
+                .slice(0, 3)
+                .map(m => {
+                  const home = m.isHome ? (m.clubName || t('matchPublic.us')) : m.opponent;
+                  const away = m.isHome ? m.opponent : (m.clubName || t('matchPublic.us'));
+                  return (
+                    <button
+                      key={`m-${m.id}`}
+                      onClick={() => navigate({ name: 'match-detail', matchId: m.id })}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 10px', borderRadius: 10,
+                        background: 'var(--surface-var)',
+                        border: '1px solid var(--border)',
+                        cursor: 'pointer', textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ fontSize: 16, flexShrink: 0 }}>⚽</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontWeight: 700, fontSize: 13, color: 'var(--text)',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                          {home} <b style={{ color: 'var(--primary)' }}>{m.homeScore}:{m.awayScore}</b> {away}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                          {m.date}
+                        </div>
+                      </div>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
+                    </button>
+                  );
+                })}
+            </div>
+            {(matches.filter(m => m.status === 'finished').length > 3 || tournaments.length > 1) && (
+              <button
+                onClick={() => navigate({ name: 'match-list' })}
+                style={{
+                  width: '100%', marginTop: 8,
+                  padding: '6px', borderRadius: 8,
+                  background: 'transparent', color: 'var(--primary)',
+                  border: 'none', cursor: 'pointer',
+                  fontSize: 11, fontWeight: 600,
+                }}
+              >
+                {t('home.recentMore')} →
+              </button>
+            )}
+          </div>
+        )}
+
         {/* 📋 Zápas — v Simple módu vede rovnou na rychlý zápas (MatchListPage to pozná) */}
         <button
           onClick={() => navigate({ name: 'match-list' })}

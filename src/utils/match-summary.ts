@@ -219,6 +219,92 @@ export function generateMatchSummaryText(
   return lines.join('\n');
 }
 
+// ─── Social media krátký text (Instagram/Facebook) ───────────────────────
+// Audit 2026-04-24 (user): „chtělo by to generovat krátké shrnutí pro
+// sociální sítě" — amatérský trenér pošle fotku z turnaje na Instagram,
+// potřebuje catchy krátký text. Rodičovský WhatsApp má samostatný generator
+// (generateMatchSummaryText) s dlouhou formou.
+
+interface SocialTextOptions {
+  match: SeasonMatch;
+  clubDisplayName: string;
+  publicUrl?: string;
+}
+
+/**
+ * Krátký emoji-heavy text pro Instagram post / Facebook stav.
+ * Cílová délka: pod 140 znaků (Twitter-safe), ideálně pod 100.
+ *
+ * Styl:
+ *   ⚽ Spartak 3:1 Viktorka! 🏆
+ *   Parádní zápas, kluci makali 💪
+ *   #fotbal #mladez #McDonaldsCup
+ */
+export function generateMatchSocialText(
+  opts: SocialTextOptions,
+  lang: 'cs' | 'en' | 'de' = 'cs',
+): string {
+  const { match, clubDisplayName, publicUrl } = opts;
+
+  // Určíme emoji za skóre podle výsledku (z pohledu klubu)
+  const ourScore = match.isHome ? match.homeScore : match.awayScore;
+  const theirScore = match.isHome ? match.awayScore : match.homeScore;
+  const resultEmoji = ourScore > theirScore ? '🏆'
+    : ourScore === theirScore ? '🤝'
+    : '💪'; // prohra = „snažili jsme se" pozitivně
+
+  const homeTeam = match.isHome ? clubDisplayName : match.opponent;
+  const awayTeam = match.isHome ? match.opponent : clubDisplayName;
+
+  const captions = lang === 'cs'
+    ? {
+        win: 'Dobrá práce, kluci!',
+        draw: 'Boj až do konce.',
+        loss: 'Nevzdáme to, jdeme dál!',
+        upcoming: 'Jdeme na to!',
+      }
+    : lang === 'de'
+    ? {
+        win: 'Super Arbeit, Jungs!',
+        draw: 'Kampf bis zum Schluss.',
+        loss: 'Nicht aufgeben, weiter geht\'s!',
+        upcoming: 'Auf geht\'s!',
+      }
+    : {
+        win: 'Great work, team!',
+        draw: 'Fought till the end.',
+        loss: 'We\'ll bounce back!',
+        upcoming: 'Let\'s go!',
+      };
+
+  const hashtags = lang === 'cs'
+    ? '#fotbal #mladez'
+    : lang === 'de' ? '#fussball #jugend' : '#soccer #youth';
+
+  const lines: string[] = [];
+
+  if (match.status === 'finished' || match.status === 'live') {
+    lines.push(`⚽ ${homeTeam} ${match.homeScore}:${match.awayScore} ${awayTeam} ${resultEmoji}`);
+    const caption = ourScore > theirScore ? captions.win
+      : ourScore === theirScore ? captions.draw
+      : captions.loss;
+    lines.push(caption);
+  } else {
+    lines.push(`⚽ ${homeTeam} vs ${awayTeam}`);
+    lines.push(captions.upcoming);
+  }
+
+  if (publicUrl) {
+    lines.push('');
+    lines.push(publicUrl);
+  }
+
+  lines.push('');
+  lines.push(hashtags);
+
+  return lines.join('\n');
+}
+
 // ─── Nominace pro rodiče (pre-match) ──────────────────────────────────────
 
 interface NominationOptions {
