@@ -508,6 +508,11 @@ export function MatchListPage({ navigate }: Props) {
       isStarter: true,
       substituteOrder: 0,
     }));
+    // Audit 2026-04-24: dříve `periods: 2, periodDurationMinutes: 30` →
+    // McDonald's Cup hraje 10-15 min, takže po 30 min se zbytečně nabízelo
+    // „Poločas" uprostřed krátkého zápasu (WTF UI pro učitele TV). Nový default
+    // = 1 perioda × 15 min (ideální pro turnajové zápasy), bez poločasu.
+    // Pokročilejší nastavení format/délky přichází přes squad picker (P2.3).
     const match = createMatch({
       sport: 'football',
       matchType: 'single',
@@ -518,10 +523,10 @@ export function MatchListPage({ navigate }: Props) {
       date: today,
       kickoffTime: timeStr,
       competition: '',
-      durationMinutes: 60,
-      periods: 2,
-      periodDurationMinutes: 30,
-      matchFormat: '7+1',
+      durationMinutes: 15,
+      periods: 1,
+      periodDurationMinutes: 15,
+      matchFormat: '5+1', // McDonald's Cup / malá hřiště default
       lineup,
       trackAssists: false,
     });

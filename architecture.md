@@ -12,7 +12,7 @@
 
 ## Moduly
 
-1. **Training Generator** — AI plánovač tréninků, knihovna cvičení, kalendář, attendance
+1. **Training Generator** — chytrý rule-based plánovač tréninků (výběr cviků podle věku/fáze/délky z lokální knihovny ~600 cviků), knihovna cvičení, kalendář, attendance. Poznámka: není to LLM — je to deterministický selektor. Plánovaný premium tier s AI návrhy (Claude/GPT) je budoucí roadmapa.
 2. **Tournament Manager** — real-time scoring, PIN co-host model, public view s MVP votingem/chatem, PDF exporty, QR rostery/registrations
 3. **Match Tracker** — sezónní zápasy s lineupy, ratingy, public share
 
