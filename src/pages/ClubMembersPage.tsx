@@ -318,13 +318,22 @@ export function ClubMembersPage({ navigate }: Props) {
                 : t('clubs.shared.viewerBadge');
               const roleBg = m.role === 'owner' ? 'var(--success)' : 'var(--surface-var)';
               const roleColor = m.role === 'owner' ? '#fff' : 'var(--text-muted)';
+              // Audit 2026-04-24 (Petr): dříve byl fallback `m.uid.slice(0, 8) + '…'`
+              // → uživatel viděl v seznamu členů „a7b3f2c9…" jako jméno. To je
+              // strašné UX. Nahrazeno human-readable fallbackem přes roli
+              // („Trenér", „Vlastník", „Divák") + poslední 4 znaky UID pro
+              // disambiguaci (pokud máš 2 bezejmenné trenéry, rozliš je).
+              const humanFallback = t('clubs.shared.unnamedByRole', {
+                role: roleLabel,
+                suffix: m.uid.slice(-4),
+              });
               // Pro mě vezmi jméno z auth profilu (Firebase), fallback na server-saved
-              // displayName, email, nebo UID prefix. Ostatní členové uvidí mé jméno
+              // displayName, email, nebo human fallback. Ostatní členové uvidí mé jméno
               // jak je uložené na serveru při registraci/přihlášení do klubu.
               const selfDisplayName = isMe
-                ? (user?.displayName || m.displayName || user?.email?.split('@')[0] || m.uid.slice(0, 8) + '…')
+                ? (user?.displayName || m.displayName || user?.email?.split('@')[0] || humanFallback)
                 : null;
-              const memberDisplayName = selfDisplayName ?? m.displayName ?? (m.uid.slice(0, 8) + '…');
+              const memberDisplayName = selfDisplayName ?? m.displayName ?? humanFallback;
               return (
                 <div key={m.uid} style={{
                   display: 'flex', alignItems: 'center', gap: 10,

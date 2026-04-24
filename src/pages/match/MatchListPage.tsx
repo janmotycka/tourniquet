@@ -492,7 +492,12 @@ export function MatchListPage({ navigate }: Props) {
     setQuickSheetOpen(true);
   };
 
-  const handleQuickMatchCreate = (opponent: string, roster: string[], _squadId?: string) => {
+  const handleQuickMatchCreate = (
+    opponent: string,
+    roster: string[],
+    _squadId?: string,
+    preset?: import('../../components/match/QuickMatchSheet').QuickMatchPreset,
+  ) => {
     void _squadId; // pro budoucí audit trail (squad → match)
     const activeClub = clubs.find(c => c.id === activeClubId);
     const now = new Date();
@@ -508,11 +513,13 @@ export function MatchListPage({ navigate }: Props) {
       isStarter: true,
       substituteOrder: 0,
     }));
-    // Audit 2026-04-24: dříve `periods: 2, periodDurationMinutes: 30` →
-    // McDonald's Cup hraje 10-15 min, takže po 30 min se zbytečně nabízelo
-    // „Poločas" uprostřed krátkého zápasu (WTF UI pro učitele TV). Nový default
-    // = 1 perioda × 15 min (ideální pro turnajové zápasy), bez poločasu.
-    // Pokročilejší nastavení format/délky přichází přes squad picker (P2.3).
+    // Audit 2026-04-24 (P2.3): preset volitelný z QuickMatchSheet. Fallback
+    // = 15 min 1 perioda 5+1 (McDonald's Cup friendly default). Starší volání
+    // bez presetu funguje díky fallbacku, takže je to backward-compatible.
+    const durationMinutes = preset?.durationMinutes ?? 15;
+    const periods = preset?.periods ?? 1;
+    const matchFormat = preset?.matchFormat ?? '5+1';
+    const periodDurationMinutes = Math.max(1, Math.round(durationMinutes / periods));
     const match = createMatch({
       sport: 'football',
       matchType: 'single',
@@ -523,10 +530,10 @@ export function MatchListPage({ navigate }: Props) {
       date: today,
       kickoffTime: timeStr,
       competition: '',
-      durationMinutes: 15,
-      periods: 1,
-      periodDurationMinutes: 15,
-      matchFormat: '5+1', // McDonald's Cup / malá hřiště default
+      durationMinutes,
+      periods,
+      periodDurationMinutes,
+      matchFormat,
       lineup,
       trackAssists: false,
     });

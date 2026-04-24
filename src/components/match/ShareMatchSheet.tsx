@@ -89,18 +89,34 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const buildWhatsappMessage = () => t('matchShare.whatsappMessage', {
-    home,
-    away,
-    club: clubDisplayName,
-    opponent: match.opponent,
-    date: dateStr,
-    time: match.kickoffTime,
-    competition: match.competition,
-    homeAway,
-    venue: venueForMessage,
-    url,
-  });
+  const buildWhatsappMessage = () => {
+    // Audit 2026-04-24 (Honza): pokud je `competition` prázdný (běžné v Simple
+    // módu — rychlý zápas bez soutěže), šablona vyrenderuje trapný řádek
+    // „🏆 " (emoji + mezera + nic). Strippujeme ho tady manuálně —
+    // jednodušší než refaktorovat t() s conditional interpolation.
+    const raw = t('matchShare.whatsappMessage', {
+      home,
+      away,
+      club: clubDisplayName,
+      opponent: match.opponent,
+      date: dateStr,
+      time: match.kickoffTime,
+      competition: match.competition,
+      homeAway,
+      venue: venueForMessage,
+      url,
+    });
+    if (!match.competition?.trim()) {
+      // Odstraní celý řádek s 🏆 (včetně následující nové linky), i se zbylým
+      // trailing whitespace před dalším řádkem. Držíme robustní — funguje i
+      // pokud by emoji byl jinde v řádku.
+      return raw
+        .split(/\r?\n/)
+        .filter(line => !/^🏆\s*$/.test(line))
+        .join('\n');
+    }
+    return raw;
+  };
 
   const handleCopyLink = async () => {
     try {

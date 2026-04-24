@@ -584,7 +584,50 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
               </div>
             </div>
           )}
-          {currentMatch.status === 'finished' && (
+          {/* Next-match CTA — audit 2026-04-24 (Honza McDonald's Cup):
+              „Po skončení zápasu jsem musel šipkou zpátky, žádný nudge na
+              další." Při turnajovém dni hraje 4-6 zápasů po sobě — prominentní
+              CTA šetří kroky a drží engagement. V Advanced módu to je méně
+              důležité (trenér má méně zápasů za sebou), ale user-friendly
+              i tam. Skryté v tenisu a u párovaných zápasů (jiný flow). */}
+          {currentMatch.status === 'finished' &&
+            !(currentMatch.sport === 'tennis') &&
+            !currentMatch.pairing?.awayCoachUid && (
+            <div style={{
+              background: 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)',
+              borderRadius: 14, padding: '14px 16px',
+              display: 'flex', alignItems: 'center', gap: 12,
+              marginBottom: 4,
+              color: '#fff',
+            }}>
+              <span style={{ fontSize: 26 }}>⚽</span>
+              <div style={{ flex: 1, minWidth: 0, lineHeight: 1.35 }}>
+                <div style={{ fontWeight: 800, fontSize: 14 }}>
+                  {t('match.detail.nextMatchCtaTitle')}
+                </div>
+                <div style={{ fontSize: 11.5, opacity: 0.85, marginTop: 2 }}>
+                  {isSimpleMode ? t('match.detail.nextMatchCtaDescSimple') : t('match.detail.nextMatchCtaDesc')}
+                </div>
+              </div>
+              <button
+                onClick={() => navigate({ name: 'match-list' })}
+                style={{
+                  padding: '10px 14px', borderRadius: 10, border: 'none',
+                  background: '#fff', color: 'var(--primary)',
+                  fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                +
+              </button>
+            </div>
+          )}
+
+          {/* FAČR report — Advanced/klubová feature (oficiální zápis pro českou
+              fotbalovou asociaci). Skryté v Simple módu — laik / učitel TV ho
+              nepotřebuje. Analyst audit: FAČR je killer feature pro CZ trenéry,
+              ale musí být schované před neceil cílovkou. */}
+          {currentMatch.status === 'finished' && !isSimpleMode && (
             <div style={{
               background: 'var(--surface)', borderRadius: 14, padding: '12px 14px',
               border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10,

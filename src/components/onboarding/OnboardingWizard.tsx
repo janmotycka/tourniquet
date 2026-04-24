@@ -115,6 +115,8 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   const createClub = useClubsStore(s => s.createClub);
   const showToast = useToastStore(s => s.show);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const appMode = useUserPrefsStore(s => s.appMode);
+  const isSimpleMode = appMode === 'simple';
 
   // Deep-link akvizice (viral loop z MatchPublicView): když user přijde s
   // hash `#mode=simple` (nebo `?ref=public-match#mode=simple`), rovnou
@@ -808,24 +810,34 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                 {t('onboarding.done.whatsNext')}
               </div>
 
+              {/* Next-step karty — v Simple módu jen dvě relevantní (zápas
+                  a rychlý turnaj); Importovat hráče = Advanced jen. Audit
+                  2026-04-24 (Honza): laik neví co je „klub" ani „importovat
+                  hráče", zmatek → skryt. */}
+              {/* Next-step karty — v Simple módu jen dvě relevantní (zápas
+                  a rychlý turnaj); Importovat hráče = Advanced jen. Audit
+                  2026-04-24 (Honza): laik neví co je „klub" ani „importovat
+                  hráče", zmatek → skryt. */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm + 2 }}>
-                <NextStepCard
-                  emoji="📥"
-                  label={t('onboarding.done.importPlayers')}
-                  desc={t('onboarding.done.importPlayersDesc')}
-                  onClick={() => goNext({ name: 'clubs' })}
-                />
+                {!isSimpleMode && (
+                  <NextStepCard
+                    emoji="📥"
+                    label={t('onboarding.done.importPlayers')}
+                    desc={t('onboarding.done.importPlayersDesc')}
+                    onClick={() => goNext({ name: 'clubs' })}
+                  />
+                )}
                 <NextStepCard
                   emoji="⚽"
                   label={t('onboarding.done.createMatch')}
                   desc={t('onboarding.done.createMatchDesc')}
-                  onClick={() => goNext({ name: 'match-create' })}
+                  onClick={() => goNext({ name: isSimpleMode ? 'match-list' : 'match-create' })}
                 />
                 <NextStepCard
                   emoji="🏆"
                   label={t('onboarding.done.createTournament')}
                   desc={t('onboarding.done.createTournamentDesc')}
-                  onClick={() => goNext({ name: 'tournament-create' })}
+                  onClick={() => goNext({ name: isSimpleMode ? 'tournament-quick' : 'tournament-create' })}
                 />
               </div>
 

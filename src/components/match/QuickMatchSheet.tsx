@@ -19,9 +19,35 @@ import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useSimpleSquadsStore } from '../../store/simpleSquads.store';
 import type { SimpleSquad } from '../../types/simpleSquad.types';
 
+/**
+ * Audit 2026-04-24 (Honza): „McDonald's Cup má 10 min, ale app nabízí Poločas
+ * po 30 min." Přidán preset picker — user si vybere délku (10/15/20/30 min)
+ * a formu (1 nebo 2 periody). Default je 15 min bez poločasu.
+ * Preset se předá do onCreate přes 4. argument (matchPreset).
+ */
+export interface QuickMatchPreset {
+  /** Celková doba v minutách (součet period). */
+  durationMinutes: number;
+  /** Počet period (1 = bez poločasu, 2 = s poločasem). */
+  periods: number;
+  /** Fotbalový formát (5+1 malé hřiště, 7+1, 11+1). */
+  matchFormat: '3+1' | '4+1' | '5+1' | '7+1' | '8+1' | '11+1';
+  /** Lidský popisek pro diagnostiku. */
+  label: string;
+}
+
+/** Přednastavené presety — laikovi seřazené od nejkratšího (McDonald's Cup)
+ *  po plný zápas. První je default. */
+const QUICK_PRESETS: QuickMatchPreset[] = [
+  { durationMinutes: 10, periods: 1, matchFormat: '5+1', label: '10 min' }, // McDonald's Cup
+  { durationMinutes: 15, periods: 1, matchFormat: '5+1', label: '15 min' }, // casual
+  { durationMinutes: 20, periods: 2, matchFormat: '5+1', label: '2×10' }, // přátelák
+  { durationMinutes: 60, periods: 2, matchFormat: '7+1', label: '2×30' }, // plný fotbal
+];
+
 interface Props {
   onClose: () => void;
-  onCreate: (opponent: string, roster: string[], squadId?: string) => void;
+  onCreate: (opponent: string, roster: string[], squadId?: string, preset?: QuickMatchPreset) => void;
 }
 
 export function QuickMatchSheet({ onClose, onCreate }: Props) {
@@ -37,6 +63,9 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
   const [selectedSquadId, setSelectedSquadId] = useState<string | null>(null);
   const [saveAsSquad, setSaveAsSquad] = useState(false);
   const [squadName, setSquadName] = useState('');
+  // Default preset = 15 min, 1 perioda (index 1). McDonald's Cup = 10 min index 0.
+  // Držíme index aby se to nerozjelo při re-renderu (preset objekty jsou stabilní).
+  const [presetIndex, setPresetIndex] = useState(1);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const squads = useMemo(() => {
@@ -99,7 +128,7 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
       markUsed(selectedSquadId);
     }
 
-    onCreate(opponent, roster, finalSquadId);
+    onCreate(opponent, roster, finalSquadId, QUICK_PRESETS[presetIndex]);
   };
 
   const labelStyle: React.CSSProperties = {
@@ -323,6 +352,40 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
               </div>
             </div>
           )}
+
+          {/* Preset délky zápasu — P2.3. McDonald's Cup (10 min), casual
+              (15 min), přátelák (2×10), plný fotbal (2×30). 15 min je default
+              — reálný většinový use case laika (škola / tábor). */}
+          <div>
+            <label style={labelStyle}>
+              ⏱ {t('match.quickSheet.durationLabel')}
+            </label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {QUICK_PRESETS.map((preset, i) => {
+                const active = presetIndex === i;
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => setPresetIndex(i)}
+                    style={{
+                      flex: '1 1 70px',
+                      padding: '10px 8px', borderRadius: 10,
+                      background: active ? 'var(--primary)' : 'var(--surface-var)',
+                      color: active ? '#fff' : 'var(--text)',
+                      border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                      fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 }}>
+              {t('match.quickSheet.durationHint')}
+            </div>
+          </div>
 
           <button
             onClick={handleStart}
