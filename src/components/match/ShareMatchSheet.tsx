@@ -42,6 +42,11 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
   const [imageSharing, setImageSharing] = useState(false);
   const isSimpleMode = useUserPrefsStore(s => s.appMode === 'simple');
   const [previewData, setPreviewData] = useState<{ blob: Blob; text: string; fileName: string } | null>(null);
+  // Audit 2026-04-24 (Honza): v Simple módu QR + URL zabírá fold, hlavní
+  // CTA („Poslat rodičům do WhatsApp") je níž. Sbalíme do „Další možnosti".
+  // Honza: „pro dědu bez WhatsAppu bych chtěl QR" → zůstává dostupné, jen
+  // ne na primárním místě.
+  const [simpleMoreOpen, setSimpleMoreOpen] = useState(false);
   const createMatchPairingInvite = useMatchesStore(s => s.createMatchPairingInvite);
   const revokeMatchPairingInvite = useMatchesStore(s => s.revokeMatchPairingInvite);
   const unlinkMatchPairing = useMatchesStore(s => s.unlinkMatchPairing);
@@ -525,59 +530,65 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
 
           {isPublic ? (
             <>
-              {/* QR code */}
-              <div style={{
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                padding: '16px 0 10px',
-              }}>
-                <div style={{
-                  width: 168, height: 168, borderRadius: 14,
-                  background: '#fff', border: '1px solid var(--border)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: 8, boxSizing: 'border-box',
-                }}>
-                  {qrDataUrl ? (
-                    <img
-                      src={qrDataUrl}
-                      alt="QR"
-                      style={{ width: '100%', height: '100%', display: 'block' }}
-                    />
-                  ) : (
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>…</div>
-                  )}
-                </div>
-                <div style={{
-                  fontSize: 12, color: 'var(--text-muted)', marginTop: 8, textAlign: 'center',
-                }}>
-                  {t('matchShare.qrHint')}
-                </div>
-              </div>
+              {/* QR + URL — v Advanced nad primárním CTA, v Simple pod
+                  „Další možnosti" (ať hlavní zelené tlačítko drží fold). */}
+              {!isSimpleMode && (
+                <>
+                  {/* QR code */}
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    padding: '16px 0 10px',
+                  }}>
+                    <div style={{
+                      width: 168, height: 168, borderRadius: 14,
+                      background: '#fff', border: '1px solid var(--border)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      padding: 8, boxSizing: 'border-box',
+                    }}>
+                      {qrDataUrl ? (
+                        <img
+                          src={qrDataUrl}
+                          alt="QR"
+                          style={{ width: '100%', height: '100%', display: 'block' }}
+                        />
+                      ) : (
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>…</div>
+                      )}
+                    </div>
+                    <div style={{
+                      fontSize: 12, color: 'var(--text-muted)', marginTop: 8, textAlign: 'center',
+                    }}>
+                      {t('matchShare.qrHint')}
+                    </div>
+                  </div>
 
-              {/* URL + copy */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <input
-                  readOnly
-                  value={url}
-                  onFocus={e => e.currentTarget.select()}
-                  style={{
-                    flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 10,
-                    border: '1px solid var(--border)', background: 'var(--surface-var)',
-                    fontSize: 12, color: 'var(--text)', fontFamily: 'monospace',
-                  }}
-                />
-                <button
-                  onClick={handleCopyLink}
-                  aria-label={t('matchShare.copyLink')}
-                  style={{
-                    padding: '0 14px', borderRadius: 10, border: 'none',
-                    background: linkCopied ? 'var(--success, #22c55e)' : 'var(--primary)',
-                    color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {linkCopied ? `✓` : `📋`}
-                </button>
-              </div>
+                  {/* URL + copy */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <input
+                      readOnly
+                      value={url}
+                      onFocus={e => e.currentTarget.select()}
+                      style={{
+                        flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 10,
+                        border: '1px solid var(--border)', background: 'var(--surface-var)',
+                        fontSize: 12, color: 'var(--text)', fontFamily: 'monospace',
+                      }}
+                    />
+                    <button
+                      onClick={handleCopyLink}
+                      aria-label={t('matchShare.copyLink')}
+                      style={{
+                        padding: '0 14px', borderRadius: 10, border: 'none',
+                        background: linkCopied ? 'var(--success, #22c55e)' : 'var(--primary)',
+                        color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {linkCopied ? `✓` : `📋`}
+                    </button>
+                  </div>
+                </>
+              )}
 
               {/* Primární CTA: otevřít preview modal s obrázkem + textem.
                   V Simple módu použijeme přímější copy („Poslat rodičům do
@@ -651,6 +662,80 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
                   {t('matchShare.email')}
                 </button>
               </div>
+              )}
+
+              {/* Simple mode: „Další možnosti" collapsible — QR pro
+                  děda-bez-WhatsAppu, plain URL pro staré emaily. */}
+              {isSimpleMode && (
+                <div style={{ marginBottom: 14 }}>
+                  <button
+                    type="button"
+                    onClick={() => setSimpleMoreOpen(v => !v)}
+                    aria-expanded={simpleMoreOpen}
+                    style={{
+                      width: '100%', padding: '10px 12px', borderRadius: 10,
+                      background: 'var(--surface-var)', color: 'var(--text-muted)',
+                      border: '1px solid var(--border)', cursor: 'pointer',
+                      fontSize: 12, fontWeight: 600,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    }}
+                  >
+                    {simpleMoreOpen ? '▲' : '▼'} {t('matchShare.simpleMore')}
+                  </button>
+                  {simpleMoreOpen && (
+                    <div style={{
+                      marginTop: 10, padding: '14px',
+                      background: 'var(--surface-var)', borderRadius: 12,
+                      border: '1px solid var(--border)',
+                      display: 'flex', flexDirection: 'column', gap: 12,
+                    }}>
+                      {/* QR pro offline sharing (dědeček, hřiště) */}
+                      <div style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                      }}>
+                        <div style={{
+                          width: 140, height: 140, borderRadius: 12,
+                          background: '#fff', border: '1px solid var(--border)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          padding: 6, boxSizing: 'border-box',
+                        }}>
+                          {qrDataUrl ? (
+                            <img src={qrDataUrl} alt="QR" style={{ width: '100%', height: '100%', display: 'block' }} />
+                          ) : (
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>…</div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
+                          {t('matchShare.qrHint')}
+                        </div>
+                      </div>
+                      {/* URL + copy */}
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          readOnly
+                          value={url}
+                          onFocus={e => e.currentTarget.select()}
+                          style={{
+                            flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 10,
+                            border: '1px solid var(--border)', background: 'var(--surface)',
+                            fontSize: 11, color: 'var(--text)', fontFamily: 'monospace',
+                          }}
+                        />
+                        <button
+                          onClick={handleCopyLink}
+                          aria-label={t('matchShare.copyLink')}
+                          style={{
+                            padding: '0 12px', borderRadius: 10, border: 'none',
+                            background: linkCopied ? 'var(--success)' : 'var(--primary)',
+                            color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer',
+                          }}
+                        >
+                          {linkCopied ? '✓' : '📋'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Info text */}

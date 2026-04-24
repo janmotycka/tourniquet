@@ -37,13 +37,22 @@ export interface QuickMatchPreset {
 }
 
 /** Přednastavené presety — laikovi seřazené od nejkratšího (McDonald's Cup)
- *  po plný zápas. První je default. */
+ *  po plný zápas. První je default.
+ *  Audit 2026-04-24 (Honza): microcopy „2×10" byla nečitelná — doplněno
+ *  popiskem „2×10 min (poločas)" a „2×30 min (fotbal)" pod chip. */
+export interface QuickPresetUI {
+  preset: QuickMatchPreset;
+  /** Sekundární popisek pod hlavní label chip (ušetří Honzovi hádání). */
+  subtitle: string;
+}
 const QUICK_PRESETS: QuickMatchPreset[] = [
   { durationMinutes: 10, periods: 1, matchFormat: '5+1', label: '10 min' }, // McDonald's Cup
   { durationMinutes: 15, periods: 1, matchFormat: '5+1', label: '15 min' }, // casual
-  { durationMinutes: 20, periods: 2, matchFormat: '5+1', label: '2×10' }, // přátelák
+  { durationMinutes: 20, periods: 2, matchFormat: '5+1', label: '2×10' }, // přátelák s poločasem
   { durationMinutes: 60, periods: 2, matchFormat: '7+1', label: '2×30' }, // plný fotbal
 ];
+/** i18n-independent subtitles — překládáme až v render (t() call) */
+const QUICK_PRESET_SUBTITLES = ['short', 'casual', 'halftime', 'full'] as const;
 
 interface Props {
   onClose: () => void;
@@ -60,6 +69,10 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
 
   const [opponent, setOpponent] = useState('');
   const [rosterText, setRosterText] = useState('');
+  // Audit 2026-04-24 (Honza): pro McDonald's Cup scénář — když user uloží
+  // partu „3.A" v prvním zápase, při druhém má být auto-pre-picknutá
+  // (nechceme friction hledat ji v seznamu). `squads` je seřazené podle
+  // usageCount desc, takže squads[0] = nejčastější.
   const [selectedSquadId, setSelectedSquadId] = useState<string | null>(null);
   const [saveAsSquad, setSaveAsSquad] = useState(false);
   const [squadName, setSquadName] = useState('');
@@ -83,6 +96,24 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
   useEffect(() => {
     const timer = setTimeout(() => inputRef.current?.focus(), 200);
     return () => clearTimeout(timer);
+  }, []);
+
+  // Auto-pre-pick nejužívanější party (squads[0] je už seřazené podle
+  // usageCount desc). Honza v McDonald's Cupu: „po prvním zápase jsem
+  // partu uložil jako „3.A", ale při druhém ji musel hledat" → tohle
+  // to zkracuje: otevřeš sheet, parta je už vybraná, dopíšeš soupeře.
+  // Lze zrušit tlačítkem „Změnit partu" (handleClearSquad).
+  useEffect(() => {
+    if (selectedSquadId) return; // už vybrané
+    if (squads.length === 0) return; // žádné party
+    // Auto-pick jen pokud existuje "silná" parta (použita alespoň jednou
+    // předtím) — nechceme pre-selectovat ukládání-poprvé party ze stejné
+    // session, user ji právě zavřel.
+    const topSquad = squads[0];
+    if ((topSquad.usageCount ?? 0) < 1) return;
+    setSelectedSquadId(topSquad.id);
+    setRosterText(topSquad.players.join('\n'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -355,7 +386,9 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
 
           {/* Preset délky zápasu — P2.3. McDonald's Cup (10 min), casual
               (15 min), přátelák (2×10), plný fotbal (2×30). 15 min je default
-              — reálný většinový use case laika (škola / tábor). */}
+              — reálný většinový use case laika (škola / tábor).
+              Audit 2026-04-24 (Honza): „2×10 mě zmátlo — je to 2 poločasy
+              po 10 nebo 2 minuty × 10?" → přidán subtitle pod label. */}
           <div>
             <label style={labelStyle}>
               ⏱ {t('match.quickSheet.durationLabel')}
@@ -363,6 +396,8 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {QUICK_PRESETS.map((preset, i) => {
                 const active = presetIndex === i;
+                const subtitleKey = QUICK_PRESET_SUBTITLES[i];
+                const subtitle = t(`match.quickSheet.preset.${subtitleKey}`);
                 return (
                   <button
                     key={preset.label}
@@ -375,9 +410,15 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
                       color: active ? '#fff' : 'var(--text)',
                       border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
                       fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                      lineHeight: 1.2,
                     }}
                   >
-                    {preset.label}
+                    <span>{preset.label}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 500,
+                      opacity: active ? 0.85 : 0.7,
+                    }}>{subtitle}</span>
                   </button>
                 );
               })}

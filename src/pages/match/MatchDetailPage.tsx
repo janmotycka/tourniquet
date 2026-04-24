@@ -584,44 +584,74 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
               </div>
             </div>
           )}
-          {/* Next-match CTA — audit 2026-04-24 (Honza McDonald's Cup):
+          {/* Next-match CTA + Turnajový den summary — audit 2026-04-24 (Honza):
               „Po skončení zápasu jsem musel šipkou zpátky, žádný nudge na
-              další." Při turnajovém dni hraje 4-6 zápasů po sobě — prominentní
-              CTA šetří kroky a drží engagement. V Advanced módu to je méně
-              důležité (trenér má méně zápasů za sebou), ale user-friendly
-              i tam. Skryté v tenisu a u párovaných zápasů (jiný flow). */}
+              další." + „Po pátým zápase mi pořád vyskakuje 'založ další' a
+              já už nechci — chybí tlačítko 'turnaj hotov'."
+
+              Logika: spočítáme zápasy odehrané dnes (stejné date) ze stejného
+              klubu. Při 3+ zápasech za den rozšíříme CTA o druhé tlačítko
+              „🏁 Ukázat dnešní den" — vede na filtered match-list. */}
           {currentMatch.status === 'finished' &&
             !(currentMatch.sport === 'tennis') &&
-            !currentMatch.pairing?.awayCoachUid && (
-            <div style={{
-              background: 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)',
-              borderRadius: 14, padding: '14px 16px',
-              display: 'flex', alignItems: 'center', gap: 12,
-              marginBottom: 4,
-              color: '#fff',
-            }}>
-              <span style={{ fontSize: 26 }}>⚽</span>
-              <div style={{ flex: 1, minWidth: 0, lineHeight: 1.35 }}>
-                <div style={{ fontWeight: 800, fontSize: 14 }}>
-                  {t('match.detail.nextMatchCtaTitle')}
+            !currentMatch.pairing?.awayCoachUid && (() => {
+              const sameDayMatches = matches.filter(m =>
+                m.date === currentMatch.date &&
+                m.clubId === currentMatch.clubId &&
+                m.status === 'finished'
+              );
+              const isTournamentDay = sameDayMatches.length >= 3;
+              return (
+                <div style={{
+                  background: 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)',
+                  borderRadius: 14, padding: '14px 16px',
+                  display: 'flex', flexDirection: 'column', gap: 10,
+                  marginBottom: 4,
+                  color: '#fff',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontSize: 26 }}>⚽</span>
+                    <div style={{ flex: 1, minWidth: 0, lineHeight: 1.35 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14 }}>
+                        {isTournamentDay
+                          ? t('match.detail.tournamentDayTitle', { n: sameDayMatches.length })
+                          : t('match.detail.nextMatchCtaTitle')}
+                      </div>
+                      <div style={{ fontSize: 11.5, opacity: 0.85, marginTop: 2 }}>
+                        {isTournamentDay
+                          ? t('match.detail.tournamentDayDesc')
+                          : (isSimpleMode ? t('match.detail.nextMatchCtaDescSimple') : t('match.detail.nextMatchCtaDesc'))}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => navigate({ name: 'match-list' })}
+                      style={{
+                        flex: 1, padding: '10px 12px', borderRadius: 10, border: 'none',
+                        background: '#fff', color: 'var(--primary)',
+                        fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                      }}
+                    >
+                      + {t('match.detail.nextMatchCtaBtn')}
+                    </button>
+                    {isTournamentDay && (
+                      <button
+                        onClick={() => navigate({ name: 'match-list' })}
+                        style={{
+                          flex: 1, padding: '10px 12px', borderRadius: 10,
+                          background: 'rgba(255,255,255,0.18)', color: '#fff',
+                          border: '1px solid rgba(255,255,255,0.35)',
+                          fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                        }}
+                      >
+                        🏁 {t('match.detail.tournamentDayBtn')}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div style={{ fontSize: 11.5, opacity: 0.85, marginTop: 2 }}>
-                  {isSimpleMode ? t('match.detail.nextMatchCtaDescSimple') : t('match.detail.nextMatchCtaDesc')}
-                </div>
-              </div>
-              <button
-                onClick={() => navigate({ name: 'match-list' })}
-                style={{
-                  padding: '10px 14px', borderRadius: 10, border: 'none',
-                  background: '#fff', color: 'var(--primary)',
-                  fontSize: 13, fontWeight: 800, cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-              >
-                +
-              </button>
-            </div>
-          )}
+              );
+            })()}
 
           {/* FAČR report — Advanced/klubová feature (oficiální zápis pro českou
               fotbalovou asociaci). Skryté v Simple módu — laik / učitel TV ho

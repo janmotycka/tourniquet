@@ -214,6 +214,24 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
   const [notificationsOn, setNotificationsOn] = useState(() => {
     try { return localStorage.getItem(`torq-notif-${matchId}`) === '1'; } catch { return false; }
   });
+
+  // Audit 2026-04-24 (Honza): banner „Vytvořit vlastní zápas" vnucuje se
+  // rodičům co chtějí jen sledovat skóre. Přidáváme „Ne teď" dismiss —
+  // uloží se do localStorage s TTL 7 dní, pak se zase zobrazí.
+  const [viralDismissed, setViralDismissed] = useState(() => {
+    try {
+      const raw = localStorage.getItem('torq-viral-dismissed-at');
+      if (!raw) return false;
+      const dismissedAt = Number(raw);
+      if (!Number.isFinite(dismissedAt)) return false;
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      return Date.now() - dismissedAt < sevenDaysMs;
+    } catch { return false; }
+  });
+  const dismissViral = () => {
+    setViralDismissed(true);
+    try { localStorage.setItem('torq-viral-dismissed-at', String(Date.now())); } catch { /* noop */ }
+  };
   const { requestPermission, notify, supported: notifSupported } = useGoalNotifications(notificationsOn);
 
   // ── Wake Lock — auto-enable for live matches ──
@@ -983,14 +1001,30 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
             engage" mood), pro live/planned = slim banner (nezacházet před
             skóre).
             Deep-link jde na `/` s hash `#mode=simple` — PWA pochytne hash v
-            OnboardingWizard a přeskočí na Simple mode start. */}
-        {isFinished ? (
+            OnboardingWizard a přeskočí na Simple mode start.
+            Dismiss (Honza: „pořád mi to vnucuje appku") — uloží 7 dní TTL. */}
+        {!viralDismissed && isFinished ? (
           <div style={{
+            position: 'relative',
             padding: `${spacing.xl}px ${spacing.lg}px`, borderRadius: radius.xl,
             background: 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)',
             color: '#fff', textAlign: 'center',
             boxShadow: '0 4px 16px rgba(21, 101, 192, 0.25)',
           }}>
+            <button
+              onClick={dismissViral}
+              aria-label={t('common.dismiss')}
+              style={{
+                position: 'absolute', top: 8, right: 8,
+                width: 28, height: 28, borderRadius: 14,
+                background: 'rgba(255,255,255,0.15)', color: '#fff',
+                border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: 700, lineHeight: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              ✕
+            </button>
             <div style={{ fontSize: 32, marginBottom: spacing.xs }}>⚡</div>
             <div style={{ fontWeight: fontWeight.extrabold, fontSize: fontSize.lg, marginBottom: spacing.xs }}>
               {t('promo.viralFinishedTitle')}
@@ -1014,12 +1048,27 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               {t('promo.viralFinishedFootnote')}
             </div>
           </div>
-        ) : (
+        ) : !viralDismissed ? (
           <div style={{
+            position: 'relative',
             padding: `${spacing.md + 2}px ${spacing.lg}px`, borderRadius: radius.xl,
             background: 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)',
             color: '#fff', textAlign: 'center',
           }}>
+            <button
+              onClick={dismissViral}
+              aria-label={t('common.dismiss')}
+              style={{
+                position: 'absolute', top: 6, right: 6,
+                width: 24, height: 24, borderRadius: 12,
+                background: 'rgba(255,255,255,0.15)', color: '#fff',
+                border: 'none', cursor: 'pointer',
+                fontSize: 11, fontWeight: 700, lineHeight: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              ✕
+            </button>
             <div style={{ fontWeight: fontWeight.extrabold, fontSize: fontSize.base, marginBottom: spacing.xs }}>
               ⚡ {t('promo.viralTitle')}
             </div>
@@ -1038,7 +1087,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               {t('promo.tryCta')}
             </a>
           </div>
-        )}
+        ) : null}
 
         {/* Empty state — planned match */}
         {match.status === 'planned' && timeline.length === 0 && match.lineup.length === 0 && (

@@ -12,6 +12,7 @@ import { DesktopPage } from '../components/desktop/DesktopPage';
 import { ClubSwitcher } from '../components/clubs/ClubSwitcher';
 import { useClubsStore } from '../store/clubs.store';
 import { useMyPlayersStore } from '../modules/tennis/store/myPlayers.store';
+import { useSimpleSquadsStore } from '../store/simpleSquads.store';
 import { OnboardingWizard, isOnboarded } from '../components/onboarding/OnboardingWizard';
 
 interface Props { navigate: (p: Page) => void; }
@@ -27,6 +28,8 @@ export function HomePage({ navigate }: Props) {
   const setTennisUserType = useUserPrefsStore(s => s.setTennisUserType);
   const appMode = useUserPrefsStore(s => s.appMode);
   const setAppMode = useUserPrefsStore(s => s.setAppMode);
+  // Simple squads — pro „My party" sekci v Simple módu (P1.8)
+  const simpleSquads = useSimpleSquadsStore(s => s.squads);
   const ensureActiveClubMatchesSport = useClubsStore(s => s.ensureActiveClubMatchesSport);
   const isTennis = preferredSport === 'tennis';
   const isTennisIndividual = isTennis && tennisUserType === 'individual';
@@ -725,6 +728,62 @@ export function HomePage({ navigate }: Props) {
             {t('common.open')}
           </div>
         </button>
+        )}
+
+        {/* Moje party — zobrazí se nad Match card v Simple módu, pokud user
+            má uloženou alespoň jednu. Audit 2026-04-24 (Honza): „po prvním
+            zápase je parta uložená, ale při druhém ji musím hledat v sheetu."
+            Chip-row nahoře = 1 tap → rovnou QuickMatchSheet s pre-pickutou partou. */}
+        {isSimpleMode && simpleSquads.length > 0 && (
+          <div style={{
+            background: 'var(--surface)',
+            borderRadius: 16, padding: '12px 14px',
+            border: '1px solid var(--border)',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: 8,
+            }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
+                👥 {t('home.mySquads')}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {t('home.mySquadsHint')}
+              </div>
+            </div>
+            <div style={{
+              display: 'flex', gap: 6, overflowX: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              paddingBottom: 2,
+            }}>
+              {simpleSquads
+                .slice()
+                .sort((a, b) => (b.usageCount ?? 0) - (a.usageCount ?? 0))
+                .slice(0, 6)
+                .map(squad => (
+                  <button
+                    key={squad.id}
+                    onClick={() => navigate({ name: 'match-list' })}
+                    style={{
+                      flexShrink: 0,
+                      padding: '8px 12px', borderRadius: 10,
+                      background: 'var(--primary-light)',
+                      color: 'var(--primary)',
+                      border: '1px solid var(--primary)',
+                      fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <span>👥</span>
+                    <span>{squad.name}</span>
+                    <span style={{ opacity: 0.65, fontWeight: 500 }}>
+                      ({squad.players.length})
+                    </span>
+                  </button>
+                ))}
+            </div>
+          </div>
         )}
 
         {/* 📋 Zápas — v Simple módu vede rovnou na rychlý zápas (MatchListPage to pozná) */}
