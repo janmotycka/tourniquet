@@ -976,9 +976,45 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           </EventSection>
         )}
 
-        {/* Viral promo banner — vždy, nejen po zápase. Rodič/soused co vidí
-            public view má jedno kliknutí k vytvoření vlastního zápasu. */}
-        {(
+        {/* Viral CTA banner — rozdílná intenzita podle fáze zápasu.
+            Audit 2026-04-24 (analyst + Honza): rodič co otevře public URL
+            nemá žádný způsob, jak se stát trenérem — viral loop není
+            uzavřený. Pro finished zápas = banner GIANT (user v „ready to
+            engage" mood), pro live/planned = slim banner (nezacházet před
+            skóre).
+            Deep-link jde na `/` s hash `#mode=simple` — PWA pochytne hash v
+            OnboardingWizard a přeskočí na Simple mode start. */}
+        {isFinished ? (
+          <div style={{
+            padding: `${spacing.xl}px ${spacing.lg}px`, borderRadius: radius.xl,
+            background: 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)',
+            color: '#fff', textAlign: 'center',
+            boxShadow: '0 4px 16px rgba(21, 101, 192, 0.25)',
+          }}>
+            <div style={{ fontSize: 32, marginBottom: spacing.xs }}>⚡</div>
+            <div style={{ fontWeight: fontWeight.extrabold, fontSize: fontSize.lg, marginBottom: spacing.xs }}>
+              {t('promo.viralFinishedTitle')}
+            </div>
+            <div style={{ fontSize: fontSize.sm, opacity: 0.9, marginBottom: spacing.md, lineHeight: 1.45 }}>
+              {t('promo.viralFinishedDesc')}
+            </div>
+            <a
+              href={(typeof window !== 'undefined' ? window.location.origin : 'https://torq.cz') + '/?ref=public-match#mode=simple'}
+              style={{
+                display: 'inline-block', padding: `${spacing.md}px ${spacing.xl + spacing.sm}px`,
+                borderRadius: radius.md,
+                background: '#fff', color: 'var(--primary)', fontWeight: fontWeight.extrabold, fontSize: fontSize.base,
+                textDecoration: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              }}
+            >
+              {t('promo.viralFinishedCta')}
+            </a>
+            <div style={{ fontSize: fontSize.xs, opacity: 0.75, marginTop: spacing.sm }}>
+              {t('promo.viralFinishedFootnote')}
+            </div>
+          </div>
+        ) : (
           <div style={{
             padding: `${spacing.md + 2}px ${spacing.lg}px`, borderRadius: radius.xl,
             background: 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)',
@@ -991,9 +1027,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               {t('promo.viralDesc')}
             </div>
             <a
-              href="https://torq.cz"
-              target="_blank"
-              rel="noopener noreferrer"
+              href={(typeof window !== 'undefined' ? window.location.origin : 'https://torq.cz') + '/?ref=public-match#mode=simple'}
               style={{
                 display: 'inline-block', padding: `${spacing.sm}px ${spacing.xl}px`,
                 borderRadius: radius.md,

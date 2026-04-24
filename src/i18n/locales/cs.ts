@@ -1059,6 +1059,11 @@ export const cs = {
   'promo.viralTitle': 'Trénuješ taky? Udělej si vlastní',
   'promo.viralDesc': 'Zadej zápas za 30 sekund, klikej skóre a rodiče vidí live. Zdarma pro TV / amatéry.',
   'promo.tryCta': 'Vyzkoušet TORQ →',
+  // Finished match CTA — rodič/fanoušek po skončení zápasu má největší „engage" potenciál
+  'promo.viralFinishedTitle': 'Taky trénuješ? Udělej si vlastní zápas',
+  'promo.viralFinishedDesc': 'Za 30 vteřin máš skóre, tlačítka na góly a link pro rodiče. Bez přihlašování, bez složitostí. Zdarma.',
+  'promo.viralFinishedCta': '⚽ Vytvořit zápas za 30 s',
+  'promo.viralFinishedFootnote': 'Zdarma · žádná kreditka · stačí jméno týmu',
   'promo.shareSummary': 'Sdílet shrnutí turnaje',
   'promo.shareSummaryCopied': 'Zkopírováno!',
 
@@ -2580,6 +2585,7 @@ export const cs = {
   'matchShare.copyLink': 'Kopírovat odkaz',
   'matchShare.copied': 'Zkopírováno',
   'matchShare.shareAsImage': 'Sdílet obrázek + text',
+  'matchShare.shareSimpleCta': 'Poslat rodičům do WhatsApp',
   'matchShare.generatingImage': 'Generuji obrázek…',
   'matchShare.imageShared': 'Odesláno',
   'matchShare.imageFailed': 'Obrázek se nepodařilo vytvořit',

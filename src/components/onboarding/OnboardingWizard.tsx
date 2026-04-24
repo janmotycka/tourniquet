@@ -116,7 +116,20 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   const showToast = useToastStore(s => s.show);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
 
-  const [step, setStep] = useState<Step>('welcome');
+  // Deep-link akvizice (viral loop z MatchPublicView): když user přijde s
+  // hash `#mode=simple` (nebo `?ref=public-match#mode=simple`), rovnou
+  // aktivujeme Simple mód a přeskočíme welcome/sport obrazovky. Učiteli TV,
+  // který cvakl banner „Vytvořit zápas za 30s" na rodičovském public view,
+  // nechceme dávat zdlouhavý 5-krokový wizard — chce rovnou QuickMatchSheet.
+  const [step, setStep] = useState<Step>(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash || '';
+      if (hash.includes('mode=simple')) {
+        return 'done'; // auto-skipujeme — useEffect níže nastaví appMode
+      }
+    }
+    return 'welcome';
+  });
 
   // Club state
   const [clubName, setClubName] = useState('');
@@ -332,6 +345,24 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
       setStep('club');
     }
   };
+
+  // Hash-based akvizice z viral CTA (MatchPublicView): `#mode=simple`
+  // aktivuje Simple mód, označí onboarding jako hotový a vyčistí hash.
+  // Effect běží jen jednou při mount-u a jen když jsme defaultovali na 'done'.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash || '';
+    if (!hash.includes('mode=simple')) return;
+    setAppMode('simple');
+    if (user?.uid) markOnboarded(user.uid, preferredSport);
+    try {
+      // Vyčistit hash, ať se to neopakuje při navigaci
+      const url = new URL(window.location.href);
+      url.hash = '';
+      window.history.replaceState(null, '', url.pathname + url.search);
+    } catch { /* noop */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ─── Step rendering helpers ────────────────────────────────────────────
 

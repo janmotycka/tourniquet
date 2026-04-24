@@ -70,6 +70,18 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
     return () => { cancelled = true; };
   }, [match.id, isPublic]);
 
+  // Audit 2026-04-24 (Honza laik): V Simple módu otevřel Share sheet a viděl
+  // prázdnou obrazovku se zprávou „Zapni toggle pro sdílení" → zavřel app.
+  // Simple user nerozumí koncepci „public matche", nechce to řešit. Proto při
+  // otevření sheetu v Simple módu rovnou zapneme public (user už stiskl share
+  // tlačítko, takže je to implicitní souhlas). Advanced user dál vidí toggle.
+  useEffect(() => {
+    if (isSimpleMode && !isPublic) {
+      onTogglePublic();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Esc closes
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -410,7 +422,9 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
           </div>
           )}
 
-          {/* Public toggle */}
+          {/* Public toggle — v Simple módu je skrytý (auto-enable on mount,
+              user nemusí rozumět konceptu "public match") */}
+          {!isSimpleMode && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
             background: isPublic ? 'var(--primary-light)' : 'var(--surface-var)',
@@ -451,6 +465,7 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
               }} />
             </button>
           </div>
+          )}
 
           {/* Sestava — toggle "zveřejnit hned" (jen pokud je zápas naplánovaný a veřejný) */}
           {isPublic && match.status === 'planned' && (
@@ -548,7 +563,11 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
                 </button>
               </div>
 
-              {/* Primární CTA: otevřít preview modal s obrázkem + textem */}
+              {/* Primární CTA: otevřít preview modal s obrázkem + textem.
+                  V Simple módu použijeme přímější copy („Poslat rodičům do
+                  WhatsApp") aby laik věděl, co přesně dělá. V Advanced se
+                  drží obecnější „Sdílet obrázek + text", protože trenér má
+                  víc možností (email, FAČR apod.). */}
               <button
                 onClick={handleOpenSharePreview}
                 disabled={imageSharing}
@@ -565,11 +584,16 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
                   boxShadow: imageSharing ? 'none' : '0 4px 12px rgba(37,211,102,.3)',
                 }}
               >
-                <span style={{ fontSize: 20 }}>{imageSharing ? '⏳' : '📷'}</span>
-                {imageSharing ? t('matchShare.generatingImage') : t('matchShare.shareAsImage')}
+                <span style={{ fontSize: 20 }}>{imageSharing ? '⏳' : '💬'}</span>
+                {imageSharing
+                  ? t('matchShare.generatingImage')
+                  : (isSimpleMode ? t('matchShare.shareSimpleCta') : t('matchShare.shareAsImage'))}
               </button>
 
-              {/* Share buttons — textová/link varianta (pro fallback + desktop) */}
+              {/* Share buttons — textová/link varianta (pro fallback + desktop).
+                  V Simple módu skryté: laik chce jedno zelené tlačítko, ne tři
+                  varianty. Kdo chce copy-link, má QR kód nad tím. */}
+              {!isSimpleMode && (
               <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
                 <button
                   onClick={handleWhatsApp}
@@ -611,6 +635,7 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
                   {t('matchShare.email')}
                 </button>
               </div>
+              )}
 
               {/* Info text */}
               <div style={{

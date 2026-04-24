@@ -1049,6 +1049,10 @@ export const de: Record<TranslationKey, string> = {
   'promo.viralTitle': 'Trainierst du auch? Mach dein eigenes',
   'promo.viralDesc': 'Spiel in 30 Sekunden einrichten, Ergebnisse tippen, Eltern schauen live zu. Kostenlos für Sportlehrer / Hobby.',
   'promo.tryCta': 'TORQ ausprobieren →',
+  'promo.viralFinishedTitle': 'Trainierst du auch? Mach dein eigenes Spiel',
+  'promo.viralFinishedDesc': '30 Sekunden zu Live-Score, Tor-Buttons und Eltern-Link. Keine Anmeldung, kein Aufwand. Kostenlos.',
+  'promo.viralFinishedCta': '⚽ Spiel in 30 s erstellen',
+  'promo.viralFinishedFootnote': 'Kostenlos · keine Kreditkarte · nur dein Teamname',
   'promo.shareSummary': 'Turnier-Zusammenfassung teilen',
   'promo.shareSummaryCopied': 'Kopiert!',
 
@@ -2564,6 +2568,7 @@ export const de: Record<TranslationKey, string> = {
   'matchShare.copyLink': 'Link kopieren',
   'matchShare.copied': 'Kopiert',
   'matchShare.shareAsImage': 'Bild + Text teilen',
+  'matchShare.shareSimpleCta': 'An Eltern per WhatsApp senden',
   'matchShare.generatingImage': 'Bild wird erstellt…',
   'matchShare.imageShared': 'Gesendet',
   'matchShare.imageFailed': 'Bild konnte nicht erstellt werden',
