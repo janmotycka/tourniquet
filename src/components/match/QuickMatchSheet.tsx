@@ -76,10 +76,23 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
   const [selectedSquadId, setSelectedSquadId] = useState<string | null>(null);
   const [saveAsSquad, setSaveAsSquad] = useState(false);
   const [squadName, setSquadName] = useState('');
-  // Default preset = 15 min, 1 perioda (index 1). McDonald's Cup = 10 min index 0.
-  // Držíme index aby se to nerozjelo při re-renderu (preset objekty jsou stabilní).
-  const [presetIndex, setPresetIndex] = useState(1);
+  // Audit 2026-04-24 user: „v rychlém zápase bych měl mít možnost si vybrat
+  // jak dlouho bude poločas a jestli bude jen jeden". Místo pevných 4 presetů
+  // teď 2 ovládací prvky:
+  //   - periodCount: 1 nebo 2 (s poločasem / bez)
+  //   - periodMinutes: 5–60 (numeric input, default 15)
+  // Quick-pick chips zůstávají nahoře jako shortcuty — tapnutí zaseje obě
+  // hodnoty. User pak může cokoli upravit inputem.
+  const [periodCount, setPeriodCount] = useState<1 | 2>(1);
+  const [periodMinutes, setPeriodMinutes] = useState(15);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Zjistí, jestli current values matchuje některý preset chip — pro zvýraznění.
+  const activePresetIndex = useMemo(() => {
+    return QUICK_PRESETS.findIndex(p =>
+      p.periods === periodCount && Math.round(p.durationMinutes / p.periods) === periodMinutes
+    );
+  }, [periodCount, periodMinutes]);
 
   const squads = useMemo(() => {
     return allSquads
@@ -159,7 +172,18 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
       markUsed(selectedSquadId);
     }
 
-    onCreate(opponent, roster, finalSquadId, QUICK_PRESETS[presetIndex]);
+    // Sestavíme preset z current values (nejen z chipů, ale i z manual
+    // inputů). Match format dědíme z nejbližšího chip presetu — 5+1 pro
+    // krátké zápasy, 7+1 pro 60+ min.
+    const totalMinutes = periodCount * periodMinutes;
+    const matchFormat: QuickMatchPreset['matchFormat'] = totalMinutes >= 60 ? '7+1' : '5+1';
+    const preset: QuickMatchPreset = {
+      durationMinutes: totalMinutes,
+      periods: periodCount,
+      matchFormat,
+      label: periodCount === 1 ? `${periodMinutes} min` : `${periodCount}×${periodMinutes}`,
+    };
+    onCreate(opponent, roster, finalSquadId, preset);
   };
 
   const labelStyle: React.CSSProperties = {
@@ -384,25 +408,32 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
             </div>
           )}
 
-          {/* Preset délky zápasu — P2.3. McDonald's Cup (10 min), casual
-              (15 min), přátelák (2×10), plný fotbal (2×30). 15 min je default
-              — reálný většinový use case laika (škola / tábor).
-              Audit 2026-04-24 (Honza): „2×10 mě zmátlo — je to 2 poločasy
-              po 10 nebo 2 minuty × 10?" → přidán subtitle pod label. */}
+          {/* Délka zápasu — 3 vrstvy:
+              1. Quick-pick chips (shortcuty pro běžné varianty)
+              2. Počet poločasů (1 nebo 2) — explicitně volitelné
+              3. Délka jednoho poločasu/zápasu (numeric stepper, 5-60 min)
+              Audit 2026-04-24 (user): „bych měl mít možnost si vybrat jak
+              dlouho bude poločas a jestli bude jen jeden" → plná kontrola
+              místo uzavřených 4 presetů. */}
           <div>
             <label style={labelStyle}>
               ⏱ {t('match.quickSheet.durationLabel')}
             </label>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+
+            {/* Quick-pick chips (nastaví obě hodnoty najednou) */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
               {QUICK_PRESETS.map((preset, i) => {
-                const active = presetIndex === i;
+                const active = activePresetIndex === i;
                 const subtitleKey = QUICK_PRESET_SUBTITLES[i];
                 const subtitle = t(`match.quickSheet.preset.${subtitleKey}`);
                 return (
                   <button
                     key={preset.label}
                     type="button"
-                    onClick={() => setPresetIndex(i)}
+                    onClick={() => {
+                      setPeriodCount(preset.periods as 1 | 2);
+                      setPeriodMinutes(Math.round(preset.durationMinutes / preset.periods));
+                    }}
                     style={{
                       flex: '1 1 70px',
                       padding: '10px 8px', borderRadius: 10,
@@ -423,8 +454,112 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
                 );
               })}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.4 }}>
-              {t('match.quickSheet.durationHint')}
+
+            {/* Custom controls: period count + duration input */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
+            }}>
+              {/* Počet period */}
+              <div>
+                <div style={{
+                  fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+                  marginBottom: 5,
+                }}>
+                  {t('match.quickSheet.periodsLabel')}
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {([1, 2] as const).map(n => {
+                    const active = periodCount === n;
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setPeriodCount(n)}
+                        style={{
+                          flex: 1, padding: '10px', borderRadius: 10,
+                          background: active ? 'var(--primary)' : 'var(--surface-var)',
+                          color: active ? '#fff' : 'var(--text)',
+                          border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                          fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {n === 1 ? t('match.quickSheet.periods1') : t('match.quickSheet.periods2')}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Délka poločasu / zápasu */}
+              <div>
+                <div style={{
+                  fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+                  marginBottom: 5,
+                }}>
+                  {periodCount === 1
+                    ? t('match.quickSheet.durationOneLabel')
+                    : t('match.quickSheet.durationEachLabel')}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => setPeriodMinutes(v => Math.max(5, v - 5))}
+                    aria-label="−5"
+                    style={{
+                      width: 36, height: 40, borderRadius: 10,
+                      background: 'var(--surface-var)', color: 'var(--text)',
+                      border: '1.5px solid var(--border)',
+                      fontSize: 16, fontWeight: 800, cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  >−</button>
+                  <input
+                    type="number"
+                    min={5}
+                    max={60}
+                    value={periodMinutes}
+                    onChange={e => {
+                      const n = Number(e.target.value);
+                      if (Number.isFinite(n)) setPeriodMinutes(Math.max(5, Math.min(60, n)));
+                    }}
+                    inputMode="numeric"
+                    style={{
+                      flex: 1, minWidth: 0, height: 40,
+                      padding: '0 8px', borderRadius: 10,
+                      border: '1.5px solid var(--border)',
+                      background: 'var(--surface)', color: 'var(--text)',
+                      fontSize: 15, fontWeight: 700, textAlign: 'center',
+                      outline: 'none',
+                      MozAppearance: 'textfield',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPeriodMinutes(v => Math.min(60, v + 5))}
+                    aria-label="+5"
+                    style={{
+                      width: 36, height: 40, borderRadius: 10,
+                      background: 'var(--surface-var)', color: 'var(--text)',
+                      border: '1.5px solid var(--border)',
+                      fontSize: 16, fontWeight: 800, cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  >+</button>
+                </div>
+                <div style={{
+                  fontSize: 10, color: 'var(--text-muted)', marginTop: 4, textAlign: 'center',
+                }}>
+                  {t('match.quickSheet.durationUnit')}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.4 }}>
+              {t('match.quickSheet.durationSummary', {
+                total: periodCount * periodMinutes,
+                layout: periodCount === 1 ? `${periodMinutes}` : `${periodCount}×${periodMinutes}`,
+              })}
             </div>
           </div>
 
