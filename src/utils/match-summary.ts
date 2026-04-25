@@ -21,6 +21,14 @@
 
 import type { SeasonMatch, MatchCard } from '../types/match.types';
 
+/** Sport-specific emoji pro share / summary texty.
+ *  Audit 2026-04-25: florbal má 🏑 místo univerzálního ⚽. */
+function sportEmoji(match: { sport?: string }): string {
+  if (match.sport === 'floorball') return '🏑';
+  if (match.sport === 'tennis') return '🎾';
+  return '⚽';
+}
+
 interface SummaryOptions {
   match: SeasonMatch;
   clubDisplayName: string;
@@ -156,11 +164,12 @@ export function generateMatchSummaryText(
       : labels.headerPlanned;
   lines.push(header);
 
-  // Skóre / matchup
+  // Skóre / matchup (sport-specific emoji)
+  const sportIcon = sportEmoji(match);
   if (match.status === 'planned') {
-    lines.push(`⚽ *${homeTeam} ${labels.vs} ${awayTeam}*`);
+    lines.push(`${sportIcon} *${homeTeam} ${labels.vs} ${awayTeam}*`);
   } else {
-    lines.push(`⚽ *${homeTeam} ${match.homeScore}:${match.awayScore} ${awayTeam}*`);
+    lines.push(`${sportIcon} *${homeTeam} ${match.homeScore}:${match.awayScore} ${awayTeam}*`);
   }
 
   // Meta (datum, čas, soutěž, kategorie, místo)
@@ -277,20 +286,26 @@ export function generateMatchSocialText(
         upcoming: 'Let\'s go!',
       };
 
+  // Sport-specific hashtags (audit 2026-04-25 — florbal má vlastní)
+  const isFloorball = match.sport === 'floorball';
+  const isTennis = match.sport === 'tennis';
   const hashtags = lang === 'cs'
-    ? '#fotbal #mladez'
-    : lang === 'de' ? '#fussball #jugend' : '#soccer #youth';
+    ? (isFloorball ? '#florbal #mladez' : isTennis ? '#tenis #mladez' : '#fotbal #mladez')
+    : lang === 'de'
+      ? (isFloorball ? '#floorball #jugend' : isTennis ? '#tennis #jugend' : '#fussball #jugend')
+      : (isFloorball ? '#floorball #youth' : isTennis ? '#tennis #youth' : '#soccer #youth');
 
   const lines: string[] = [];
 
+  const sportIcon = sportEmoji(match);
   if (match.status === 'finished' || match.status === 'live') {
-    lines.push(`⚽ ${homeTeam} ${match.homeScore}:${match.awayScore} ${awayTeam} ${resultEmoji}`);
+    lines.push(`${sportIcon} ${homeTeam} ${match.homeScore}:${match.awayScore} ${awayTeam} ${resultEmoji}`);
     const caption = ourScore > theirScore ? captions.win
       : ourScore === theirScore ? captions.draw
       : captions.loss;
     lines.push(caption);
   } else {
-    lines.push(`⚽ ${homeTeam} vs ${awayTeam}`);
+    lines.push(`${sportIcon} ${homeTeam} vs ${awayTeam}`);
     lines.push(captions.upcoming);
   }
 
@@ -365,7 +380,7 @@ export function generateNominationText(
 
   const lines: string[] = [];
   lines.push(labels.header);
-  lines.push(`⚽ *${homeTeam} vs ${awayTeam}*`);
+  lines.push(`${sportEmoji(match)} *${homeTeam} vs ${awayTeam}*`);
 
   // Meta line
   const metaBits: string[] = [];

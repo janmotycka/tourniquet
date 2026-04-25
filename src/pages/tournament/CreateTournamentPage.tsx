@@ -45,9 +45,13 @@ export function CreateTournamentPage({ navigate }: Props) {
   const [step, setStep] = useState(0);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
-  // Sport — default z user preferences (zvolený v onboardingu), lze změnit zde
+  // Sport — default z user preferences (zvolený v onboardingu), lze změnit zde.
+  // Audit 2026-04-25: tato stránka je jen pro Advanced (fotbal/tenis). Pokud
+  // se sem dostane florbalový user (přes URL routing), default na fotbal.
   const userPreferredSport = useUserPrefsStore(s => s.preferredSport);
-  const [sport, setSport] = useState<'football' | 'tennis'>(userPreferredSport);
+  const [sport, setSport] = useState<'football' | 'tennis'>(
+    userPreferredSport === 'tennis' ? 'tennis' : 'football'
+  );
 
   // Step 0 — Typ turnaje
   const [tournamentType, setTournamentType] = useState<TournamentType | null>(null);

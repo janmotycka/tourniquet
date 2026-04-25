@@ -24,6 +24,7 @@ import type {
   MemberOfClubs,
   ClubRole,
 } from '../types/club.types';
+import type { Sport } from '../types/sport.types';
 import { generateId } from '../utils/id';
 import {
   loadMemberOfClubs,
@@ -58,7 +59,7 @@ interface ClubsState {
   getActiveClub: () => Club | undefined;
   getMyRoleInClub: (clubId: string) => ClubRole | null;
   /** Pokud aktivní klub nepatří k danému sportu, přepne na první klub daného sportu (nebo null). */
-  ensureActiveClubMatchesSport: (sport: 'football' | 'tennis') => Promise<void>;
+  ensureActiveClubMatchesSport: (sport: Sport) => Promise<void>;
 
   // ─── CRUD klubu ──────────────────────────────────────────────────────────
   /**

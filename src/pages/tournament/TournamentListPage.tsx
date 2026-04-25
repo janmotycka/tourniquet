@@ -205,10 +205,18 @@ export function TournamentListPage({ navigate }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   // Sport filter — default = preferredSport (sporty jsou oddělené).
   // Uživatel může přepnout na 'all' nebo druhý sport ručně chip barem.
+  // Audit 2026-04-25: Florbal je Simple-only, sem se nedostane. Pro typové
+  // bezpečí zúžíme — pokud preferredSport je floorball, fallback na 'all'.
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
-  const [sportFilter, setSportFilter] = useState<'all' | 'football' | 'tennis'>(preferredSport);
+  const initialSportFilter: 'all' | 'football' | 'tennis' =
+    preferredSport === 'football' || preferredSport === 'tennis' ? preferredSport : 'all';
+  const [sportFilter, setSportFilter] = useState<'all' | 'football' | 'tennis'>(initialSportFilter);
   // Když se přepne sport v Nastavení, aktualizuj filtr.
-  useEffect(() => { setSportFilter(preferredSport); }, [preferredSport]);
+  useEffect(() => {
+    if (preferredSport === 'football' || preferredSport === 'tennis') {
+      setSportFilter(preferredSport);
+    }
+  }, [preferredSport]);
 
   // Rozdělit na aktivní (active/draft) a archivované (finished), filtrovat podle hledání
   const { activeTournaments, archivedTournaments } = useMemo(() => {

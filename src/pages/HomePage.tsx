@@ -33,6 +33,12 @@ export function HomePage({ navigate }: Props) {
   const ensureActiveClubMatchesSport = useClubsStore(s => s.ensureActiveClubMatchesSport);
   const isTennis = preferredSport === 'tennis';
   const isTennisIndividual = isTennis && tennisUserType === 'individual';
+  // Audit 2026-04-25: Florbal je Simple-only modul. Skrýváme všechny
+  // Advanced karty (Training, Tournament-list, Klub) — uživatel vidí jen
+  // rychlý zápas, rychlý turnaj a historii. Stejný pattern jako Simple,
+  // jen ještě tvrdší: i v Advanced módu kdyby user nějak skončil, máme tu
+  // floorball-only conditional.
+  const isFloorball = preferredSport === 'floorball';
   // Aktivní klub vždy v rámci zvoleného sportu — fotbal a tenis se nemíchají.
   // Pokud aktivní ID ukazuje na klub jiného sportu, fallback na první klub
   // odpovídajícího sportu (může být null = žádný klub v tomto sportu).
@@ -467,12 +473,15 @@ export function HomePage({ navigate }: Props) {
           width: 56, height: 56, borderRadius: 16,
           background: isTennisIndividual
             ? 'linear-gradient(135deg, #4A148C 0%, #6A1B9A 100%)'
-            : (activeClub?.logoBase64 ? 'transparent' : isTennis ? 'linear-gradient(135deg, #1565C0, #1976D2)' : 'var(--primary-light)'),
+            : isFloorball
+              ? 'linear-gradient(135deg, #00695C 0%, #00897B 100%)'
+              : (activeClub?.logoBase64 ? 'transparent' : isTennis ? 'linear-gradient(135deg, #1565C0, #1976D2)' : 'var(--primary-light)'),
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 28, flexShrink: 0, overflow: 'hidden',
-          color: isTennis ? '#fff' : undefined,
+          color: (isTennis || isFloorball) ? '#fff' : undefined,
         }}>
           {isTennisIndividual ? '👤'
+            : isFloorball ? '🏑'
             : activeClub?.logoBase64 ? (
               <img src={activeClub.logoBase64} alt="" style={{ width: 56, height: 56, objectFit: 'cover' }} />
             )
@@ -667,8 +676,8 @@ export function HomePage({ navigate }: Props) {
       {/* Module cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* ⚽ Training — jen fotbal + advanced mode. */}
-        {!isTennis && !isSimpleMode && (
+        {/* ⚽ Training — jen fotbal + advanced mode. Florbal nemá knihovnu cviků. */}
+        {!isTennis && !isFloorball && !isSimpleMode && (
           <button
             onClick={() => navigate({ name: 'training-home' })}
             style={{
@@ -697,8 +706,9 @@ export function HomePage({ navigate }: Props) {
         {/* 🏆 Tournament — tenis má tyrkysovou, fotbal oranžovou.
             V individuálním tenisovém módu skryto (uživatel turnaje neorganizuje,
             tracking turnaje přes `competition` field na zápasech).
-            V simple módu taky skryto (zatím — brzy přijde jednoduchá varianta). */}
-        {!isTennisIndividual && !isSimpleMode && (
+            V simple módu taky skryto (zatím — brzy přijde jednoduchá varianta).
+            Ve florbalovém modu skryto — florbal používá Quick Tournament jen. */}
+        {!isTennisIndividual && !isSimpleMode && !isFloorball && (
         <button
           onClick={() => navigate({ name: 'tournament-list' })}
           style={{
@@ -885,24 +895,32 @@ export function HomePage({ navigate }: Props) {
           </div>
         )}
 
-        {/* 📋 Zápas — v Simple módu vede rovnou na rychlý zápas (MatchListPage to pozná) */}
+        {/* 📋 Zápas — v Simple módu vede rovnou na rychlý zápas (MatchListPage to pozná).
+            Florbal: emoji 🏑, popis pro amatérský florbalový kontext. */}
         <button
           onClick={() => navigate({ name: 'match-list' })}
           style={{
-            background: 'linear-gradient(135deg, #1565C0 0%, #1976D2 100%)',
+            background: isFloorball
+              ? 'linear-gradient(135deg, #00695C 0%, #00897B 100%)'
+              : 'linear-gradient(135deg, #1565C0 0%, #1976D2 100%)',
             borderRadius: 22, padding: '24px',
             display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
-            boxShadow: '0 4px 16px rgba(21,101,192,.25)', width: '100%',
+            boxShadow: isFloorball
+              ? '0 4px 16px rgba(0,137,123,.25)'
+              : '0 4px 16px rgba(21,101,192,.25)',
+            width: '100%',
             color: '#fff',
           }}
         >
-          <div style={{ fontSize: 44 }}>{isTennis ? '🎾' : '📋'}</div>
+          <div style={{ fontSize: 44 }}>{isTennis ? '🎾' : isFloorball ? '🏑' : '📋'}</div>
           <div>
             <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.match')}</div>
             <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-              {isSimpleMode
-                ? t('home.matchDescSimple')
-                : isTennis ? t('home.matchDescTennis') : t('home.matchDesc')}
+              {isFloorball
+                ? t('home.matchDescFloorball')
+                : isSimpleMode
+                  ? t('home.matchDescSimple')
+                  : isTennis ? t('home.matchDescTennis') : t('home.matchDesc')}
             </div>
           </div>
           <div style={{
@@ -913,8 +931,9 @@ export function HomePage({ navigate }: Props) {
           </div>
         </button>
 
-        {/* 🏆 Jednoduchý turnaj — jen v simple módu */}
-        {isSimpleMode && !isTennisIndividual && (
+        {/* 🏆 Jednoduchý turnaj — v Simple módu i ve florbalu (florbal je
+            Simple-only, ale isSimpleMode flag se kontroluje izolovaně). */}
+        {(isSimpleMode || isFloorball) && !isTennisIndividual && (
           <button
             onClick={() => navigate({ name: 'tournament-quick' })}
             style={{
@@ -941,8 +960,9 @@ export function HomePage({ navigate }: Props) {
           </button>
         )}
 
-        {/* 🏟 Klub / 👤 Moji hráči (individuální tenis) — jen v advanced módu */}
-        {!isSimpleMode && (
+        {/* 🏟 Klub / 👤 Moji hráči (individuální tenis) — jen v advanced módu.
+            Florbal nemá klub — celý modul je Simple-only (audit 2026-04-25). */}
+        {!isSimpleMode && !isFloorball && (
         <button
           onClick={() => navigate({ name: 'clubs' })}
           style={{

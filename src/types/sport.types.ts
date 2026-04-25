@@ -10,7 +10,7 @@
  * 3. Implementovat sport-specific logic v modulech, které ho podporují
  */
 
-export type Sport = 'football' | 'tennis';
+export type Sport = 'football' | 'tennis' | 'floorball';
 
 export interface SportMeta {
   id: Sport;
@@ -19,9 +19,14 @@ export interface SportMeta {
   shortLabelKey: string;
 }
 
+// Audit 2026-04-25: Florbal přidán jako 3. sport — komplet oddělený modul,
+// jen Simple mode, žádný klub / training / Advanced. Cílovka = český
+// amatérský florbalový trh (školy, firemní turnaje, OFL ligy). Nemíchá se
+// s fotbalem ani tenisem — sport-isolation pattern používaný i pro tennis.
 export const SPORTS: SportMeta[] = [
-  { id: 'football', icon: '⚽', labelKey: 'sport.football', shortLabelKey: 'sport.football' },
-  { id: 'tennis',   icon: '🎾', labelKey: 'sport.tennis',   shortLabelKey: 'sport.tennis' },
+  { id: 'football',  icon: '⚽', labelKey: 'sport.football',  shortLabelKey: 'sport.football' },
+  { id: 'tennis',    icon: '🎾', labelKey: 'sport.tennis',    shortLabelKey: 'sport.tennis' },
+  { id: 'floorball', icon: '🏑', labelKey: 'sport.floorball', shortLabelKey: 'sport.floorball' },
 ];
 
 export const DEFAULT_SPORT: Sport = 'football';

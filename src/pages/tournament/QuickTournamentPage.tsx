@@ -90,7 +90,13 @@ export function QuickTournamentPage({ navigate }: Props) {
 
       const tournament = await createTournament({
         name: name.trim(),
-        sport: preferredSport === 'tennis' ? 'tennis' : 'football',
+        // Audit 2026-04-25: Quick tournament respektuje aktivní sport.
+        // Florbal i tenis mají vlastní variantu, fallback fotbal pro starší clienty.
+        sport: preferredSport === 'tennis'
+          ? 'tennis'
+          : preferredSport === 'floorball'
+            ? 'floorball'
+            : 'football',
         teams,
         pinHash,
         pinSalt,

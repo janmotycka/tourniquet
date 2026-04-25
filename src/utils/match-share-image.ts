@@ -188,8 +188,10 @@ export async function generateMatchShareImage(opts: GenerateOptions): Promise<Bl
     ctx.textBaseline = 'top';
     const startY = 460;
     const rowHeight = 32;
+    // Audit 2026-04-25: sport-specific emoji ve share kartě (florbal=🏑, fotbal=⚽, tenis=🎾)
+    const sportEmoji = match.sport === 'floorball' ? '🏑' : match.sport === 'tennis' ? '🎾' : '⚽';
     scorers.slice(0, 3).forEach((s, i) => {
-      ctx.fillText(`⚽  ${s}`, WIDTH / 2, startY + i * rowHeight);
+      ctx.fillText(`${sportEmoji}  ${s}`, WIDTH / 2, startY + i * rowHeight);
     });
   } else if (match.status === 'finished') {
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
@@ -197,12 +199,13 @@ export async function generateMatchShareImage(opts: GenerateOptions): Promise<Bl
     ctx.fillText(lang === 'cs' ? 'Konec zápasu' : lang === 'de' ? 'Spielende' : 'Full time', WIDTH / 2, 460);
   }
 
-  // ── Footer: TORQ branding ──
+  // ── Footer: TORQ branding (sport-specific emoji) ──
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
   ctx.font = '700 20px system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('⚽ torq.cz', WIDTH / 2, HEIGHT - 30);
+  const brandEmoji = match.sport === 'floorball' ? '🏑' : match.sport === 'tennis' ? '🎾' : '⚽';
+  ctx.fillText(`${brandEmoji} torq.cz`, WIDTH / 2, HEIGHT - 30);
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {

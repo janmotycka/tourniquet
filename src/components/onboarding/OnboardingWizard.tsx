@@ -23,6 +23,7 @@ import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 import { useClubsStore } from '../../store/clubs.store';
 import { useToastStore } from '../../store/toast.store';
+import type { Sport } from '../../types/sport.types';
 import { AGE_CATEGORIES_BY_SPORT, type AgeCategory } from '../../types/club.types';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { resizeLogoToBase64 } from '../clubs/resize-logo';
@@ -41,7 +42,7 @@ const ONBOARDED_KEY_PREFIX = 'torq-onboarded-';
  *   není znám kontext sportu.
  */
 // eslint-disable-next-line react-refresh/only-export-components
-export function isOnboarded(uid: string, sport?: 'football' | 'tennis'): boolean {
+export function isOnboarded(uid: string, sport?: Sport): boolean {
   try {
     // Nový klíč per sport. Fallback na legacy (bez sportu) pro uživatele,
     // kteří už měli onboarding hotový před zavedením multi-sport separace.
@@ -54,7 +55,7 @@ export function isOnboarded(uid: string, sport?: 'football' | 'tennis'): boolean
     return true; // safe default — pokud nejde číst, neotravujeme
   }
 }
-function markOnboarded(uid: string, sport?: 'football' | 'tennis') {
+function markOnboarded(uid: string, sport?: Sport) {
   try {
     if (sport) {
       localStorage.setItem(`${ONBOARDED_KEY_PREFIX}${uid}-${sport}`, '1');
@@ -330,9 +331,17 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   // Pomocníci z userPrefs pro sport picker step
   const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
   const markSportOnboardingShown = useUserPrefsStore(s => s.markSportOnboardingShown);
-  const handleSportPick = (sport: 'football' | 'tennis') => {
+  const handleSportPick = (sport: 'football' | 'tennis' | 'floorball') => {
     setPreferredSport(sport);
     markSportOnboardingShown();
+    // Audit 2026-04-25: Florbal je Simple-only modul (nemá Advanced ani klub).
+    // Skipujeme mode picker — uživatel by ho stejně musel projít na 'simple'.
+    if (sport === 'floorball') {
+      useUserPrefsStore.getState().setAppMode('simple');
+      if (user?.uid) markOnboarded(user.uid, sport);
+      setStep('done');
+      return;
+    }
     setStep('mode');
   };
 
@@ -454,22 +463,27 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                   {t('sportPicker.desc')}
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: 10, marginTop: spacing.md }}>
-                {(['football', 'tennis'] as const).map(sp => (
+              {/* 3 sport tiles — fotbal, tenis, florbal (audit 2026-04-25).
+                  Florbal po výběru rovnou skipne mode picker (je Simple-only). */}
+              <div style={{ display: 'flex', gap: 8, marginTop: spacing.md, flexWrap: 'wrap' }}>
+                {(['football', 'tennis', 'floorball'] as const).map(sp => (
                   <button
                     key={sp}
                     onClick={() => handleSportPick(sp)}
                     style={{
-                      flex: 1, padding: '22px 10px', borderRadius: 16,
+                      flex: '1 1 30%', minWidth: 90,
+                      padding: '20px 8px', borderRadius: 16,
                       background: 'var(--surface-var)',
                       border: `2px solid ${preferredSport === sp ? 'var(--primary)' : 'var(--border)'}`,
                       cursor: 'pointer',
-                      display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center',
+                      display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center',
                       transition: 'all .15s',
                     }}
                   >
-                    <span style={{ fontSize: 48 }}>{sp === 'football' ? '⚽' : '🎾'}</span>
-                    <span style={{ fontWeight: 800, fontSize: 15 }}>{t(`sport.${sp}`)}</span>
+                    <span style={{ fontSize: 42 }}>
+                      {sp === 'football' ? '⚽' : sp === 'tennis' ? '🎾' : '🏑'}
+                    </span>
+                    <span style={{ fontWeight: 800, fontSize: 14 }}>{t(`sport.${sp}`)}</span>
                   </button>
                 ))}
               </div>

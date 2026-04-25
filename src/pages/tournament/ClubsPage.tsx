@@ -216,7 +216,7 @@ export function ClubsPage({ navigate }: Props) {
           color: myClub.color,
           logoBase64: myClub.logoBase64,
           ageCategories: myClub.ageCategories ?? [],
-          sport: (myClub.sport ?? 'football') as 'football' | 'tennis',
+          sport: myClub.sport ?? 'football',
         }}
         onSave={handleEdit}
         onCancel={() => setEditingClub(false)}

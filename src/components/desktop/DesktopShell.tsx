@@ -58,6 +58,8 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
   const isTennis = preferredSport === 'tennis';
   const isTennisIndividual = isTennis && tennisUserType === 'individual';
   const isSimpleMode = appMode === 'simple';
+  // Audit 2026-04-25: Florbal je vždy Simple-only — žádný training/klub/stats.
+  const isFloorball = preferredSport === 'floorball';
 
   // Dashboard is standalone at the top (not a module).
   const dashboardItem: NavItem = { icon: '🏠', labelKey: 'sidebar.dashboard', page: 'home', target: { name: 'home' } };
@@ -66,8 +68,8 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
   // Training modul je zatím jen pro fotbal — v tenis módu se skrývá.
   // Simple mode: jen zápasy + (optionally) rychlý turnaj; bez klubu, bez treninku, bez statistik.
   const baseModules: NavModule[] = [
-    // Training — skryt v tenisu i v simple módu.
-    ...(isTennis || isSimpleMode ? [] : [{
+    // Training — skryt v tenisu, ve florbalu a v simple módu.
+    ...(isTennis || isFloorball || isSimpleMode ? [] : [{
       key: 'training',
       labelKey: 'home.training',
       icon: '⚽',
@@ -82,7 +84,8 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
     } as NavModule]),
     // Tournament — v individuálním tenisovém módu skryto (user turnaje neorganizuje).
     // V simple módu jde rovnou na rychlý turnaj z HomePage, sidebar ho nezobrazuje (držíme minimalismus).
-    ...(isTennisIndividual || isSimpleMode ? [] : [{
+    // Florbal: jen Quick Tournament, žádný full tournament-list v sidebaru.
+    ...(isTennisIndividual || isSimpleMode || isFloorball ? [] : [{
       key: 'tournament',
       labelKey: 'home.tournament',
       icon: '🏆',
@@ -93,21 +96,22 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
     {
       key: 'match',
       labelKey: 'home.match',
-      icon: isTennis ? '🎾' : '📋',
-      color: 'var(--info)',
-      colorBg: 'rgba(21, 101, 192, 0.10)',
+      icon: isTennis ? '🎾' : isFloorball ? '🏑' : '📋',
+      color: isFloorball ? '#00897B' : 'var(--info)',
+      colorBg: isFloorball ? 'rgba(0,137,123,0.10)' : 'rgba(21, 101, 192, 0.10)',
       // Tenis module: jen match-list (statistiky mají jiné metriky, zatím neimplementováno).
       // Simple mode: jen match-list (žádné agregované statistiky).
-      items: (isTennis || isSimpleMode) ? [
-        { icon: isTennis ? '🎾' : '📋', labelKey: 'sidebar.matches', page: 'match-list' as Page['name'], target: { name: 'match-list' } as Page },
+      // Florbal: jen match-list (Simple-only modul).
+      items: (isTennis || isSimpleMode || isFloorball) ? [
+        { icon: isTennis ? '🎾' : isFloorball ? '🏑' : '📋', labelKey: 'sidebar.matches', page: 'match-list' as Page['name'], target: { name: 'match-list' } as Page },
       ] : [
         { icon: '📋', labelKey: 'sidebar.matches',    page: 'match-list',  target: { name: 'match-list' } },
         { icon: '📊', labelKey: 'sidebar.matchStats', page: 'match-stats', target: { name: 'match-stats' } },
       ],
     },
     // Klub / Moji hráči — v individuálním módu má jinou ikonu + label.
-    // V simple módu se úplně skrývá (nemá klub).
-    ...(isSimpleMode ? [] : [{
+    // V simple módu i ve florbalu se úplně skrývá (nemá klub).
+    ...(isSimpleMode || isFloorball ? [] : [{
       key: 'club',
       labelKey: isTennisIndividual ? 'tennisIndividual.home.myPlayers' : 'home.club',
       icon: isTennisIndividual ? '👤' : '🏟',
@@ -498,7 +502,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
           </div>
 
           {/* Active club switcher (shared workspaces) — skryt v simple módu (žádný klub) */}
-          {!isSimpleMode && <ClubSwitcher navigate={navigate} />}
+          {!isSimpleMode && !isFloorball && <ClubSwitcher navigate={navigate} />}
         </header>
 
         {/* Content area — pages render here */}

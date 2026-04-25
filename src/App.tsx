@@ -107,8 +107,11 @@ export type Page =
 
 function PageSpinner() {
   // Ikona se adaptuje podle sportu — fotbalový spinner by byl rušivý v tenis módu.
+  // Audit 2026-04-25: + florbal varianta.
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
-  const icon = preferredSport === 'tennis' ? '🎾' : '⚽';
+  const icon = preferredSport === 'tennis' ? '🎾'
+    : preferredSport === 'floorball' ? '🏑'
+    : '⚽';
   return (
     <div style={{
       flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',

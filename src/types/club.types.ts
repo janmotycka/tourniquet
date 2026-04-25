@@ -16,7 +16,10 @@ export const AGE_CATEGORIES = [
 
 export type AgeCategory = typeof AGE_CATEGORIES[number];
 
-/** Věkové kategorie dostupné pro daný sport. */
+/** Věkové kategorie dostupné pro daný sport.
+ *  Audit 2026-04-25: Florbal používá stejné U-kategorie jako fotbal (lokálně
+ *  v ČR — ČFbU). Přidáno pro úplnost, i když florbal je teď Simple-only
+ *  (bez klubu) — v případě budoucího Advanced rozšíření je to ready. */
 export const AGE_CATEGORIES_BY_SPORT = {
   football: [
     'U6', 'U7', 'U8', 'U9', 'U10', 'U11', 'U12',
@@ -30,6 +33,10 @@ export const AGE_CATEGORIES_BY_SPORT = {
     'Starší žactvo',
     'Dorost (tenis)',
     'Dospělí (tenis)',
+  ] as AgeCategory[],
+  floorball: [
+    'U7', 'U9', 'U11', 'U13', 'U15', 'U17', 'U19',
+    'Dorost', 'Muži', 'Muži B', 'Ženy',
   ] as AgeCategory[],
 };
 

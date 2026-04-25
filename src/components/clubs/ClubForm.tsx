@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { AgeCategory } from '../../types/club.types';
 import { AGE_CATEGORIES_BY_SPORT } from '../../types/club.types';
+import type { Sport } from '../../types/sport.types';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { TEAM_COLORS, colorSwatch } from '../../utils/team-colors';
 import { resizeLogoToBase64 } from './resize-logo';
@@ -14,7 +15,7 @@ import { db } from '../../firebase';
 interface CatalogEntry {
   id: string; name: string; city?: string;
   logoUrl?: string; logoBase64?: string; torqClubId?: string;
-  sport?: 'football' | 'tennis';
+  sport?: Sport;
 }
 let _catalogCache: CatalogEntry[] | null = null;
 async function loadCatalog(): Promise<CatalogEntry[]> {
@@ -28,7 +29,7 @@ async function loadCatalog(): Promise<CatalogEntry[]> {
 }
 
 interface ClubFormProps {
-  initial: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[]; sport?: 'football' | 'tennis' };
+  initial: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[]; sport?: Sport };
   onSave: (data: { name: string; color: string; logoBase64: string | null; ageCategories: AgeCategory[] }) => void;
   onCancel: () => void;
   title: string;

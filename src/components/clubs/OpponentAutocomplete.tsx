@@ -19,6 +19,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ref as dbRef, get as dbGet } from 'firebase/database';
 import { db } from '../../firebase';
 import { logger } from '../../utils/logger';
+import type { Sport } from '../../types/sport.types';
 
 export interface CatalogClub {
   id: string;
@@ -28,7 +29,7 @@ export interface CatalogClub {
   logoBase64?: string;
   source?: string;
   /** Sport katalogového záznamu. Legacy záznamy bez sport = 'football'. */
-  sport?: 'football' | 'tennis';
+  sport?: Sport;
 }
 
 // Module-level cache — shared napříč všemi instancemi
@@ -72,7 +73,7 @@ interface Props {
    * Filtr katalogu podle sportu. Legacy záznamy bez `sport` jsou považovány
    * za fotbalové. V tenis módu se tak nenabízí fotbalové kluby a naopak.
    */
-  sport?: 'football' | 'tennis';
+  sport?: Sport;
 }
 
 export function OpponentAutocomplete({

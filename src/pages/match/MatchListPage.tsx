@@ -516,12 +516,15 @@ export function MatchListPage({ navigate }: Props) {
     // Audit 2026-04-24 (P2.3): preset volitelný z QuickMatchSheet. Fallback
     // = 15 min 1 perioda 5+1 (McDonald's Cup friendly default). Starší volání
     // bez presetu funguje díky fallbacku, takže je to backward-compatible.
+    // Audit 2026-04-25: Florbal — sport bere preferredSport, default formát
+    // 4+1 (4 hráči v poli + brankář), ne 5+1.
     const durationMinutes = preset?.durationMinutes ?? 15;
     const periods = preset?.periods ?? 1;
-    const matchFormat = preset?.matchFormat ?? '5+1';
+    const isFloorball = preferredSport === 'floorball';
+    const matchFormat = preset?.matchFormat ?? (isFloorball ? '4+1' : '5+1');
     const periodDurationMinutes = Math.max(1, Math.round(durationMinutes / periods));
     const match = createMatch({
-      sport: 'football',
+      sport: isFloorball ? 'floorball' : 'football',
       matchType: 'single',
       clubId: activeClub?.id ?? 'individual-quick',
       clubName: activeClub?.name,
