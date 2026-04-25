@@ -448,16 +448,42 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
         @keyframes torq-onb-bounce { 0% { transform: scale(.5); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
       `}</style>
       <div style={{ ...modalStyle, ...desktopModalStyle }}>
-        {/* Progress bar (3 stages: sport, club, done) */}
+        {/* Progress bar + Back button. Back se zobrazí jen pokud existuje
+            předchozí (smysluplný) krok — ne na welcome ani done. */}
         {showProgress && (
-          <div style={{ padding: `${spacing.md}px ${spacing.lg}px 0`, display: 'flex', gap: 6 }}>
-            {[1, 2, 3].map(i => (
-              <div key={i} style={{
-                flex: 1, height: 4, borderRadius: 2,
-                background: i <= stepIndex ? 'var(--primary)' : 'var(--border)',
-                transition: 'background .3s',
-              }} />
-            ))}
+          <div style={{ padding: `${spacing.md}px ${spacing.lg}px 0`, display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+            <button
+              type="button"
+              onClick={() => {
+                // Audit 2026-04-25 (user feedback): zpět navigace v onboardingu.
+                // mode → welcome (přehodnocení „chci to vůbec?")
+                // club → mode (přehodnocení Advanced vs Simple)
+                // sport → welcome (kdyby ENABLED_SPORTS narostl v budoucnu)
+                if (step === 'club') setStep('mode');
+                else if (step === 'mode') setStep('welcome');
+                else if (step === 'sport') setStep('welcome');
+              }}
+              aria-label={t('common.back')}
+              style={{
+                width: 28, height: 28, borderRadius: 14,
+                background: 'var(--surface-var)', color: 'var(--text-muted)',
+                border: 'none', cursor: 'pointer',
+                fontSize: 14, fontWeight: 700, lineHeight: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              ←
+            </button>
+            <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+              {[1, 2, 3].map(i => (
+                <div key={i} style={{
+                  flex: 1, height: 4, borderRadius: 2,
+                  background: i <= stepIndex ? 'var(--primary)' : 'var(--border)',
+                  transition: 'background .3s',
+                }} />
+              ))}
+            </div>
           </div>
         )}
 
@@ -624,7 +650,13 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                 </p>
               </div>
 
-              {/* Logo + Name row */}
+              {/* Logo + Name row.
+                  Audit 2026-04-25 (user screenshot): warning banner „klub
+                  už existuje" byl uvnitř flex row jako 3. sloupec, takže
+                  zmáčkl input názvu na 1 znak. Banner přesunutý ven (pod
+                  flex row). Také „Odstranit logo" se schovává pokud je
+                  klub vybrán z katalogu — katalogové logo je oficiální
+                  (FAČR registr), uživatel ho nemá smazávat. */}
               <div style={{ display: 'flex', gap: spacing.md, alignItems: 'flex-end' }}>
                 <div>
                   <label style={{ fontSize: fontSize.sm + 1, fontWeight: fontWeight.bold, marginBottom: 6, display: 'block' }}>
@@ -639,13 +671,15 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                   />
                   <button
                     onClick={() => logoRef.current?.click()}
-                    disabled={logoLoading}
+                    disabled={logoLoading || !!selectedCatalog?.torqClubId}
                     style={{
                       width: 64, height: 64, borderRadius: radius.lg, overflow: 'hidden',
-                      border: '2px dashed var(--border)', flexShrink: 0, padding: 0,
+                      border: selectedCatalog?.torqClubId ? '2px solid var(--border)' : '2px dashed var(--border)',
+                      flexShrink: 0, padding: 0,
                       background: logoBase64 ? 'transparent' : 'var(--surface-var)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer',
+                      cursor: selectedCatalog?.torqClubId ? 'not-allowed' : 'pointer',
+                      opacity: selectedCatalog?.torqClubId ? 0.7 : 1,
                     }}
                     title={t('clubs.uploadLogo')}
                   >
@@ -654,7 +688,10 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                       : <span style={{ fontSize: 22, opacity: 0.55 }}>{logoLoading ? '⏳' : '📷'}</span>
                     }
                   </button>
-                  {logoBase64 && (
+                  {/* „Odstranit logo" jen pokud user nahrál vlastní logo
+                      (nemá selectedCatalog) — katalogové logo je oficiální
+                      a nemělo by se mazat ručně. */}
+                  {logoBase64 && !selectedCatalog && (
                     <button
                       onClick={() => setLogoBase64(null)}
                       style={{
@@ -667,7 +704,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                   )}
                 </div>
 
-                <div style={{ flex: 1, position: 'relative' }} onBlur={() => setTimeout(() => setSuggestions([]), 200)}>
+                <div style={{ flex: 1, minWidth: 0, position: 'relative' }} onBlur={() => setTimeout(() => setSuggestions([]), 200)}>
                   <label style={{ fontSize: fontSize.sm + 1, fontWeight: fontWeight.bold, marginBottom: 6, display: 'block' }}>
                     {t('onboarding.club.name')}
                   </label>
@@ -721,74 +758,81 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* Klub už existuje v TORQ */}
-                {selectedCatalog?.torqClubId && (
-                  <div style={{
-                    marginTop: spacing.sm,
-                    padding: `${spacing.md}px`,
-                    borderRadius: radius.md, background: 'var(--warning-light)',
-                    fontSize: fontSize.sm, color: 'var(--warning)',
-                  }}>
-                    <div style={{ fontWeight: fontWeight.bold, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span>⚠️</span>
-                      <span>{t('onboarding.club.alreadyInTorq')}</span>
-                    </div>
-                    <div style={{ fontSize: fontSize.xs, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                      {t('onboarding.club.alreadyInTorqDesc')}
+              {/* Klub už existuje v TORQ — banner POD flex row, na celou šířku */}
+              {selectedCatalog?.torqClubId && (
+                <div style={{
+                  padding: `${spacing.md}px`,
+                  borderRadius: radius.md, background: 'var(--warning-light)',
+                  fontSize: fontSize.sm, color: 'var(--warning)',
+                }}>
+                  <div style={{ fontWeight: fontWeight.bold, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>⚠️</span>
+                    <span>{t('onboarding.club.alreadyInTorq')}</span>
+                  </div>
+                  <div style={{ fontSize: fontSize.xs, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                    {t('onboarding.club.alreadyInTorqDesc')}
+                  </div>
+                </div>
+              )}
+
+              {/* Color picker + Age categories — schované když user vybral
+                  klub, který už je v TORQ. Audit 2026-04-25 (user feedback):
+                  „nemělo by mě nechat měnit logo klubu když vyberu existující
+                  klub, ani nic jiného tohoto klubu". User v tomhle stavu má
+                  jen jednu možnost: požádat správce o pozvánku (info v banneru
+                  nahoře) → krok zpět nebo skip. */}
+              {!selectedCatalog?.torqClubId && (
+                <>
+                  <div>
+                    <label style={{ fontSize: fontSize.sm + 1, fontWeight: fontWeight.bold, marginBottom: 8, display: 'block' }}>
+                      {t('onboarding.club.color')}
+                    </label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {CLUB_COLORS.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => setClubColor(c)}
+                          aria-label={`Barva ${c}`}
+                          style={{
+                            width: 32, height: 32, borderRadius: radius.md,
+                            background: c, border: 'none', cursor: 'pointer',
+                            outline: clubColor === c ? '3px solid var(--primary)' : '2px solid transparent',
+                            outlineOffset: 2, transition: 'outline .15s',
+                          }}
+                        />
+                      ))}
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Color picker */}
-              <div>
-                <label style={{ fontSize: fontSize.sm + 1, fontWeight: fontWeight.bold, marginBottom: 8, display: 'block' }}>
-                  {t('onboarding.club.color')}
-                </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {CLUB_COLORS.map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setClubColor(c)}
-                      aria-label={`Barva ${c}`}
-                      style={{
-                        width: 32, height: 32, borderRadius: radius.md,
-                        background: c, border: 'none', cursor: 'pointer',
-                        outline: clubColor === c ? '3px solid var(--primary)' : '2px solid transparent',
-                        outlineOffset: 2, transition: 'outline .15s',
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Age categories */}
-              <div>
-                <label style={{ fontSize: fontSize.sm + 1, fontWeight: fontWeight.bold, marginBottom: 8, display: 'block' }}>
-                  {t('onboarding.club.categories')}
-                </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {AGE_CATEGORIES_BY_SPORT[preferredSport].map(cat => {
-                    const isSelected = selectedCategories.includes(cat);
-                    return (
-                      <button
-                        key={cat}
-                        onClick={() => toggleCategory(cat)}
-                        style={{
-                          padding: '7px 14px', borderRadius: 20, fontSize: fontSize.sm + 1,
-                          fontWeight: fontWeight.bold,
-                          background: isSelected ? 'var(--primary)' : 'var(--surface-var)',
-                          color: isSelected ? '#fff' : 'var(--text-muted)',
-                          border: 'none', cursor: 'pointer', transition: 'all .15s',
-                        }}
-                      >
-                        {cat}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                  <div>
+                    <label style={{ fontSize: fontSize.sm + 1, fontWeight: fontWeight.bold, marginBottom: 8, display: 'block' }}>
+                      {t('onboarding.club.categories')}
+                    </label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {AGE_CATEGORIES_BY_SPORT[preferredSport].map(cat => {
+                        const isSelected = selectedCategories.includes(cat);
+                        return (
+                          <button
+                            key={cat}
+                            onClick={() => toggleCategory(cat)}
+                            style={{
+                              padding: '7px 14px', borderRadius: 20, fontSize: fontSize.sm + 1,
+                              fontWeight: fontWeight.bold,
+                              background: isSelected ? 'var(--primary)' : 'var(--surface-var)',
+                              color: isSelected ? '#fff' : 'var(--text-muted)',
+                              border: 'none', cursor: 'pointer', transition: 'all .15s',
+                            }}
+                          >
+                            {cat}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Footer buttons */}
               <div style={{
