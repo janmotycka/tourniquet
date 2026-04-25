@@ -450,25 +450,44 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
             </div>
           )}
 
-          {/* Hráči — schované za checkboxem (audit 2026-04-25 user feedback:
-              „hráče bych nechal jen pokud chce trenér zadat soupisku"). User
-              checkne → textarea se objeví. Default: schované, žádné friction
-              pro plácek/přátelák kde sestavu nepotřebuje. */}
+          {/* Hráči — accordion karta (audit 2026-04-25 user: „není jasné že
+              když kliknu na soupisku, něco se stane"). Místo checkboxu udělaná
+              jako klikatelná karta s ikonou a šipkou (▼/▲) — jasný visual
+              cue že je to interactive. Po kliku se rozbalí textarea. */}
           <div>
-            <label style={{
-              display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer',
-              userSelect: 'none',
-            }}>
-              <input
-                type="checkbox"
-                checked={wantRoster}
-                onChange={e => setWantRoster(e.target.checked)}
-                style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--primary)' }}
-              />
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-                {t('match.quickSheet.wantRoster')}
+            <button
+              type="button"
+              onClick={() => setWantRoster(v => !v)}
+              style={{
+                width: '100%',
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 14px', borderRadius: 12,
+                background: wantRoster ? 'var(--primary-light)' : 'var(--surface-var)',
+                border: `1.5px solid ${wantRoster ? 'var(--primary)' : 'var(--border)'}`,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'background .15s, border-color .15s',
+              }}
+              aria-expanded={wantRoster}
+            >
+              <span style={{ fontSize: 22 }}>👥</span>
+              <span style={{
+                flex: 1, fontSize: 14, fontWeight: 700,
+                color: wantRoster ? 'var(--primary)' : 'var(--text)',
+              }}>
+                {wantRoster
+                  ? t('match.quickSheet.wantRosterActive')
+                  : t('match.quickSheet.wantRoster')}
               </span>
-            </label>
+              <span style={{
+                fontSize: 12, fontWeight: 700,
+                color: wantRoster ? 'var(--primary)' : 'var(--text-muted)',
+                transform: wantRoster ? 'rotate(180deg)' : 'none',
+                transition: 'transform .2s',
+              }}>
+                ▼
+              </span>
+            </button>
             {wantRoster && (
               <textarea
                 id="quick-roster"

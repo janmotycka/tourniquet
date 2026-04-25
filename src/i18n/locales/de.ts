@@ -1097,6 +1097,7 @@ export const de: Record<TranslationKey, string> = {
   'match.quickSheet.durationSummary': 'Gesamt {total} min ({layout})',
   'match.quickSheet.rosterToggle': 'Spieler (optional)',
   'match.quickSheet.wantRoster': 'Aufstellung eingeben',
+  'match.quickSheet.wantRosterActive': 'Aufstellung — ein Spieler pro Zeile',
   'match.quickSheet.rosterEditLabel': 'Spieler',
   'match.quickSheet.rosterPlaceholder': 'Max Mustermann\nAnna Schmidt\nTim Weber\n…',
   'match.quickSheet.rosterHint': 'Ein Name pro Zeile. Für das Erfassen von Torschützen. Kein Verein nötig — einfach eintippen.',

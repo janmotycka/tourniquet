@@ -1108,6 +1108,7 @@ export const cs = {
   'match.quickSheet.durationSummary': 'Celkem {total} min ({layout})',
   'match.quickSheet.rosterToggle': 'Hráči (volitelné)',
   'match.quickSheet.wantRoster': 'Chci zadat soupisku',
+  'match.quickSheet.wantRosterActive': 'Soupiska — jeden hráč na řádek',
   'match.quickSheet.rosterEditLabel': 'Hráči',
   'match.quickSheet.rosterPlaceholder': 'Karel Novák\nJakub Dvořák\nTomáš Malý\n…',
   'match.quickSheet.rosterHint': 'Jedno jméno na řádek. Použije se pro zápis střelců gólů. Bez klubu — stačí napsat.',
