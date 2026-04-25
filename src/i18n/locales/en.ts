@@ -2485,11 +2485,11 @@ export const en: Record<TranslationKey, string> = {
 
   'home.upgradeTeaserTitle': 'Want the full coaching toolkit?',
   'home.upgradeTeaserDesc': 'Switch to Advanced in Settings — you get club, lineups, trainings, player ratings and more.',
-  'home.matchDescSimple': 'Quickly record a match, tap scores, share with parents.',
+  'home.matchDescSimple': 'Quick football match — tap scores, send parents a WhatsApp link.',
   'home.matchDescFloorball': 'Quick floorball match — score, roster, share.',
-  'home.quickTournament': 'Quick tournament',
-  'home.quickTournamentDesc': 'Enter teams and play — schedule generates automatically.',
-  'home.quickTournamentCta': 'Create',
+  'home.quickTournament': 'Create tournament',
+  'home.quickTournamentDesc': 'Enter 4–16 teams, print bracket, record results live. For school cups, weekend tournaments, amateur meetups.',
+  'home.quickTournamentCta': 'New tournament',
 
   'tournament.quick.title': 'Quick tournament',
   'tournament.quick.intro': 'For school tournaments, camps, amateur meetups. Enter teams, app generates the schedule (round-robin) and you play immediately. Match length, pitches etc. can be edited later in settings.',
@@ -2511,6 +2511,9 @@ export const en: Record<TranslationKey, string> = {
   'tournament.simpleQuick.desc': 'Print the bracket & schedule, send the link to parents.',
   'tournament.simpleQuick.printBtn': 'Print bracket',
   'tournament.simpleQuick.shareBtn': 'Parents\u2019 link',
+  'tournament.simpleQuick.inviteCta': 'Recommend to a fellow coach',
+  'tournament.simpleQuick.inviteCopied': 'Recommendation text copied to clipboard \ud83d\udc4d',
+  'tournament.simpleQuick.inviteText': '\u26a1 Tip: TORQ app \u2014 create a football tournament in a minute, tap scores on your phone, send parents a link.\n\nHere\u2019s my tournament \u201e{tournamentName}\u201d:\n{publicUrl}\n\nTry it free at https://torq.cz',
 
   'onboarding.mode.title': 'Which mode fits you?',
   'onboarding.mode.subtitle': 'Do you just want to track scores or run a full club — you can switch anytime in Settings.',
@@ -2877,7 +2880,7 @@ export const en: Record<TranslationKey, string> = {
 
   // ─── First-time onboarding wizard (HomePage modal) ──────────────────────
   'onboarding.welcome.title': 'Welcome to TORQ!',
-  'onboarding.welcome.subtitle': 'We\'ll help you set up your club in 2 minutes and get ready for your first match.',
+  'onboarding.welcome.subtitle': 'App for football coaches — create a tournament or match in seconds and share results with parents.',
   'onboarding.welcome.start': 'Get started',
   'onboarding.welcome.skip': 'Skip',
   'onboarding.club.title': 'Create your club',

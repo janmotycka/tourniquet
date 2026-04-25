@@ -24,6 +24,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useClubsStore } from '../../store/clubs.store';
 import { useToastStore } from '../../store/toast.store';
 import type { Sport } from '../../types/sport.types';
+import { ENABLED_SPORTS } from '../../types/sport.types';
 import { AGE_CATEGORIES_BY_SPORT, type AgeCategory } from '../../types/club.types';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { resizeLogoToBase64 } from '../clubs/resize-logo';
@@ -408,7 +409,28 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
         width: '100%', maxWidth: 320, display: 'flex',
         flexDirection: 'column', gap: spacing.sm + 2, marginTop: spacing.md,
       }}>
-        <button onClick={() => setStep('sport')} style={btnPrimary}>
+        <button
+          onClick={() => {
+            // Audit 2026-04-25: Pokud je v ENABLED_SPORTS jen jeden sport,
+            // skipujeme sport picker a auto-vybereme. Public launch =
+            // jen fotbal — picker by jen mátl novou cílovku.
+            if (ENABLED_SPORTS.length === 1) {
+              const onlySport = ENABLED_SPORTS[0];
+              setPreferredSport(onlySport);
+              markSportOnboardingShown();
+              if (onlySport === 'floorball') {
+                useUserPrefsStore.getState().setAppMode('simple');
+                if (user?.uid) markOnboarded(user.uid, onlySport);
+                setStep('done');
+              } else {
+                setStep('mode');
+              }
+              return;
+            }
+            setStep('sport');
+          }}
+          style={btnPrimary}
+        >
           {t('onboarding.welcome.start')}
         </button>
         <button onClick={skip} style={btnSecondary}>

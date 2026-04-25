@@ -2502,11 +2502,11 @@ export const cs = {
 
   'home.upgradeTeaserTitle': 'Chceš plný trenérský nástroj?',
   'home.upgradeTeaserDesc': 'V Nastavení přepni na Pokročilý — získáš klub, sestavy, tréninky, hodnocení hráčů a další funkce.',
-  'home.matchDescSimple': 'Rychle zapiš zápas, klikej skóre, sdílej rodičům.',
+  'home.matchDescSimple': 'Rychlý fotbalový zápas — klikej skóre, pošli rodičům do WhatsAppu.',
   'home.matchDescFloorball': 'Rychlý florbalový zápas — skóre, soupiska, sdílení.',
-  'home.quickTournament': 'Rychlý turnaj',
-  'home.quickTournamentDesc': 'Zadej týmy a hraj — rozpis se vygeneruje automaticky.',
-  'home.quickTournamentCta': 'Vytvořit',
+  'home.quickTournament': 'Vytvořit turnaj',
+  'home.quickTournamentDesc': 'Zadej 4–16 týmů, vytisknout pavouka, zadávat výsledky online. Pro školní turnaj, McDonald’s Cup nebo víkendovou akci.',
+  'home.quickTournamentCta': 'Nový turnaj',
 
   'tournament.quick.title': 'Rychlý turnaj',
   'tournament.quick.intro': 'Pro školní turnaj, McDonald\'s Cup, amatérský sraz. Zadáš týmy, aplikace vygeneruje rozpis (každý s každým) a rovnou hraješ. Upravit délku zápasu, hřiště apod. lze později v nastavení.',
@@ -2528,6 +2528,9 @@ export const cs = {
   'tournament.simpleQuick.desc': 'Vytiskni si pavouka a rozpis, odkaz pošli rodičům do skupiny.',
   'tournament.simpleQuick.printBtn': 'Vytisknout pavouka',
   'tournament.simpleQuick.shareBtn': 'Odkaz pro rodiče',
+  'tournament.simpleQuick.inviteCta': 'Pošli aplikaci kolegovi-trenérovi',
+  'tournament.simpleQuick.inviteCopied': 'Text pro kolegy zkopírován do schránky 👍',
+  'tournament.simpleQuick.inviteText': '⚡ Tip pro tebe: Aplikace TORQ — vytvoř fotbalový turnaj za minutu, klikej skóre na telefonu, pošli rodičům link.\n\nTakhle vypadá můj turnaj „{tournamentName}":\n{publicUrl}\n\nVyzkoušej zdarma na https://torq.cz',
 
   'onboarding.mode.title': 'Jaký režim ti bude vyhovovat?',
   'onboarding.mode.subtitle': 'Na to zda chceš jen zapisovat skóre nebo vést plný klub — vždy lze přepnout v Nastavení.',
@@ -2897,7 +2900,7 @@ export const cs = {
 
   // ─── First-time onboarding wizard (HomePage modal) ──────────────────────
   'onboarding.welcome.title': 'Vítej v TORQ!',
-  'onboarding.welcome.subtitle': 'Pomůžeme ti za 2 minuty nastavit klub a být připraven na první zápas.',
+  'onboarding.welcome.subtitle': 'Aplikace pro fotbalové trenéry — vytvoř turnaj nebo zápas za pár sekund a pošli rodičům výsledek.',
   'onboarding.welcome.start': 'Začít',
   'onboarding.welcome.skip': 'Přeskočit',
   'onboarding.club.title': 'Vytvoř svůj klub',

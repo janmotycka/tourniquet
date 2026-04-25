@@ -897,44 +897,12 @@ export function HomePage({ navigate }: Props) {
           </div>
         )}
 
-        {/* 📋 Zápas — v Simple módu vede rovnou na rychlý zápas (MatchListPage to pozná).
-            Florbal: emoji 🏑, popis pro amatérský florbalový kontext. */}
-        <button
-          onClick={() => navigate({ name: 'match-list' })}
-          style={{
-            background: isFloorball
-              ? 'linear-gradient(135deg, #00695C 0%, #00897B 100%)'
-              : 'linear-gradient(135deg, #1565C0 0%, #1976D2 100%)',
-            borderRadius: 22, padding: '24px',
-            display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
-            boxShadow: isFloorball
-              ? '0 4px 16px rgba(0,137,123,.25)'
-              : '0 4px 16px rgba(21,101,192,.25)',
-            width: '100%',
-            color: '#fff',
-          }}
-        >
-          <div style={{ fontSize: 44 }}>{isTennis ? '🎾' : isFloorball ? '🏑' : '📋'}</div>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.match')}</div>
-            <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-              {isFloorball
-                ? t('home.matchDescFloorball')
-                : isSimpleMode
-                  ? t('home.matchDescSimple')
-                  : isTennis ? t('home.matchDescTennis') : t('home.matchDesc')}
-            </div>
-          </div>
-          <div style={{
-            background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '10px 16px',
-            fontWeight: 700, fontSize: 15, textAlign: 'center',
-          }}>
-            {t('common.open')}
-          </div>
-        </button>
-
-        {/* 🏆 Jednoduchý turnaj — v Simple módu i ve florbalu (florbal je
-            Simple-only, ale isSimpleMode flag se kontroluje izolovaně). */}
+        {/* 🏆 Jednoduchý turnaj — Audit 2026-04-25: Public launch focus.
+            User explicit: „pořádáme turnaje, tady je největší šance rozšířit
+            mezi další trenéry". Turnaj má proto VRCHNÍ pozici v Simple módu
+            — největší organická akviziční smyčka (organizátor pozve další
+            trenéry / rodiče → ti vidí app → se sami stanou trenéry).
+            Stejná velikost jako match card pro vizuální paritu. */}
         {(isSimpleMode || isFloorball) && !isTennisIndividual && (
           <button
             onClick={() => navigate({ name: 'tournament-quick' })}
@@ -961,6 +929,42 @@ export function HomePage({ navigate }: Props) {
             </div>
           </button>
         )}
+
+        {/* ⚽ Zápas — sekundární CTA pod tournament v Simple módu. V Advanced
+            módu je to primární cesta (sezónní zápasy). */}
+        <button
+          onClick={() => navigate({ name: 'match-list' })}
+          style={{
+            background: isFloorball
+              ? 'linear-gradient(135deg, #00695C 0%, #00897B 100%)'
+              : 'linear-gradient(135deg, #1565C0 0%, #1976D2 100%)',
+            borderRadius: 22, padding: '24px',
+            display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
+            boxShadow: isFloorball
+              ? '0 4px 16px rgba(0,137,123,.25)'
+              : '0 4px 16px rgba(21,101,192,.25)',
+            width: '100%',
+            color: '#fff',
+          }}
+        >
+          <div style={{ fontSize: 44 }}>{isTennis ? '🎾' : isFloorball ? '🏑' : '⚽'}</div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.match')}</div>
+            <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
+              {isFloorball
+                ? t('home.matchDescFloorball')
+                : isSimpleMode
+                  ? t('home.matchDescSimple')
+                  : isTennis ? t('home.matchDescTennis') : t('home.matchDesc')}
+            </div>
+          </div>
+          <div style={{
+            background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '10px 16px',
+            fontWeight: 700, fontSize: 15, textAlign: 'center',
+          }}>
+            {t('common.open')}
+          </div>
+        </button>
 
         {/* 🏟 Klub / 👤 Moji hráči (individuální tenis) — jen v advanced módu.
             Florbal nemá klub — celý modul je Simple-only (audit 2026-04-25). */}

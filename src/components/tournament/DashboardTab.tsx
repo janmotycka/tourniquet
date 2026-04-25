@@ -324,6 +324,33 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
               {simpleLinkCopied ? '✓' : '🔗'} {t('tournament.simpleQuick.shareBtn')}
             </button>
           </div>
+
+          {/* Viral CTA — Audit 2026-04-25 (user explicit): „pořádáme turnaje,
+              tady je největší šance rozšířit aplikaci mezi další trenéry".
+              Po vytvoření turnaje nabídneme uživateli, aby pozval další
+              organizátory — s předpřipraveným doporučujícím textem do schránky. */}
+          <button
+            onClick={async () => {
+              const promoText = t('tournament.simpleQuick.inviteText', {
+                tournamentName: tournament.name,
+                publicUrl: getTournamentPublicUrl(tournament.id),
+              });
+              await copyToClipboard(promoText);
+              showToast('success', t('tournament.simpleQuick.inviteCopied'));
+            }}
+            style={{
+              alignSelf: 'flex-start',
+              padding: '6px 0',
+              background: 'transparent', color: 'rgba(255,255,255,0.85)',
+              border: 'none', cursor: 'pointer',
+              fontSize: 12, fontWeight: 600,
+              textDecoration: 'underline',
+              textDecorationColor: 'rgba(255,255,255,0.5)',
+              textUnderlineOffset: 3,
+            }}
+          >
+            📨 {t('tournament.simpleQuick.inviteCta')}
+          </button>
         </div>
       )}
 

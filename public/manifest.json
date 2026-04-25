@@ -1,11 +1,13 @@
 {
-  "name": "TORQ - Training & Tournaments",
+  "name": "TORQ — Fotbalové turnaje a zápasy",
   "short_name": "TORQ",
-  "description": "Platform for youth football coaches - training, tournaments, matches.",
+  "description": "Pro amatérské fotbalové trenéry: vytvoř turnaj za minutu, klikej skóre na telefonu, pošli rodičům výsledek do WhatsAppu. Zdarma.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1B5E20",
+  "lang": "cs-CZ",
+  "categories": ["sports", "productivity"],
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },

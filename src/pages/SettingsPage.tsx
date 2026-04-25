@@ -19,6 +19,8 @@ import { useLayoutMode } from '../hooks/useLayoutMode';
 import { ADMIN_UID } from '../constants/admin';
 import { PageHeader } from '../components/ui';
 import { shouldHideStripeUpgrade } from '../utils/platform';
+import type { Sport } from '../types/sport.types';
+import { ENABLED_SPORTS } from '../types/sport.types';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -46,7 +48,7 @@ export function SettingsPage({ navigate }: Props) {
   const confirmAsk = useConfirmStore(s => s.ask);
   const ensureActiveClubMatchesSport = useClubsStore(s => s.ensureActiveClubMatchesSport);
   // Wrapper — po změně sportu přepne aktivní klub na klub daného sportu.
-  const handleSportSwitch = async (sp: 'football' | 'tennis') => {
+  const handleSportSwitch = async (sp: Sport) => {
     setPreferredSport(sp);
     await ensureActiveClubMatchesSport(sp);
   };
@@ -251,14 +253,25 @@ export function SettingsPage({ navigate }: Props) {
           </div>
         )}
 
-        {/* 1.5 Sport preference */}
+        {/* 1.5 Sport preference — Audit 2026-04-25: pro public launch fokus
+            na fotbal. Sport picker je viditelný JEN pokud:
+            (a) ENABLED_SPORTS má víc než 1 (až rozšíříme), NEBO
+            (b) user už má aktivní jiný sport (graceful degradation —
+                neházíme stávající tenis/florbal users z aplikace) */}
+        {(ENABLED_SPORTS.length > 1 || !ENABLED_SPORTS.includes(preferredSport)) && (
         <div style={cardStyle}>
           <h2 style={{ fontWeight: 700, fontSize: 16 }}>🎯 {t('settings.sport')}</h2>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
             {t('settings.sportDesc')}
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
-            {(['football', 'tennis'] as const).map(sp => {
+            {/* Vždy ukážeme všechny 3 sporty pokud sem už user dorazil
+                (= má disabled sport aktivní) — aby si mohl přepnout zpět
+                na fotbal. Pokud je tu nový user (nemělo by se stát díky
+                gating výše), uvidí jen ENABLED. */}
+            {(['football', 'tennis', 'floorball'] as const)
+              .filter(sp => ENABLED_SPORTS.includes(sp) || sp === preferredSport)
+              .map(sp => {
               const isActive = preferredSport === sp;
               return (
                 <button
@@ -273,7 +286,9 @@ export function SettingsPage({ navigate }: Props) {
                     display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center',
                   }}
                 >
-                  <span style={{ fontSize: 28 }}>{sp === 'football' ? '⚽' : '🎾'}</span>
+                  <span style={{ fontSize: 28 }}>
+                    {sp === 'football' ? '⚽' : sp === 'tennis' ? '🎾' : '🏑'}
+                  </span>
                   <span>{t(`sport.${sp}`)}</span>
                 </button>
               );
@@ -311,6 +326,7 @@ export function SettingsPage({ navigate }: Props) {
             </div>
           )}
         </div>
+        )}
 
         {/* 2. Subscription */}
         <div style={{ ...cardStyle, gap: 14 }}>

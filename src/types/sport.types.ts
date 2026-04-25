@@ -19,15 +19,33 @@ export interface SportMeta {
   shortLabelKey: string;
 }
 
-// Audit 2026-04-25: Florbal přidán jako 3. sport — komplet oddělený modul,
-// jen Simple mode, žádný klub / training / Advanced. Cílovka = český
-// amatérský florbalový trh (školy, firemní turnaje, OFL ligy). Nemíchá se
-// s fotbalem ani tenisem — sport-isolation pattern používaný i pro tennis.
+// Audit 2026-04-25 (public launch focus): Tenis a florbal se připravovaly
+// jako vedlejší produkty, ale pro veřejné spuštění to rozptyluje pozornost.
+// Fokus = amatérský fotbal + školní/firemní turnaje (největší český trh,
+// kde pořádáme vlastní turnaje a máme reálné kontakty).
+//
+// Tenis a florbal zůstávají v kódu kvůli existing users (graceful degradation):
+// - Pokud user už má preferredSport='tennis'|'floorball' z minulosti, dál
+//   funguje. Ale nově se k němu nedostane (sport picker, settings switch).
+// - SPORTS pole obsahuje vše pro internal použití (i18n, sport-isolation).
+// - ENABLED_SPORTS určuje, co je viditelné v UI (picker, switch, marketing).
+//
+// Až ověříme fotbal s reálnými trenéry, postupně otevřeme tennis/floorball
+// — stačí přidat do ENABLED_SPORTS a UI se sám zaktualizuje.
 export const SPORTS: SportMeta[] = [
   { id: 'football',  icon: '⚽', labelKey: 'sport.football',  shortLabelKey: 'sport.football' },
   { id: 'tennis',    icon: '🎾', labelKey: 'sport.tennis',    shortLabelKey: 'sport.tennis' },
   { id: 'floorball', icon: '🏑', labelKey: 'sport.floorball', shortLabelKey: 'sport.floorball' },
 ];
+
+/** Sport viditelné v UI pro nové uživatele (sport picker, settings switch). */
+export const ENABLED_SPORTS: readonly Sport[] = ['football'];
+
+/** Helper — true pokud sport je dostupný v UI pro nové uživatele. */
+export function isEnabledSport(sport: Sport | null | undefined): boolean {
+  if (!sport) return false;
+  return (ENABLED_SPORTS as readonly string[]).includes(sport);
+}
 
 export const DEFAULT_SPORT: Sport = 'football';
 

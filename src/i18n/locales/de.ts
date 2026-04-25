@@ -2485,11 +2485,11 @@ export const de: Record<TranslationKey, string> = {
 
   'home.upgradeTeaserTitle': 'Willst du das volle Trainer-Toolkit?',
   'home.upgradeTeaserDesc': 'Schalte in den Einstellungen auf Fortgeschritten — du bekommst Verein, Aufstellungen, Trainings, Bewertungen und mehr.',
-  'home.matchDescSimple': 'Spiel schnell erfassen, Ergebnisse tippen, mit Eltern teilen.',
+  'home.matchDescSimple': 'Schnelles Fußballspiel — Ergebnisse tippen, Eltern WhatsApp-Link senden.',
   'home.matchDescFloorball': 'Schnelles Floorball-Spiel — Ergebnis, Aufstellung, teilen.',
-  'home.quickTournament': 'Schnellturnier',
-  'home.quickTournamentDesc': 'Teams eintragen und spielen — Spielplan wird automatisch erstellt.',
-  'home.quickTournamentCta': 'Erstellen',
+  'home.quickTournament': 'Turnier erstellen',
+  'home.quickTournamentDesc': '4–16 Teams eintragen, Spielplan drucken, Ergebnisse live erfassen. Für Schulturniere, Wochenend-Cups, Amateurturniere.',
+  'home.quickTournamentCta': 'Neues Turnier',
 
   'tournament.quick.title': 'Schnellturnier',
   'tournament.quick.intro': 'Für Schulturniere, Camps, Hobby-Treffen. Teams eintragen, die App generiert Spielplan (Jeder gegen Jeden) und du spielst sofort. Spiellänge, Plätze etc. sind später in Einstellungen editierbar.',
@@ -2511,6 +2511,9 @@ export const de: Record<TranslationKey, string> = {
   'tournament.simpleQuick.desc': 'Turnierplan drucken, Link an Eltern senden.',
   'tournament.simpleQuick.printBtn': 'Plan drucken',
   'tournament.simpleQuick.shareBtn': 'Eltern-Link',
+  'tournament.simpleQuick.inviteCta': 'Trainer-Kollegen empfehlen',
+  'tournament.simpleQuick.inviteCopied': 'Empfehlungstext in Zwischenablage 👍',
+  'tournament.simpleQuick.inviteText': '⚡ Tipp: TORQ-App — Fußballturnier in einer Minute erstellen, Ergebnisse auf Handy tippen, Eltern Link senden.\n\nMein Turnier „{tournamentName}":\n{publicUrl}\n\nKostenlos testen: https://torq.cz',
 
   'onboarding.mode.title': 'Welcher Modus passt zu dir?',
   'onboarding.mode.subtitle': 'Nur Ergebnisse erfassen oder einen kompletten Verein leiten — du kannst jederzeit in den Einstellungen wechseln.',
@@ -2877,7 +2880,7 @@ export const de: Record<TranslationKey, string> = {
 
   // ─── First-time onboarding wizard (HomePage modal) ──────────────────────
   'onboarding.welcome.title': 'Willkommen bei TORQ!',
-  'onboarding.welcome.subtitle': 'Wir helfen dir, deinen Verein in 2 Minuten einzurichten und dich auf das erste Spiel vorzubereiten.',
+  'onboarding.welcome.subtitle': 'App für Fußballtrainer — Turnier oder Spiel in Sekunden anlegen und Ergebnisse mit Eltern teilen.',
   'onboarding.welcome.start': 'Loslegen',
   'onboarding.welcome.skip': 'Überspringen',
   'onboarding.club.title': 'Erstelle deinen Verein',
