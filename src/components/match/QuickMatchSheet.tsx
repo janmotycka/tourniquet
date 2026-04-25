@@ -17,6 +17,7 @@ import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useSimpleSquadsStore } from '../../store/simpleSquads.store';
+import { useMatchesStore } from '../../store/matches.store';
 import type { SimpleSquad } from '../../types/simpleSquad.types';
 
 /**
@@ -66,8 +67,14 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
   const allSquads = useSimpleSquadsStore(s => s.squads);
   const createSquad = useSimpleSquadsStore(s => s.createSquad);
   const markUsed = useSimpleSquadsStore(s => s.markUsed);
+  // Audit 2026-04-25 (user feedback): „může si torq pamatovat soupeře které
+  // jsem zadával? aby mi to nabízelo jak budu psát?" → ano, vytáhneme
+  // unikátní opponenty z user vlastních zápasů (stejný sport), seřadíme
+  // podle frekvence + recency. Žádný external katalog — jen historie usera.
+  const allMatches = useMatchesStore(s => s.matches);
 
   const [opponent, setOpponent] = useState('');
+  const [opponentFocused, setOpponentFocused] = useState(false);
   const [rosterText, setRosterText] = useState('');
   // Audit 2026-04-24 (Honza): pro McDonald's Cup scénář — když user uloží
   // partu „3.A" v prvním zápase, při druhém má být auto-pre-picknutá
@@ -93,6 +100,61 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
       p.periods === periodCount && Math.round(p.durationMinutes / p.periods) === periodMinutes
     );
   }, [periodCount, periodMinutes]);
+
+  /** Historie soupeřů — unikátní `opponent` z user vlastních zápasů.
+   *  Privacy: jen zápasy current usera (user.uid scope nebo individual-quick
+   *  Simple mode). NIKDY sdílené klubové zápasy (asistent z klubu má vlastní
+   *  historii — nemíchat). Tohle je čistě uživatelská soukromá historie.
+   *
+   *  Sortování: frekvence DESC + recency tie-break.
+   *  Filtruje podle sportu (fotbal vs tenis vs florbal nemíchat). */
+  const opponentHistory = useMemo(() => {
+    if (!user?.uid) return [];
+    type Entry = { name: string; count: number; lastDate: string };
+    const map = new Map<string, Entry>();
+    for (const m of allMatches) {
+      const sport = m.sport ?? 'football';
+      if (sport !== preferredSport) continue;
+      // Privacy guard — jen zápasy vytvořené tímto uživatelem (ownerUid).
+      // Soukromou historii soupeřů sdílet nechci, i když jiná klubová data
+      // sdílím s asistentem. Match.ownerUid je nastavený v matches.firebase.ts
+      // při createMatch() a je to uid původního tvůrce.
+      if (m.ownerUid !== user.uid) continue;
+      const name = m.opponent?.trim();
+      if (!name) continue;
+      // Skip default opponent placeholder ("Soupeř") — nebyl zadán reálně
+      const isPlaceholder = name === t('match.list.quickMatchDefaultOpponent');
+      if (isPlaceholder) continue;
+      const key = name.toLowerCase();
+      const existing = map.get(key);
+      if (existing) {
+        existing.count += 1;
+        if ((m.date ?? '') > existing.lastDate) existing.lastDate = m.date ?? '';
+      } else {
+        map.set(key, { name, count: 1, lastDate: m.date ?? '' });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.count !== b.count) return b.count - a.count;
+      return b.lastDate.localeCompare(a.lastDate);
+    });
+  }, [allMatches, preferredSport, t, user?.uid]);
+
+  /** Suggested opponents — filtruje historii podle aktuálního textu. */
+  const opponentSuggestions = useMemo(() => {
+    const q = opponent.trim().toLowerCase();
+    if (!opponentFocused) return [];
+    if (opponentHistory.length === 0) return [];
+    // Když user nenapsal nic, ukážeme top 5 nejpoužívanějších
+    if (q.length === 0) return opponentHistory.slice(0, 5);
+    // Jinak filtrujeme prefix > substring + ukážeme max 6
+    const exactMatch = opponentHistory.find(o => o.name.toLowerCase() === q);
+    if (exactMatch && opponentHistory.length === 1) return []; // už přesně sedí
+    return opponentHistory
+      .filter(o => o.name.toLowerCase().includes(q))
+      .filter(o => o.name.toLowerCase() !== q) // skipuj přesnou shodu (nemá smysl nabízet)
+      .slice(0, 6);
+  }, [opponent, opponentFocused, opponentHistory]);
 
   const squads = useMemo(() => {
     return allSquads
@@ -258,8 +320,12 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
             💡 {t('match.list.quickMatchHint')}
           </div>
 
-          {/* Soupeř */}
-          <div>
+          {/* Soupeř — s autocomplete z user vlastní historie zápasů.
+              Audit 2026-04-25 (user): „torq by si měl pamatovat soupeře
+              které jsem zadával a nabízet při psaní". Privacy: jen vlastní
+              uživatelská historie (m.ownerUid === user.uid), žádné sdílené
+              klubové zápasy. */}
+          <div style={{ position: 'relative' }}>
             <label htmlFor="quick-opponent" style={labelStyle}>
               {t('match.quickSheet.opponentLabel')}
             </label>
@@ -269,12 +335,65 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
               type="text"
               value={opponent}
               onChange={e => setOpponent(e.target.value)}
+              onFocus={() => setOpponentFocused(true)}
+              // Delay close — onClick handlerům suggestion-buttonů musíme
+              // dát čas se spustit, jinak input ztratí focus dřív než klik.
+              onBlur={() => setTimeout(() => setOpponentFocused(false), 200)}
               placeholder={t('match.quickSheet.opponentPlaceholder')}
               style={inputStyle}
+              autoComplete="off"
             />
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
               {t('match.quickSheet.opponentHint')}
             </div>
+
+            {/* Autocomplete dropdown — historie soupeřů */}
+            {opponentSuggestions.length > 0 && (
+              <div style={{
+                position: 'absolute',
+                // Pozice: nad input (snažím se aby nepřekrývalo placeholder
+                // pod input — který má hint text). Top je hned pod inputem.
+                top: 'calc(100% - 22px)', // 22 = výška hint textu (orientačně)
+                left: 0, right: 0, zIndex: 30,
+                background: 'var(--surface)',
+                border: '1.5px solid var(--border)',
+                borderRadius: 12, marginTop: 4,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                maxHeight: 200, overflowY: 'auto',
+              }}>
+                {opponentSuggestions.map(s => (
+                  <button
+                    key={s.name}
+                    type="button"
+                    onMouseDown={e => {
+                      e.preventDefault(); // ať input neztratí focus dřív než nastavíme
+                      setOpponent(s.name);
+                      setOpponentFocused(false);
+                    }}
+                    style={{
+                      width: '100%', padding: '10px 12px',
+                      background: 'transparent', border: 'none',
+                      borderBottom: '1px solid var(--border)',
+                      cursor: 'pointer', textAlign: 'left',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{
+                      fontSize: 14, fontWeight: 600, color: 'var(--text)',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>
+                      {s.name}
+                    </span>
+                    <span style={{
+                      fontSize: 10, color: 'var(--text-muted)', flexShrink: 0,
+                    }}>
+                      {s.count}× {t('match.quickSheet.opponentMatchesAgo')}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Squad picker — pokud jsou */}
@@ -455,107 +574,96 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
               })}
             </div>
 
-            {/* Custom controls: period count + duration input */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
-            }}>
-              {/* Počet period */}
-              <div>
-                <div style={{
-                  fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
-                  marginBottom: 5,
-                }}>
-                  {t('match.quickSheet.periodsLabel')}
-                </div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {([1, 2] as const).map(n => {
-                    const active = periodCount === n;
-                    return (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => setPeriodCount(n)}
-                        style={{
-                          flex: 1, padding: '10px', borderRadius: 10,
-                          background: active ? 'var(--primary)' : 'var(--surface-var)',
-                          color: active ? '#fff' : 'var(--text)',
-                          border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
-                          fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                          lineHeight: 1.2,
-                        }}
-                      >
-                        {n === 1 ? t('match.quickSheet.periods1') : t('match.quickSheet.periods2')}
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Počet poločasů — celá šířka */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{
+                fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+                marginBottom: 5,
+              }}>
+                {t('match.quickSheet.periodsLabel')}
               </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {([1, 2] as const).map(n => {
+                  const active = periodCount === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setPeriodCount(n)}
+                      style={{
+                        flex: 1, padding: '10px', borderRadius: 10,
+                        background: active ? 'var(--primary)' : 'var(--surface-var)',
+                        color: active ? '#fff' : 'var(--text)',
+                        border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                        fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {n === 1 ? t('match.quickSheet.periods1') : t('match.quickSheet.periods2')}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-              {/* Délka poločasu / zápasu */}
-              <div>
-                <div style={{
+            {/* Délka zápasu — slider (audit 2026-04-25 user feedback:
+                „dej tam slider, ať si trenér jednoduše zvolí"). Range 5-60 min,
+                step 1, full-width pro maximální tap target. Velký display
+                hodnoty nad sliderem dává okamžitý feedback. */}
+            <div>
+              <div style={{
+                display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+                marginBottom: 8,
+              }}>
+                <span style={{
                   fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
-                  marginBottom: 5,
                 }}>
                   {periodCount === 1
                     ? t('match.quickSheet.durationOneLabel')
                     : t('match.quickSheet.durationEachLabel')}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <button
-                    type="button"
-                    onClick={() => setPeriodMinutes(v => Math.max(5, v - 5))}
-                    aria-label="−5"
-                    style={{
-                      width: 36, height: 40, borderRadius: 10,
-                      background: 'var(--surface-var)', color: 'var(--text)',
-                      border: '1.5px solid var(--border)',
-                      fontSize: 16, fontWeight: 800, cursor: 'pointer',
-                      flexShrink: 0,
-                    }}
-                  >−</button>
-                  <input
-                    type="number"
-                    min={5}
-                    max={60}
-                    value={periodMinutes}
-                    onChange={e => {
-                      const n = Number(e.target.value);
-                      if (Number.isFinite(n)) setPeriodMinutes(Math.max(5, Math.min(60, n)));
-                    }}
-                    inputMode="numeric"
-                    style={{
-                      flex: 1, minWidth: 0, height: 40,
-                      padding: '0 8px', borderRadius: 10,
-                      border: '1.5px solid var(--border)',
-                      background: 'var(--surface)', color: 'var(--text)',
-                      fontSize: 15, fontWeight: 700, textAlign: 'center',
-                      outline: 'none',
-                      MozAppearance: 'textfield',
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setPeriodMinutes(v => Math.min(60, v + 5))}
-                    aria-label="+5"
-                    style={{
-                      width: 36, height: 40, borderRadius: 10,
-                      background: 'var(--surface-var)', color: 'var(--text)',
-                      border: '1.5px solid var(--border)',
-                      fontSize: 16, fontWeight: 800, cursor: 'pointer',
-                      flexShrink: 0,
-                    }}
-                  >+</button>
-                </div>
-                <div style={{
-                  fontSize: 10, color: 'var(--text-muted)', marginTop: 4, textAlign: 'center',
+                </span>
+                <span style={{
+                  fontSize: 22, fontWeight: 800, color: 'var(--primary)',
+                  lineHeight: 1,
                 }}>
-                  {t('match.quickSheet.durationUnit')}
-                </div>
+                  {periodMinutes} <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>min</span>
+                </span>
+              </div>
+              <input
+                type="range"
+                min={5}
+                max={60}
+                step={1}
+                value={periodMinutes}
+                onChange={e => {
+                  const n = Number(e.target.value);
+                  if (Number.isFinite(n)) setPeriodMinutes(n);
+                }}
+                aria-label={periodCount === 1
+                  ? t('match.quickSheet.durationOneLabel')
+                  : t('match.quickSheet.durationEachLabel')}
+                style={{
+                  width: '100%',
+                  accentColor: 'var(--primary)',
+                  cursor: 'pointer',
+                  height: 28,
+                  // iOS Safari potřebuje explicit -webkit-appearance,
+                  // jinak input vypadá jako native systémové (šedé)
+                  WebkitAppearance: 'none',
+                  background: 'transparent',
+                }}
+              />
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                fontSize: 10, color: 'var(--text-muted)',
+                marginTop: 2, padding: '0 2px',
+              }}>
+                <span>5 min</span>
+                <span>60 min</span>
               </div>
             </div>
 
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.4 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 10, lineHeight: 1.4 }}>
               {t('match.quickSheet.durationSummary', {
                 total: periodCount * periodMinutes,
                 layout: periodCount === 1 ? `${periodMinutes}` : `${periodCount}×${periodMinutes}`,

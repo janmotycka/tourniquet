@@ -178,22 +178,85 @@ export function QuickTournamentPage({ navigate }: Props) {
           </div>
         </FormCard>
 
-        {/* Počet týmů */}
+        {/* Počet týmů — Audit 2026-04-25 (user feedback): grid 5×2 čtverečků
+            byl funkční, ale mobilně nepřehledný. Nahrazeno sliderem 2-16 s
+            velkým displayem aktuální hodnoty (konzistentní vzhled s duration
+            sliderem v QuickMatchSheet). */}
         <FormCard>
           <SectionTitle>{t('tournament.quick.teamCountLabel')}</SectionTitle>
           <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
             {t('tournament.quick.teamCountHint')}
           </p>
-          <SelectionTiles style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
-            {teamCountOptions.map(n => (
-              <SelectionTile
-                key={n}
-                active={teamCount === n}
-                onClick={() => handleTeamCountChange(n)}
-                label={n}
-              />
-            ))}
-          </SelectionTiles>
+          <div style={{
+            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+            marginTop: 4,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
+              {t('tournament.quick.teamCountValueLabel')}
+            </span>
+            <span style={{
+              fontSize: 28, fontWeight: 800, color: 'var(--primary)',
+              lineHeight: 1,
+            }}>
+              {teamCount} <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>
+                {t('tournament.quick.teamCountUnit')}
+              </span>
+            </span>
+          </div>
+          <input
+            type="range"
+            min={2}
+            max={16}
+            step={1}
+            value={teamCount}
+            onChange={e => {
+              const n = Number(e.target.value);
+              if (Number.isFinite(n)) handleTeamCountChange(n);
+            }}
+            aria-label={t('tournament.quick.teamCountLabel')}
+            style={{
+              width: '100%',
+              accentColor: 'var(--primary)',
+              cursor: 'pointer',
+              height: 28,
+              WebkitAppearance: 'none',
+              background: 'transparent',
+              marginTop: 4,
+            }}
+          />
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            fontSize: 10, color: 'var(--text-muted)',
+            padding: '0 2px',
+          }}>
+            <span>2</span>
+            <span>16</span>
+          </div>
+          {/* Quick-pick chips — pro nejčastější hodnoty (rychlý tap, pamatovat
+              si přesnou pozici slideru v 2-16 range na mobilu může být
+              frustrující). */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+            {teamCountOptions.map(n => {
+              const active = teamCount === n;
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => handleTeamCountChange(n)}
+                  style={{
+                    flex: '1 1 50px',
+                    padding: '8px 10px', borderRadius: 8,
+                    background: active ? 'var(--primary)' : 'var(--surface-var)',
+                    color: active ? '#fff' : 'var(--text)',
+                    border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  {n}
+                </button>
+              );
+            })}
+          </div>
         </FormCard>
 
         {/* Jména týmů */}
