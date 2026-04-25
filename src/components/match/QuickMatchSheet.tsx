@@ -498,26 +498,44 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
             </div>
           )}
 
-          {/* Délka zápasu — zjednodušeno (audit 2026-04-25 user: „je tam moc
-              prvků, zjednoduš"). Vyhodily se: 4 quick-pick chipy + subtitles
-              + min/max popisky pod sliderem + summary text. Zůstává jen:
-              poločasy 1/2 toggle + slider s velkým displayem hodnoty. */}
+          {/* Délka zápasu — slider nahoře, větší + center display.
+              Pořadí: label → big value → slider → toggle 1/2 poločasy.
+              Audit 2026-04-25 (user): „slider nad počet poločasů, větší,
+              přehlednější". */}
           <div>
-            <div style={{
-              display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-              marginBottom: 10,
-            }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-                ⏱ {t('match.quickSheet.durationLabel')}
-              </span>
-              <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', lineHeight: 1 }}>
-                {periodCount === 1 ? `${periodMinutes}` : `${periodCount}×${periodMinutes}`}
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginLeft: 4 }}>min</span>
-              </span>
+            <div style={{ ...labelStyle, marginBottom: 12 }}>
+              ⏱ {t('match.quickSheet.durationLabel')}
             </div>
 
-            {/* Poločasy 1/2 toggle */}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+            {/* Big value display — center, primary color, 36px */}
+            <div style={{
+              textAlign: 'center', marginBottom: 14,
+              fontSize: 36, fontWeight: 900, color: 'var(--primary)', lineHeight: 1,
+            }}>
+              {periodCount === 1 ? `${periodMinutes}` : `${periodCount}×${periodMinutes}`}
+              <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-muted)', marginLeft: 6 }}>min</span>
+            </div>
+
+            {/* Slider — full-width, big primary thumb (36px) */}
+            <input
+              type="range"
+              min={5}
+              max={60}
+              step={1}
+              value={periodMinutes}
+              onChange={e => {
+                const n = Number(e.target.value);
+                if (Number.isFinite(n)) setPeriodMinutes(n);
+              }}
+              aria-label={periodCount === 1
+                ? t('match.quickSheet.durationOneLabel')
+                : t('match.quickSheet.durationEachLabel')}
+              className="torq-slider"
+              style={{ width: '100%', cursor: 'pointer', display: 'block', marginBottom: 16 }}
+            />
+
+            {/* Poločasy 1/2 toggle — pod sliderem */}
+            <div style={{ display: 'flex', gap: 6 }}>
               {([1, 2] as const).map(n => {
                 const active = periodCount === n;
                 return (
@@ -538,24 +556,6 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
                 );
               })}
             </div>
-
-            {/* Slider — full-width, primary thumb */}
-            <input
-              type="range"
-              min={5}
-              max={60}
-              step={1}
-              value={periodMinutes}
-              onChange={e => {
-                const n = Number(e.target.value);
-                if (Number.isFinite(n)) setPeriodMinutes(n);
-              }}
-              aria-label={periodCount === 1
-                ? t('match.quickSheet.durationOneLabel')
-                : t('match.quickSheet.durationEachLabel')}
-              className="torq-slider"
-              style={{ width: '100%', cursor: 'pointer' }}
-            />
           </div>
 
           <button
