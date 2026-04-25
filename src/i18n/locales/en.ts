@@ -1096,6 +1096,7 @@ export const en: Record<TranslationKey, string> = {
   'match.quickSheet.durationUnit': 'minutes',
   'match.quickSheet.durationSummary': 'Total {total} min ({layout})',
   'match.quickSheet.rosterToggle': 'Players (optional)',
+  'match.quickSheet.wantRoster': 'I want to enter a roster',
   'match.quickSheet.rosterEditLabel': 'Players',
   'match.quickSheet.rosterPlaceholder': 'John Smith\nJane Doe\nAlex Chen\n…',
   'match.quickSheet.rosterHint': 'One name per line. Used for recording goal scorers. No club needed — just type.',

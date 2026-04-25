@@ -76,6 +76,10 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
   const [opponent, setOpponent] = useState('');
   const [opponentFocused, setOpponentFocused] = useState(false);
   const [rosterText, setRosterText] = useState('');
+  // Audit 2026-04-25 (user): „hráče bych nechal jen pokud chce trenér zadat
+  // soupisku — checkbox → po zaškrtnutí se zobrazí pole". Default off pro
+  // čistý quick flow (user typicky nepotřebuje sestavu pro plácek/přátelák).
+  const [wantRoster, setWantRoster] = useState(false);
   // Audit 2026-04-24 (Honza): pro McDonald's Cup scénář — když user uloží
   // partu „3.A" v prvním zápase, při druhém má být auto-pre-picknutá
   // (nechceme friction hledat ji v seznamu). `squads` je seřazené podle
@@ -188,6 +192,7 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
     if ((topSquad.usageCount ?? 0) < 1) return;
     setSelectedSquadId(topSquad.id);
     setRosterText(topSquad.players.join('\n'));
+    setWantRoster(true); // pre-pickutá squad implikuje, že user chce soupisku
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -202,6 +207,7 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
     setSelectedSquadId(squad.id);
     setRosterText(squad.players.join('\n'));
     setSaveAsSquad(false); // už je uložená
+    setWantRoster(true); // user vybral partu → chce soupisku
   };
 
   const handleClearSquad = () => {
@@ -444,30 +450,47 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
             </div>
           )}
 
-          {/* Roster — textarea (always visible, může být prázdná) */}
+          {/* Hráči — schované za checkboxem (audit 2026-04-25 user feedback:
+              „hráče bych nechal jen pokud chce trenér zadat soupisku"). User
+              checkne → textarea se objeví. Default: schované, žádné friction
+              pro plácek/přátelák kde sestavu nepotřebuje. */}
           <div>
-            <label htmlFor="quick-roster" style={labelStyle}>
-              {selectedSquadId ? t('match.quickSheet.rosterEditLabel') : t('match.quickSheet.rosterToggle')}
+            <label style={{
+              display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer',
+              userSelect: 'none',
+            }}>
+              <input
+                type="checkbox"
+                checked={wantRoster}
+                onChange={e => setWantRoster(e.target.checked)}
+                style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--primary)' }}
+              />
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                {t('match.quickSheet.wantRoster')}
+              </span>
             </label>
-            <textarea
-              id="quick-roster"
-              value={rosterText}
-              onChange={e => setRosterText(e.target.value)}
-              placeholder={t('match.quickSheet.rosterPlaceholder')}
-              rows={selectedSquadId ? 4 : 5}
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                padding: '10px 12px', borderRadius: 10,
-                border: '1.5px solid var(--border)',
-                background: 'var(--surface)', color: 'var(--text)',
-                fontSize: 14, outline: 'none', resize: 'vertical',
-                fontFamily: 'inherit',
-              }}
-            />
+            {wantRoster && (
+              <textarea
+                id="quick-roster"
+                value={rosterText}
+                onChange={e => setRosterText(e.target.value)}
+                placeholder={t('match.quickSheet.rosterPlaceholder')}
+                rows={selectedSquadId ? 4 : 5}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '10px 12px', borderRadius: 10,
+                  border: '1.5px solid var(--border)',
+                  background: 'var(--surface)', color: 'var(--text)',
+                  fontSize: 14, outline: 'none', resize: 'vertical',
+                  fontFamily: 'inherit',
+                  marginTop: 10,
+                }}
+              />
+            )}
           </div>
 
-          {/* Uložit jako partu — jen pokud nemám vybranou a mám roster */}
-          {!selectedSquadId && parsedRoster().length > 0 && (
+          {/* Uložit jako partu — jen pokud user chce roster, nemá vybranou squad a něco napsal */}
+          {wantRoster && !selectedSquadId && parsedRoster().length > 0 && (
             <div style={{
               background: 'var(--surface-var)', borderRadius: 10, padding: 10,
               border: '1px solid var(--border)',
@@ -498,63 +521,67 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
             </div>
           )}
 
-          {/* Délka zápasu — slider nahoře, větší + center display.
-              Pořadí: label → big value → slider → toggle 1/2 poločasy.
-              Audit 2026-04-25 (user): „slider nad počet poločasů, větší,
-              přehlednější". */}
+          {/* Délka zápasu — number input pattern (konzistentní s
+              EditMatchSheet a CreateMatchPage). Audit 2026-04-25 user:
+              „slider nebyl nejlepší nápad, udělej to jako v jiných sekcích".
+              Layout: 2 sloupce — Poločasy [1/2] | Délka (číselný input). */}
           <div>
-            <div style={{ ...labelStyle, marginBottom: 12 }}>
+            <div style={{ ...labelStyle, marginBottom: 8 }}>
               ⏱ {t('match.quickSheet.durationLabel')}
             </div>
-
-            {/* Big value display — center, primary color, 36px */}
-            <div style={{
-              textAlign: 'center', marginBottom: 14,
-              fontSize: 36, fontWeight: 900, color: 'var(--primary)', lineHeight: 1,
-            }}>
-              {periodCount === 1 ? `${periodMinutes}` : `${periodCount}×${periodMinutes}`}
-              <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-muted)', marginLeft: 6 }}>min</span>
-            </div>
-
-            {/* Slider — full-width, big primary thumb (36px) */}
-            <input
-              type="range"
-              min={5}
-              max={60}
-              step={1}
-              value={periodMinutes}
-              onChange={e => {
-                const n = Number(e.target.value);
-                if (Number.isFinite(n)) setPeriodMinutes(n);
-              }}
-              aria-label={periodCount === 1
-                ? t('match.quickSheet.durationOneLabel')
-                : t('match.quickSheet.durationEachLabel')}
-              className="torq-slider"
-              style={{ width: '100%', cursor: 'pointer', display: 'block', marginBottom: 16 }}
-            />
-
-            {/* Poločasy 1/2 toggle — pod sliderem */}
-            <div style={{ display: 'flex', gap: 6 }}>
-              {([1, 2] as const).map(n => {
-                const active = periodCount === n;
-                return (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setPeriodCount(n)}
-                    style={{
-                      flex: 1, padding: '10px', borderRadius: 10,
-                      background: active ? 'var(--primary)' : 'var(--surface-var)',
-                      color: active ? '#fff' : 'var(--text)',
-                      border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
-                      fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                    }}
-                  >
-                    {n === 1 ? t('match.quickSheet.periods1') : t('match.quickSheet.periods2')}
-                  </button>
-                );
-              })}
+            <div style={{ display: 'flex', gap: 10 }}>
+              {/* Poločasy */}
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  {t('match.quickSheet.periodsLabel')}
+                </label>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {([1, 2] as const).map(n => {
+                    const active = periodCount === n;
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setPeriodCount(n)}
+                        style={{
+                          flex: 1, padding: '10px 4px', borderRadius: 10,
+                          background: active ? 'var(--primary)' : 'var(--surface-var)',
+                          color: active ? '#fff' : 'var(--text)',
+                          border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
+                          fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                        }}
+                      >
+                        {n}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Délka jednoho poločasu / zápasu */}
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                  {periodCount === 1
+                    ? t('match.quickSheet.durationOneLabel')
+                    : t('match.quickSheet.durationEachLabel')}
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={periodMinutes}
+                  onChange={e => {
+                    const n = Number(e.target.value);
+                    if (Number.isFinite(n)) setPeriodMinutes(Math.max(1, Math.min(60, n)));
+                  }}
+                  inputMode="numeric"
+                  style={{
+                    width: '100%', padding: '10px', borderRadius: 10,
+                    border: '1.5px solid var(--border)', fontSize: 14,
+                    background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box',
+                    textAlign: 'center', fontWeight: 700,
+                  }}
+                />
+              </div>
             </div>
           </div>
 
