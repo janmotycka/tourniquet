@@ -2880,7 +2880,7 @@ export const de: Record<TranslationKey, string> = {
 
   // ─── First-time onboarding wizard (HomePage modal) ──────────────────────
   'onboarding.welcome.title': 'Willkommen bei TORQ!',
-  'onboarding.welcome.subtitle': 'App für Fußballtrainer — Turnier oder Spiel in Sekunden anlegen und Ergebnisse mit Eltern teilen.',
+  'onboarding.welcome.subtitle': 'App für Fußballtrainer — Turnier oder Spiel in Sekunden anlegen. Eltern verfolgen Ergebnis, Aufstellung und Tore live.',
   'onboarding.welcome.start': 'Loslegen',
   'onboarding.welcome.skip': 'Überspringen',
   'onboarding.club.title': 'Erstelle deinen Verein',

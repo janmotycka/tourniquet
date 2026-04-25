@@ -2900,7 +2900,7 @@ export const cs = {
 
   // ─── First-time onboarding wizard (HomePage modal) ──────────────────────
   'onboarding.welcome.title': 'Vítej v TORQ!',
-  'onboarding.welcome.subtitle': 'Aplikace pro fotbalové trenéry — vytvoř turnaj nebo zápas za pár sekund a pošli rodičům výsledek.',
+  'onboarding.welcome.subtitle': 'Aplikace pro fotbalové trenéry — vytvoř turnaj nebo zápas za pár sekund. Rodiče vidí skóre, sestavu i góly naživo.',
   'onboarding.welcome.start': 'Začít',
   'onboarding.welcome.skip': 'Přeskočit',
   'onboarding.club.title': 'Vytvoř svůj klub',
