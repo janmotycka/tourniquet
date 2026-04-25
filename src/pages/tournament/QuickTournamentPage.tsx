@@ -214,15 +214,8 @@ export function QuickTournamentPage({ navigate }: Props) {
               if (Number.isFinite(n)) handleTeamCountChange(n);
             }}
             aria-label={t('tournament.quick.teamCountLabel')}
-            style={{
-              width: '100%',
-              accentColor: 'var(--primary)',
-              cursor: 'pointer',
-              height: 28,
-              WebkitAppearance: 'none',
-              background: 'transparent',
-              marginTop: 4,
-            }}
+            className="torq-slider"
+            style={{ width: '100%', cursor: 'pointer', marginTop: 4 }}
           />
           <div style={{
             display: 'flex', justifyContent: 'space-between',

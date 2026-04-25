@@ -210,3 +210,76 @@ a:focus-visible,
   from { transform: translateX(-50%) translateY(100px); opacity: 0; }
   to   { transform: translateX(-50%) translateY(0); opacity: 1; }
 }
+
+/* ─── Range slider — custom-styled napříč prohlížeči ────────────────────────
+   Audit 2026-04-25: native slider s `accent-color` má v některých Safari
+   verzích neviditelný track a 2px thumb. Custom styling přes pseudo-elementy
+   garantuje viditelnost a konzistenci. Track 6px tlustý, thumb 24px round. */
+.torq-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 28px;
+  outline: none;
+  padding: 0;
+}
+.torq-slider:focus { outline: none; }
+
+/* Track — Webkit (Chrome, Safari, iOS) */
+.torq-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-var);
+  border: 1px solid var(--border);
+}
+/* Track — Firefox */
+.torq-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-var);
+  border: 1px solid var(--border);
+}
+
+/* Thumb — Webkit */
+.torq-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  cursor: pointer;
+  margin-top: -10px; /* center vertically (track 6px / 2 - thumb 24px / 2 + border 3) */
+  transition: transform .15s, box-shadow .15s;
+}
+.torq-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.08);
+  box-shadow: 0 3px 12px rgba(0,0,0,.25);
+}
+.torq-slider:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+
+/* Thumb — Firefox */
+.torq-slider::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+}
+.torq-slider::-moz-range-thumb:hover { transform: scale(1.08); }
+.torq-slider:active::-moz-range-thumb { transform: scale(1.12); }
+
+/* Vyplněná část (jen Firefox-style — Webkit to nemá v CSS, lze přes JS, ale
+   nestojí to za to; čistý track + výrazný thumb je dostatečně srozumitelné). */
+.torq-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--primary);
+}

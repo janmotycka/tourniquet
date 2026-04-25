@@ -642,16 +642,8 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
                 aria-label={periodCount === 1
                   ? t('match.quickSheet.durationOneLabel')
                   : t('match.quickSheet.durationEachLabel')}
-                style={{
-                  width: '100%',
-                  accentColor: 'var(--primary)',
-                  cursor: 'pointer',
-                  height: 28,
-                  // iOS Safari potřebuje explicit -webkit-appearance,
-                  // jinak input vypadá jako native systémové (šedé)
-                  WebkitAppearance: 'none',
-                  background: 'transparent',
-                }}
+                className="torq-slider"
+                style={{ width: '100%', cursor: 'pointer' }}
               />
               <div style={{
                 display: 'flex', justifyContent: 'space-between',
