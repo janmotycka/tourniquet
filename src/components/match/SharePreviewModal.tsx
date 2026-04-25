@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../i18n';
 import { Z } from '../../utils/z-index';
 import { useToastStore } from '../../store/toast.store';
+import { isNativeApp } from '../../utils/platform';
 
 interface Props {
   imageBlob: Blob;
@@ -61,6 +62,32 @@ export function SharePreviewModal({ imageBlob, textMessage, fileName, onClose }:
 
   const handleShareSystem = async () => {
     const file = new File([imageBlob], fileName, { type: 'image/png' });
+
+    // Native (Capacitor iOS/Android) — použij Capacitor.Share plugin pro
+    // lepší UX (native share sheet, lepší file handling, nemá race condition
+    // s WebView). Web Share API funguje v Capacitor WebView, ale Capacitor
+    // plugin je preferovaný — má workaround pro iOS share files bug.
+    if (isNativeApp()) {
+      try {
+        const { Share } = await import('@capacitor/share');
+        // Capacitor.Share preferuje URL místo File. Pro share image jako URL
+        // potřebujeme blob → data URL → Share s files = [tempUrl]. Nebo
+        // jednodušší fallback: jen text + URL (bez image), pokud user image
+        // potřebuje, klikne Download.
+        await Share.share({
+          text: textMessage,
+          dialogTitle: t('matchShare.previewTitle'),
+        });
+        return;
+      } catch (err) {
+        const e = err as { message?: string };
+        // User abort cancellation = nepoužitelné jako error
+        if (e.message?.includes('cancel') || e.message?.includes('Abort')) return;
+        // Fallback na Web Share níže
+      }
+    }
+
+    // Web Share API (PWA / fallback z native)
     const navAny = navigator as Navigator & {
       share?: (data: { text?: string; files?: File[] }) => Promise<void>;
     };

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="index, follow" />
+  <title>Podmínky užívání — TORQ</title>
+  <meta name="description" content="Podmínky užívání aplikace TORQ — sportovní turnaje, zápasy a tréninky pro trenéry mládeže." />
+  <link rel="canonical" href="https://torq.cz/terms.html" />
+  <link rel="alternate" hreflang="cs" href="https://torq.cz/terms.html" />
+  <link rel="alternate" hreflang="en" href="https://torq.cz/terms.html?lang=en" />
+  <style>
+    :root {
+      --primary: #1B5E20; --text: #1a1a1a; --text-muted: #555;
+      --border: #e0e0e0; --bg: #fafafa; --surface: #ffffff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --text: #eaeaea; --text-muted: #aaa; --border: #333; --bg: #121212; --surface: #1e1e1e; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; }
+    .container { max-width: 720px; margin: 0 auto; padding: 32px 24px 80px; }
+    header { border-bottom: 2px solid var(--primary); padding-bottom: 16px; margin-bottom: 32px; }
+    .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); }
+    .logo-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .logo-text { font-weight: 800; font-size: 22px; letter-spacing: 0.5px; }
+    h1 { font-size: 28px; margin: 16px 0 8px; }
+    h2 { font-size: 18px; margin: 28px 0 8px; }
+    p { font-size: 15px; color: var(--text-muted); margin: 0 0 12px; }
+    .meta { font-size: 13px; color: var(--text-muted); font-style: italic; margin-bottom: 24px; }
+    .lang-switch { display: flex; gap: 8px; margin-top: 8px; }
+    .lang-switch a { font-size: 12px; padding: 4px 10px; border-radius: 6px; text-decoration: none; color: var(--text-muted); border: 1px solid var(--border); }
+    .lang-switch a.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    a { color: var(--primary); }
+    footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); text-align: center; }
+    .lang-en { display: none; }
+    body[data-lang="en"] .lang-cs { display: none; }
+    body[data-lang="en"] .lang-en { display: block; }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var params = new URLSearchParams(window.location.search);
+      var lang = params.get('lang') === 'en' ? 'en' : 'cs';
+      document.body.setAttribute('data-lang', lang);
+      document.documentElement.lang = lang;
+    });
+  </script>
+</head>
+<body data-lang="cs">
+  <div class="container">
+    <header>
+      <a href="https://torq.cz" class="logo">
+        <div class="logo-icon" aria-hidden="true">⚽</div>
+        <div class="logo-text">TORQ</div>
+      </a>
+      <div class="lang-switch">
+        <a href="?lang=cs" class="active">Čeština</a>
+        <a href="?lang=en">English</a>
+      </div>
+    </header>
+
+    <article class="lang-cs">
+      <h1>Podmínky užívání</h1>
+      <p class="meta">Poslední aktualizace: 25. dubna 2026</p>
+
+      <h2>1. Obecná ustanovení</h2>
+      <p>Aplikace TORQ (torq.cz a mobilní aplikace pro iOS a Android) je platforma pro správu fotbalových, tenisových a florbalových tréninků, zápasů a turnajů. Používáním aplikace souhlasíte s těmito podmínkami.</p>
+
+      <h2>2. Uživatelský účet</h2>
+      <p>Pro používání aplikace je nutná registrace přes Google účet, e-mail s heslem, nebo anonymní účet (vytvořený automaticky při otevření přes veřejný odkaz). Jste zodpovědní za bezpečnost svého účtu a všechny aktivity pod ním provedené.</p>
+
+      <h2>3. Předplatné a platby</h2>
+      <p>Bezplatný plán umožňuje omezené využití (1 turnaj, 5 tréninků, 10 zápasů — Simple mód má neomezeně). Premium předplatné (99 Kč / 3,99 € / 3,99 $ měsíčně) se obnovuje měsíčně přes Stripe. Zrušení je možné kdykoliv v nastavení — přístup zůstane do konce fakturačního období.</p>
+      <p><strong>iOS aplikace:</strong> Předplatné nelze zakoupit ani spravovat v iOS aplikaci (Apple App Store pravidla 3.1.1). Předplatné spravujte na <a href="https://torq.cz">torq.cz</a> ve webovém prohlížeči.</p>
+
+      <h2>4. Obsah a odpovědnost</h2>
+      <p>Nesete odpovědnost za data, která do aplikace vkládáte (jména hráčů, výsledky, chat zprávy). Je zakázáno vkládat urážlivý, nezákonný nebo škodlivý obsah. Vyhrazujeme si právo takový obsah odstranit a v závažných případech ukončit přístup k účtu.</p>
+
+      <h2>5. Dostupnost služby</h2>
+      <p>Snažíme se zajistit nepřetržitou dostupnost, ale negarantujeme 100% provozuschopnost. Údržba a aktualizace mohou způsobit dočasné výpadky. Neneseme odpovědnost za škody způsobené nedostupností služby nebo ztrátou dat (doporučujeme pravidelný export).</p>
+
+      <h2>6. Změny podmínek</h2>
+      <p>Vyhrazujeme si právo tyto podmínky kdykoliv změnit. O důležitých změnách vás budeme informovat e-mailem nebo upozorněním v aplikaci. Pokračováním používání po změně souhlasíte s novou verzí.</p>
+
+      <h2>7. Ukončení</h2>
+      <p>Účet můžete kdykoliv smazat v Nastavení → Smazat účet, nebo na <a href="mailto:privacy@torq.cz">privacy@torq.cz</a>. Po smazání budou všechna data nevratně odstraněna do 30 dnů.</p>
+
+      <h2>8. Mobilní aplikace</h2>
+      <p>Mobilní aplikace pro iOS (App Store) a Android (Google Play) jsou wrappery kolem webové aplikace torq.cz. Veškerá data se synchronizují s webem (Firebase). Pro stažení a aktualizace platí pravidla daného obchodu (Apple App Store, Google Play Store).</p>
+
+      <h2>9. Rozhodné právo</h2>
+      <p>Tyto podmínky se řídí právem České republiky. Případné spory budou řešeny obecnými soudy ČR.</p>
+
+      <h2>10. Kontakt</h2>
+      <p>Provozovatel: TORQ. Kontakt: <a href="mailto:privacy@torq.cz">privacy@torq.cz</a>.</p>
+    </article>
+
+    <article class="lang-en">
+      <h1>Terms of Service</h1>
+      <p class="meta">Last updated: April 25, 2026</p>
+
+      <h2>1. General Terms</h2>
+      <p>The TORQ app (torq.cz and mobile apps for iOS and Android) is a platform for managing football, tennis, and floorball trainings, matches, and tournaments. By using the app, you agree to these terms.</p>
+
+      <h2>2. User Account</h2>
+      <p>Using the app requires registration via Google account, email and password, or an anonymous account (auto-created when opening via a public link). You are responsible for the security of your account and all activities under it.</p>
+
+      <h2>3. Subscription and Payments</h2>
+      <p>The free plan allows limited use (1 tournament, 5 trainings, 10 matches — Simple mode is unlimited). Premium subscription (99 CZK / €3.99 / $3.99 per month) renews monthly via Stripe. Cancellation is possible anytime in settings — access remains until the end of the billing period.</p>
+      <p><strong>iOS app:</strong> Subscription cannot be purchased or managed in the iOS app (Apple App Store rules 3.1.1). Manage your subscription at <a href="https://torq.cz">torq.cz</a> in a web browser.</p>
+
+      <h2>4. Content and Liability</h2>
+      <p>You are responsible for the data you enter (player names, results, chat messages). It is forbidden to enter offensive, illegal, or harmful content. We reserve the right to remove such content and, in serious cases, terminate account access.</p>
+
+      <h2>5. Service Availability</h2>
+      <p>We strive for continuous availability but do not guarantee 100% uptime. Maintenance and updates may cause temporary outages. We are not liable for damages caused by service unavailability or data loss (we recommend regular exports).</p>
+
+      <h2>6. Changes to Terms</h2>
+      <p>We reserve the right to change these terms at any time. We will notify you of important changes by email or in-app notification. Continued use after a change constitutes acceptance.</p>
+
+      <h2>7. Termination</h2>
+      <p>You can delete your account anytime in Settings → Delete Account, or by contacting <a href="mailto:privacy@torq.cz">privacy@torq.cz</a>. After deletion, all data will be irreversibly removed within 30 days.</p>
+
+      <h2>8. Mobile Apps</h2>
+      <p>The mobile apps for iOS (App Store) and Android (Google Play) are wrappers around the web app torq.cz. All data syncs with the web (Firebase). Download and updates are subject to the rules of the respective store (Apple App Store, Google Play Store).</p>
+
+      <h2>9. Governing Law</h2>
+      <p>These terms are governed by the laws of the Czech Republic. Any disputes will be resolved by general courts of the Czech Republic.</p>
+
+      <h2>10. Contact</h2>
+      <p>Operator: TORQ. Contact: <a href="mailto:privacy@torq.cz">privacy@torq.cz</a>.</p>
+    </article>
+
+    <footer>
+      <p>
+        <a href="https://torq.cz">TORQ</a> &middot;
+        <a href="https://torq.cz/privacy.html">Privacy Policy</a> &middot;
+        <a href="mailto:privacy@torq.cz">privacy@torq.cz</a>
+      </p>
+    </footer>
+  </div>
+</body>
+</html>

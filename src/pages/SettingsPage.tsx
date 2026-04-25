@@ -18,6 +18,7 @@ import type { ThemePreference } from '../theme/ThemeContext';
 import { useLayoutMode } from '../hooks/useLayoutMode';
 import { ADMIN_UID } from '../constants/admin';
 import { PageHeader } from '../components/ui';
+import { shouldHideStripeUpgrade } from '../utils/platform';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -439,19 +440,34 @@ export function SettingsPage({ navigate }: Props) {
                   </div>
                 </div>
               </div>
-              <button
-                onClick={handleSubscribe}
-                disabled={loading}
-                style={{
-                  background: 'linear-gradient(135deg, #E65100 0%, #FF6F00 100%)',
-                  color: '#fff', fontWeight: 700, fontSize: 16,
-                  padding: '14px', borderRadius: 12,
-                  boxShadow: '0 4px 12px rgba(230,81,0,.3)',
-                  opacity: loading ? 0.6 : 1,
-                }}
-              >
-                {loading ? t('settings.connecting') : t('settings.tryFree')}
-              </button>
+              {/* Apple App Store rule 3.1.1 — v iOS verzi NEMŮŽEME prodávat
+                  digital subscription přes Stripe. Místo Subscribe tlačítka
+                  ukážeme info, ať user platí na webu (Spotify-style workaround).
+                  Android Play Store je tolerantní → tlačítko zůstává. */}
+              {shouldHideStripeUpgrade() ? (
+                <div style={{
+                  background: 'var(--surface-var)', color: 'var(--text-muted)',
+                  fontSize: 13, lineHeight: 1.5,
+                  padding: '14px', borderRadius: 12, textAlign: 'center',
+                  border: '1px solid var(--border)',
+                }}>
+                  {t('settings.iosUpgradeWebOnly')}
+                </div>
+              ) : (
+                <button
+                  onClick={handleSubscribe}
+                  disabled={loading}
+                  style={{
+                    background: 'linear-gradient(135deg, #E65100 0%, #FF6F00 100%)',
+                    color: '#fff', fontWeight: 700, fontSize: 16,
+                    padding: '14px', borderRadius: 12,
+                    boxShadow: '0 4px 12px rgba(230,81,0,.3)',
+                    opacity: loading ? 0.6 : 1,
+                  }}
+                >
+                  {loading ? t('settings.connecting') : t('settings.tryFree')}
+                </button>
+              )}
             </>
           )}
 

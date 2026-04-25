@@ -1611,6 +1611,7 @@ export const de: Record<TranslationKey, string> = {
   'settings.premiumFeature3': 'Unbegrenzte Spiele',
   'settings.premiumFeature4': 'Prioritäts-Support',
   'settings.tryFree': '⭐ 30 Tage kostenlos testen',
+  'settings.iosUpgradeWebOnly': 'Premium-Abo auf torq.cz/upgrade verwalten. Die iOS-App kann keine Zahlungen abwickeln (App Store-Regeln).',
   'settings.connecting': 'Verbindung zu Stripe wird hergestellt...',
   'settings.checkoutError': 'Zahlung konnte nicht erstellt werden. Bitte versuchen Sie es erneut.',
   'settings.stripeError': 'Fehler bei der Verbindung mit Stripe.',

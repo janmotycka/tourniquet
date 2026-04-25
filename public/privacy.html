@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="index, follow" />
+  <title>Zásady ochrany osobních údajů — TORQ</title>
+  <meta name="description" content="Zásady ochrany osobních údajů aplikace TORQ — sportovní turnaje, zápasy a tréninky pro trenéry mládeže." />
+  <link rel="canonical" href="https://torq.cz/privacy.html" />
+  <link rel="alternate" hreflang="cs" href="https://torq.cz/privacy.html" />
+  <link rel="alternate" hreflang="en" href="https://torq.cz/privacy.html?lang=en" />
+  <style>
+    :root {
+      --primary: #1B5E20;
+      --text: #1a1a1a;
+      --text-muted: #555;
+      --border: #e0e0e0;
+      --bg: #fafafa;
+      --surface: #ffffff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #eaeaea;
+        --text-muted: #aaa;
+        --border: #333;
+        --bg: #121212;
+        --surface: #1e1e1e;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text); line-height: 1.7;
+    }
+    .container { max-width: 720px; margin: 0 auto; padding: 32px 24px 80px; }
+    header { border-bottom: 2px solid var(--primary); padding-bottom: 16px; margin-bottom: 32px; }
+    .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); }
+    .logo-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .logo-text { font-weight: 800; font-size: 22px; letter-spacing: 0.5px; }
+    h1 { font-size: 28px; margin: 16px 0 8px; color: var(--text); }
+    h2 { font-size: 18px; margin: 28px 0 8px; color: var(--text); }
+    p { font-size: 15px; color: var(--text-muted); margin: 0 0 12px; }
+    .meta { font-size: 13px; color: var(--text-muted); font-style: italic; margin-bottom: 24px; }
+    .lang-switch { display: flex; gap: 8px; margin-top: 8px; }
+    .lang-switch a { font-size: 12px; padding: 4px 10px; border-radius: 6px; text-decoration: none; color: var(--text-muted); border: 1px solid var(--border); }
+    .lang-switch a.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    a { color: var(--primary); }
+    footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); text-align: center; }
+    .lang-en { display: none; }
+    body[data-lang="en"] .lang-cs { display: none; }
+    body[data-lang="en"] .lang-en { display: block; }
+  </style>
+  <script>
+    // Lang switch — read ?lang=en
+    document.addEventListener('DOMContentLoaded', function() {
+      var params = new URLSearchParams(window.location.search);
+      var lang = params.get('lang') === 'en' ? 'en' : 'cs';
+      document.body.setAttribute('data-lang', lang);
+      document.documentElement.lang = lang;
+    });
+  </script>
+</head>
+<body data-lang="cs">
+  <div class="container">
+    <header>
+      <a href="https://torq.cz" class="logo">
+        <div class="logo-icon" aria-hidden="true">⚽</div>
+        <div class="logo-text">TORQ</div>
+      </a>
+      <div class="lang-switch">
+        <a href="?lang=cs" class="active">Čeština</a>
+        <a href="?lang=en">English</a>
+      </div>
+    </header>
+
+    <!-- ─── Czech version ─────────────────────────────────────────────── -->
+    <article class="lang-cs">
+      <h1>Zásady ochrany osobních údajů</h1>
+      <p class="meta">Poslední aktualizace: 25. dubna 2026</p>
+
+      <h2>1. Jaké údaje shromažďujeme</h2>
+      <p>Při registraci ukládáme vaše jméno, e-mailovou adresu a profilový obrázek z přihlašovací služby (Google). Při používání aplikace ukládáme data o turnajích, zápasech, trénincích a klubech, která vytvoříte. Anonymní uživatelé (kteří otevřeli aplikaci přes veřejný odkaz) mají náhodně generované UID a žádné osobní údaje.</p>
+
+      <h2>2. Jak údaje používáme</h2>
+      <p>Vaše údaje používáme výhradně k poskytování služeb aplikace TORQ — správě turnajů, tréninků, zápasů a sdílení s rodiči/diváky. Data neprodáváme, nepronajímáme ani nesdílíme s třetími stranami za účelem marketingu.</p>
+
+      <h2>3. Ukládání a zpracování dat</h2>
+      <p>Data jsou uložena v Google Firebase (servery EU — europe-west1). Platby zpracovává Stripe (Irsko). Autentizaci zajišťuje Firebase Authentication. Všechny přenosy dat jsou šifrovány pomocí TLS 1.2+.</p>
+
+      <h2>4. Sdílení dat</h2>
+      <p>Turnajová a zápasová data (názvy týmů, skóre, sestavy) označená jako veřejná jsou přístupná divákům přes QR kód a sdílecí odkaz. Osobní údaje trenérů jsou viditelné pouze v rámci klubu, kterého jsou členem. Chat zprávy ve veřejném turnaji jsou viditelné všem účastníkům.</p>
+
+      <h2>5. Vaše práva (GDPR)</h2>
+      <p>Máte právo na přístup ke svým údajům, opravu, přenositelnost a výmaz. Data si můžete exportovat v Nastavení → Správa dat. Pro smazání účtu nás kontaktujte na <a href="mailto:privacy@torq.cz">privacy@torq.cz</a>. Na vaši žádost odpovíme do 30 dnů.</p>
+
+      <h2>6. Cookies a analytika</h2>
+      <p>Používáme pouze technicky nezbytné cookies pro přihlášení a jazykové předvolby (localStorage). Nepoužíváme sledovací cookies ani reklamní systémy třetích stran. Sentry pro debugging chyb používá anonymizované technické údaje (verze prohlížeče, stack trace) — žádné osobní data.</p>
+
+      <h2>7. Uchovávání dat</h2>
+      <p>Vaše data uchováváme po dobu existence vašeho účtu. Po smazání účtu jsou všechna data nevratně odstraněna do 30 dnů. Veřejně sdílené turnaje zůstávají dostupné pro diváky, dokud je smažete.</p>
+
+      <h2>8. Push notifikace (mobilní aplikace)</h2>
+      <p>V mobilních aplikacích pro iOS a Android můžete povolit push notifikace pro upozornění na góly nebo začátek zápasu. Pro tyto notifikace používáme Firebase Cloud Messaging. Notifikace můžete kdykoli vypnout v nastavení vašeho zařízení.</p>
+
+      <h2>9. Děti a mladiství</h2>
+      <p>Aplikace je určena trenérům, organizátorům a rodičům — uživatelé musí mít minimálně 16 let. Trenéři mohou vést soupisky mladých hráčů (jména, čísla dresů, věkové kategorie) — souhlas zákonných zástupců s tímto zpracováním zajišťuje sám trenér nebo klub v rámci své činnosti.</p>
+
+      <h2>10. Kontakt</h2>
+      <p>Máte-li dotazy ohledně ochrany osobních údajů, kontaktujte nás na <a href="mailto:privacy@torq.cz">privacy@torq.cz</a>.</p>
+    </article>
+
+    <!-- ─── English version ────────────────────────────────────────────── -->
+    <article class="lang-en">
+      <h1>Privacy Policy</h1>
+      <p class="meta">Last updated: April 25, 2026</p>
+
+      <h2>1. Data We Collect</h2>
+      <p>When you register, we store your name, email address, and profile picture from the sign-in provider (Google). When using the app, we store data about tournaments, matches, trainings, and clubs you create. Anonymous users (who opened the app via a public link) have a randomly generated UID and no personal data.</p>
+
+      <h2>2. How We Use Data</h2>
+      <p>We use your data solely to provide TORQ app services — managing tournaments, trainings, matches, and sharing with parents/spectators. We do not sell, rent, or share data with third parties for marketing.</p>
+
+      <h2>3. Data Storage and Processing</h2>
+      <p>Data is stored in Google Firebase (EU servers — europe-west1). Payments are processed by Stripe (Ireland). Authentication is handled by Firebase Authentication. All data transfers are encrypted using TLS 1.2+.</p>
+
+      <h2>4. Data Sharing</h2>
+      <p>Tournament and match data (team names, scores, lineups) marked as public are accessible to spectators via QR code and share link. Coach personal information is visible only within the club they are a member of. Chat messages in public tournaments are visible to all participants.</p>
+
+      <h2>5. Your Rights (GDPR)</h2>
+      <p>You have the right to access your data, correct it, export it, and request deletion. You can export data in Settings → Data Management. To delete your account, contact us at <a href="mailto:privacy@torq.cz">privacy@torq.cz</a>. We respond within 30 days.</p>
+
+      <h2>6. Cookies and Analytics</h2>
+      <p>We only use technically necessary cookies for login and language preferences (localStorage). We do not use tracking cookies or third-party advertising systems. Sentry for error debugging uses anonymized technical data (browser version, stack trace) — no personal data.</p>
+
+      <h2>7. Data Retention</h2>
+      <p>We retain your data while your account exists. After account deletion, all data is irreversibly removed within 30 days. Publicly shared tournaments remain available to spectators until you delete them.</p>
+
+      <h2>8. Push Notifications (Mobile App)</h2>
+      <p>In mobile iOS and Android apps, you can enable push notifications for goal alerts or match start. We use Firebase Cloud Messaging for these notifications. You can disable notifications anytime in your device settings.</p>
+
+      <h2>9. Children and Minors</h2>
+      <p>The app is intended for coaches, organizers, and parents — users must be at least 16 years old. Coaches may manage rosters of young players (names, jersey numbers, age categories) — consent of legal guardians for this processing is handled by the coach or club themselves.</p>
+
+      <h2>10. Contact</h2>
+      <p>If you have questions about privacy, contact us at <a href="mailto:privacy@torq.cz">privacy@torq.cz</a>.</p>
+    </article>
+
+    <footer>
+      <p>
+        <a href="https://torq.cz">TORQ</a> &middot;
+        <a href="https://torq.cz/terms.html">Terms of Service</a> &middot;
+        <a href="mailto:privacy@torq.cz">privacy@torq.cz</a>
+      </p>
+    </footer>
+  </div>
+</body>
+</html>

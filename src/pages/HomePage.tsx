@@ -14,6 +14,7 @@ import { useClubsStore } from '../store/clubs.store';
 import { useMyPlayersStore } from '../modules/tennis/store/myPlayers.store';
 import { useSimpleSquadsStore } from '../store/simpleSquads.store';
 import { OnboardingWizard, isOnboarded } from '../components/onboarding/OnboardingWizard';
+import { shouldHideStripeUpgrade } from '../utils/platform';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -430,7 +431,8 @@ export function HomePage({ navigate }: Props) {
           {/* RIGHT: Activity feed / notifications (placeholder for now) */}
           <DashSection title={t('home.activity') || 'Novinky a upozornění'}>
             <EmptyRow text={t('home.activityEmpty') || 'Zatím žádné novinky'} />
-            {!isPremium() && (
+            {/* Premium teaser — skrytý na iOS (Apple 3.1.1) */}
+            {!isPremium() && !shouldHideStripeUpgrade() && (
               <button
                 onClick={() => navigate({ name: 'settings' })}
                 style={{
@@ -649,8 +651,8 @@ export function HomePage({ navigate }: Props) {
         <span style={{ fontSize: 18, opacity: 0.8 }}>→</span>
       </button>
 
-      {/* Upgrade CTA banner for free users */}
-      {!isPremium() && (
+      {/* Upgrade CTA banner for free users — skrytý na iOS (Apple 3.1.1 rule) */}
+      {!isPremium() && !shouldHideStripeUpgrade() && (
         <button
           onClick={() => navigate({ name: 'settings' })}
           style={{

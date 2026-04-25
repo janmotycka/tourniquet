@@ -1611,6 +1611,7 @@ export const en: Record<TranslationKey, string> = {
   'settings.premiumFeature3': 'Unlimited matches',
   'settings.premiumFeature4': 'Priority support',
   'settings.tryFree': '⭐ Try 30 days free',
+  'settings.iosUpgradeWebOnly': 'Manage your Premium subscription at torq.cz/upgrade. The iOS app cannot process payments (App Store rules).',
   'settings.connecting': 'Connecting to Stripe...',
   'settings.checkoutError': 'Could not create payment. Please try again.',
   'settings.stripeError': 'Error connecting to Stripe.',

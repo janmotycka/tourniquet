@@ -1624,6 +1624,7 @@ export const cs = {
   'settings.premiumFeature3': 'Neomezené zápasy',
   'settings.premiumFeature4': 'Prioritní podpora',
   'settings.tryFree': '⭐ Vyzkoušet 30 dní zdarma',
+  'settings.iosUpgradeWebOnly': 'Premium předplatné spravujte na webu torq.cz/upgrade. Tady v iOS aplikaci platba neprobíhá (App Store pravidla).',
   'settings.connecting': 'Připojuji ke Stripe...',
   'settings.checkoutError': 'Nepodařilo se vytvořit platbu. Zkuste to znovu.',
   'settings.stripeError': 'Chyba při připojení ke Stripe.',
