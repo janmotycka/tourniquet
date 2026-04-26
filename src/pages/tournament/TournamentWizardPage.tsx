@@ -37,7 +37,7 @@
  *     na konci Pokročilé sekce. Nezahazujeme existing investment.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import type { Page } from '../../App';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
@@ -80,6 +80,187 @@ function todayStr(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+// ─── Settings Preview helper components ─────────────────────────────────────
+// Linear/Vercel-style settings rows: ikona · label · inline editor.
+// Defaults jsou viditelné, klikni pro úpravu. Žádný "advanced toggle".
+
+interface SettingRowProps {
+  icon: string;
+  label: string;
+  hint?: string;
+  isLast?: boolean;
+  children: ReactNode;
+}
+
+function SettingRow({ icon, label, hint, isLast, children }: SettingRowProps) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 0',
+      borderBottom: isLast ? 'none' : '1px solid var(--border)',
+      minHeight: 48,
+    }}>
+      <span style={{ fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{label}</div>
+        {hint && (
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{hint}</div>
+        )}
+      </div>
+      <div style={{ flexShrink: 0 }}>{children}</div>
+    </div>
+  );
+}
+
+// iOS-style toggle (vizuálně lepší než nativní checkbox v settings rows)
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      style={{
+        width: 44, height: 26, borderRadius: 13,
+        background: checked ? 'var(--primary)' : 'var(--border)',
+        border: 'none', cursor: 'pointer',
+        position: 'relative',
+        transition: 'background .2s',
+      }}
+    >
+      <span style={{
+        position: 'absolute',
+        top: 3, left: checked ? 21 : 3,
+        width: 20, height: 20, borderRadius: 10,
+        background: '#fff',
+        transition: 'left .2s',
+        boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+      }} />
+    </button>
+  );
+}
+
+// Pair of chips for binary numeric choice (1 vs 2)
+function ChipPair<T extends number>({
+  value, options, onChange,
+}: {
+  value: T;
+  options: { v: T; label: string }[];
+  onChange: (v: T) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 4 }}>
+      {options.map(opt => {
+        const active = value === opt.v;
+        return (
+          <button
+            key={opt.v}
+            type="button"
+            onClick={() => onChange(opt.v)}
+            style={{
+              minWidth: 36, padding: '6px 10px', borderRadius: 8,
+              fontSize: 13, fontWeight: 700,
+              background: active ? 'var(--primary)' : 'var(--surface-var)',
+              color: active ? '#fff' : 'var(--text-muted)',
+              border: active ? 'none' : '1.5px solid var(--border)',
+              cursor: 'pointer',
+            }}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Compact number input with unit suffix (used inline in settings rows)
+function CompactNumberInput({
+  value, min, max, unit, onChange, nullable,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  unit?: string;
+  onChange: (v: number) => void;
+  /** Pokud true, hodnota 0 se interně považuje za "—" (nezadáno). */
+  nullable?: boolean;
+}) {
+  const isEmpty = nullable && value === 0;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={isEmpty ? '' : value}
+        placeholder={isEmpty ? '—' : undefined}
+        onChange={e => {
+          const raw = e.target.value;
+          if (raw === '') { onChange(0); return; }
+          const n = Number(raw);
+          if (Number.isFinite(n)) onChange(Math.max(min, Math.min(max, n)));
+        }}
+        style={{
+          width: 60, padding: '6px 8px',
+          fontSize: 13, fontWeight: 700, textAlign: 'center',
+          borderRadius: 8, border: '1.5px solid var(--border)',
+          background: 'var(--surface)', color: 'var(--text)',
+        }}
+        inputMode="numeric"
+      />
+      {unit && (
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+          {unit}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Expandable text editor — initially shows "+ Přidat", click reveals textarea.
+// Once user typed, shows truncated preview + "upravit" button.
+function ExpandableTextEditor({
+  value, placeholder, onChange, addLabel,
+}: {
+  value: string;
+  placeholder?: string;
+  onChange: (v: string) => void;
+  addLabel: string;
+}) {
+  const [open, setOpen] = useState(value.trim().length > 0);
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        style={{
+          background: 'transparent', border: 'none',
+          color: 'var(--primary)', fontSize: 12, fontWeight: 700,
+          cursor: 'pointer', padding: '4px 8px',
+        }}
+      >
+        + {addLabel}
+      </button>
+    );
+  }
+  return (
+    <textarea
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={2}
+      style={{
+        width: 200, padding: '6px 10px',
+        fontSize: 12, lineHeight: 1.4,
+        borderRadius: 8, border: '1.5px solid var(--border)',
+        background: 'var(--surface)', color: 'var(--text)',
+        fontFamily: 'inherit', resize: 'vertical',
+      }}
+    />
+  );
+}
+
 interface WizardDraft {
   step: WizardStep;
   name: string;
@@ -92,18 +273,25 @@ interface WizardDraft {
   teamCount: number;
   format: TournamentFormat | null; // null = ještě nevybráno
   teamNames: string[];
-  // Pokročilé (volitelné)
-  showAdvanced: boolean;
+  // Časování — viditelné v Step 2
   matchDurationMinutes: number;
   numberOfPitches: number;
+
+  // ── Settings (viditelné jako Settings Preview na Step 3) ──
   /** Pauza mezi zápasy v minutách. Default 5. */
   breakBetweenMatchesMinutes: number;
+  /** Postup z každé skupiny do KO (1 = jen vítěz, 2 = nejlepší 2). Jen pro groups-knockout. */
+  advancePerGroup: 1 | 2;
+  /** Hraje se zápas o 3. místo? Jen pro groups-knockout / knockout. */
+  thirdPlaceMatch: boolean;
+  /** Hrají i poražení play-out (consolation)? Jen pro groups-knockout. */
+  playOut: boolean;
+  /** Online registrace s PIN. */
   registrationEnabled: boolean;
+  /** Vstupné v Kč (null = 0). */
   entryFee: number | null;
+  /** Vlastní text pravidel. */
   rules: string;
-  // ── Smart defaults pro strukturu turnaje ──
-  // advancePerGroup=2, thirdPlaceMatch=false, playOut=false jsou hardcoded
-  // při create. User může doladit v editaci turnaje po vytvoření.
 }
 
 function emptyDraft(): WizardDraft {
@@ -117,10 +305,12 @@ function emptyDraft(): WizardDraft {
     teamCount: 4,
     format: null,
     teamNames: ['', '', '', ''],
-    showAdvanced: false,
     matchDurationMinutes: 10,
     numberOfPitches: 1,
     breakBetweenMatchesMinutes: 5,
+    advancePerGroup: 2,
+    thirdPlaceMatch: false,
+    playOut: false,
     registrationEnabled: false,
     entryFee: null,
     rules: '',
@@ -382,9 +572,12 @@ export function TournamentWizardPage({ navigate }: Props) {
           startDate: draft.date,
           startTime: draft.startTime,
           format,
-          // Smart default: 2 týmy z každé skupiny do KO (klasický McDonald's Cup)
-          // User může doladit v editaci turnaje po vytvoření.
-          ...(format === 'groups-knockout' ? { advancePerGroup: 2 } : {}),
+          // Settings z Settings Preview (user může změnit, default je sensible)
+          ...(format === 'groups-knockout' ? { advancePerGroup: draft.advancePerGroup } : {}),
+          ...((format === 'groups-knockout' || format === 'knockout') && draft.thirdPlaceMatch
+            ? { thirdPlaceMatch: true }
+            : {}),
+          ...(format === 'groups-knockout' && draft.playOut ? { playOut: true } : {}),
           ...(draft.venue.trim() ? { venueName: draft.venue.trim() } : {}),
           ...(draft.rules.trim() ? { rules: draft.rules.trim() } : {}),
           ...(draft.registrationEnabled ? { registrationEnabled: true } : {}),
@@ -916,97 +1109,108 @@ export function TournamentWizardPage({ navigate }: Props) {
               )}
             </FormCard>
 
-            {/* Pokročilé sekce — collapsible, default off (NN/g progressive disclosure) */}
-            <button
-              type="button"
-              onClick={() => updateDraft('showAdvanced', !draft.showAdvanced)}
-              style={{
-                width: '100%',
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '14px 16px', borderRadius: 14,
-                background: draft.showAdvanced ? 'var(--primary-light)' : 'var(--surface)',
-                border: `1.5px solid ${draft.showAdvanced ? 'var(--primary)' : 'var(--border)'}`,
-                cursor: 'pointer', textAlign: 'left',
-              }}
-              aria-expanded={draft.showAdvanced}
-            >
-              <span style={{ fontSize: 20 }}>⚙️</span>
-              <span style={{
-                flex: 1, fontSize: 14, fontWeight: 700,
-                color: draft.showAdvanced ? 'var(--primary)' : 'var(--text)',
-              }}>
-                {t('tournament.wizard.advancedTitle')}
-              </span>
-              <span style={{
-                fontSize: 12, fontWeight: 700,
-                color: draft.showAdvanced ? 'var(--primary)' : 'var(--text-muted)',
-                transform: draft.showAdvanced ? 'rotate(180deg)' : 'none',
-                transition: 'transform .2s',
-              }}>▼</span>
-            </button>
+            {/* ─── Settings Preview ───────────────────────────────────────────
+                Linear/Vercel pattern: smart defaults vidíš, klikni řádek pro úpravu.
+                Žádný 'advanced toggle', žádný kitchen sink. Honza projde očima a
+                pokračuje. Petr klikne na 3 řádky které mu vadí.
+                Pořadí: Strukturní (postup, 3. místo, play-out) → Časování (pauza)
+                → Organizační (registrace, vstupné, pravidla). */}
+            <FormCard>
+              <SectionTitle>🎯 {t('tournament.wizard.settingsPreviewTitle')}</SectionTitle>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                {t('tournament.wizard.settingsPreviewHint')}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {/* ── Strukturní volby (jen pro relevantní formáty) ── */}
+                {draft.format === 'groups-knockout' && (
+                  <SettingRow
+                    icon="🏆"
+                    label={t('tournament.wizard.advanceFromGroupLabel')}
+                  >
+                    <ChipPair
+                      value={draft.advancePerGroup}
+                      options={[
+                        { v: 1, label: '1' },
+                        { v: 2, label: '2' },
+                      ]}
+                      onChange={v => updateDraft('advancePerGroup', v as 1 | 2)}
+                    />
+                  </SettingRow>
+                )}
+                {(draft.format === 'groups-knockout' || draft.format === 'knockout') && (
+                  <SettingRow
+                    icon="🥉"
+                    label={t('tournament.wizard.thirdPlaceLabel')}
+                  >
+                    <Toggle
+                      checked={draft.thirdPlaceMatch}
+                      onChange={v => updateDraft('thirdPlaceMatch', v)}
+                    />
+                  </SettingRow>
+                )}
+                {draft.format === 'groups-knockout' && (
+                  <SettingRow
+                    icon="⚔️"
+                    label={t('tournament.wizard.playOutLabel')}
+                  >
+                    <Toggle
+                      checked={draft.playOut}
+                      onChange={v => updateDraft('playOut', v)}
+                    />
+                  </SettingRow>
+                )}
 
-            {draft.showAdvanced && (
-              <FormCard>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                  {t('tournament.wizard.advancedHint')}
-                </p>
-
-                {/* Strukturní volby (postup ze skupiny, 3. místo, play-out)
-                    se LADÍ až po vytvoření v editaci turnaje — wizard má smart defaults
-                    a nemá zbytečně replikovat manuální nastavení. */}
-
-                {/* Online registrace */}
-                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={draft.registrationEnabled}
-                    onChange={e => updateDraft('registrationEnabled', e.target.checked)}
-                    style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                      {t('tournament.wizard.registrationEnabled')}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                      {t('tournament.wizard.registrationHint')}
-                    </div>
-                  </div>
-                </label>
-
-                {/* Vstupné */}
-                <FormField id="tw-fee" label={t('tournament.wizard.entryFeeLabel')}>
-                  <input
-                    id="tw-fee"
-                    type="number"
+                {/* ── Časování ── */}
+                <SettingRow
+                  icon="⏱"
+                  label={t('tournament.wizard.breakLabel')}
+                >
+                  <CompactNumberInput
+                    value={draft.breakBetweenMatchesMinutes}
                     min={0}
-                    value={draft.entryFee ?? ''}
-                    onChange={e => {
-                      const v = e.target.value;
-                      updateDraft('entryFee', v === '' ? null : Math.max(0, Number(v) || 0));
-                    }}
-                    placeholder={t('tournament.wizard.entryFeePlaceholder')}
-                    style={formInputStyle}
-                    inputMode="numeric"
+                    max={30}
+                    unit="min"
+                    onChange={v => updateDraft('breakBetweenMatchesMinutes', v)}
                   />
-                </FormField>
+                </SettingRow>
 
-                {/* Vlastní pravidla */}
-                <FormField id="tw-rules" label={t('tournament.wizard.rulesLabel')}>
-                  <textarea
-                    id="tw-rules"
+                {/* ── Organizační volby ── */}
+                <SettingRow
+                  icon="🌐"
+                  label={t('tournament.wizard.registrationEnabled')}
+                >
+                  <Toggle
+                    checked={draft.registrationEnabled}
+                    onChange={v => updateDraft('registrationEnabled', v)}
+                  />
+                </SettingRow>
+                <SettingRow
+                  icon="💰"
+                  label={t('tournament.wizard.entryFeeLabel')}
+                >
+                  <CompactNumberInput
+                    value={draft.entryFee ?? 0}
+                    min={0}
+                    max={99999}
+                    unit="Kč"
+                    onChange={v => updateDraft('entryFee', v > 0 ? v : null)}
+                    nullable
+                  />
+                </SettingRow>
+                <SettingRow
+                  icon="📜"
+                  label={t('tournament.wizard.rulesLabel')}
+                  isLast
+                >
+                  <ExpandableTextEditor
                     value={draft.rules}
-                    onChange={e => updateDraft('rules', e.target.value)}
                     placeholder={t('tournament.wizard.rulesPlaceholder')}
-                    rows={3}
-                    style={{
-                      ...formInputStyle,
-                      resize: 'vertical', fontFamily: 'inherit',
-                    }}
+                    onChange={v => updateDraft('rules', v)}
+                    addLabel={t('tournament.wizard.rulesAddLabel')}
                   />
-                </FormField>
-
-              </FormCard>
-            )}
+                </SettingRow>
+              </div>
+            </FormCard>
           </>
         )}
       </div>
