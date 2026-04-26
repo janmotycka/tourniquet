@@ -48,7 +48,7 @@ export interface FormatSuggestion {
 
 /** Default match duration v minutách pro odhad času (10 min = ČFbU/McDonald's). */
 const DEFAULT_MATCH_DURATION_MIN = 10;
-/** Pauza mezi zápasy v minutách. */
+/** Default pauza mezi zápasy v minutách. */
 const DEFAULT_BREAK_MIN = 5;
 
 /** Zjistí, jestli číslo je mocnina dvojky (pro pure KO formát). */
@@ -122,15 +122,17 @@ function groupsKnockoutMatchCount(
  * @param teamCount Počet týmů (2-32)
  * @param matchDurationMin Délka zápasu v minutách (default 10)
  * @param numberOfPitches Počet hřišť pro paralelní zápasy (default 1)
+ * @param breakMin Pauza mezi zápasy v minutách (default 5)
  */
 export function suggestFormats(
   teamCount: number,
   matchDurationMin: number = DEFAULT_MATCH_DURATION_MIN,
-  numberOfPitches: number = 1
+  numberOfPitches: number = 1,
+  breakMin: number = DEFAULT_BREAK_MIN
 ): FormatSuggestion[] {
   if (teamCount < 2) return [];
 
-  const totalSlotMin = matchDurationMin + DEFAULT_BREAK_MIN;
+  const totalSlotMin = matchDurationMin + breakMin;
   const calcMinutes = (matches: number) =>
     Math.ceil((matches / numberOfPitches) * totalSlotMin);
 
