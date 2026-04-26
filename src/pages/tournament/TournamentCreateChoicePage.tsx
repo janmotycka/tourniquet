@@ -30,6 +30,50 @@ export function TournamentCreateChoicePage({ navigate }: Props) {
         variant="inset"
       />
 
+      {/* ── Jednoduchý turnaj — pro plácek / školní akci ──
+          Audit 2026-04-26 (user): planner je vyladěný, ale pro malý
+          turnaj (3-6 týmů, McDonald's Cup) je overshoot. Quick = 30s
+          flow, round-robin, hned hraj. */}
+      <button
+        onClick={() => navigate({ name: 'tournament-quick' })}
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+          padding: `${spacing.md + 2}px ${spacing.lg}px`,
+          borderRadius: radius.xl,
+          background: 'var(--surface)',
+          border: '1.5px solid var(--border)',
+          textAlign: 'left',
+          cursor: 'pointer',
+          width: '100%',
+          gap: 6,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: spacing.sm }}>
+          <span style={{ fontSize: 20 }}>⚡</span>
+          <h2 style={{
+            fontSize: fontSize.lg - 2,
+            fontWeight: fontWeight.extrabold,
+            color: 'var(--text)',
+            margin: 0,
+          }}>
+            {t('tournament.choice.quickTitle')}
+          </h2>
+        </div>
+        <p style={{
+          fontSize: fontSize.sm,
+          color: 'var(--text-muted)',
+          lineHeight: 1.4,
+          margin: 0,
+        }}>
+          {t('tournament.choice.quickDesc')}
+        </p>
+        <ul style={bulletListStyle}>
+          <li>{t('tournament.choice.quickBullet1')}</li>
+          <li>{t('tournament.choice.quickBullet2')}</li>
+          <li>{t('tournament.choice.quickBullet3')}</li>
+        </ul>
+      </button>
+
       {/* ── Navrhnout formát — recommended ── */}
       <button
         onClick={() => navigate({ name: 'tournament-planner' })}
