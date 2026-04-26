@@ -917,7 +917,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                   emoji="🏆"
                   label={t('onboarding.done.createTournament')}
                   desc={t('onboarding.done.createTournamentDesc')}
-                  onClick={() => goNext({ name: 'tournament-create-choice' })}
+                  onClick={() => goNext({ name: 'tournament-wizard' })}
                 />
               </div>
 

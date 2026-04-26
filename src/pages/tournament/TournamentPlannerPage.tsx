@@ -104,7 +104,7 @@ export function TournamentPlannerPage({ navigate }: Props) {
 
   const goBack = () => {
     if (step === 1) {
-      navigate({ name: 'tournament-create-choice' });
+      navigate({ name: 'tournament-wizard' });
     } else {
       setStep((step - 1) as WizardStep);
     }

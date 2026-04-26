@@ -905,7 +905,7 @@ export function HomePage({ navigate }: Props) {
             Stejná velikost jako match card pro vizuální paritu. */}
         {(isSimpleMode || isFloorball) && !isTennisIndividual && (
           <button
-            onClick={() => navigate({ name: 'tournament-create-choice' })}
+            onClick={() => navigate({ name: 'tournament-wizard' })}
             style={{
               background: 'linear-gradient(135deg, #E65100 0%, #FF6F00 100%)',
               borderRadius: 22, padding: '24px',

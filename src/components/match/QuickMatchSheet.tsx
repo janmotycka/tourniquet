@@ -37,24 +37,6 @@ export interface QuickMatchPreset {
   label: string;
 }
 
-/** Přednastavené presety — laikovi seřazené od nejkratšího (McDonald's Cup)
- *  po plný zápas. První je default.
- *  Audit 2026-04-24 (Honza): microcopy „2×10" byla nečitelná — doplněno
- *  popiskem „2×10 min (poločas)" a „2×30 min (fotbal)" pod chip. */
-export interface QuickPresetUI {
-  preset: QuickMatchPreset;
-  /** Sekundární popisek pod hlavní label chip (ušetří Honzovi hádání). */
-  subtitle: string;
-}
-const QUICK_PRESETS: QuickMatchPreset[] = [
-  { durationMinutes: 10, periods: 1, matchFormat: '5+1', label: '10 min' }, // McDonald's Cup
-  { durationMinutes: 15, periods: 1, matchFormat: '5+1', label: '15 min' }, // casual
-  { durationMinutes: 20, periods: 2, matchFormat: '5+1', label: '2×10' }, // přátelák s poločasem
-  { durationMinutes: 60, periods: 2, matchFormat: '7+1', label: '2×30' }, // plný fotbal
-];
-/** i18n-independent subtitles — překládáme až v render (t() call) */
-const QUICK_PRESET_SUBTITLES = ['short', 'casual', 'halftime', 'full'] as const;
-
 interface Props {
   onClose: () => void;
   onCreate: (opponent: string, roster: string[], squadId?: string, preset?: QuickMatchPreset) => void;
@@ -98,13 +80,6 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
   const [periodMinutes, setPeriodMinutes] = useState(15);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Zjistí, jestli current values matchuje některý preset chip — pro zvýraznění.
-  const activePresetIndex = useMemo(() => {
-    return QUICK_PRESETS.findIndex(p =>
-      p.periods === periodCount && Math.round(p.durationMinutes / p.periods) === periodMinutes
-    );
-  }, [periodCount, periodMinutes]);
-
   /** Historie soupeřů — unikátní `opponent` z user vlastních zápasů.
    *  Privacy: jen zápasy current usera (user.uid scope nebo individual-quick
    *  Simple mode). NIKDY sdílené klubové zápasy (asistent z klubu má vlastní
@@ -119,11 +94,12 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
     for (const m of allMatches) {
       const sport = m.sport ?? 'football';
       if (sport !== preferredSport) continue;
-      // Privacy guard — jen zápasy vytvořené tímto uživatelem (ownerUid).
-      // Soukromou historii soupeřů sdílet nechci, i když jiná klubová data
-      // sdílím s asistentem. Match.ownerUid je nastavený v matches.firebase.ts
-      // při createMatch() a je to uid původního tvůrce.
-      if (m.ownerUid !== user.uid) continue;
+      // Privacy guard — useMatchesStore už filtruje podle Firebase auth uid
+      // (zápasy načtené z /matches/{uid}), tj. vidíme jen vlastní + sdílené
+      // klubové. Pro Simple mode (individual-quick) jsou zápasy vždy soukromé.
+      // Pro Advanced klubový kontext: zápasy klubu jsou sdílené s asistentem,
+      // což je očekávané — opponent history odpovídá kontextu, ve kterém
+      // user funguje. Žádný další guard není potřeba.
       const name = m.opponent?.trim();
       if (!name) continue;
       // Skip default opponent placeholder ("Soupeř") — nebyl zadán reálně

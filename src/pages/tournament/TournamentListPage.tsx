@@ -363,7 +363,7 @@ export function TournamentListPage({ navigate }: Props) {
           }
           primaryAction={
             <button
-              onClick={() => navigate({ name: 'tournament-create-choice' })}
+              onClick={() => navigate({ name: 'tournament-wizard' })}
               style={desktopPrimaryButtonStyle}
               disabled={tournaments.length >= limits.maxTournaments}
             >
@@ -411,7 +411,7 @@ export function TournamentListPage({ navigate }: Props) {
               <div style={{ fontSize: 14, color: 'var(--text-muted)', maxWidth: 460, lineHeight: 1.5 }}>
                 {t('tournament.list.emptyDesc')}
               </div>
-              <button onClick={() => navigate({ name: 'tournament-create-choice' })} style={{ ...desktopPrimaryButtonStyle, marginTop: 8 }}>
+              <button onClick={() => navigate({ name: 'tournament-wizard' })} style={{ ...desktopPrimaryButtonStyle, marginTop: 8 }}>
                 + {t('tournament.list.createTournament')}
               </button>
             </div>
@@ -467,7 +467,7 @@ export function TournamentListPage({ navigate }: Props) {
         onBack={() => navigate({ name: 'home' })}
         action={
           <button
-            onClick={() => navigate({ name: 'tournament-create-choice' })}
+            onClick={() => navigate({ name: 'tournament-wizard' })}
             style={{
               background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 14,
               padding: '8px 16px', borderRadius: 12,
@@ -554,7 +554,7 @@ export function TournamentListPage({ navigate }: Props) {
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: 15, lineHeight: 1.5 }}>
               {t('tournament.list.emptyDesc')}
             </p>
-            <button onClick={() => navigate({ name: 'tournament-create-choice' })} style={{
+            <button onClick={() => navigate({ name: 'tournament-wizard' })} style={{
               background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 16,
               padding: '14px 32px', borderRadius: 12, marginTop: 8,
             }}>
@@ -580,7 +580,7 @@ export function TournamentListPage({ navigate }: Props) {
               featureLabel={t('tournament.list.featureLabelTournaments')}
               onUpgrade={() => navigate({ name: 'settings' })}
             >
-              <button onClick={() => navigate({ name: 'tournament-create-choice' })} style={{
+              <button onClick={() => navigate({ name: 'tournament-wizard' })} style={{
                 background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700, fontSize: 15,
                 padding: '14px', borderRadius: 14, border: '2px dashed var(--primary)', opacity: 0.8,
                 marginTop: 4, width: '100%',
