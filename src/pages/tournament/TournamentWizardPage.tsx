@@ -65,7 +65,16 @@ const TEAM_COLORS = [
 ];
 
 const DRAFT_KEY = 'torq.tournamentWizard.draft.v1';
-const TEAM_COUNT_OPTIONS = [3, 4, 5, 6, 8, 10, 12, 16] as const;
+/**
+ * Chip set pro výběr počtu týmů. Pokrýváme celý rozsah 3–16 (nejčastější
+ * pro mládežnické turnaje včetně McDonald's Cupu). Pro >16 týmů je přístupný
+ * vlastní vstup (až 32 týmů — limit smart-suggest engine).
+ */
+const TEAM_COUNT_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] as const;
+/** Maximální podporovaný počet týmů (smart-suggest engine + brackets generator). */
+const TEAM_COUNT_MAX = 32;
+/** Minimální počet týmů (round-robin potřebuje aspoň 2). */
+const TEAM_COUNT_MIN = 2;
 
 function todayStr(): string {
   return new Date().toISOString().split('T')[0];
@@ -150,6 +159,8 @@ export function TournamentWizardPage({ navigate }: Props) {
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   // Templates — show jen pokud user má >= 1 předchozí turnaj
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  // Vlastní počet týmů — toggle (zobrazí inline number input pro >16 týmů)
+  const [showCustomTeamCount, setShowCustomTeamCount] = useState(false);
 
   // Load draft on mount
   useEffect(() => {
@@ -367,10 +378,13 @@ export function TournamentWizardPage({ navigate }: Props) {
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column',
       minHeight: '100dvh', background: 'var(--bg)',
-      paddingBottom: 90, // space pro sticky bottom CTA
     }}>
-      {/* Wrapper — center wizard na desktopu, full width na mobilu */}
-      <div style={{ width: '100%', maxWidth: 720, margin: '0 auto' }}>
+      {/* Wrapper — center wizard na desktopu, full width na mobilu.
+          Sticky CTA je uvnitř, takže respektuje max-width parenta. */}
+      <div style={{
+        width: '100%', maxWidth: 720, margin: '0 auto',
+        flex: 1, display: 'flex', flexDirection: 'column',
+      }}>
         <PageHeader
           title={t('tournament.wizard.title')}
           subtitle={stepLabel}
@@ -559,12 +573,79 @@ export function TournamentWizardPage({ navigate }: Props) {
                 {TEAM_COUNT_OPTIONS.map(n => (
                   <SelectionTile
                     key={n}
-                    active={draft.teamCount === n}
-                    onClick={() => handleTeamCountChange(n)}
+                    active={draft.teamCount === n && !showCustomTeamCount}
+                    onClick={() => {
+                      setShowCustomTeamCount(false);
+                      handleTeamCountChange(n);
+                    }}
                     label={n}
                   />
                 ))}
               </SelectionTiles>
+
+              {/* Vlastní počet — pro velké turnaje (>16 týmů, max 32) */}
+              {!showCustomTeamCount && draft.teamCount <= 16 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowCustomTeamCount(true)}
+                  style={{
+                    background: 'transparent', border: 'none',
+                    color: 'var(--primary)', fontSize: 12, fontWeight: 700,
+                    cursor: 'pointer', padding: '6px 0', alignSelf: 'flex-start',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  + {t('tournament.wizard.teamCountCustomLink')}
+                </button>
+              ) : (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px', borderRadius: 12,
+                  background: 'var(--primary-light)', border: '2px solid var(--primary)',
+                }}>
+                  <label htmlFor="tw-custom-teamcount" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                    {t('tournament.wizard.teamCountCustomLabel')}
+                  </label>
+                  <input
+                    id="tw-custom-teamcount"
+                    type="number"
+                    inputMode="numeric"
+                    min={TEAM_COUNT_MIN}
+                    max={TEAM_COUNT_MAX}
+                    value={draft.teamCount}
+                    onChange={e => {
+                      const raw = parseInt(e.target.value, 10);
+                      if (Number.isNaN(raw)) return;
+                      const clamped = Math.max(TEAM_COUNT_MIN, Math.min(TEAM_COUNT_MAX, raw));
+                      handleTeamCountChange(clamped);
+                    }}
+                    style={{
+                      width: 70, padding: '8px 10px',
+                      fontSize: 16, fontWeight: 800, textAlign: 'center',
+                      borderRadius: 10, border: '1px solid var(--border)',
+                      background: 'var(--surface)', color: 'var(--text)',
+                    }}
+                  />
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
+                    {t('tournament.wizard.teamCountCustomHint', { max: TEAM_COUNT_MAX })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustomTeamCount(false);
+                      handleTeamCountChange(8);
+                    }}
+                    style={{
+                      background: 'transparent', border: 'none',
+                      color: 'var(--text-muted)', fontSize: 18,
+                      cursor: 'pointer', padding: 4, lineHeight: 1,
+                    }}
+                    aria-label={t('common.close')}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
             </FormCard>
 
             <FormCard>
@@ -860,24 +941,21 @@ export function TournamentWizardPage({ navigate }: Props) {
         )}
       </div>
 
-      </div>{/* /wizard wrapper (max-width 720) */}
-
-      {/* Sticky bottom CTA — outer bar přes celou šířku (background +
-          border-top), inner container max-width matching wizard content
-          (audit 2026-04-26 user: na desktopu se táhl přes celý viewport
-          a vypadal divně mimo wizard kontejner). */}
-      <div style={{
-        position: 'fixed', left: 0, right: 0, bottom: 0,
-        background: 'var(--surface)',
-        borderTop: '1px solid var(--border)',
-        zIndex: 50,
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}>
+        {/* Sticky bottom CTA — `position: sticky` UVNITŘ wizard kontejneru,
+            takže respektuje max-width 720px wrapperu (na desktopu se nataží
+            jen přes wizard, na mobilu přes celou šířku obrazovky).
+            Audit 2026-04-26 (user 2× iter): původně `position: fixed` přes
+            celý viewport vypadal rozbitě. Sticky in-flow řeší to čistě.
+            `marginTop: auto` strká CTA na konec flex column kontejneru.  */}
         <div style={{
-          maxWidth: 720, // matchuje wizard content width
-          margin: '0 auto',
+          marginTop: 'auto',
+          position: 'sticky', bottom: 0,
+          background: 'var(--surface)',
+          borderTop: '1px solid var(--border)',
           padding: '12px 16px',
+          paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
           display: 'flex', gap: 10,
+          zIndex: 50,
         }}>
           <button
             type="button"
@@ -904,7 +982,7 @@ export function TournamentWizardPage({ navigate }: Props) {
                 : t('tournament.wizard.nextCta')}
           </PrimaryButton>
         </div>
-      </div>
+      </div>{/* /wizard wrapper */}
     </div>
   );
 }

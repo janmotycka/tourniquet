@@ -2566,6 +2566,9 @@ export const cs = {
   // Step 2
   'tournament.wizard.step2TeamsTitle': 'Kolik týmů?',
   'tournament.wizard.teamCountHint': 'Vyber počet týmů. Aplikace ti pak doporučí formát.',
+  'tournament.wizard.teamCountCustomLink': 'Větší turnaj? Zadej vlastní počet',
+  'tournament.wizard.teamCountCustomLabel': 'Počet týmů:',
+  'tournament.wizard.teamCountCustomHint': 'Max {max} týmů.',
   'tournament.wizard.step2FormatTitle': 'Formát turnaje',
   'tournament.wizard.formatSmartHint': 'Pro {teamCount} týmů ti doporučujeme formát níže (⭐). Můžeš změnit.',
   'tournament.wizard.recommendedBadge': 'Doporučeno',
