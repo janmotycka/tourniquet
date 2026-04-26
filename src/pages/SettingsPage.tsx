@@ -379,56 +379,67 @@ export function SettingsPage({ navigate }: Props) {
                 <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--warning)' }}>
                   {t('settings.freePlan')}
                 </div>
-                <div style={{ fontSize: 13, color: '#BF360C', lineHeight: 1.5 }}>
-                  {t('settings.freePlanDesc')}
-                </div>
-                {/* Usage bars — napříč sporty (sport-agnostic limity).
-                    V tenis módu skrýváme řádek Tréninky (tenis modul je nepoužívá). */}
-                {(() => {
-                  const limits = getLimits();
-                  const isTennis = preferredSport === 'tennis';
-                  // Počty filtrujeme podle aktuálního sportu — aby trenér neviděl
-                  // cizí limity. Limity jsou sport-agnostic (sdílené pro oba sporty),
-                  // ale počet ukazujeme jen pro ten, na který se teď dívá.
-                  const tournamentsForSport = tournaments.filter(tt => (tt.sport ?? 'football') === preferredSport);
-                  const matchesForSport = matches.filter(m => (m.sport ?? 'football') === preferredSport);
-                  const items = [
-                    { label: t('settings.usageTournaments'), count: tournamentsForSport.length, max: limits.maxTournaments },
-                    { label: t('settings.usageMatches'), count: matchesForSport.length, max: limits.maxMatches },
-                    ...(isTennis ? [] : [
-                      { label: t('settings.usageTrainings'), count: trainings.length, max: limits.maxSavedTrainings },
-                    ]),
-                  ];
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                      {items.map(item => {
-                        const pct = Math.min(100, (item.count / item.max) * 100);
-                        const atLimit = item.count >= item.max;
-                        return (
-                          <div key={item.label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6D4C41', fontWeight: 600 }}>
-                              <span>{item.label}</span>
-                              <span>{item.count} / {item.max}</span>
-                            </div>
-                            <div style={{ height: 4, background: 'rgba(191,54,12,.15)', borderRadius: 2, overflow: 'hidden' }}>
-                              <div style={{
-                                width: `${pct}%`, height: '100%',
-                                background: atLimit ? 'var(--danger)' : 'var(--warning)',
-                                transition: 'width .3s',
-                              }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                      <div style={{ fontSize: 10, color: '#8D6E63', fontStyle: 'italic', marginTop: 2 }}>
-                        {t('settings.usageAcrossSports')}
-                      </div>
+                {/* Audit 2026-04-26 (user screenshot): subscription panel ukazoval
+                    nesmyslné „Max 1 turnaj, 3 tréninky, 3 zápasy" pro Simple
+                    usera (kdo má unlimited) + usage bars 0/Infinity + zmínku
+                    o tenisu (skrytém). Nyní se v Simple módu ukáže jen
+                    krátká friendly zpráva bez usage bars. Advanced ponechává
+                    původní behavior (limity, bars, premium offer). */}
+                {appMode === 'simple' ? (
+                  <div style={{ fontSize: 13, color: '#BF360C', lineHeight: 1.5 }}>
+                    {t('settings.freePlanDescSimple')}
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 13, color: '#BF360C', lineHeight: 1.5 }}>
+                      {t('settings.freePlanDesc')}
                     </div>
-                  );
-                })()}
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--warning)', marginTop: 4 }}>
-                  {t('settings.premiumOffer', { price: t('subscription.price') })}
-                </div>
+                    {/* Usage bars — pokrývají Advanced limity. V tenis módu
+                        skryté Tréninky (tenis modul je nepoužívá). */}
+                    {(() => {
+                      const limits = getLimits();
+                      const isTennis = preferredSport === 'tennis';
+                      const tournamentsForSport = tournaments.filter(tt => (tt.sport ?? 'football') === preferredSport);
+                      const matchesForSport = matches.filter(m => (m.sport ?? 'football') === preferredSport);
+                      const items = [
+                        { label: t('settings.usageTournaments'), count: tournamentsForSport.length, max: limits.maxTournaments },
+                        { label: t('settings.usageMatches'), count: matchesForSport.length, max: limits.maxMatches },
+                        ...(isTennis ? [] : [
+                          { label: t('settings.usageTrainings'), count: trainings.length, max: limits.maxSavedTrainings },
+                        ]),
+                      ];
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                          {items.map(item => {
+                            const pct = Math.min(100, (item.count / item.max) * 100);
+                            const atLimit = item.count >= item.max;
+                            return (
+                              <div key={item.label} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6D4C41', fontWeight: 600 }}>
+                                  <span>{item.label}</span>
+                                  <span>{item.count} / {item.max}</span>
+                                </div>
+                                <div style={{ height: 4, background: 'rgba(191,54,12,.15)', borderRadius: 2, overflow: 'hidden' }}>
+                                  <div style={{
+                                    width: `${pct}%`, height: '100%',
+                                    background: atLimit ? 'var(--danger)' : 'var(--warning)',
+                                    transition: 'width .3s',
+                                  }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                          <div style={{ fontSize: 10, color: '#8D6E63', fontStyle: 'italic', marginTop: 2 }}>
+                            {t('settings.usageAcrossSports')}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--warning)', marginTop: 4 }}>
+                      {t('settings.premiumOffer', { price: t('subscription.price') })}
+                    </div>
+                  </>
+                )}
                 <button
                   onClick={() => setFeaturesOpen(o => !o)}
                   style={{
@@ -456,11 +467,20 @@ export function SettingsPage({ navigate }: Props) {
                   </div>
                 </div>
               </div>
-              {/* Apple App Store rule 3.1.1 — v iOS verzi NEMŮŽEME prodávat
-                  digital subscription přes Stripe. Místo Subscribe tlačítka
-                  ukážeme info, ať user platí na webu (Spotify-style workaround).
-                  Android Play Store je tolerantní → tlačítko zůstává. */}
-              {shouldHideStripeUpgrade() ? (
+              {/* Subscribe gating:
+                  1. iOS App Store rule 3.1.1: skryté Stripe upgrade tlačítko
+                  2. Simple mode: Premium nemá smysl (user má vše unlimited)
+                     → místo tlačítka ukážeme info „přepni na Pokročilý" */}
+              {appMode === 'simple' ? (
+                <div style={{
+                  background: 'var(--surface-var)', color: 'var(--text-muted)',
+                  fontSize: 13, lineHeight: 1.5,
+                  padding: '14px', borderRadius: 12, textAlign: 'center',
+                  border: '1px solid var(--border)',
+                }}>
+                  {t('settings.simpleNoPremiumHint')}
+                </div>
+              ) : shouldHideStripeUpgrade() ? (
                 <div style={{
                   background: 'var(--surface-var)', color: 'var(--text-muted)',
                   fontSize: 13, lineHeight: 1.5,
