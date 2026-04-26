@@ -48,7 +48,7 @@ import { generatePinSalt, hashPin } from '../../utils/pin-hash';
 import { suggestFormats, type FormatSuggestion } from '../../utils/tournament-format-suggest';
 import {
   PageHeader,
-  FormCard, SectionTitle, FormField, SelectionTile, SelectionTiles, PrimaryButton,
+  FormCard, SectionTitle, FormField, PrimaryButton,
   formInputStyle,
 } from '../../components/ui';
 import type { TournamentFormat } from '../../types/tournament.types';
@@ -569,19 +569,36 @@ export function TournamentWizardPage({ navigate }: Props) {
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
                 {t('tournament.wizard.teamCountHint')}
               </p>
-              <SelectionTiles style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-                {TEAM_COUNT_OPTIONS.map(n => (
-                  <SelectionTile
-                    key={n}
-                    active={draft.teamCount === n && !showCustomTeamCount}
-                    onClick={() => {
-                      setShowCustomTeamCount(false);
-                      handleTeamCountChange(n);
-                    }}
-                    label={n}
-                  />
-                ))}
-              </SelectionTiles>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                gap: 6,
+              }}>
+                {TEAM_COUNT_OPTIONS.map(n => {
+                  const active = draft.teamCount === n && !showCustomTeamCount;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => {
+                        setShowCustomTeamCount(false);
+                        handleTeamCountChange(n);
+                      }}
+                      style={{
+                        padding: '8px 0',
+                        borderRadius: 10,
+                        fontSize: 14, fontWeight: 700,
+                        background: active ? 'var(--primary)' : 'var(--surface-var)',
+                        color: active ? '#fff' : 'var(--text-muted)',
+                        border: active ? 'none' : '1.5px solid var(--border)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* Vlastní počet — pro velké turnaje (>16 týmů, max 32) */}
               {!showCustomTeamCount && draft.teamCount <= 16 ? (
