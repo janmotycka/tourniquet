@@ -2565,6 +2565,10 @@ export const cs = {
   'tournament.wizard.templateTeams': 'týmů',
   // Step 2
   'tournament.wizard.step2TeamsTitle': 'Kolik týmů?',
+  'tournament.wizard.endTimeLabel': 'Konec',
+  'tournament.wizard.endTimeHint': 'Volitelně — pro upozornění',
+  'tournament.wizard.endsAround': 'Skončí ~',
+  'tournament.wizard.exceedsPlannedEnd': 'Přesáhne plánovaný konec o {minutes} min',
   'tournament.wizard.teamCountHint': 'Vyber počet týmů. Aplikace ti pak doporučí formát.',
   'tournament.wizard.teamCountCustomLink': 'Větší turnaj? Zadej vlastní počet',
   'tournament.wizard.teamCountCustomLabel': 'Počet týmů:',

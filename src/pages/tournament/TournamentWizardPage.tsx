@@ -85,6 +85,10 @@ interface WizardDraft {
   name: string;
   date: string;
   venue: string;
+  /** Začátek turnaje "HH:MM". Default 10:00. */
+  startTime: string;
+  /** Volitelný plánovaný konec "HH:MM". Když je set, ukáže se warning pokud predikce přesahuje. */
+  plannedEndTime: string;
   teamCount: number;
   format: TournamentFormat | null; // null = ještě nevybráno
   teamNames: string[];
@@ -92,7 +96,6 @@ interface WizardDraft {
   showAdvanced: boolean;
   matchDurationMinutes: number;
   numberOfPitches: number;
-  startTime: string;
   registrationEnabled: boolean;
   entryFee: number | null;
   rules: string;
@@ -104,17 +107,43 @@ function emptyDraft(): WizardDraft {
     name: '',
     date: todayStr(),
     venue: '',
+    startTime: '10:00',
+    plannedEndTime: '',
     teamCount: 4,
     format: null,
     teamNames: ['', '', '', ''],
     showAdvanced: false,
     matchDurationMinutes: 10,
     numberOfPitches: 1,
-    startTime: '10:00',
     registrationEnabled: false,
     entryFee: null,
     rules: '',
   };
+}
+
+/** Konvertuje "HH:MM" → minuty od půlnoci. Vrátí null když invalid. */
+function parseTimeToMinutes(t: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(t.trim());
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const mn = parseInt(m[2], 10);
+  if (h < 0 || h > 23 || mn < 0 || mn > 59) return null;
+  return h * 60 + mn;
+}
+
+/** Konvertuje minuty od půlnoci → "HH:MM". Wrap-around přes půlnoc je OK (vrací mod 24h). */
+function minutesToTimeStr(min: number): string {
+  const wrapped = ((min % 1440) + 1440) % 1440;
+  const h = Math.floor(wrapped / 60);
+  const mn = wrapped % 60;
+  return `${String(h).padStart(2, '0')}:${String(mn).padStart(2, '0')}`;
+}
+
+/** Spočítá predikovaný konec turnaje ze začátku + estimovaných minut. */
+function computeEndTime(startTime: string, durationMin: number): string | null {
+  const start = parseTimeToMinutes(startTime);
+  if (start === null) return null;
+  return minutesToTimeStr(start + durationMin);
 }
 
 function loadDraft(): WizardDraft | null {
@@ -522,8 +551,8 @@ export function TournamentWizardPage({ navigate }: Props) {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 10 }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 100px', minWidth: 100 }}>
                   <FormField id="tw-date" label={t('tournament.wizard.dateLabel')}>
                     <input
                       id="tw-date"
@@ -534,13 +563,28 @@ export function TournamentWizardPage({ navigate }: Props) {
                     />
                   </FormField>
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: '1 1 90px', minWidth: 90 }}>
                   <FormField id="tw-time" label={t('tournament.wizard.timeLabel')}>
                     <input
                       id="tw-time"
                       type="time"
                       value={draft.startTime}
                       onChange={e => updateDraft('startTime', e.target.value)}
+                      style={formInputStyle}
+                    />
+                  </FormField>
+                </div>
+                <div style={{ flex: '1 1 90px', minWidth: 90 }}>
+                  <FormField
+                    id="tw-end-time"
+                    label={t('tournament.wizard.endTimeLabel')}
+                    hint={t('tournament.wizard.endTimeHint')}
+                  >
+                    <input
+                      id="tw-end-time"
+                      type="time"
+                      value={draft.plannedEndTime}
+                      onChange={e => updateDraft('plannedEndTime', e.target.value)}
                       style={formInputStyle}
                     />
                   </FormField>
@@ -717,14 +761,52 @@ export function TournamentWizardPage({ navigate }: Props) {
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
                         {t(s.descriptionKey)}
                       </div>
-                      {s.valid && s.totalMatches > 0 && (
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
-                          📊 {s.totalMatches} {t('tournament.wizard.matchesUnit')} · ⏱ ~{s.estimatedMinutes} {t('tournament.wizard.minutesUnit')}
-                          {s.format === 'groups-knockout' && s.groupCount && (
-                            <> · {s.groupCount}× {t('tournament.wizard.groupsLabel')} {t('tournament.wizard.groupsBy')} {s.groupSize}</>
-                          )}
-                        </div>
-                      )}
+                      {s.valid && s.totalMatches > 0 && (() => {
+                        // Predikovaný konec turnaje + porovnání s plánovaným koncem
+                        const predictedEnd = computeEndTime(draft.startTime, s.estimatedMinutes);
+                        const startMin = parseTimeToMinutes(draft.startTime);
+                        const plannedEndMin = draft.plannedEndTime ? parseTimeToMinutes(draft.plannedEndTime) : null;
+                        const overflowMin = (
+                          startMin !== null && plannedEndMin !== null
+                            ? (startMin + s.estimatedMinutes) - plannedEndMin
+                            : null
+                        );
+                        const exceeds = overflowMin !== null && overflowMin > 0;
+                        return (
+                          <>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+                              📊 {s.totalMatches} {t('tournament.wizard.matchesUnit')} · ⏱ ~{s.estimatedMinutes} {t('tournament.wizard.minutesUnit')}
+                              {predictedEnd && (
+                                <> · 🏁 {t('tournament.wizard.endsAround')} {predictedEnd}</>
+                              )}
+                              {s.format === 'groups-knockout' && s.groupSizes && s.groupSizes.length > 0 && (() => {
+                                // Pokud jsou všechny skupiny stejně velké → "3× po 4"
+                                // Jinak → "3 skupiny: 4·4·3"
+                                const allSame = s.groupSizes.every(sz => sz === s.groupSizes![0]);
+                                if (allSame) {
+                                  return (
+                                    <> · {s.groupSizes.length}× {t('tournament.wizard.groupsLabel')} {t('tournament.wizard.groupsBy')} {s.groupSizes[0]}</>
+                                  );
+                                }
+                                return (
+                                  <> · {s.groupSizes.length} {t('tournament.wizard.groupsLabel')}: {s.groupSizes.join('·')}</>
+                                );
+                              })()}
+                            </div>
+                            {exceeds && (
+                              <div style={{
+                                fontSize: 11, fontWeight: 700,
+                                color: 'var(--danger)',
+                                background: 'rgba(198, 40, 40, 0.08)',
+                                padding: '6px 10px', borderRadius: 8,
+                                marginTop: 2,
+                              }}>
+                                ⚠️ {t('tournament.wizard.exceedsPlannedEnd', { minutes: overflowMin })}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </button>
                   );
                 })}

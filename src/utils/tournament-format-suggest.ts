@@ -27,8 +27,11 @@ export interface FormatSuggestion {
   // Group-based formats (jen pro groups-knockout)
   /** Doporučený počet skupin (jen pro groups-knockout). */
   groupCount?: number;
-  /** Velikost skupiny (počet týmů ve skupině). */
-  groupSize?: number;
+  /**
+   * Skutečná velikost každé skupiny (počet týmů). Pro 11 týmů ve 3 skupinách
+   * by tohle bylo `[4, 4, 3]`. První skupiny dostávají případný zbytek.
+   */
+  groupSizes?: number[];
   /** Počet postupujících z každé skupiny do KO (1 nebo 2). */
   qualifyingPerGroup?: number;
 
@@ -62,37 +65,52 @@ function roundRobinMatchCount(teams: number): number {
 }
 
 /**
+ * Distribuuje teams do groupCount skupin co nejrovnoměrněji.
+ * První skupiny dostávají případný zbytek (větší o 1 než zbytek).
+ * Příklad: 11 týmů, 3 skupiny → [4, 4, 3]
+ *          10 týmů, 3 skupiny → [4, 3, 3]
+ *          14 týmů, 4 skupiny → [4, 4, 3, 3]
+ */
+function distributeIntoGroups(teams: number, groupCount: number): number[] {
+  const base = Math.floor(teams / groupCount);
+  const rem = teams % groupCount;
+  return Array.from({ length: groupCount }, (_, i) => base + (i < rem ? 1 : 0));
+}
+
+/**
  * Doporučený počet skupin pro groups-knockout formát.
  * Heuristika: rovnoměrné rozdělení, preferujeme skupiny po 3-4 týmech.
- *  6 týmů  → 2 skupiny po 3
- *  7-8     → 2 skupiny po 3-4
- *  9-12    → 3 nebo 4 skupiny po 3
- *  13-16   → 4 skupiny po 3-4
+ *  4-6 týmů  → 2 skupiny po 2-3
+ *  7-8       → 2 skupiny po 3-4
+ *  9-12      → 3 skupiny po 3-4
+ *  13-16     → 4 skupiny po 3-4
+ *  17+       → 4 skupiny (manual create doporučen)
  */
-function suggestGroupCount(teams: number): { groupCount: number; groupSize: number; advancePerGroup: number } | null {
+function suggestGroupCount(teams: number): { groupCount: number; groupSizes: number[]; advancePerGroup: number } | null {
   if (teams < 4) return null; // minimum pro skupiny
-  if (teams <= 6) return { groupCount: 2, groupSize: Math.ceil(teams / 2), advancePerGroup: 2 };
-  if (teams <= 8) return { groupCount: 2, groupSize: Math.ceil(teams / 2), advancePerGroup: 2 };
-  if (teams <= 12) return { groupCount: 3, groupSize: Math.ceil(teams / 3), advancePerGroup: 2 };
-  if (teams <= 16) return { groupCount: 4, groupSize: Math.ceil(teams / 4), advancePerGroup: 2 };
-  // Backup pro >16 (ručně přes manual create)
-  return { groupCount: 4, groupSize: Math.ceil(teams / 4), advancePerGroup: 2 };
+  let groupCount: number;
+  if (teams <= 8) groupCount = 2;
+  else if (teams <= 12) groupCount = 3;
+  else groupCount = 4;
+  return {
+    groupCount,
+    groupSizes: distributeIntoGroups(teams, groupCount),
+    advancePerGroup: 2,
+  };
 }
 
 /**
  * Spočítá odhad zápasů pro groups+knockout formát.
- * = součet zápasů ve skupinách + KO bracket podle počtu postupujících.
+ * = součet zápasů ve všech skupinách (každá round-robin samostatně) + KO bracket.
  */
 function groupsKnockoutMatchCount(
-  groupCount: number,
-  groupSize: number,
+  groupSizes: number[],
   advancePerGroup: number
 ): number {
-  // Zápasy ve skupinách (round-robin v každé skupině)
-  const groupMatches = groupCount * roundRobinMatchCount(groupSize);
+  // Zápasy ve skupinách — každá skupina hraje round-robin samostatně.
+  const groupMatches = groupSizes.reduce((sum, size) => sum + roundRobinMatchCount(size), 0);
   // KO fáze: total = N - 1 (single elimination, kde N = počet kvalifikovaných)
-  const knockoutTeams = groupCount * advancePerGroup;
-  // Pokud je knockoutTeams mocnina 2, přesně N-1 zápasů; jinak playoff může mít víc
+  const knockoutTeams = groupSizes.length * advancePerGroup;
   const knockoutMatches = Math.max(0, knockoutTeams - 1);
   return groupMatches + knockoutMatches;
 }
@@ -132,13 +150,13 @@ export function suggestFormats(
   const gk = suggestGroupCount(teamCount);
   let groupsKnockout: FormatSuggestion;
   if (gk) {
-    const gkMatches = groupsKnockoutMatchCount(gk.groupCount, gk.groupSize, gk.advancePerGroup);
+    const gkMatches = groupsKnockoutMatchCount(gk.groupSizes, gk.advancePerGroup);
     groupsKnockout = {
       format: 'groups-knockout',
       valid: teamCount >= 4,
       recommended: false,
       groupCount: gk.groupCount,
-      groupSize: gk.groupSize,
+      groupSizes: gk.groupSizes,
       qualifyingPerGroup: gk.advancePerGroup,
       totalMatches: gkMatches,
       estimatedMinutes: calcMinutes(gkMatches),
