@@ -714,6 +714,45 @@ export function TournamentWizardPage({ navigate }: Props) {
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
                 {t('tournament.wizard.formatSmartHint', { teamCount: draft.teamCount })}
               </p>
+
+              {/* Délka zápasu + počet hřišť — vždy viditelné, ovlivňují odhad času */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <FormField id="tw-match-duration" label={t('tournament.wizard.matchDurationLabel')}>
+                    <input
+                      id="tw-match-duration"
+                      type="number"
+                      min={1}
+                      max={90}
+                      value={draft.matchDurationMinutes}
+                      onChange={e => {
+                        const n = Number(e.target.value);
+                        if (Number.isFinite(n)) updateDraft('matchDurationMinutes', Math.max(1, Math.min(90, n)));
+                      }}
+                      style={formInputStyle}
+                      inputMode="numeric"
+                    />
+                  </FormField>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <FormField id="tw-pitches" label={t('tournament.wizard.pitchesLabel')}>
+                    <input
+                      id="tw-pitches"
+                      type="number"
+                      min={1}
+                      max={8}
+                      value={draft.numberOfPitches}
+                      onChange={e => {
+                        const n = Number(e.target.value);
+                        if (Number.isFinite(n)) updateDraft('numberOfPitches', Math.max(1, Math.min(8, n)));
+                      }}
+                      style={formInputStyle}
+                      inputMode="numeric"
+                    />
+                  </FormField>
+                </div>
+              </div>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {formatSuggestions.map(s => {
                   const isActive = draft.format === s.format;
@@ -817,66 +856,6 @@ export function TournamentWizardPage({ navigate }: Props) {
                 </div>
               )}
 
-              {/* Planner helper — jen pokud uživatel chce přesnější výpočet */}
-              <button
-                type="button"
-                onClick={() => updateDraft('showAdvanced', !draft.showAdvanced)}
-                style={{
-                  marginTop: 4, padding: '8px 0',
-                  background: 'transparent', color: 'var(--primary)',
-                  border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-              >
-                💡 {t('tournament.wizard.plannerHelperOpen')}
-              </button>
-              {draft.showAdvanced && (
-                <div style={{
-                  background: 'var(--surface-var)', borderRadius: 12, padding: 12,
-                  display: 'flex', flexDirection: 'column', gap: 10,
-                  border: '1px solid var(--border)',
-                }}>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                    {t('tournament.wizard.plannerHelperHint')}
-                  </div>
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <div style={{ flex: 1 }}>
-                      <FormField id="tw-match-duration" label={t('tournament.wizard.matchDurationLabel')}>
-                        <input
-                          id="tw-match-duration"
-                          type="number"
-                          min={1}
-                          max={90}
-                          value={draft.matchDurationMinutes}
-                          onChange={e => {
-                            const n = Number(e.target.value);
-                            if (Number.isFinite(n)) updateDraft('matchDurationMinutes', Math.max(1, Math.min(90, n)));
-                          }}
-                          style={formInputStyle}
-                          inputMode="numeric"
-                        />
-                      </FormField>
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <FormField id="tw-pitches" label={t('tournament.wizard.pitchesLabel')}>
-                        <input
-                          id="tw-pitches"
-                          type="number"
-                          min={1}
-                          max={8}
-                          value={draft.numberOfPitches}
-                          onChange={e => {
-                            const n = Number(e.target.value);
-                            if (Number.isFinite(n)) updateDraft('numberOfPitches', Math.max(1, Math.min(8, n)));
-                          }}
-                          style={formInputStyle}
-                          inputMode="numeric"
-                        />
-                      </FormField>
-                    </div>
-                  </div>
-                </div>
-              )}
             </FormCard>
           </>
         )}
