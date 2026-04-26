@@ -369,22 +369,24 @@ export function TournamentWizardPage({ navigate }: Props) {
       minHeight: '100dvh', background: 'var(--bg)',
       paddingBottom: 90, // space pro sticky bottom CTA
     }}>
-      <PageHeader
-        title={t('tournament.wizard.title')}
-        subtitle={stepLabel}
-        onBack={goBack}
-      />
+      {/* Wrapper — center wizard na desktopu, full width na mobilu */}
+      <div style={{ width: '100%', maxWidth: 720, margin: '0 auto' }}>
+        <PageHeader
+          title={t('tournament.wizard.title')}
+          subtitle={stepLabel}
+          onBack={goBack}
+        />
 
-      {/* Progress bar (3 steps) */}
-      <div style={{ padding: '0 16px', display: 'flex', gap: 6, marginBottom: 16 }}>
-        {[1, 2, 3].map(i => (
-          <div key={i} style={{
-            flex: 1, height: 4, borderRadius: 2,
-            background: i <= draft.step ? 'var(--primary)' : 'var(--border)',
-            transition: 'background .3s',
-          }} />
-        ))}
-      </div>
+        {/* Progress bar (3 steps) */}
+        <div style={{ padding: '0 16px', display: 'flex', gap: 6, marginBottom: 16 }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{
+              flex: 1, height: 4, borderRadius: 2,
+              background: i <= draft.step ? 'var(--primary)' : 'var(--border)',
+              transition: 'background .3s',
+            }} />
+          ))}
+        </div>
 
       {/* Resume prompt — toast-like banner */}
       {showResumePrompt && (
@@ -858,38 +860,50 @@ export function TournamentWizardPage({ navigate }: Props) {
         )}
       </div>
 
-      {/* Sticky bottom CTA */}
+      </div>{/* /wizard wrapper (max-width 720) */}
+
+      {/* Sticky bottom CTA — outer bar přes celou šířku (background +
+          border-top), inner container max-width matching wizard content
+          (audit 2026-04-26 user: na desktopu se táhl přes celý viewport
+          a vypadal divně mimo wizard kontejner). */}
       <div style={{
         position: 'fixed', left: 0, right: 0, bottom: 0,
-        padding: '12px 16px',
-        paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
         background: 'var(--surface)',
         borderTop: '1px solid var(--border)',
-        display: 'flex', gap: 10, zIndex: 50,
+        zIndex: 50,
+        paddingBottom: 'env(safe-area-inset-bottom)',
       }}>
-        <button
-          type="button"
-          onClick={goBack}
-          style={{
-            padding: '14px 20px', borderRadius: 12,
-            background: 'var(--surface-var)', color: 'var(--text)',
-            border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer',
-            flexShrink: 0,
-          }}
-        >
-          ←
-        </button>
-        <PrimaryButton
-          onClick={draft.step === 3 ? handleSubmit : goNext}
-          disabled={busy}
-          style={{ flex: 1 }}
-        >
-          {busy
-            ? t('common.loading')
-            : draft.step === 3
-              ? `⚡ ${t('tournament.wizard.createCta')}`
-              : t('tournament.wizard.nextCta')}
-        </PrimaryButton>
+        <div style={{
+          maxWidth: 720, // matchuje wizard content width
+          margin: '0 auto',
+          padding: '12px 16px',
+          display: 'flex', gap: 10,
+        }}>
+          <button
+            type="button"
+            onClick={goBack}
+            aria-label={t('common.back')}
+            style={{
+              padding: '14px 20px', borderRadius: 12,
+              background: 'var(--surface-var)', color: 'var(--text)',
+              border: 'none', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            ←
+          </button>
+          <PrimaryButton
+            onClick={draft.step === 3 ? handleSubmit : goNext}
+            disabled={busy}
+            style={{ flex: 1 }}
+          >
+            {busy
+              ? t('common.loading')
+              : draft.step === 3
+                ? `⚡ ${t('tournament.wizard.createCta')}`
+                : t('tournament.wizard.nextCta')}
+          </PrimaryButton>
+        </div>
       </div>
     </div>
   );
