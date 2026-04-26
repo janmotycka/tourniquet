@@ -98,15 +98,12 @@ interface WizardDraft {
   numberOfPitches: number;
   /** Pauza mezi zápasy v minutách. Default 5. */
   breakBetweenMatchesMinutes: number;
-  /** Postup z každé skupiny do KO (1 = jen vítěz, 2 = nejlepší 2). Jen pro groups-knockout. */
-  advancePerGroup: 1 | 2;
-  /** Hraje se zápas o 3. místo? Jen pro groups-knockout/knockout. */
-  thirdPlaceMatch: boolean;
-  /** Hrají i poražení play-out (consolation) zápasy? Jen pro groups-knockout. */
-  playOut: boolean;
   registrationEnabled: boolean;
   entryFee: number | null;
   rules: string;
+  // ── Smart defaults pro strukturu turnaje ──
+  // advancePerGroup=2, thirdPlaceMatch=false, playOut=false jsou hardcoded
+  // při create. User může doladit v editaci turnaje po vytvoření.
 }
 
 function emptyDraft(): WizardDraft {
@@ -124,9 +121,6 @@ function emptyDraft(): WizardDraft {
     matchDurationMinutes: 10,
     numberOfPitches: 1,
     breakBetweenMatchesMinutes: 5,
-    advancePerGroup: 2,
-    thirdPlaceMatch: false,
-    playOut: false,
     registrationEnabled: false,
     entryFee: null,
     rules: '',
@@ -388,18 +382,9 @@ export function TournamentWizardPage({ navigate }: Props) {
           startDate: draft.date,
           startTime: draft.startTime,
           format,
-          // Groups+knockout: advancePerGroup z user choice (default 2)
-          ...(format === 'groups-knockout'
-            ? { advancePerGroup: draft.advancePerGroup }
-            : {}),
-          // 3. místo (jen pro KO formáty)
-          ...((format === 'groups-knockout' || format === 'knockout') && draft.thirdPlaceMatch
-            ? { thirdPlaceMatch: true }
-            : {}),
-          // Play-out (jen pro groups-knockout)
-          ...(format === 'groups-knockout' && draft.playOut
-            ? { playOut: true }
-            : {}),
+          // Smart default: 2 týmy z každé skupiny do KO (klasický McDonald's Cup)
+          // User může doladit v editaci turnaje po vytvoření.
+          ...(format === 'groups-knockout' ? { advancePerGroup: 2 } : {}),
           ...(draft.venue.trim() ? { venueName: draft.venue.trim() } : {}),
           ...(draft.rules.trim() ? { rules: draft.rules.trim() } : {}),
           ...(draft.registrationEnabled ? { registrationEnabled: true } : {}),
@@ -734,9 +719,12 @@ export function TournamentWizardPage({ navigate }: Props) {
                 {t('tournament.wizard.formatSmartHint', { teamCount: draft.teamCount })}
               </p>
 
-              {/* Délka zápasu + pauza + počet hřišť — vždy viditelné, ovlivňují odhad času */}
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 90px', minWidth: 90 }}>
+              {/* Délka zápasu + počet hřišť — vždy viditelné, ovlivňují odhad času.
+                  Pauza mezi zápasy zůstává hardcoded 5 min (sensible default).
+                  Strukturní volby (3. místo, play-out, advancePerGroup) se ladí
+                  v editaci turnaje po vytvoření, ne ve wizardu. */}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
                   <FormField id="tw-match-duration" label={t('tournament.wizard.matchDurationLabel')}>
                     <input
                       id="tw-match-duration"
@@ -753,24 +741,7 @@ export function TournamentWizardPage({ navigate }: Props) {
                     />
                   </FormField>
                 </div>
-                <div style={{ flex: '1 1 90px', minWidth: 90 }}>
-                  <FormField id="tw-break" label={t('tournament.wizard.breakLabel')}>
-                    <input
-                      id="tw-break"
-                      type="number"
-                      min={0}
-                      max={30}
-                      value={draft.breakBetweenMatchesMinutes}
-                      onChange={e => {
-                        const n = Number(e.target.value);
-                        if (Number.isFinite(n)) updateDraft('breakBetweenMatchesMinutes', Math.max(0, Math.min(30, n)));
-                      }}
-                      style={formInputStyle}
-                      inputMode="numeric"
-                    />
-                  </FormField>
-                </div>
-                <div style={{ flex: '1 1 90px', minWidth: 90 }}>
+                <div style={{ flex: 1 }}>
                   <FormField id="tw-pitches" label={t('tournament.wizard.pitchesLabel')}>
                     <input
                       id="tw-pitches"
@@ -980,76 +951,9 @@ export function TournamentWizardPage({ navigate }: Props) {
                   {t('tournament.wizard.advancedHint')}
                 </p>
 
-                {/* ── Struktura turnaje (jen pro relevantní formáty) ── */}
-                {draft.format === 'groups-knockout' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                      {t('tournament.wizard.advanceFromGroupLabel')}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {([1, 2] as const).map(n => {
-                        const active = draft.advancePerGroup === n;
-                        return (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() => updateDraft('advancePerGroup', n)}
-                            style={{
-                              flex: 1, padding: '10px 12px', borderRadius: 10,
-                              fontSize: 13, fontWeight: 700,
-                              background: active ? 'var(--primary)' : 'var(--surface-var)',
-                              color: active ? '#fff' : 'var(--text-muted)',
-                              border: active ? 'none' : '1.5px solid var(--border)',
-                              cursor: 'pointer', textAlign: 'left',
-                            }}
-                          >
-                            {t(n === 1 ? 'tournament.wizard.advance1' : 'tournament.wizard.advance2')}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* ── Zápas o 3. místo (jen pro KO formáty) ── */}
-                {(draft.format === 'groups-knockout' || draft.format === 'knockout') && (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={draft.thirdPlaceMatch}
-                      onChange={e => updateDraft('thirdPlaceMatch', e.target.checked)}
-                      style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
-                    />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                        🥉 {t('tournament.wizard.thirdPlaceLabel')}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                        {t('tournament.wizard.thirdPlaceHint')}
-                      </div>
-                    </div>
-                  </label>
-                )}
-
-                {/* ── Play-out (jen pro groups-knockout) ── */}
-                {draft.format === 'groups-knockout' && (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={draft.playOut}
-                      onChange={e => updateDraft('playOut', e.target.checked)}
-                      style={{ width: 18, height: 18, accentColor: 'var(--primary)', cursor: 'pointer' }}
-                    />
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                        ⚔️ {t('tournament.wizard.playOutLabel')}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                        {t('tournament.wizard.playOutHint')}
-                      </div>
-                    </div>
-                  </label>
-                )}
+                {/* Strukturní volby (postup ze skupiny, 3. místo, play-out)
+                    se LADÍ až po vytvoření v editaci turnaje — wizard má smart defaults
+                    a nemá zbytečně replikovat manuální nastavení. */}
 
                 {/* Online registrace */}
                 <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
