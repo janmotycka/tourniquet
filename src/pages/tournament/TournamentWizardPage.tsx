@@ -762,7 +762,8 @@ function TournamentStructureDiagram({
     const totalAdvance = groupSizes.length * advancePerGroup;
     const bracketLabels = generateBracketLabels(groupSizes.length, advancePerGroup);
     // Maximum počet skupin pro tenhle teamCount (min 2 týmy ve skupině, max 4 skupiny)
-    const maxGroups = Math.min(4, Math.floor(teamCount / 2));
+    // Max 8 skupin (UEFA Euro = 6, FIFA World Cup classic = 8). Min 2 týmy/skupina.
+    const maxGroups = Math.min(8, Math.floor(teamCount / 2));
     const canAddGroup = !!onSetGroupCount && groupSizes.length < maxGroups;
     const canRemoveGroup = !!onSetGroupCount && groupSizes.length > 2;
 
@@ -1925,10 +1926,9 @@ export function TournamentWizardPage({ navigate }: Props) {
                     onSetGroupCount={(n) => {
                       // Pokud user pickne defaultní hodnotu pro daný teamCount,
                       // resetuj override na null (clean state).
-                      const wouldDefault =
-                        draft.teamCount <= 8 ? 2
-                        : draft.teamCount <= 12 ? 3
-                        : 4;
+                      // Heuristika: ceil(teams/4) clamped na [2, 8] — match engine.
+                      const maxAllowed = Math.min(8, Math.floor(draft.teamCount / 2));
+                      const wouldDefault = Math.max(2, Math.min(8, Math.ceil(draft.teamCount / 4), maxAllowed));
                       updateDraft('groupCountOverride', n === wouldDefault ? null : n);
                     }}
                     onSetAdvancePerGroup={(n) => updateDraft('advancePerGroup', n)}

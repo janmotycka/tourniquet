@@ -79,15 +79,24 @@ function distributeIntoGroups(teams: number, groupCount: number): number[] {
 
 /**
  * Doporučený počet skupin pro groups-knockout formát.
- * Heuristika: rovnoměrné rozdělení, preferujeme skupiny po 3-4 týmech.
- *  4-6 týmů  → 2 skupiny po 2-3
- *  7-8       → 2 skupiny po 3-4
- *  9-12      → 3 skupiny po 3-4
- *  13-16     → 4 skupiny po 3-4
- *  17+       → 4 skupiny (manual create doporučen)
+ * Heuristika: cílíme na ~4 týmy ve skupině (sweet spot pro mládežnické turnaje
+ * — 6 zápasů ve skupině, každý tým hraje 3×). Pro velké turnaje to znamená
+ * víc skupin (24 týmů → 6 skupin po 4, 32 týmů → 8 skupin po 4).
+ *
+ *  4-8   týmů  → 2 skupiny
+ *  9-12        → 3 skupiny
+ *  13-16       → 4 skupiny
+ *  17-20       → 5 skupin
+ *  21-24       → 6 skupin (UEFA Euro style)
+ *  25-28       → 7 skupin
+ *  29-32       → 8 skupin (FIFA World Cup classic style)
+ *
+ * Limity: min 2 skupiny, max 8 skupin, min 2 týmy ve skupině.
  *
  * @param override Pokud nastaveno (≥2 a ≤floor(teams/2)), použij místo heuristiky.
  */
+const MAX_GROUP_COUNT = 8;
+
 function suggestGroupCount(
   teams: number,
   override?: number | null,
@@ -95,15 +104,16 @@ function suggestGroupCount(
   if (teams < 4) return null; // minimum pro skupiny
 
   let groupCount: number;
-  // User override (jen pokud validní pro daný count — min 2 týmy ve skupině)
-  if (override && override >= 2 && override <= Math.floor(teams / 2)) {
+  const maxAllowed = Math.min(MAX_GROUP_COUNT, Math.floor(teams / 2));
+
+  // User override (jen pokud validní pro daný count)
+  if (override && override >= 2 && override <= maxAllowed) {
     groupCount = override;
-  } else if (teams <= 8) {
-    groupCount = 2;
-  } else if (teams <= 12) {
-    groupCount = 3;
   } else {
-    groupCount = 4;
+    // Heuristika: ceil(teams/4) clamped to [2, MAX_GROUP_COUNT]
+    groupCount = Math.max(2, Math.min(MAX_GROUP_COUNT, Math.ceil(teams / 4)));
+    // Clamp to maxAllowed (může být nižší pro malé teams)
+    groupCount = Math.min(groupCount, maxAllowed);
   }
 
   return {
