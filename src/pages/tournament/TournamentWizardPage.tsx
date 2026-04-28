@@ -698,6 +698,13 @@ export function TournamentWizardPage({ navigate }: Props) {
                       type="time"
                       value={draft.plannedEndTime}
                       onChange={e => updateDraft('plannedEndTime', e.target.value)}
+                      // Audit 2026-04-28: <input type="time"> s prázdnou value
+                      // (controlled empty string) nereaguje spolehlivě na klik
+                      // na některých prohlížečích — explicit showPicker() to fixne.
+                      onClick={(e) => {
+                        const el = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
+                        try { el.showPicker?.(); } catch { /* fallback: native focus */ }
+                      }}
                       style={formInputStyle}
                     />
                   </FormField>
@@ -788,11 +795,11 @@ export function TournamentWizardPage({ navigate }: Props) {
             Strukturní volby (postup ze skupiny, 3. místo, play-out) jsou tady
             kontextově — patří k formátu, ne k organizaci. */}
         {draft.step === 3 && (() => {
-          // Quick preset chipy podle formátu (smart range)
-          const quickChips: number[] =
-            draft.format === 'round-robin' ? [4, 5, 6, 7, 8]
-            : draft.format === 'knockout' ? [4, 8, 16]
-            : /* groups-knockout */ [6, 8, 10, 12, 16];
+          // Audit 2026-04-28: počet týmů má být FLEXIBILNÍ — dáváme všechny
+          // hodnoty 3-16 jako kompaktní chipy + stepper (-/+) pro fine-tune
+          // + "+ Vlastní" pro >16 (až 32). User může mít 7, 9, 11, 13 týmů
+          // — předchozí "smart presets per format" bylo moc restriktivní.
+          const quickChips: number[] = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
           // Smart-suggest pro vybraný formát (live)
           const currentSuggestion = formatSuggestions.find(f => f.format === draft.format);
           const predictedEnd = currentSuggestion
@@ -813,14 +820,70 @@ export function TournamentWizardPage({ navigate }: Props) {
                   {t('tournament.wizard.step3DetailsHint')}
                 </p>
 
-                {/* Počet týmů — quick presets + custom */}
+                {/* Počet týmů — flexibilní: stepper +/- pro fine-tune,
+                    chipy 3-16 jako rychlá volba, "+ Vlastní" pro >16 (až 32). */}
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
-                    {t('tournament.wizard.teamCountLabel')}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    marginBottom: 10,
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                      {t('tournament.wizard.teamCountLabel')}
+                    </div>
+                    {/* Stepper +/- */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (draft.teamCount > TEAM_COUNT_MIN) {
+                            handleTeamCountChange(draft.teamCount - 1);
+                          }
+                        }}
+                        disabled={draft.teamCount <= TEAM_COUNT_MIN}
+                        aria-label="−1"
+                        style={{
+                          width: 32, height: 32, borderRadius: 8,
+                          background: 'var(--surface-var)',
+                          border: '1.5px solid var(--border)',
+                          fontSize: 18, fontWeight: 700,
+                          color: draft.teamCount <= TEAM_COUNT_MIN ? 'var(--text-muted)' : 'var(--text)',
+                          cursor: draft.teamCount <= TEAM_COUNT_MIN ? 'not-allowed' : 'pointer',
+                          lineHeight: 1, padding: 0,
+                        }}
+                      >−</button>
+                      <span style={{
+                        minWidth: 32, textAlign: 'center',
+                        fontSize: 18, fontWeight: 800, color: 'var(--primary)',
+                      }}>{draft.teamCount}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (draft.teamCount < TEAM_COUNT_MAX) {
+                            handleTeamCountChange(draft.teamCount + 1);
+                          }
+                        }}
+                        disabled={draft.teamCount >= TEAM_COUNT_MAX}
+                        aria-label="+1"
+                        style={{
+                          width: 32, height: 32, borderRadius: 8,
+                          background: 'var(--surface-var)',
+                          border: '1.5px solid var(--border)',
+                          fontSize: 18, fontWeight: 700,
+                          color: draft.teamCount >= TEAM_COUNT_MAX ? 'var(--text-muted)' : 'var(--text)',
+                          cursor: draft.teamCount >= TEAM_COUNT_MAX ? 'not-allowed' : 'pointer',
+                          lineHeight: 1, padding: 0,
+                        }}
+                      >+</button>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {/* Kompaktní chipy 3-16 — 7 sloupců × 2 řádky, jasně skenovatelné */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, 1fr)',
+                    gap: 5,
+                  }}>
                     {quickChips.map(n => {
-                      const active = draft.teamCount === n && !showCustomTeamCount;
+                      const active = draft.teamCount === n;
                       return (
                         <button
                           key={n}
@@ -830,12 +893,12 @@ export function TournamentWizardPage({ navigate }: Props) {
                             handleTeamCountChange(n);
                           }}
                           style={{
-                            minWidth: 48, padding: '10px 14px',
-                            borderRadius: 10,
-                            fontSize: 15, fontWeight: 700,
+                            padding: '7px 0',
+                            borderRadius: 8,
+                            fontSize: 13, fontWeight: 700,
                             background: active ? 'var(--primary)' : 'var(--surface-var)',
                             color: active ? '#fff' : 'var(--text-muted)',
-                            border: active ? 'none' : '1.5px solid var(--border)',
+                            border: active ? 'none' : '1px solid var(--border)',
                             cursor: 'pointer',
                           }}
                         >
@@ -843,30 +906,23 @@ export function TournamentWizardPage({ navigate }: Props) {
                         </button>
                       );
                     })}
-                    {!showCustomTeamCount && !quickChips.includes(draft.teamCount) && (
-                      <div style={{
-                        minWidth: 48, padding: '10px 14px',
-                        borderRadius: 10, fontSize: 15, fontWeight: 700,
-                        background: 'var(--primary)', color: '#fff',
-                      }}>
-                        {draft.teamCount}
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setShowCustomTeamCount(o => !o)}
-                      style={{
-                        padding: '10px 14px', borderRadius: 10,
-                        fontSize: 13, fontWeight: 700,
-                        background: showCustomTeamCount ? 'var(--primary-light)' : 'transparent',
-                        color: 'var(--primary)',
-                        border: '1.5px dashed var(--primary)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {showCustomTeamCount ? '×' : `+ ${t('tournament.wizard.teamCountCustomShort')}`}
-                    </button>
                   </div>
+                  {/* "+ Vlastní" pro >16 (až 32) */}
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomTeamCount(o => !o)}
+                    style={{
+                      marginTop: 8,
+                      padding: '6px 10px', borderRadius: 8,
+                      fontSize: 11, fontWeight: 700,
+                      background: showCustomTeamCount ? 'var(--primary-light)' : 'transparent',
+                      color: 'var(--primary)',
+                      border: '1.5px dashed var(--primary)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {showCustomTeamCount ? '×' : `+ ${t('tournament.wizard.teamCountCustomShort')} (>16)`}
+                  </button>
                   {showCustomTeamCount && (
                     <div style={{
                       marginTop: 10,
