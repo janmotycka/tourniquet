@@ -415,20 +415,51 @@ function BracketTree({
   // Šířka: rounds * (matchW + colGap) + místo na trofej (28px)
   const totalW = rounds.length * (matchW + colGap) - colGap + 32;
 
-  type MatchPos = { round: number; idx: number; y: number; isReal: boolean };
+  // Bye distribuce: bye = empty slot, top seedi mají bye do R2.
+  // Standardní pravidlo: každý R1 match má MAX 1 bye partner (jeden tým hraje,
+  // druhý má bye = neexistuje protihráč → tým auto-postupuje).
+  //
+  // Pokládáme byes do odd slotů (1, 3, 5, ...) — tím každý R1 match má pár
+  // (slot 2k, slot 2k+1) kde slot 2k+1 je bye, slot 2k má reálný tým.
+  // Pokud byes > r1Count (víc bye než R1 matchů), zbylé byes se umístí
+  // do even slotů (degenerate case, ale podporujeme pro robustnost).
+  const slotIsBye: boolean[] = new Array(bracketSize).fill(false);
+  let byesPlaced = 0;
+  // První pass: odd sloty (1, 3, 5, ..., bracketSize-1)
+  for (let i = 1; i < bracketSize && byesPlaced < byes; i += 2) {
+    slotIsBye[i] = true;
+    byesPlaced++;
+  }
+  // Backup pass (jen pokud byes > r1Count): even sloty
+  for (let i = 0; i < bracketSize && byesPlaced < byes; i += 2) {
+    slotIsBye[i] = true;
+    byesPlaced++;
+  }
+
+  type MatchPos = {
+    round: number;
+    idx: number;
+    y: number;
+    /** True když má match 2 reálné týmy (žádný bye). */
+    isReal: boolean;
+    /** True když match má právě 1 bye = pass-through (1 tým auto-postupuje). */
+    isPassThrough: boolean;
+  };
   const positions: MatchPos[] = [];
 
   // Round 0 (první kolo): rovnoměrně rozložené, y = idx * (matchH + matchGap)
-  // bye-sloty jsou na začátku (top), takže matche s 1+ bye nejsou "real"
   for (let i = 0; i < r1Count; i++) {
-    const slot1 = 2 * i;
-    const slot2 = 2 * i + 1;
-    const isReal = slot1 >= byes && slot2 >= byes; // oba sloty real → real R0 match
+    const slot1Bye = slotIsBye[2 * i];
+    const slot2Bye = slotIsBye[2 * i + 1];
+    // isReal = oba sloty mají reálné týmy
+    // isPassThrough = právě 1 bye (= 1 tým auto-postupuje, nehraje)
+    const byeCount = (slot1Bye ? 1 : 0) + (slot2Bye ? 1 : 0);
     positions.push({
       round: 0,
       idx: i,
       y: i * (matchH + matchGap),
-      isReal,
+      isReal: byeCount === 0,
+      isPassThrough: byeCount === 1,
     });
   }
 
@@ -438,7 +469,7 @@ function BracketTree({
       const p1 = positions.find(p => p.round === r - 1 && p.idx === i * 2);
       const p2 = positions.find(p => p.round === r - 1 && p.idx === i * 2 + 1);
       const y = (p1!.y + p2!.y) / 2;
-      positions.push({ round: r, idx: i, y, isReal: true });
+      positions.push({ round: r, idx: i, y, isReal: true, isPassThrough: false });
     }
   }
 
@@ -505,12 +536,14 @@ function BracketTree({
           const slot1 = labels?.[p.idx * 2];
           const slot2 = labels?.[p.idx * 2 + 1];
           const hasLabels = isFirstRound && labels && (slot1 || slot2);
-          // "Real" v tomto bracketu znamená 0+ bye sloty z původní logiky.
-          // Když máme labels, ovlivní to: pokud jeden slot je '—' (bye),
-          // box vlastně reprezentuje "prošel bez zápasu" — render jako single label.
           const slot1Bye = slot1 === '—';
           const slot2Bye = slot2 === '—';
-          const isPassThrough = hasLabels && (slot1Bye || slot2Bye) && !(slot1Bye && slot2Bye);
+          // Pass-through je z position (správná bye distribuce) NEBO z labels
+          // (label '—' indikuje bye partner pro daný slot).
+          const isPassThrough = p.isPassThrough
+            || (hasLabels && (slot1Bye || slot2Bye) && !(slot1Bye && slot2Bye));
+          // realMatch = 0 byes (oba sloty mají reálné týmy)
+          const isRealMatch = p.isReal && !slot1Bye && !slot2Bye;
 
           return (
             <g key={`match-${p.round}-${p.idx}`}>
@@ -520,19 +553,18 @@ function BracketTree({
                 width={matchW}
                 height={matchH}
                 fill={
-                  !p.isReal ? 'transparent'
-                  : isFinal ? 'var(--primary-light)'
+                  isFinal ? 'var(--primary-light)'
                   : isPassThrough ? 'rgba(245, 158, 11, 0.08)'
-                  : 'var(--surface-var)'
+                  : isRealMatch ? 'var(--surface-var)'
+                  : 'transparent'
                 }
                 stroke={
-                  !p.isReal ? 'var(--border)'
-                  : isFinal ? 'var(--primary)'
+                  isFinal ? 'var(--primary)'
                   : isPassThrough ? 'var(--warning)'
                   : 'var(--border)'
                 }
                 strokeWidth={isFinal ? 1.8 : 1.2}
-                strokeDasharray={(!p.isReal || isPassThrough) ? '3,3' : 'none'}
+                strokeDasharray={(!isRealMatch && !isPassThrough && !isFinal) ? '3,3' : 'none'}
                 rx={5}
               />
               {/* Finale label — pouze pokud není potlačen (play-out režim) */}
@@ -592,15 +624,17 @@ function BracketTree({
                   </>
                 );
               })()}
-              {/* Bye label (oba sloty bye nebo žádné labels — fallback) */}
-              {!p.isReal && !hasLabels && (
+              {/* Bye label pro pass-through match bez labels (5+ skupin)
+                  Match má 1 reálný tým + 1 bye — zobrazujeme "(bye)" indicator */}
+              {p.isPassThrough && !hasLabels && (
                 <text
                   x={x + matchW / 2}
                   y={p.y + matchH / 2 + 4}
                   textAnchor="middle"
                   fontSize={9}
-                  fill="var(--text-muted)"
+                  fill="var(--warning)"
                   fontStyle="italic"
+                  fontWeight={700}
                 >
                   bye
                 </text>
