@@ -55,7 +55,7 @@ import type { TournamentFormat } from '../../types/tournament.types';
 
 interface Props { navigate: (p: Page) => void; }
 
-type WizardStep = 1 | 2 | 3;
+type WizardStep = 1 | 2 | 3 | 4;
 
 const TEAM_COLORS = [
   '#1565C0', '#C62828', '#2E7D32', '#E65100',
@@ -78,6 +78,91 @@ const TEAM_COUNT_MIN = 2;
 
 function todayStr(): string {
   return new Date().toISOString().split('T')[0];
+}
+
+// ─── Mini bracket SVG diagrams (used in HeroFormatCard) ─────────────────────
+// Stylované jako ikony, ne plnohodnotné brackets. Cíl: coach hned vidí strukturu.
+
+function RoundRobinDiagram({ size = 56 }: { size?: number }) {
+  const cx = size / 2;
+  const r = size / 2 - 8;
+  const dotR = 3.5;
+  // 6 teček po obvodu kruhu, propojené čarami (round-robin = každý s každým)
+  const dots = Array.from({ length: 6 }, (_, i) => {
+    const angle = (i / 6) * Math.PI * 2 - Math.PI / 2;
+    return { x: cx + Math.cos(angle) * r, y: cx + Math.sin(angle) * r };
+  });
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {/* Spojnice mezi všemi týmy (každý s každým) */}
+      {dots.map((a, i) =>
+        dots.slice(i + 1).map((b, j) => (
+          <line key={`${i}-${j}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+            stroke="var(--border)" strokeWidth="0.6" />
+        ))
+      )}
+      {/* Týmy jako tečky */}
+      {dots.map((d, i) => (
+        <circle key={i} cx={d.x} cy={d.y} r={dotR} fill="var(--primary)" />
+      ))}
+    </svg>
+  );
+}
+
+function GroupsKnockoutDiagram({ size = 56 }: { size?: number }) {
+  // 2 skupiny vlevo (každá 3 tečky) → bracket vpravo
+  const w = size + 24;
+  const dotR = 2.5;
+  return (
+    <svg width={w} height={size} viewBox={`0 0 ${w} ${size}`}>
+      {/* Skupina A — 3 tečky vlevo nahoře */}
+      <rect x="2" y="4" width="22" height="20" fill="var(--surface-var)"
+        stroke="var(--border)" strokeWidth="0.8" rx="3" />
+      <circle cx="8" cy="14" r={dotR} fill="var(--primary)" />
+      <circle cx="14" cy="10" r={dotR} fill="var(--primary)" />
+      <circle cx="20" cy="14" r={dotR} fill="var(--primary)" />
+      {/* Skupina B — 3 tečky vlevo dole */}
+      <rect x="2" y={size - 24} width="22" height="20" fill="var(--surface-var)"
+        stroke="var(--border)" strokeWidth="0.8" rx="3" />
+      <circle cx="8" cy={size - 14} r={dotR} fill="var(--primary)" />
+      <circle cx="14" cy={size - 18} r={dotR} fill="var(--primary)" />
+      <circle cx="20" cy={size - 14} r={dotR} fill="var(--primary)" />
+      {/* Bracket vpravo: 2 čáry → 1 čára → trofej */}
+      <line x1="28" y1="14" x2="40" y2="14" stroke="var(--text)" strokeWidth="1.2" />
+      <line x1="28" y1={size - 14} x2="40" y2={size - 14} stroke="var(--text)" strokeWidth="1.2" />
+      <line x1="40" y1="14" x2="40" y2={size - 14} stroke="var(--text)" strokeWidth="1.2" />
+      <line x1="40" y1={size / 2} x2="52" y2={size / 2} stroke="var(--text)" strokeWidth="1.2" />
+      <text x={w - 16} y={size / 2 + 4} fontSize="11">🏆</text>
+    </svg>
+  );
+}
+
+function KnockoutDiagram({ size = 56 }: { size?: number }) {
+  // Single elimination tree: 4 týmy → 2 → 1
+  const w = size + 16;
+  const dotR = 2.5;
+  return (
+    <svg width={w} height={size} viewBox={`0 0 ${w} ${size}`}>
+      {/* 4 startovní týmy (tečky vlevo) */}
+      <circle cx="6" cy="8" r={dotR} fill="var(--primary)" />
+      <circle cx="6" cy="22" r={dotR} fill="var(--primary)" />
+      <circle cx="6" cy={size - 22} r={dotR} fill="var(--primary)" />
+      <circle cx="6" cy={size - 8} r={dotR} fill="var(--primary)" />
+      {/* První kolo — 2 zápasy (čáry) */}
+      <line x1="10" y1="8" x2="22" y2="8" stroke="var(--text)" strokeWidth="1.2" />
+      <line x1="10" y1="22" x2="22" y2="22" stroke="var(--text)" strokeWidth="1.2" />
+      <line x1="22" y1="8" x2="22" y2="22" stroke="var(--text)" strokeWidth="1.2" />
+      <line x1="22" y1="15" x2="38" y2="15" stroke="var(--text)" strokeWidth="1.2" />
+      <line x1="10" y1={size - 22} x2="22" y2={size - 22} stroke="var(--text)" strokeWidth="1.2" />
+      <line x1="10" y1={size - 8} x2="22" y2={size - 8} stroke="var(--text)" strokeWidth="1.2" />
+      <line x1="22" y1={size - 22} x2="22" y2={size - 8} stroke="var(--text)" strokeWidth="1.2" />
+      <line x1="22" y1={size - 15} x2="38" y2={size - 15} stroke="var(--text)" strokeWidth="1.2" />
+      {/* Finále */}
+      <line x1="38" y1="15" x2="38" y2={size - 15} stroke="var(--text)" strokeWidth="1.2" />
+      <line x1="38" y1={size / 2} x2="52" y2={size / 2} stroke="var(--text)" strokeWidth="1.2" />
+      <text x={w - 14} y={size / 2 + 4} fontSize="11">🏆</text>
+    </svg>
+  );
 }
 
 // ─── Settings Preview helper components ─────────────────────────────────────
@@ -487,6 +572,10 @@ export function TournamentWizardPage({ navigate }: Props) {
   };
 
   // ── Validace per krok (on-submit) ──
+  // Step 1: Základy (název povinný, datum/čas/místo volitelné)
+  // Step 2: Formát (jen 1 výběr — round-robin/groups-knockout/knockout)
+  // Step 3: Detaily (počet týmů + časování — má smart defaults)
+  // Step 4: Týmy + dolaďení (jména týmů povinná, settings preview volitelný)
   const validateStep1 = (): boolean => {
     const e: typeof errors = {};
     if (!draft.name.trim()) e.name = t('tournament.wizard.errorNameRequired');
@@ -496,13 +585,19 @@ export function TournamentWizardPage({ navigate }: Props) {
 
   const validateStep2 = (): boolean => {
     const e: typeof errors = {};
-    if (draft.teamCount < 2) e.teamCount = t('tournament.wizard.errorTeamCountMin');
     if (!draft.format) e.format = t('tournament.wizard.errorFormatRequired');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const validateStep3 = (): boolean => {
+    const e: typeof errors = {};
+    if (draft.teamCount < 2) e.teamCount = t('tournament.wizard.errorTeamCountMin');
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const validateStep4 = (): boolean => {
     const e: typeof errors = {};
     const filledNames = draft.teamNames.slice(0, draft.teamCount).filter(n => n.trim());
     if (filledNames.length < draft.teamCount) {
@@ -515,7 +610,8 @@ export function TournamentWizardPage({ navigate }: Props) {
   const goNext = () => {
     if (draft.step === 1 && !validateStep1()) return;
     if (draft.step === 2 && !validateStep2()) return;
-    if (draft.step === 3) return; // submit handled separately
+    if (draft.step === 3 && !validateStep3()) return;
+    if (draft.step === 4) return; // submit handled separately
     updateDraft('step', (draft.step + 1) as WizardStep);
     window.scrollTo(0, 0);
   };
@@ -531,7 +627,7 @@ export function TournamentWizardPage({ navigate }: Props) {
 
   // ── Submit (final step) ──
   const handleSubmit = async () => {
-    if (!validateStep3()) return;
+    if (!validateStep4()) return;
     if (!user) return;
 
     // Auto-fill prázdná jména pro robustnost
@@ -598,7 +694,7 @@ export function TournamentWizardPage({ navigate }: Props) {
 
   // ── Render ──
 
-  const stepLabel = `${t('tournament.wizard.step')} ${draft.step}/3`;
+  const stepLabel = `${t('tournament.wizard.step')} ${draft.step}/4`;
 
   return (
     <div style={{
@@ -617,9 +713,9 @@ export function TournamentWizardPage({ navigate }: Props) {
           onBack={goBack}
         />
 
-        {/* Progress bar (3 steps) */}
+        {/* Progress bar (4 steps: Základy / Formát / Detaily / Týmy) */}
         <div style={{ padding: '0 16px', display: 'flex', gap: 6, marginBottom: 16 }}>
-          {[1, 2, 3].map(i => (
+          {[1, 2, 3, 4].map(i => (
             <div key={i} style={{
               flex: 1, height: 4, borderRadius: 2,
               background: i <= draft.step ? 'var(--primary)' : 'var(--border)',
@@ -802,270 +898,332 @@ export function TournamentWizardPage({ navigate }: Props) {
           </>
         )}
 
-        {/* ── KROK 2: Týmy + Formát ──────────────────────────────────────── */}
+        {/* ── KROK 2: Formát ─────────────────────────────────────────────────
+            Hero icon cards (32px emoji + mini bracket diagram). Jeden focused
+            choice. Žádný count, žádné inputy — jen výběr "jak se hraje".
+            Coach pak v Step 3 řeší kolik týmů a časování. */}}
         {draft.step === 2 && (
-          <>
-            <FormCard>
-              <SectionTitle>{t('tournament.wizard.step2TeamsTitle')}</SectionTitle>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
-                {t('tournament.wizard.teamCountHint')}
-              </p>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: 6,
-              }}>
-                {TEAM_COUNT_OPTIONS.map(n => {
-                  const active = draft.teamCount === n && !showCustomTeamCount;
-                  return (
+          <FormCard>
+            <SectionTitle>{t('tournament.wizard.step2HowToPlayTitle')}</SectionTitle>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+              {t('tournament.wizard.step2HowToPlayHint')}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {(['round-robin', 'groups-knockout', 'knockout'] as const).map(fmt => {
+                const isActive = draft.format === fmt;
+                const emoji = fmt === 'round-robin' ? '🔁' : fmt === 'groups-knockout' ? '🏆' : '⚔️';
+                const titleKey = fmt === 'round-robin' ? 'roundRobin' : fmt === 'groups-knockout' ? 'groupsKnockout' : 'knockout';
+                const teamRangeKey = `tournament.format.${titleKey}.teamRange`;
+                const Diagram = fmt === 'round-robin' ? RoundRobinDiagram
+                  : fmt === 'groups-knockout' ? GroupsKnockoutDiagram
+                  : KnockoutDiagram;
+                return (
+                  <button
+                    key={fmt}
+                    type="button"
+                    onClick={() => updateDraft('format', fmt)}
+                    style={{
+                      position: 'relative',
+                      padding: '16px 16px', borderRadius: 16,
+                      background: isActive ? 'var(--primary-light)' : 'var(--surface)',
+                      border: `2px solid ${isActive ? 'var(--primary)' : 'var(--border)'}`,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      transform: isActive ? 'scale(1.01)' : 'none',
+                      transition: 'transform .15s, background .15s, border-color .15s',
+                    }}
+                  >
+                    <span style={{ fontSize: 32, flexShrink: 0, lineHeight: 1 }}>{emoji}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 16, fontWeight: 800,
+                        color: isActive ? 'var(--primary)' : 'var(--text)',
+                        marginBottom: 2,
+                      }}>
+                        {t(`tournament.format.${titleKey}.title`)}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                        {t(teamRangeKey)}
+                      </div>
+                    </div>
+                    <div style={{ flexShrink: 0, opacity: 0.85 }}>
+                      <Diagram size={56} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {errors.format && (
+              <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>
+                {errors.format}
+              </div>
+            )}
+          </FormCard>
+        )}
+
+        {/* ── KROK 3: Detaily turnaje ─────────────────────────────────────────
+            Počet týmů (presets podle formátu) + délka zápasu + počet hřišť.
+            Live smart-suggest preview ukazuje X zápasů · ~Y min · skončí ~HH:MM.
+            Strukturní volby (postup ze skupiny, 3. místo, play-out) jsou tady
+            kontextově — patří k formátu, ne k organizaci. */}
+        {draft.step === 3 && (() => {
+          // Quick preset chipy podle formátu (smart range)
+          const quickChips: number[] =
+            draft.format === 'round-robin' ? [4, 5, 6, 7, 8]
+            : draft.format === 'knockout' ? [4, 8, 16]
+            : /* groups-knockout */ [6, 8, 10, 12, 16];
+          // Smart-suggest pro vybraný formát (live)
+          const currentSuggestion = formatSuggestions.find(f => f.format === draft.format);
+          const predictedEnd = currentSuggestion
+            ? computeEndTime(draft.startTime, currentSuggestion.estimatedMinutes)
+            : null;
+          const startMin = parseTimeToMinutes(draft.startTime);
+          const plannedEndMin = draft.plannedEndTime ? parseTimeToMinutes(draft.plannedEndTime) : null;
+          const overflowMin =
+            currentSuggestion && startMin !== null && plannedEndMin !== null
+              ? (startMin + currentSuggestion.estimatedMinutes) - plannedEndMin
+              : null;
+          const exceeds = overflowMin !== null && overflowMin > 0;
+          return (
+            <>
+              <FormCard>
+                <SectionTitle>{t('tournament.wizard.step3DetailsTitle')}</SectionTitle>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                  {t('tournament.wizard.step3DetailsHint')}
+                </p>
+
+                {/* Počet týmů — quick presets + custom */}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
+                    {t('tournament.wizard.teamCountLabel')}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {quickChips.map(n => {
+                      const active = draft.teamCount === n && !showCustomTeamCount;
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => {
+                            setShowCustomTeamCount(false);
+                            handleTeamCountChange(n);
+                          }}
+                          style={{
+                            minWidth: 48, padding: '10px 14px',
+                            borderRadius: 10,
+                            fontSize: 15, fontWeight: 700,
+                            background: active ? 'var(--primary)' : 'var(--surface-var)',
+                            color: active ? '#fff' : 'var(--text-muted)',
+                            border: active ? 'none' : '1.5px solid var(--border)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {n}
+                        </button>
+                      );
+                    })}
+                    {!showCustomTeamCount && !quickChips.includes(draft.teamCount) && (
+                      <div style={{
+                        minWidth: 48, padding: '10px 14px',
+                        borderRadius: 10, fontSize: 15, fontWeight: 700,
+                        background: 'var(--primary)', color: '#fff',
+                      }}>
+                        {draft.teamCount}
+                      </div>
+                    )}
                     <button
-                      key={n}
                       type="button"
-                      onClick={() => {
-                        setShowCustomTeamCount(false);
-                        handleTeamCountChange(n);
-                      }}
+                      onClick={() => setShowCustomTeamCount(o => !o)}
                       style={{
-                        padding: '8px 0',
-                        borderRadius: 10,
-                        fontSize: 14, fontWeight: 700,
-                        background: active ? 'var(--primary)' : 'var(--surface-var)',
-                        color: active ? '#fff' : 'var(--text-muted)',
-                        border: active ? 'none' : '1.5px solid var(--border)',
+                        padding: '10px 14px', borderRadius: 10,
+                        fontSize: 13, fontWeight: 700,
+                        background: showCustomTeamCount ? 'var(--primary-light)' : 'transparent',
+                        color: 'var(--primary)',
+                        border: '1.5px dashed var(--primary)',
                         cursor: 'pointer',
                       }}
                     >
-                      {n}
+                      {showCustomTeamCount ? '×' : `+ ${t('tournament.wizard.teamCountCustomShort')}`}
                     </button>
-                  );
-                })}
-              </div>
-
-              {/* Vlastní počet — pro velké turnaje (>16 týmů, max 32) */}
-              {!showCustomTeamCount && draft.teamCount <= 16 ? (
-                <button
-                  type="button"
-                  onClick={() => setShowCustomTeamCount(true)}
-                  style={{
-                    background: 'transparent', border: 'none',
-                    color: 'var(--primary)', fontSize: 12, fontWeight: 700,
-                    cursor: 'pointer', padding: '6px 0', alignSelf: 'flex-start',
-                    textDecoration: 'underline',
-                  }}
-                >
-                  + {t('tournament.wizard.teamCountCustomLink')}
-                </button>
-              ) : (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 12px', borderRadius: 12,
-                  background: 'var(--primary-light)', border: '2px solid var(--primary)',
-                }}>
-                  <label htmlFor="tw-custom-teamcount" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                    {t('tournament.wizard.teamCountCustomLabel')}
-                  </label>
-                  <input
-                    id="tw-custom-teamcount"
-                    type="number"
-                    inputMode="numeric"
-                    min={TEAM_COUNT_MIN}
-                    max={TEAM_COUNT_MAX}
-                    value={draft.teamCount}
-                    onChange={e => {
-                      const raw = parseInt(e.target.value, 10);
-                      if (Number.isNaN(raw)) return;
-                      const clamped = Math.max(TEAM_COUNT_MIN, Math.min(TEAM_COUNT_MAX, raw));
-                      handleTeamCountChange(clamped);
-                    }}
-                    style={{
-                      width: 70, padding: '8px 10px',
-                      fontSize: 16, fontWeight: 800, textAlign: 'center',
-                      borderRadius: 10, border: '1px solid var(--border)',
-                      background: 'var(--surface)', color: 'var(--text)',
-                    }}
-                  />
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
-                    {t('tournament.wizard.teamCountCustomHint', { max: TEAM_COUNT_MAX })}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCustomTeamCount(false);
-                      handleTeamCountChange(8);
-                    }}
-                    style={{
-                      background: 'transparent', border: 'none',
-                      color: 'var(--text-muted)', fontSize: 18,
-                      cursor: 'pointer', padding: 4, lineHeight: 1,
-                    }}
-                    aria-label={t('common.close')}
-                  >
-                    ×
-                  </button>
+                  </div>
+                  {showCustomTeamCount && (
+                    <div style={{
+                      marginTop: 10,
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 10,
+                      background: 'var(--primary-light)',
+                    }}>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={TEAM_COUNT_MIN}
+                        max={TEAM_COUNT_MAX}
+                        value={draft.teamCount}
+                        onChange={e => {
+                          const raw = parseInt(e.target.value, 10);
+                          if (Number.isNaN(raw)) return;
+                          handleTeamCountChange(Math.max(TEAM_COUNT_MIN, Math.min(TEAM_COUNT_MAX, raw)));
+                        }}
+                        style={{
+                          width: 70, padding: '8px 10px',
+                          fontSize: 16, fontWeight: 800, textAlign: 'center',
+                          borderRadius: 8, border: '1.5px solid var(--primary)',
+                          background: 'var(--surface)', color: 'var(--text)',
+                        }}
+                      />
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        {t('tournament.wizard.teamCountCustomHint', { max: TEAM_COUNT_MAX })}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </FormCard>
 
-            <FormCard>
-              <SectionTitle>{t('tournament.wizard.step2FormatTitle')}</SectionTitle>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
-                {t('tournament.wizard.formatSmartHint', { teamCount: draft.teamCount })}
-              </p>
-
-              {/* Délka zápasu + počet hřišť — vždy viditelné, ovlivňují odhad času.
-                  Pauza mezi zápasy zůstává hardcoded 5 min (sensible default).
-                  Strukturní volby (3. místo, play-out, advancePerGroup) se ladí
-                  v editaci turnaje po vytvoření, ne ve wizardu. */}
-              <div style={{ display: 'flex', gap: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <FormField id="tw-match-duration" label={t('tournament.wizard.matchDurationLabel')}>
-                    <input
-                      id="tw-match-duration"
-                      type="number"
-                      min={1}
-                      max={90}
-                      value={draft.matchDurationMinutes}
-                      onChange={e => {
-                        const n = Number(e.target.value);
-                        if (Number.isFinite(n)) updateDraft('matchDurationMinutes', Math.max(1, Math.min(90, n)));
-                      }}
-                      style={formInputStyle}
-                      inputMode="numeric"
-                    />
-                  </FormField>
+                {/* Délka zápasu + počet hřišť (vždy viditelné) */}
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <div style={{ flex: 1 }}>
+                    <FormField id="tw-match-duration" label={t('tournament.wizard.matchDurationLabel')}>
+                      <input
+                        id="tw-match-duration"
+                        type="number"
+                        min={1}
+                        max={90}
+                        value={draft.matchDurationMinutes}
+                        onChange={e => {
+                          const n = Number(e.target.value);
+                          if (Number.isFinite(n)) updateDraft('matchDurationMinutes', Math.max(1, Math.min(90, n)));
+                        }}
+                        style={formInputStyle}
+                        inputMode="numeric"
+                      />
+                    </FormField>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <FormField id="tw-pitches" label={t('tournament.wizard.pitchesLabel')}>
+                      <input
+                        id="tw-pitches"
+                        type="number"
+                        min={1}
+                        max={8}
+                        value={draft.numberOfPitches}
+                        onChange={e => {
+                          const n = Number(e.target.value);
+                          if (Number.isFinite(n)) updateDraft('numberOfPitches', Math.max(1, Math.min(8, n)));
+                        }}
+                        style={formInputStyle}
+                        inputMode="numeric"
+                      />
+                    </FormField>
+                  </div>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <FormField id="tw-pitches" label={t('tournament.wizard.pitchesLabel')}>
-                    <input
-                      id="tw-pitches"
-                      type="number"
-                      min={1}
-                      max={8}
-                      value={draft.numberOfPitches}
-                      onChange={e => {
-                        const n = Number(e.target.value);
-                        if (Number.isFinite(n)) updateDraft('numberOfPitches', Math.max(1, Math.min(8, n)));
-                      }}
-                      style={formInputStyle}
-                      inputMode="numeric"
-                    />
-                  </FormField>
-                </div>
-              </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {formatSuggestions.map(s => {
-                  const isActive = draft.format === s.format;
-                  return (
-                    <button
-                      key={s.format}
-                      type="button"
-                      onClick={() => s.valid && updateDraft('format', s.format)}
-                      disabled={!s.valid}
-                      style={{
-                        position: 'relative',
-                        padding: '14px 16px', borderRadius: 14,
-                        background: isActive ? 'var(--primary-light)' : 'var(--surface)',
-                        border: `2px solid ${isActive ? 'var(--primary)' : (s.valid ? 'var(--border)' : 'transparent')}`,
-                        opacity: s.valid ? 1 : 0.4,
-                        cursor: s.valid ? 'pointer' : 'not-allowed',
-                        textAlign: 'left',
-                        display: 'flex', flexDirection: 'column', gap: 6,
-                      }}
+                {/* Smart-suggest preview — live recap */}
+                {currentSuggestion && currentSuggestion.valid && currentSuggestion.totalMatches > 0 && (
+                  <div style={{
+                    padding: '12px 14px', borderRadius: 12,
+                    background: 'var(--primary-light)',
+                    border: '1.5px solid var(--primary)',
+                    display: 'flex', flexDirection: 'column', gap: 6,
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
+                      📊 {currentSuggestion.totalMatches} {t('tournament.wizard.matchesUnit')}
+                      {' · '}
+                      ⏱ ~{currentSuggestion.estimatedMinutes} {t('tournament.wizard.minutesUnit')}
+                      {predictedEnd && (
+                        <>
+                          {' · '}
+                          🏁 {t('tournament.wizard.endsAround')} {predictedEnd}
+                        </>
+                      )}
+                    </div>
+                    {currentSuggestion.format === 'groups-knockout' && currentSuggestion.groupSizes && currentSuggestion.groupSizes.length > 0 && (() => {
+                      const allSame = currentSuggestion.groupSizes!.every(sz => sz === currentSuggestion.groupSizes![0]);
+                      return (
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
+                          {allSame
+                            ? `${currentSuggestion.groupSizes!.length}× ${t('tournament.wizard.groupsLabel')} ${t('tournament.wizard.groupsBy')} ${currentSuggestion.groupSizes![0]}`
+                            : `${currentSuggestion.groupSizes!.length} ${t('tournament.wizard.groupsLabel')}: ${currentSuggestion.groupSizes!.join('·')}`}
+                        </div>
+                      );
+                    })()}
+                    {exceeds && (
+                      <div style={{
+                        fontSize: 11, fontWeight: 700,
+                        color: 'var(--danger)',
+                        background: 'rgba(198, 40, 40, 0.08)',
+                        padding: '6px 10px', borderRadius: 8,
+                      }}>
+                        ⚠️ {t('tournament.wizard.exceedsPlannedEnd', { minutes: overflowMin })}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {errors.teamCount && (
+                  <div style={{ fontSize: 12, color: 'var(--danger)' }}>{errors.teamCount}</div>
+                )}
+              </FormCard>
+
+              {/* Strukturní volby — kontextově dle formátu */}
+              {(draft.format === 'groups-knockout' || draft.format === 'knockout') && (
+                <FormCard>
+                  <SectionTitle>{t('tournament.wizard.step3StructureTitle')}</SectionTitle>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                    {t('tournament.wizard.step3StructureHint')}
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {draft.format === 'groups-knockout' && (
+                      <SettingRow
+                        icon="🏆"
+                        label={t('tournament.wizard.advanceFromGroupLabel')}
+                      >
+                        <ChipPair
+                          value={draft.advancePerGroup}
+                          options={[
+                            { v: 1, label: '1' },
+                            { v: 2, label: '2' },
+                          ]}
+                          onChange={v => updateDraft('advancePerGroup', v as 1 | 2)}
+                        />
+                      </SettingRow>
+                    )}
+                    <SettingRow
+                      icon="🥉"
+                      label={t('tournament.wizard.thirdPlaceLabel')}
+                      isLast={draft.format !== 'groups-knockout'}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 20 }}>
-                          {s.format === 'round-robin' ? '🔁'
-                            : s.format === 'groups-knockout' ? '🏆'
-                            : '⚔️'}
-                        </span>
-                        <span style={{
-                          fontSize: 14, fontWeight: 800,
-                          color: isActive ? 'var(--primary)' : 'var(--text)',
-                          flex: 1,
-                        }}>
-                          {t(`tournament.format.${s.format === 'round-robin' ? 'roundRobin' : s.format === 'groups-knockout' ? 'groupsKnockout' : 'knockout'}.title`)}
-                        </span>
-                        {s.recommended && (
-                          <span style={{
-                            fontSize: 9, fontWeight: 800,
-                            background: 'var(--warning)', color: '#fff',
-                            padding: '3px 7px', borderRadius: 12,
-                            textTransform: 'uppercase', letterSpacing: 0.5,
-                          }}>
-                            ⭐ {t('tournament.wizard.recommendedBadge')}
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                        {t(s.descriptionKey)}
-                      </div>
-                      {s.valid && s.totalMatches > 0 && (() => {
-                        // Predikovaný konec turnaje + porovnání s plánovaným koncem
-                        const predictedEnd = computeEndTime(draft.startTime, s.estimatedMinutes);
-                        const startMin = parseTimeToMinutes(draft.startTime);
-                        const plannedEndMin = draft.plannedEndTime ? parseTimeToMinutes(draft.plannedEndTime) : null;
-                        const overflowMin = (
-                          startMin !== null && plannedEndMin !== null
-                            ? (startMin + s.estimatedMinutes) - plannedEndMin
-                            : null
-                        );
-                        const exceeds = overflowMin !== null && overflowMin > 0;
-                        return (
-                          <>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
-                              📊 {s.totalMatches} {t('tournament.wizard.matchesUnit')} · ⏱ ~{s.estimatedMinutes} {t('tournament.wizard.minutesUnit')}
-                              {predictedEnd && (
-                                <> · 🏁 {t('tournament.wizard.endsAround')} {predictedEnd}</>
-                              )}
-                              {s.format === 'groups-knockout' && s.groupSizes && s.groupSizes.length > 0 && (() => {
-                                // Pokud jsou všechny skupiny stejně velké → "3× po 4"
-                                // Jinak → "3 skupiny: 4·4·3"
-                                const allSame = s.groupSizes.every(sz => sz === s.groupSizes![0]);
-                                if (allSame) {
-                                  return (
-                                    <> · {s.groupSizes.length}× {t('tournament.wizard.groupsLabel')} {t('tournament.wizard.groupsBy')} {s.groupSizes[0]}</>
-                                  );
-                                }
-                                return (
-                                  <> · {s.groupSizes.length} {t('tournament.wizard.groupsLabel')}: {s.groupSizes.join('·')}</>
-                                );
-                              })()}
-                            </div>
-                            {exceeds && (
-                              <div style={{
-                                fontSize: 11, fontWeight: 700,
-                                color: 'var(--danger)',
-                                background: 'rgba(198, 40, 40, 0.08)',
-                                padding: '6px 10px', borderRadius: 8,
-                                marginTop: 2,
-                              }}>
-                                ⚠️ {t('tournament.wizard.exceedsPlannedEnd', { minutes: overflowMin })}
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </button>
-                  );
-                })}
-              </div>
-              {errors.format && (
-                <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>
-                  {errors.format}
-                </div>
+                      <Toggle
+                        checked={draft.thirdPlaceMatch}
+                        onChange={v => updateDraft('thirdPlaceMatch', v)}
+                      />
+                    </SettingRow>
+                    {draft.format === 'groups-knockout' && (
+                      <SettingRow
+                        icon="⚔️"
+                        label={t('tournament.wizard.playOutLabel')}
+                        isLast
+                      >
+                        <Toggle
+                          checked={draft.playOut}
+                          onChange={v => updateDraft('playOut', v)}
+                        />
+                      </SettingRow>
+                    )}
+                  </div>
+                </FormCard>
               )}
+            </>
+          );
+        })()}
 
-            </FormCard>
-          </>
-        )}
-
-        {/* ── KROK 3: Jména týmů + Pokročilé ─────────────────────────────── */}
-        {draft.step === 3 && (
+        {/* ── KROK 4: Týmy + Doladění ─────────────────────────────────────────
+            Jména týmů (s auto-fill) + Settings Preview omezený na organizační
+            volby (pauza, registrace, vstupné, pravidla). Strukturní volby
+            jsou v Step 3 (logicky tam patří, závisí na formátu). */}
+        {draft.step === 4 && (
           <>
             <FormCard>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <SectionTitle>{t('tournament.wizard.step3TeamNamesTitle')}</SectionTitle>
+                <SectionTitle>{t('tournament.wizard.step4TeamNamesTitle')}</SectionTitle>
                 <button
                   type="button"
                   onClick={autoFillTeamNames}
@@ -1109,58 +1267,14 @@ export function TournamentWizardPage({ navigate }: Props) {
               )}
             </FormCard>
 
-            {/* ─── Settings Preview ───────────────────────────────────────────
-                Linear/Vercel pattern: smart defaults vidíš, klikni řádek pro úpravu.
-                Žádný 'advanced toggle', žádný kitchen sink. Honza projde očima a
-                pokračuje. Petr klikne na 3 řádky které mu vadí.
-                Pořadí: Strukturní (postup, 3. místo, play-out) → Časování (pauza)
-                → Organizační (registrace, vstupné, pravidla). */}
+            {/* Settings Preview — jen organizační volby (Honza projde očima,
+                Petr klikne na to co potřebuje). Strukturní volby v Step 3. */}
             <FormCard>
               <SectionTitle>🎯 {t('tournament.wizard.settingsPreviewTitle')}</SectionTitle>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
                 {t('tournament.wizard.settingsPreviewHint')}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {/* ── Strukturní volby (jen pro relevantní formáty) ── */}
-                {draft.format === 'groups-knockout' && (
-                  <SettingRow
-                    icon="🏆"
-                    label={t('tournament.wizard.advanceFromGroupLabel')}
-                  >
-                    <ChipPair
-                      value={draft.advancePerGroup}
-                      options={[
-                        { v: 1, label: '1' },
-                        { v: 2, label: '2' },
-                      ]}
-                      onChange={v => updateDraft('advancePerGroup', v as 1 | 2)}
-                    />
-                  </SettingRow>
-                )}
-                {(draft.format === 'groups-knockout' || draft.format === 'knockout') && (
-                  <SettingRow
-                    icon="🥉"
-                    label={t('tournament.wizard.thirdPlaceLabel')}
-                  >
-                    <Toggle
-                      checked={draft.thirdPlaceMatch}
-                      onChange={v => updateDraft('thirdPlaceMatch', v)}
-                    />
-                  </SettingRow>
-                )}
-                {draft.format === 'groups-knockout' && (
-                  <SettingRow
-                    icon="⚔️"
-                    label={t('tournament.wizard.playOutLabel')}
-                  >
-                    <Toggle
-                      checked={draft.playOut}
-                      onChange={v => updateDraft('playOut', v)}
-                    />
-                  </SettingRow>
-                )}
-
-                {/* ── Časování ── */}
                 <SettingRow
                   icon="⏱"
                   label={t('tournament.wizard.breakLabel')}
@@ -1173,8 +1287,6 @@ export function TournamentWizardPage({ navigate }: Props) {
                     onChange={v => updateDraft('breakBetweenMatchesMinutes', v)}
                   />
                 </SettingRow>
-
-                {/* ── Organizační volby ── */}
                 <SettingRow
                   icon="🌐"
                   label={t('tournament.wizard.registrationEnabled')}
@@ -1245,13 +1357,13 @@ export function TournamentWizardPage({ navigate }: Props) {
             ←
           </button>
           <PrimaryButton
-            onClick={draft.step === 3 ? handleSubmit : goNext}
+            onClick={draft.step === 4 ? handleSubmit : goNext}
             disabled={busy}
             style={{ flex: 1 }}
           >
             {busy
               ? t('common.loading')
-              : draft.step === 3
+              : draft.step === 4
                 ? `⚡ ${t('tournament.wizard.createCta')}`
                 : t('tournament.wizard.nextCta')}
           </PrimaryButton>
