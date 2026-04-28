@@ -37,7 +37,7 @@
  *     na konci Pokročilé sekce. Nezahazujeme existing investment.
  */
 
-import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Page } from '../../App';
 import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
@@ -50,6 +50,7 @@ import {
   PageHeader,
   FormCard, SectionTitle, FormField, PrimaryButton,
   formInputStyle,
+  SettingRow, Toggle, ChipPair, CompactNumberInput, ExpandableTextEditor,
 } from '../../components/ui';
 import type { TournamentFormat } from '../../types/tournament.types';
 
@@ -65,16 +66,12 @@ const TEAM_COLORS = [
 ];
 
 const DRAFT_KEY = 'torq.tournamentWizard.draft.v1';
-/**
- * Chip set pro výběr počtu týmů. Pokrýváme celý rozsah 3–16 (nejčastější
- * pro mládežnické turnaje včetně McDonald's Cupu). Pro >16 týmů je přístupný
- * vlastní vstup (až 32 týmů — limit smart-suggest engine).
- */
-const TEAM_COUNT_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] as const;
 /** Maximální podporovaný počet týmů (smart-suggest engine + brackets generator). */
 const TEAM_COUNT_MAX = 32;
 /** Minimální počet týmů (round-robin potřebuje aspoň 2). */
 const TEAM_COUNT_MIN = 2;
+// V Step 3 používáme smart presets per format místo univerzálního chip rangu —
+// quickChips se počítá in-render z draft.format.
 
 function todayStr(): string {
   return new Date().toISOString().split('T')[0];
@@ -165,186 +162,9 @@ function KnockoutDiagram({ size = 56 }: { size?: number }) {
   );
 }
 
-// ─── Settings Preview helper components ─────────────────────────────────────
-// Linear/Vercel-style settings rows: ikona · label · inline editor.
-// Defaults jsou viditelné, klikni pro úpravu. Žádný "advanced toggle".
-
-interface SettingRowProps {
-  icon: string;
-  label: string;
-  hint?: string;
-  isLast?: boolean;
-  children: ReactNode;
-}
-
-function SettingRow({ icon, label, hint, isLast, children }: SettingRowProps) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 0',
-      borderBottom: isLast ? 'none' : '1px solid var(--border)',
-      minHeight: 48,
-    }}>
-      <span style={{ fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{label}</div>
-        {hint && (
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{hint}</div>
-        )}
-      </div>
-      <div style={{ flexShrink: 0 }}>{children}</div>
-    </div>
-  );
-}
-
-// iOS-style toggle (vizuálně lepší než nativní checkbox v settings rows)
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      style={{
-        width: 44, height: 26, borderRadius: 13,
-        background: checked ? 'var(--primary)' : 'var(--border)',
-        border: 'none', cursor: 'pointer',
-        position: 'relative',
-        transition: 'background .2s',
-      }}
-    >
-      <span style={{
-        position: 'absolute',
-        top: 3, left: checked ? 21 : 3,
-        width: 20, height: 20, borderRadius: 10,
-        background: '#fff',
-        transition: 'left .2s',
-        boxShadow: '0 1px 3px rgba(0,0,0,.2)',
-      }} />
-    </button>
-  );
-}
-
-// Pair of chips for binary numeric choice (1 vs 2)
-function ChipPair<T extends number>({
-  value, options, onChange,
-}: {
-  value: T;
-  options: { v: T; label: string }[];
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div style={{ display: 'flex', gap: 4 }}>
-      {options.map(opt => {
-        const active = value === opt.v;
-        return (
-          <button
-            key={opt.v}
-            type="button"
-            onClick={() => onChange(opt.v)}
-            style={{
-              minWidth: 36, padding: '6px 10px', borderRadius: 8,
-              fontSize: 13, fontWeight: 700,
-              background: active ? 'var(--primary)' : 'var(--surface-var)',
-              color: active ? '#fff' : 'var(--text-muted)',
-              border: active ? 'none' : '1.5px solid var(--border)',
-              cursor: 'pointer',
-            }}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// Compact number input with unit suffix (used inline in settings rows)
-function CompactNumberInput({
-  value, min, max, unit, onChange, nullable,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  unit?: string;
-  onChange: (v: number) => void;
-  /** Pokud true, hodnota 0 se interně považuje za "—" (nezadáno). */
-  nullable?: boolean;
-}) {
-  const isEmpty = nullable && value === 0;
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <input
-        type="number"
-        min={min}
-        max={max}
-        value={isEmpty ? '' : value}
-        placeholder={isEmpty ? '—' : undefined}
-        onChange={e => {
-          const raw = e.target.value;
-          if (raw === '') { onChange(0); return; }
-          const n = Number(raw);
-          if (Number.isFinite(n)) onChange(Math.max(min, Math.min(max, n)));
-        }}
-        style={{
-          width: 60, padding: '6px 8px',
-          fontSize: 13, fontWeight: 700, textAlign: 'center',
-          borderRadius: 8, border: '1.5px solid var(--border)',
-          background: 'var(--surface)', color: 'var(--text)',
-        }}
-        inputMode="numeric"
-      />
-      {unit && (
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
-          {unit}
-        </span>
-      )}
-    </div>
-  );
-}
-
-// Expandable text editor — initially shows "+ Přidat", click reveals textarea.
-// Once user typed, shows truncated preview + "upravit" button.
-function ExpandableTextEditor({
-  value, placeholder, onChange, addLabel,
-}: {
-  value: string;
-  placeholder?: string;
-  onChange: (v: string) => void;
-  addLabel: string;
-}) {
-  const [open, setOpen] = useState(value.trim().length > 0);
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        style={{
-          background: 'transparent', border: 'none',
-          color: 'var(--primary)', fontSize: 12, fontWeight: 700,
-          cursor: 'pointer', padding: '4px 8px',
-        }}
-      >
-        + {addLabel}
-      </button>
-    );
-  }
-  return (
-    <textarea
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      rows={2}
-      style={{
-        width: 200, padding: '6px 10px',
-        fontSize: 12, lineHeight: 1.4,
-        borderRadius: 8, border: '1.5px solid var(--border)',
-        background: 'var(--surface)', color: 'var(--text)',
-        fontFamily: 'inherit', resize: 'vertical',
-      }}
-    />
-  );
-}
+// Settings Preview komponenty (SettingRow, Toggle, ChipPair, CompactNumberInput,
+// ExpandableTextEditor) jsou teď v `components/ui/SettingsPreview` a importují se
+// přes `components/ui` index. Sdílí je TournamentWizardPage + QuickMatchSheet.
 
 interface WizardDraft {
   step: WizardStep;
@@ -901,7 +721,7 @@ export function TournamentWizardPage({ navigate }: Props) {
         {/* ── KROK 2: Formát ─────────────────────────────────────────────────
             Hero icon cards (32px emoji + mini bracket diagram). Jeden focused
             choice. Žádný count, žádné inputy — jen výběr "jak se hraje".
-            Coach pak v Step 3 řeší kolik týmů a časování. */}}
+            Coach pak v Step 3 řeší kolik týmů a časování. */}
         {draft.step === 2 && (
           <FormCard>
             <SectionTitle>{t('tournament.wizard.step2HowToPlayTitle')}</SectionTitle>

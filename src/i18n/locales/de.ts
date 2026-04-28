@@ -1093,6 +1093,7 @@ export const de: Record<TranslationKey, string> = {
   'match.quickSheet.periods2': '2 (mit Halbzeit)',
   'match.quickSheet.durationOneLabel': 'Spieldauer',
   'match.quickSheet.durationEachLabel': 'Pro Halbzeit',
+  'match.quickSheet.matchFormatLabel': 'Spielformat',
   'match.quickSheet.durationUnit': 'Minuten',
   'match.quickSheet.durationSummary': 'Gesamt {total} min ({layout})',
   'match.quickSheet.rosterToggle': 'Spieler (optional)',

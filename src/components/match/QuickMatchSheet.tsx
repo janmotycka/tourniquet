@@ -19,6 +19,12 @@ import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useSimpleSquadsStore } from '../../store/simpleSquads.store';
 import { useMatchesStore } from '../../store/matches.store';
 import type { SimpleSquad } from '../../types/simpleSquad.types';
+import {
+  SettingRow,
+  ChipPair,
+  CompactNumberInput,
+  SettingsList,
+} from '../ui';
 
 /**
  * Audit 2026-04-24 (Honza): „McDonald's Cup má 10 min, ale app nabízí Poločas
@@ -78,6 +84,11 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
   // hodnoty. User pak může cokoli upravit inputem.
   const [periodCount, setPeriodCount] = useState<1 | 2>(1);
   const [periodMinutes, setPeriodMinutes] = useState(15);
+  // Audit 2026-04-28 (research-driven UX overhaul): match format jako visible
+  // setting (předtím auto-derived z duration ≥60min). Coach klubový tým hraje
+  // pevný format (5+1, 7+1, 11+1) — má smysl ho exponovat. Default 5+1
+  // (mládež malé hřiště — dominantní amatérský fotbal v ČR).
+  const [matchFormat, setMatchFormat] = useState<QuickMatchPreset['matchFormat']>('5+1');
   const inputRef = useRef<HTMLInputElement>(null);
 
   /** Historie soupeřů — unikátní `opponent` z user vlastních zápasů.
@@ -216,11 +227,9 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
       markUsed(selectedSquadId);
     }
 
-    // Sestavíme preset z current values (nejen z chipů, ale i z manual
-    // inputů). Match format dědíme z nejbližšího chip presetu — 5+1 pro
-    // krátké zápasy, 7+1 pro 60+ min.
+    // Sestavíme preset z current values. Match format je teď user-controlled
+    // (visible setting), ne auto-derived.
     const totalMinutes = periodCount * periodMinutes;
-    const matchFormat: QuickMatchPreset['matchFormat'] = totalMinutes >= 60 ? '7+1' : '5+1';
     const preset: QuickMatchPreset = {
       durationMinutes: totalMinutes,
       periods: periodCount,
@@ -516,68 +525,52 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
             </div>
           )}
 
-          {/* Délka zápasu — number input pattern (konzistentní s
-              EditMatchSheet a CreateMatchPage). Audit 2026-04-25 user:
-              „slider nebyl nejlepší nápad, udělej to jako v jiných sekcích".
-              Layout: 2 sloupce — Poločasy [1/2] | Délka (číselný input). */}
-          <div>
-            <div style={{ ...labelStyle, marginBottom: 8 }}>
-              ⏱ {t('match.quickSheet.durationLabel')}
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {/* Poločasy */}
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                  {t('match.quickSheet.periodsLabel')}
-                </label>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {([1, 2] as const).map(n => {
-                    const active = periodCount === n;
-                    return (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() => setPeriodCount(n)}
-                        style={{
-                          flex: 1, padding: '10px 4px', borderRadius: 10,
-                          background: active ? 'var(--primary)' : 'var(--surface-var)',
-                          color: active ? '#fff' : 'var(--text)',
-                          border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border)'}`,
-                          fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                        }}
-                      >
-                        {n}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              {/* Délka jednoho poločasu / zápasu */}
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                  {periodCount === 1
-                    ? t('match.quickSheet.durationOneLabel')
-                    : t('match.quickSheet.durationEachLabel')}
-                </label>
-                <input
-                  type="number"
+          {/* Detaily zápasu — Settings Preview pattern (konzistentní s wizardem).
+              Smart defaults viditelné jako řádky, klikni inline editor pro úpravu.
+              Audit 2026-04-28: nahrazuje předchozí 2-col layout (Poločasy + Délka)
+              + přidává matchFormat jako visible setting (předtím auto-derived). */}
+          <div style={{
+            background: 'var(--surface-var)',
+            borderRadius: 12, padding: '4px 14px',
+            border: '1px solid var(--border)',
+          }}>
+            <SettingsList>
+              <SettingRow icon="⏱" label={t('match.quickSheet.periodsLabel')}>
+                <ChipPair
+                  value={periodCount}
+                  options={[
+                    { v: 1, label: '1' },
+                    { v: 2, label: '2' },
+                  ]}
+                  onChange={v => setPeriodCount(v as 1 | 2)}
+                />
+              </SettingRow>
+              <SettingRow
+                icon="🕐"
+                label={periodCount === 1
+                  ? t('match.quickSheet.durationOneLabel')
+                  : t('match.quickSheet.durationEachLabel')}
+              >
+                <CompactNumberInput
+                  value={periodMinutes}
                   min={1}
                   max={60}
-                  value={periodMinutes}
-                  onChange={e => {
-                    const n = Number(e.target.value);
-                    if (Number.isFinite(n)) setPeriodMinutes(Math.max(1, Math.min(60, n)));
-                  }}
-                  inputMode="numeric"
-                  style={{
-                    width: '100%', padding: '10px', borderRadius: 10,
-                    border: '1.5px solid var(--border)', fontSize: 14,
-                    background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box',
-                    textAlign: 'center', fontWeight: 700,
-                  }}
+                  unit="min"
+                  onChange={setPeriodMinutes}
                 />
-              </div>
-            </div>
+              </SettingRow>
+              <SettingRow icon="⚽" label={t('match.quickSheet.matchFormatLabel')} isLast>
+                <ChipPair
+                  value={matchFormat}
+                  options={[
+                    { v: '5+1', label: '5+1' },
+                    { v: '7+1', label: '7+1' },
+                    { v: '11+1', label: '11+1' },
+                  ]}
+                  onChange={v => setMatchFormat(v as QuickMatchPreset['matchFormat'])}
+                />
+              </SettingRow>
+            </SettingsList>
           </div>
 
           <button
