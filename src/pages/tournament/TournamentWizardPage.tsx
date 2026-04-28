@@ -832,6 +832,14 @@ function TournamentStructureDiagram({
     const canAddGroup = !!onSetGroupCount && groupSizes.length < maxGroups;
     const canRemoveGroup = !!onSetGroupCount && groupSizes.length > 2;
 
+    // Edge case validation: skupinová fáze je smysluplná, když z každé skupiny
+    // alespoň 1 tým KONČÍ (nepostupuje). Když advance >= minGroupSize, znamená
+    // to že z nejmenší skupiny postupují všichni — skupina = formalita.
+    const minGroupSize = Math.min(...groupSizes);
+    const maxGroupSize = Math.max(...groupSizes);
+    const everyoneAdvancesFromSmallest = advancePerGroup >= minGroupSize;
+    const everyoneAdvancesFromAll = advancePerGroup >= maxGroupSize;
+
     return (
       <div style={{
         padding: 12, borderRadius: 10,
@@ -921,6 +929,34 @@ function TournamentStructureDiagram({
               </span>
             )}
           </div>
+
+          {/* Validační warning: skupinová fáze nemá smysl když všichni postupují */}
+          {everyoneAdvancesFromAll && (
+            <div style={{
+              marginTop: 10,
+              padding: '8px 12px', borderRadius: 8,
+              background: 'rgba(198, 40, 40, 0.08)',
+              border: '1px solid var(--danger)',
+              fontSize: 11, color: 'var(--danger)', fontWeight: 700,
+              lineHeight: 1.4,
+            }}>
+              ⚠️ Z každé skupiny postupují <b>všichni</b> — skupinová fáze nemá soutěžní smysl.
+              Doporučujeme zvolit <b>round-robin</b> nebo přidat skupiny.
+            </div>
+          )}
+          {!everyoneAdvancesFromAll && everyoneAdvancesFromSmallest && (
+            <div style={{
+              marginTop: 10,
+              padding: '8px 12px', borderRadius: 8,
+              background: 'rgba(245, 158, 11, 0.10)',
+              border: '1px solid var(--warning)',
+              fontSize: 11, color: 'var(--warning)', fontWeight: 700,
+              lineHeight: 1.4,
+            }}>
+              ⚠️ Z menších skupin (po {minGroupSize} týmech) postupují všichni — skupina je formalita.
+              Zvaž rovnoměrnější rozdělení nebo méně skupin.
+            </div>
+          )}
         </div>
 
         {/* Šipka mezi fázemi */}
