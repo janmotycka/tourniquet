@@ -2615,6 +2615,7 @@ export const en: Record<TranslationKey, string> = {
   'tournament.wizard.step3DetailsHint': 'You\u2019ll see a live match count and predicted end time.',
   'tournament.wizard.step3StructureTitle': 'Tournament structure',
   'tournament.wizard.step3StructureHint': 'Options depend on the chosen format.',
+  'tournament.wizard.step3StructureHintDirect': 'Click directly in the diagram — add/remove groups, click a row to set advancement, toggle 3rd place or play-out.',
   'tournament.wizard.step4TeamNamesTitle': 'Team names',
   'tournament.wizard.teamCountLabel': 'Number of teams',
   'tournament.wizard.teamCountCustomShort': 'Custom',

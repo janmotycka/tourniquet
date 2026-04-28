@@ -50,7 +50,7 @@ import {
   PageHeader,
   FormCard, SectionTitle, FormField, PrimaryButton,
   formInputStyle,
-  SettingRow, Toggle, ChipPair, CompactNumberInput, ExpandableTextEditor,
+  SettingRow, Toggle, CompactNumberInput, ExpandableTextEditor,
 } from '../../components/ui';
 import type { TournamentFormat } from '../../types/tournament.types';
 
@@ -178,7 +178,17 @@ function KnockoutDiagram({ size = 56 }: { size?: number }) {
  * Advancující týmy: warning oranžové glowing dots
  * Vyřazení: surface dimmed dots
  */
-function GroupCard({ size, advance, letter }: { size: number; advance: 1 | 2; letter: string }) {
+function GroupCard({
+  size, advance, letter, onRemove, onSetAdvance,
+}: {
+  size: number;
+  advance: 1 | 2;
+  letter: string;
+  /** Smazat skupinu — × button v rohu. Undefined = nelze smazat. */
+  onRemove?: () => void;
+  /** Klik na řádek nastaví advance na ten index. Undefined = read-only. */
+  onSetAdvance?: (n: 1 | 2) => void;
+}) {
   return (
     <div style={{
       padding: '10px 12px',
@@ -188,7 +198,31 @@ function GroupCard({ size, advance, letter }: { size: number; advance: 1 | 2; le
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       gap: 8,
       minWidth: 56,
+      position: 'relative',
     }}>
+      {/* × button pro smazání skupiny — top-right corner */}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Smazat skupinu ${letter}`}
+          title={`Smazat skupinu ${letter}`}
+          style={{
+            position: 'absolute',
+            top: -7, right: -7,
+            width: 20, height: 20,
+            borderRadius: '50%',
+            background: 'var(--surface)',
+            border: '1.5px solid var(--border)',
+            color: 'var(--text-muted)',
+            fontSize: 12, lineHeight: 1, fontWeight: 700,
+            cursor: 'pointer',
+            padding: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 1px 3px rgba(0,0,0,.08)',
+          }}
+        >×</button>
+      )}
       <span style={{
         fontSize: 12, fontWeight: 800, color: 'var(--text)',
       }}>
@@ -198,10 +232,28 @@ function GroupCard({ size, advance, letter }: { size: number; advance: 1 | 2; le
         {Array.from({ length: size }).map((_, i) => {
           const advancing = i < advance;
           const label = `${letter}${i + 1}`;
+          // Kliknutelné jsou řádky s indexem 1 nebo 2 (advance může být 1 nebo 2)
+          const idx = i + 1;
+          const isClickable = !!onSetAdvance && (idx === 1 || idx === 2);
           return (
             <div
               key={i}
-              title={advancing ? `${label} — postupuje` : `${label} — končí`}
+              role={isClickable ? 'button' : undefined}
+              tabIndex={isClickable ? 0 : undefined}
+              onClick={isClickable ? () => onSetAdvance!(idx as 1 | 2) : undefined}
+              onKeyDown={isClickable ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onSetAdvance!(idx as 1 | 2);
+                }
+              } : undefined}
+              title={
+                isClickable
+                  ? (idx === 1
+                    ? `Klikni — postupuje jen vítěz skupiny`
+                    : `Klikni — postupují nejlepší 2 ze skupiny`)
+                  : (advancing ? `${label} — postupuje` : `${label} — končí`)
+              }
               style={{
                 padding: '3px 8px',
                 fontSize: 11, fontWeight: 800,
@@ -215,6 +267,8 @@ function GroupCard({ size, advance, letter }: { size: number; advance: 1 | 2; le
                 boxShadow: advancing ? '0 0 0 1.5px rgba(245, 158, 11, 0.18)' : 'none',
                 transition: 'background .2s, box-shadow .2s',
                 letterSpacing: 0.3,
+                cursor: isClickable ? 'pointer' : 'default',
+                userSelect: 'none',
               }}
             >
               {label}
@@ -223,6 +277,39 @@ function GroupCard({ size, advance, letter }: { size: number; advance: 1 | 2; le
         })}
       </div>
     </div>
+  );
+}
+
+/**
+ * Direct toggle button uvnitř diagramu — výrazný visual při on, ghost při off.
+ * Použito pro 3. místo a play-out toggly přímo v Tournament Structure diagramu.
+ */
+function DirectToggleButton({
+  active, activeLabel, inactiveLabel, onClick,
+}: {
+  active: boolean;
+  activeLabel: string;
+  inactiveLabel: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: '8px 12px',
+        borderRadius: 8,
+        background: active ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+        border: `1.5px ${active ? 'solid' : 'dashed'} ${active ? 'var(--warning)' : 'var(--border)'}`,
+        color: active ? 'var(--warning)' : 'var(--text-muted)',
+        fontSize: 11, fontWeight: 700,
+        cursor: 'pointer',
+        textAlign: 'center',
+        transition: 'background .2s, border-color .2s',
+      }}
+    >
+      {active ? activeLabel : inactiveLabel}
+    </button>
   );
 }
 
@@ -563,10 +650,15 @@ function BracketTree({
 
 /**
  * Kompletní vizuální schéma turnaje. Reaguje na všechny settings.
- * Použito v Step 3 nad strukturními togly — uživatel vidí strukturu live.
+ * Direct manipulation: groupCount + advance + 3rd place + play-out se nastavují
+ * přímo zde (nebudou potřeba setting řádky pod). User klikne `+ Skupina` ghost
+ * card → přidá; klikne × na skupině → smaže; klikne řádek (A1/A2) → změní advance;
+ * klikne ghost button "+ 🥉" / "+ ⚔️" → přidá; klikne aktivní 3rd-place box / playout
+ * badge → odebere.
  */
 function TournamentStructureDiagram({
   format, teamCount, groupSizes, advancePerGroup, thirdPlaceMatch, playOut,
+  onSetGroupCount, onSetAdvancePerGroup, onSetThirdPlace, onSetPlayOut,
 }: {
   format: TournamentFormat | null;
   teamCount: number;
@@ -574,6 +666,14 @@ function TournamentStructureDiagram({
   advancePerGroup: 1 | 2;
   thirdPlaceMatch: boolean;
   playOut: boolean;
+  /** Změnit počet skupin (přidat/ubrat). Undefined = read-only diagram. */
+  onSetGroupCount?: (n: number) => void;
+  /** Změnit počet postupujících (1 nebo 2). */
+  onSetAdvancePerGroup?: (n: 1 | 2) => void;
+  /** Toggle zápasu o 3. místo. */
+  onSetThirdPlace?: (v: boolean) => void;
+  /** Toggle play-out. */
+  onSetPlayOut?: (v: boolean) => void;
 }) {
   if (!format) return null;
 
@@ -624,6 +724,15 @@ function TournamentStructureDiagram({
           🏆 Vyřazovací fáze ({teamCount} týmů)
         </div>
         <BracketTree teams={teamCount} thirdPlace={thirdPlaceMatch} />
+        {/* Direct toggle 3. místo */}
+        {onSetThirdPlace && (
+          <DirectToggleButton
+            active={thirdPlaceMatch}
+            activeLabel="🥉 Zápas o 3. místo (klikni pro odebrání)"
+            inactiveLabel="+ 🥉 Přidat zápas o 3. místo"
+            onClick={() => onSetThirdPlace(!thirdPlaceMatch)}
+          />
+        )}
       </div>
     );
   }
@@ -632,6 +741,11 @@ function TournamentStructureDiagram({
   if (format === 'groups-knockout' && groupSizes && groupSizes.length > 0) {
     const totalAdvance = groupSizes.length * advancePerGroup;
     const bracketLabels = generateBracketLabels(groupSizes.length, advancePerGroup);
+    // Maximum počet skupin pro tenhle teamCount (min 2 týmy ve skupině, max 4 skupiny)
+    const maxGroups = Math.min(4, Math.floor(teamCount / 2));
+    const canAddGroup = !!onSetGroupCount && groupSizes.length < maxGroups;
+    const canRemoveGroup = !!onSetGroupCount && groupSizes.length > 2;
+
     return (
       <div style={{
         padding: 12, borderRadius: 10,
@@ -646,13 +760,16 @@ function TournamentStructureDiagram({
           }}>
             📋 Skupinová fáze
           </div>
-          {/* Skupiny vedle sebe (row), centrované, wrap pro velký počet skupin */}
+          {/* Skupiny vedle sebe (row), centrované, wrap pro velký počet skupin.
+              Každá karta má × pro smazání (když lze), klik na řádek mění advance.
+              Posledním elementem je "+ Skupina" ghost card (když lze přidat). */}
           <div style={{
             display: 'flex',
             flexDirection: 'row',
             flexWrap: 'wrap',
             gap: 8,
             justifyContent: 'center',
+            paddingTop: canRemoveGroup ? 8 : 0, // místo pro × buttony nahoře
           }}>
             {groupSizes.map((size, idx) => (
               <GroupCard
@@ -660,12 +777,45 @@ function TournamentStructureDiagram({
                 size={size}
                 advance={advancePerGroup}
                 letter={String.fromCharCode(65 + idx)}
+                onRemove={
+                  canRemoveGroup
+                    ? () => onSetGroupCount!(groupSizes.length - 1)
+                    : undefined
+                }
+                onSetAdvance={onSetAdvancePerGroup}
               />
             ))}
+            {/* "+ Skupina" ghost card */}
+            {canAddGroup && (
+              <button
+                type="button"
+                onClick={() => onSetGroupCount!(groupSizes.length + 1)}
+                aria-label="Přidat skupinu"
+                title="Přidat skupinu"
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  background: 'transparent',
+                  border: '1.5px dashed var(--primary)',
+                  color: 'var(--primary)',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  minWidth: 56,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 4,
+                }}
+              >
+                <span style={{ fontSize: 22, lineHeight: 1 }}>+</span>
+                <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.85, letterSpacing: 0.3 }}>
+                  Skupina
+                </span>
+              </button>
+            )}
           </div>
           <div style={{
             fontSize: 10, color: 'var(--text-muted)', marginTop: 8,
-            display: 'flex', alignItems: 'center', gap: 6,
+            display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
           }}>
             <span style={{
               width: 10, height: 10, borderRadius: '50%',
@@ -678,6 +828,11 @@ function TournamentStructureDiagram({
               border: '1.5px solid var(--border)', display: 'inline-block',
             }} />
             končí
+            {onSetAdvancePerGroup && (
+              <span style={{ marginLeft: 'auto', fontStyle: 'italic', opacity: 0.8 }}>
+                💡 klikni na řádek pro změnu postupu
+              </span>
+            )}
           </div>
         </div>
 
@@ -704,17 +859,25 @@ function TournamentStructureDiagram({
           />
         </div>
 
-        {/* Play-out indikátor */}
-        {playOut && (
-          <div style={{
-            fontSize: 11, fontWeight: 700,
-            padding: '8px 12px', borderRadius: 8,
-            background: 'rgba(99, 102, 241, 0.08)',
-            border: '1px solid var(--primary)',
-            color: 'var(--primary)',
-            textAlign: 'center',
-          }}>
-            ⚔️ + Play-out: i poražení dohrají všechna umístění
+        {/* Direct toggles 3. místo + play-out */}
+        {(onSetThirdPlace || onSetPlayOut) && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {onSetThirdPlace && (
+              <DirectToggleButton
+                active={thirdPlaceMatch}
+                activeLabel="🥉 Zápas o 3. místo (klikni pro odebrání)"
+                inactiveLabel="+ 🥉 Přidat zápas o 3. místo"
+                onClick={() => onSetThirdPlace(!thirdPlaceMatch)}
+              />
+            )}
+            {onSetPlayOut && (
+              <DirectToggleButton
+                active={playOut}
+                activeLabel="⚔️ Play-out: poražení dohrají všechna umístění (klikni pro odebrání)"
+                inactiveLabel="+ ⚔️ Přidat play-out (zápasy o všechna umístění)"
+                onClick={() => onSetPlayOut(!playOut)}
+              />
+            )}
           </div>
         )}
       </div>
@@ -1613,16 +1776,19 @@ export function TournamentWizardPage({ navigate }: Props) {
               </FormCard>
 
               {/* Strukturní volby — kontextově dle formátu.
-                  Nahoře vizuální schéma turnaje (live updates podle togglů),
-                  pod ním řádky pro úpravu. Coach vidí přesně jak turnaj poběží. */}
+                  VŠECHNO se nastavuje DIRECT v diagramu:
+                  - Skupiny: + Skupina ghost card / × button na kartě
+                  - Postup: klik na řádek (A1 = 1 postupuje, A2 = 2 postupují)
+                  - 3. místo: ghost button "+ 🥉..." nebo aktivní box
+                  - Play-out: ghost button "+ ⚔️..." nebo aktivní badge
+                  Žádné setting řádky pod — všechna interakce v diagramu. */}
               {(draft.format === 'groups-knockout' || draft.format === 'knockout') && (
                 <FormCard>
                   <SectionTitle>{t('tournament.wizard.step3StructureTitle')}</SectionTitle>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
-                    {t('tournament.wizard.step3StructureHint')}
+                    {t('tournament.wizard.step3StructureHintDirect')}
                   </p>
 
-                  {/* ─── Vizuální schéma — live preview ─── */}
                   <TournamentStructureDiagram
                     format={draft.format}
                     teamCount={draft.teamCount}
@@ -1630,76 +1796,19 @@ export function TournamentWizardPage({ navigate }: Props) {
                     advancePerGroup={draft.advancePerGroup}
                     thirdPlaceMatch={draft.thirdPlaceMatch}
                     playOut={draft.playOut}
+                    onSetGroupCount={(n) => {
+                      // Pokud user pickne defaultní hodnotu pro daný teamCount,
+                      // resetuj override na null (clean state).
+                      const wouldDefault =
+                        draft.teamCount <= 8 ? 2
+                        : draft.teamCount <= 12 ? 3
+                        : 4;
+                      updateDraft('groupCountOverride', n === wouldDefault ? null : n);
+                    }}
+                    onSetAdvancePerGroup={(n) => updateDraft('advancePerGroup', n)}
+                    onSetThirdPlace={(v) => updateDraft('thirdPlaceMatch', v)}
+                    onSetPlayOut={(v) => updateDraft('playOut', v)}
                   />
-
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {/* Počet skupin (override smart-suggest). Zobrazíme jen když
-                        je víc než 1 valid option pro daný teamCount. */}
-                    {draft.format === 'groups-knockout' && (() => {
-                      const maxGroups = Math.min(4, Math.floor(draft.teamCount / 2));
-                      const validOptions: number[] = [];
-                      for (let n = 2; n <= maxGroups; n++) validOptions.push(n);
-                      // Aktuální effective hodnota (z suggestion = co engine použil)
-                      const effective = currentSuggestion?.groupCount ?? validOptions[0] ?? 2;
-                      if (validOptions.length < 2) return null;
-                      return (
-                        <SettingRow
-                          icon="📋"
-                          label={t('tournament.wizard.groupCountLabel')}
-                        >
-                          <ChipPair
-                            value={effective}
-                            options={validOptions.map(n => ({ v: n, label: String(n) }))}
-                            onChange={v => {
-                              // Pokud user vybral default (smart heuristika), reset na null
-                              const wouldDefault =
-                                draft.teamCount <= 8 ? 2
-                                : draft.teamCount <= 12 ? 3
-                                : 4;
-                              updateDraft('groupCountOverride', v === wouldDefault ? null : (v as number));
-                            }}
-                          />
-                        </SettingRow>
-                      );
-                    })()}
-                    {draft.format === 'groups-knockout' && (
-                      <SettingRow
-                        icon="🏆"
-                        label={t('tournament.wizard.advanceFromGroupLabel')}
-                      >
-                        <ChipPair
-                          value={draft.advancePerGroup}
-                          options={[
-                            { v: 1, label: '1' },
-                            { v: 2, label: '2' },
-                          ]}
-                          onChange={v => updateDraft('advancePerGroup', v as 1 | 2)}
-                        />
-                      </SettingRow>
-                    )}
-                    <SettingRow
-                      icon="🥉"
-                      label={t('tournament.wizard.thirdPlaceLabel')}
-                      isLast={draft.format !== 'groups-knockout'}
-                    >
-                      <Toggle
-                        checked={draft.thirdPlaceMatch}
-                        onChange={v => updateDraft('thirdPlaceMatch', v)}
-                      />
-                    </SettingRow>
-                    {draft.format === 'groups-knockout' && (
-                      <SettingRow
-                        icon="⚔️"
-                        label={t('tournament.wizard.playOutLabel')}
-                        isLast
-                      >
-                        <Toggle
-                          checked={draft.playOut}
-                          onChange={v => updateDraft('playOut', v)}
-                        />
-                      </SettingRow>
-                    )}
-                  </div>
                 </FormCard>
               )}
             </>

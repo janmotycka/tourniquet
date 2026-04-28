@@ -2640,6 +2640,7 @@ export const cs = {
   'tournament.wizard.step3DetailsHint': 'Aplikace ti hned ukáže odhad zápasů a konec turnaje.',
   'tournament.wizard.step3StructureTitle': 'Struktura turnaje',
   'tournament.wizard.step3StructureHint': 'Volby závisí na vybraném formátu.',
+  'tournament.wizard.step3StructureHintDirect': 'Klikni přímo do schématu — přidej/uber skupinu, klikni na řádek pro postup, zapni 3. místo nebo play-out.',
   'tournament.wizard.step4TeamNamesTitle': 'Jména týmů',
   'tournament.wizard.teamCountLabel': 'Počet týmů',
   'tournament.wizard.teamCountCustomShort': 'Vlastní',

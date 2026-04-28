@@ -2615,6 +2615,7 @@ export const de: Record<TranslationKey, string> = {
   'tournament.wizard.step3DetailsHint': 'Du siehst sofort die Spielanzahl und das voraussichtliche Ende.',
   'tournament.wizard.step3StructureTitle': 'Turnierstruktur',
   'tournament.wizard.step3StructureHint': 'Optionen je nach Format.',
+  'tournament.wizard.step3StructureHintDirect': 'Klicke direkt im Schema — Gruppen hinzufügen/entfernen, Zeile klicken für Aufstieg, Spiel um Platz 3 oder Play-out aktivieren.',
   'tournament.wizard.step4TeamNamesTitle': 'Teamnamen',
   'tournament.wizard.teamCountLabel': 'Anzahl Teams',
   'tournament.wizard.teamCountCustomShort': 'Eigene',
