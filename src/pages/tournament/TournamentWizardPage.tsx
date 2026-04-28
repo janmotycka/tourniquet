@@ -426,9 +426,16 @@ function BracketTree({
   const matchAtPos = (round: number, idx: number) =>
     positions.find(p => p.round === round && p.idx === idx)!;
 
-  // Místo pro 3. místo box pod hlavním bracketem
-  const thirdPlaceBoxH = thirdPlace ? matchH + 16 : 0;
-  const svgH = totalH + thirdPlaceBoxH + 12;
+  // 3. místo box je pod finále (stejná x-coordinate jako finále)
+  const finalPos = matchAtPos(rounds.length - 1, 0);
+  const finalX = (rounds.length - 1) * (matchW + colGap);
+  const thirdPlaceX = finalX;
+  const thirdPlaceY = finalPos.y + matchH + 18;
+
+  // SVG height: bracket + (3. místo pod finále, pokud zapnuto)
+  const svgH = thirdPlace
+    ? Math.max(totalH + 12, thirdPlaceY + matchH + 12)
+    : totalH + 12;
 
   return (
     <div style={{
@@ -605,15 +612,28 @@ function BracketTree({
           );
         })()}
 
-        {/* 3. místo box (samostatně pod hlavním bracketem) */}
+        {/* 3. místo box — pod finále, stejná x-coordinate. Připojené čárkovanou
+            čarou z finále dolů (poražení semifinálisti hrají o bronz). */}
         {thirdPlace && (() => {
-          const y = totalH + 12;
-          // Box má vlastní styling — warning/oranžová pro odlišení
+          const finalCenterX = finalX + matchW / 2;
+          const finalBottomY = finalPos.y + matchH;
+          const tpTopY = thirdPlaceY;
           return (
             <g>
+              {/* Čárkovaná spojnice z finále dolů k 3. místo boxu */}
+              <line
+                x1={finalCenterX}
+                y1={finalBottomY}
+                x2={finalCenterX}
+                y2={tpTopY}
+                stroke="var(--warning)"
+                strokeWidth={1.2}
+                strokeDasharray="3,2"
+                opacity={0.6}
+              />
               <rect
-                x={0}
-                y={y}
+                x={thirdPlaceX}
+                y={thirdPlaceY}
                 width={matchW}
                 height={matchH}
                 fill="rgba(245, 158, 11, 0.12)"
@@ -622,23 +642,14 @@ function BracketTree({
                 rx={5}
               />
               <text
-                x={matchW / 2}
-                y={y + matchH / 2 + 4}
+                x={thirdPlaceX + matchW / 2}
+                y={thirdPlaceY + matchH / 2 + 4}
                 textAnchor="middle"
                 fontSize={11}
                 fontWeight={800}
                 fill="var(--warning)"
               >
                 🥉 3. místo
-              </text>
-              <text
-                x={matchW + 8}
-                y={y + matchH / 2 + 4}
-                fontSize={10}
-                fill="var(--text-muted)"
-                fontStyle="italic"
-              >
-                poražení SF
               </text>
             </g>
           );
@@ -858,6 +869,83 @@ function TournamentStructureDiagram({
             labels={bracketLabels.length > 0 ? bracketLabels : undefined}
           />
         </div>
+
+        {/* ⚔️ Play-out brackety (zápasy o umístění) — jen pro 2 skupiny.
+            Pro každou pozici 3, 4, ... ve skupinách generujeme match
+            "X.A vs X.B" → vítěz lepší umístění (5., 7., 9., ...). */}
+        {playOut && groupSizes.length === 2 && (() => {
+          const minSize = Math.min(...groupSizes);
+          const playoutMatches: Array<{ slot1: string; slot2: string; place: number }> = [];
+          for (let pos = advancePerGroup + 1; pos <= minSize; pos++) {
+            const place = (pos - 1) * 2 + 1; // 5., 7., 9. ...
+            playoutMatches.push({
+              slot1: `A${pos}`,
+              slot2: `B${pos}`,
+              place,
+            });
+          }
+          if (playoutMatches.length === 0) return null;
+          return (
+            <div>
+              <div style={{
+                fontSize: 11, fontWeight: 800, color: 'var(--warning)',
+                textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+              }}>
+                ⚔️ Zápasy o umístění (play-out)
+              </div>
+              <div style={{
+                display: 'flex', gap: 8, flexWrap: 'wrap',
+                justifyContent: 'center',
+              }}>
+                {playoutMatches.map((m, idx) => (
+                  <div key={idx} style={{
+                    padding: '6px 10px', borderRadius: 8,
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    border: '1.5px solid var(--warning)',
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', gap: 4,
+                    minWidth: 72,
+                  }}>
+                    <div style={{
+                      fontSize: 10, fontWeight: 800, color: 'var(--warning)',
+                      letterSpacing: 0.3,
+                    }}>
+                      O {m.place}. místo
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <div style={{
+                        padding: '2px 6px', borderRadius: 4,
+                        background: 'var(--surface)', border: '1px solid var(--border)',
+                        fontSize: 10, fontWeight: 700, color: 'var(--text)',
+                        textAlign: 'center', minWidth: 30,
+                      }}>{m.slot1}</div>
+                      <div style={{
+                        padding: '2px 6px', borderRadius: 4,
+                        background: 'var(--surface)', border: '1px solid var(--border)',
+                        fontSize: 10, fontWeight: 700, color: 'var(--text)',
+                        textAlign: 'center', minWidth: 30,
+                      }}>{m.slot2}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Pokud user zapne play-out pro 3+ skupin, řekneme že to nebude
+            generovat zápasy (kvůli složitosti křížení skupin v plánovači). */}
+        {playOut && groupSizes.length > 2 && (
+          <div style={{
+            padding: '8px 12px', borderRadius: 8,
+            background: 'rgba(198, 40, 40, 0.06)',
+            border: '1px dashed var(--danger)',
+            fontSize: 11, color: 'var(--danger)', fontWeight: 600,
+            textAlign: 'center',
+          }}>
+            ⚠️ Play-out funguje jen pro 2 skupiny. Pro {groupSizes.length} skupin se nevygeneruje.
+          </div>
+        )}
 
         {/* Direct toggles 3. místo + play-out */}
         {(onSetThirdPlace || onSetPlayOut) && (
