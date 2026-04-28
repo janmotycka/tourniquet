@@ -166,6 +166,265 @@ function KnockoutDiagram({ size = 56 }: { size?: number }) {
 // ExpandableTextEditor) jsou teď v `components/ui/SettingsPreview` a importují se
 // přes `components/ui` index. Sdílí je TournamentWizardPage + QuickMatchSheet.
 
+// ─── Tournament Structure Diagram (live preview podle settings) ──────────────
+// Trener vidí přesně jak turnaj poběží: skupiny, kdo postupuje, struktura pavouka.
+// Reaguje na advancePerGroup, thirdPlaceMatch, playOut toggly v reálném čase.
+
+/**
+ * Skupina jako mini-řádek: Letter + dots (advancující = warning oranžová,
+ * vyřazení = surface-var dimmed). Ukazuje vizuálně kdo postupuje.
+ */
+function GroupRow({ size, advance, letter }: { size: number; advance: 1 | 2; letter: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{
+        fontSize: 11, fontWeight: 800, width: 18, textAlign: 'center',
+        color: 'var(--text-muted)',
+      }}>
+        {letter}
+      </span>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {Array.from({ length: size }).map((_, i) => {
+          const advancing = i < advance;
+          return (
+            <span
+              key={i}
+              title={advancing ? 'postupuje' : 'končí'}
+              style={{
+                width: 14, height: 14, borderRadius: '50%',
+                background: advancing ? 'var(--warning)' : 'var(--surface-var)',
+                border: `1.5px solid ${advancing ? 'var(--warning)' : 'var(--border)'}`,
+                boxShadow: advancing ? '0 0 0 2px rgba(245, 158, 11, 0.18)' : 'none',
+                transition: 'background .2s, box-shadow .2s',
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Knockout bracket jako vertikální seznam fází. Pro 8 týmů:
+ *   Čtvrtfinále — 4×
+ *   Semifinále — 2×
+ *   (3. místo — 1×) ← jen pokud thirdPlace
+ *   Finále — 1×
+ *   🏆
+ * Pro 6 týmů (které není mocnina 2): zobrazíme bye, např. "2 týmy mají bye".
+ */
+function BracketStages({ teams, thirdPlace }: { teams: number; thirdPlace: boolean }) {
+  if (teams < 2) return null;
+  // Vypočítej stages — postupně dělíme týmy na poloviny
+  const stages: Array<{ name: string; matches: number; isFinal?: boolean; isThird?: boolean }> = [];
+  let current = teams;
+  while (current > 1) {
+    const matches = Math.floor(current / 2);
+    const stageName =
+      matches === 1 ? 'Finále'
+      : matches === 2 ? 'Semifinále'
+      : matches <= 4 ? 'Čtvrtfinále'
+      : matches <= 8 ? 'Osmifinále'
+      : `${matches}× zápas`;
+    stages.push({ name: stageName, matches, isFinal: matches === 1 });
+    // Pokud current je liché, někdo dostane bye — nezahrnuje se do bracketu mocniny 2
+    current = matches + (current % 2);
+  }
+  // Vlož 3. místo před finále
+  if (thirdPlace && stages.length >= 2) {
+    const finalIdx = stages.findIndex(s => s.isFinal);
+    if (finalIdx >= 0) {
+      stages.splice(finalIdx, 0, { name: 'Zápas o 3. místo', matches: 1, isThird: true });
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {stages.map((s, idx) => (
+        <div key={idx} style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '6px 10px', borderRadius: 8,
+          background: s.isFinal ? 'var(--primary-light)'
+            : s.isThird ? 'rgba(245, 158, 11, 0.12)'
+            : 'var(--surface-var)',
+          border: `1px solid ${
+            s.isFinal ? 'var(--primary)'
+            : s.isThird ? 'var(--warning)'
+            : 'var(--border)'
+          }`,
+        }}>
+          <span style={{
+            fontSize: 12, fontWeight: 700,
+            color: s.isFinal ? 'var(--primary)' : s.isThird ? 'var(--warning)' : 'var(--text)',
+          }}>
+            {s.isThird ? '🥉 ' : ''}{s.name}
+          </span>
+          <div style={{ flex: 1 }} />
+          <span style={{
+            fontSize: 11, color: 'var(--text-muted)', fontWeight: 600,
+          }}>
+            {s.matches}×
+          </span>
+        </div>
+      ))}
+      {/* Trofej */}
+      <div style={{ textAlign: 'center', fontSize: 22, marginTop: 2 }}>🏆</div>
+    </div>
+  );
+}
+
+/**
+ * Kompletní vizuální schéma turnaje. Reaguje na všechny settings.
+ * Použito v Step 3 nad strukturními togly — uživatel vidí strukturu live.
+ */
+function TournamentStructureDiagram({
+  format, teamCount, groupSizes, advancePerGroup, thirdPlaceMatch, playOut,
+}: {
+  format: TournamentFormat | null;
+  teamCount: number;
+  groupSizes?: number[];
+  advancePerGroup: 1 | 2;
+  thirdPlaceMatch: boolean;
+  playOut: boolean;
+}) {
+  if (!format) return null;
+
+  // Round-robin: jen kruh teček (každý s každým)
+  if (format === 'round-robin') {
+    const matches = Math.floor((teamCount * (teamCount - 1)) / 2);
+    return (
+      <div style={{
+        padding: 12, borderRadius: 10,
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center',
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', maxWidth: 240 }}>
+          {Array.from({ length: teamCount }).map((_, i) => (
+            <span
+              key={i}
+              style={{
+                width: 16, height: 16, borderRadius: '50%',
+                background: 'var(--primary)',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontSize: 9, fontWeight: 800,
+              }}
+            >
+              {String.fromCharCode(65 + i)}
+            </span>
+          ))}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.4 }}>
+          Každý hraje s každým<br />
+          <b style={{ color: 'var(--text)' }}>{matches} zápasů</b> celkem
+        </div>
+      </div>
+    );
+  }
+
+  // Knockout (single elimination): jen bracket stages
+  if (format === 'knockout') {
+    return (
+      <div style={{
+        padding: 12, borderRadius: 10,
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        display: 'flex', flexDirection: 'column', gap: 8,
+      }}>
+        <div style={{
+          fontSize: 11, fontWeight: 800, color: 'var(--text-muted)',
+          textTransform: 'uppercase', letterSpacing: 0.5,
+        }}>
+          🏆 Vyřazovací fáze ({teamCount} týmů)
+        </div>
+        <BracketStages teams={teamCount} thirdPlace={thirdPlaceMatch} />
+      </div>
+    );
+  }
+
+  // Groups + Knockout: skupiny vlevo → bracket vpravo
+  if (format === 'groups-knockout' && groupSizes && groupSizes.length > 0) {
+    const totalAdvance = groupSizes.length * advancePerGroup;
+    return (
+      <div style={{
+        padding: 12, borderRadius: 10,
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        display: 'flex', flexDirection: 'column', gap: 12,
+      }}>
+        {/* Skupinová fáze */}
+        <div>
+          <div style={{
+            fontSize: 11, fontWeight: 800, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+          }}>
+            📋 Skupinová fáze
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {groupSizes.map((size, idx) => (
+              <GroupRow
+                key={idx}
+                size={size}
+                advance={advancePerGroup}
+                letter={String.fromCharCode(65 + idx)}
+              />
+            ))}
+          </div>
+          <div style={{
+            fontSize: 10, color: 'var(--text-muted)', marginTop: 8,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <span style={{
+              width: 10, height: 10, borderRadius: '50%',
+              background: 'var(--warning)', display: 'inline-block',
+            }} />
+            postupuje
+            <span style={{ marginLeft: 8, marginRight: 4,
+              width: 10, height: 10, borderRadius: '50%',
+              background: 'var(--surface-var)',
+              border: '1.5px solid var(--border)', display: 'inline-block',
+            }} />
+            končí
+          </div>
+        </div>
+
+        {/* Šipka mezi fázemi */}
+        <div style={{
+          textAlign: 'center', fontSize: 11, color: 'var(--text-muted)',
+          fontWeight: 700,
+        }}>
+          ↓ {totalAdvance} týmů postupuje do pavouka ↓
+        </div>
+
+        {/* Vyřazovací fáze */}
+        <div>
+          <div style={{
+            fontSize: 11, fontWeight: 800, color: 'var(--text-muted)',
+            textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+          }}>
+            🏆 Vyřazovací fáze
+          </div>
+          <BracketStages teams={totalAdvance} thirdPlace={thirdPlaceMatch} />
+        </div>
+
+        {/* Play-out indikátor */}
+        {playOut && (
+          <div style={{
+            fontSize: 11, fontWeight: 700,
+            padding: '8px 12px', borderRadius: 8,
+            background: 'rgba(99, 102, 241, 0.08)',
+            border: '1px solid var(--primary)',
+            color: 'var(--primary)',
+            textAlign: 'center',
+          }}>
+            ⚔️ + Play-out: i poražení dohrají všechna umístění
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
 interface WizardDraft {
   step: WizardStep;
   name: string;
@@ -1039,13 +1298,26 @@ export function TournamentWizardPage({ navigate }: Props) {
                 )}
               </FormCard>
 
-              {/* Strukturní volby — kontextově dle formátu */}
+              {/* Strukturní volby — kontextově dle formátu.
+                  Nahoře vizuální schéma turnaje (live updates podle togglů),
+                  pod ním řádky pro úpravu. Coach vidí přesně jak turnaj poběží. */}
               {(draft.format === 'groups-knockout' || draft.format === 'knockout') && (
                 <FormCard>
                   <SectionTitle>{t('tournament.wizard.step3StructureTitle')}</SectionTitle>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
                     {t('tournament.wizard.step3StructureHint')}
                   </p>
+
+                  {/* ─── Vizuální schéma — live preview ─── */}
+                  <TournamentStructureDiagram
+                    format={draft.format}
+                    teamCount={draft.teamCount}
+                    groupSizes={currentSuggestion?.groupSizes}
+                    advancePerGroup={draft.advancePerGroup}
+                    thirdPlaceMatch={draft.thirdPlaceMatch}
+                    playOut={draft.playOut}
+                  />
+
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {draft.format === 'groups-knockout' && (
                       <SettingRow
