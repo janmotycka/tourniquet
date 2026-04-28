@@ -364,11 +364,21 @@ function generateBracketLabels(groupCount: number, advancePerGroup: 1 | 2): stri
  */
 function BracketTree({
   teams, thirdPlace, labels,
+  noFinaleLabel = false,
+  noTrophy = false,
+  finalReplacementLabel,
 }: {
   teams: number;
   thirdPlace: boolean;
   /** Optional cross-bracket seeding labels (length = bracketSize, '—' for bye). */
   labels?: string[];
+  /** Pro play-out: nezobrazuj "Finále" text uvnitř posledního boxu. */
+  noFinaleLabel?: boolean;
+  /** Pro play-out: nezobrazuj 🏆 trofej za finále. */
+  noTrophy?: boolean;
+  /** Pokud noFinaleLabel=false a tohle je nastavené, použij místo "Finále" tenhle text
+      (např. play-out tier konverguje k jednomu match boxu = ne fakticky "Finále"). */
+  finalReplacementLabel?: string;
 }) {
   if (teams < 2) return null;
 
@@ -513,8 +523,8 @@ function BracketTree({
                 strokeDasharray={(!p.isReal || isPassThrough) ? '3,3' : 'none'}
                 rx={5}
               />
-              {/* Finale label */}
-              {isFinal && (
+              {/* Finale label — pouze pokud není potlačen (play-out režim) */}
+              {isFinal && !noFinaleLabel && (
                 <text
                   x={x + matchW / 2}
                   y={p.y + matchH / 2 + 4}
@@ -523,7 +533,7 @@ function BracketTree({
                   fontWeight={800}
                   fill="var(--primary)"
                 >
-                  Finále
+                  {finalReplacementLabel ?? 'Finále'}
                 </text>
               )}
               {/* První kolo: stacked labels A1 / B2 */}
@@ -583,8 +593,8 @@ function BracketTree({
                   bye
                 </text>
               )}
-              {/* Šipka z finále k trofeji */}
-              {isFinal && (() => {
+              {/* Šipka z finále k trofeji — pouze pokud trofej zobrazujeme */}
+              {isFinal && !noTrophy && (() => {
                 const fx = x + matchW;
                 const fy = p.y + matchH / 2;
                 return (
@@ -602,9 +612,8 @@ function BracketTree({
           );
         })}
 
-        {/* Trofej za finále */}
-        {(() => {
-          const finalPos = matchAtPos(rounds.length - 1, 0);
+        {/* Trofej za finále — pouze pokud noTrophy != true (play-out nemá) */}
+        {!noTrophy && (() => {
           const tx = totalW - 18;
           const ty = finalPos.y + matchH / 2 + 6;
           return (
@@ -870,21 +879,61 @@ function TournamentStructureDiagram({
           />
         </div>
 
-        {/* ⚔️ Play-out brackety (zápasy o umístění) — jen pro 2 skupiny.
-            Pro každou pozici 3, 4, ... ve skupinách generujeme match
-            "X.A vs X.B" → vítěz lepší umístění (5., 7., 9., ...). */}
-        {playOut && groupSizes.length === 2 && (() => {
+        {/* ⚔️ Play-out brackety (zápasy o umístění) — generické pro N skupin.
+            Position-based logika: pro každou nepostupující pozici (advance+1, +2, ...)
+            hraje stejná pozice ze všech skupin svůj vlastní mini-pavouk.
+            Příklad pro 4 skupiny × 2 advance, 4 týmy/skupina:
+              Tier 3 (A3, B3, C3, D3) → mini bracket → místa 9-12
+              Tier 4 (A4, B4, C4, D4) → mini bracket → místa 13-16
+            Pro 2 skupiny (degenerate case): tier má 2 týmy = 1 match.
+            NOTE: scheduler (tournament-schedule.ts) zatím generuje skutečné
+            zápasy jen pro 2 skupiny. Pro 3+ skupin je zatím jen vizuální preview;
+            implementace v scheduler je samostatný TODO task. */}
+        {playOut && (() => {
+          const groupCount = groupSizes.length;
           const minSize = Math.min(...groupSizes);
-          const playoutMatches: Array<{ slot1: string; slot2: string; place: number }> = [];
+
+          type PlayoutTier = {
+            position: number;
+            teams: string[];
+            placeStart: number;
+            placeEnd: number;
+          };
+
+          const tiers: PlayoutTier[] = [];
           for (let pos = advancePerGroup + 1; pos <= minSize; pos++) {
-            const place = (pos - 1) * 2 + 1; // 5., 7., 9. ...
-            playoutMatches.push({
-              slot1: `A${pos}`,
-              slot2: `B${pos}`,
-              place,
+            // Sebrat týmy z každé skupiny, která má aspoň `pos` týmů
+            const tierTeams: string[] = [];
+            for (let g = 0; g < groupCount; g++) {
+              if (pos <= groupSizes[g]) {
+                tierTeams.push(`${String.fromCharCode(65 + g)}${pos}`);
+              }
+            }
+            if (tierTeams.length < 2) continue; // Potřebujeme aspoň 2 týmy pro match
+            // Place range: ((pos-1)*N + 1) až (pos*N)
+            const placeStart = (pos - 1) * groupCount + 1;
+            const placeEnd = pos * groupCount;
+            tiers.push({
+              position: pos,
+              teams: tierTeams,
+              placeStart,
+              placeEnd,
             });
           }
-          if (playoutMatches.length === 0) return null;
+
+          if (tiers.length === 0) return null;
+
+          // Cross-bracket pairing pro libovolný počet týmů (1-3, 2-4 split)
+          const tierLabels = (teamLabels: string[]): string[] => {
+            const N = teamLabels.length;
+            if (N === 2) return [teamLabels[0], teamLabels[1]];
+            if (N === 3) return [teamLabels[0], '—', teamLabels[1], teamLabels[2]];
+            if (N === 4) return [teamLabels[0], teamLabels[2], teamLabels[1], teamLabels[3]];
+            // Fallback: padding na mocninu 2
+            const bracketSize = Math.pow(2, Math.ceil(Math.log2(N)));
+            return Array.from({ length: bracketSize }, (_, i) => teamLabels[i] ?? '—');
+          };
+
           return (
             <div>
               <div style={{
@@ -893,59 +942,48 @@ function TournamentStructureDiagram({
               }}>
                 ⚔️ Zápasy o umístění (play-out)
               </div>
-              <div style={{
-                display: 'flex', gap: 8, flexWrap: 'wrap',
-                justifyContent: 'center',
-              }}>
-                {playoutMatches.map((m, idx) => (
-                  <div key={idx} style={{
-                    padding: '6px 10px', borderRadius: 8,
-                    background: 'rgba(245, 158, 11, 0.08)',
-                    border: '1.5px solid var(--warning)',
-                    display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', gap: 4,
-                    minWidth: 72,
-                  }}>
-                    <div style={{
-                      fontSize: 10, fontWeight: 800, color: 'var(--warning)',
-                      letterSpacing: 0.3,
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {tiers.map((tier, idx) => {
+                  const placeLabel = tier.placeStart === tier.placeEnd
+                    ? `O ${tier.placeStart}. místo`
+                    : `O ${tier.placeStart}.–${tier.placeEnd}. místo`;
+                  return (
+                    <div key={idx} style={{
+                      display: 'flex', flexDirection: 'column', gap: 6,
+                      padding: '10px 12px', borderRadius: 8,
+                      background: 'rgba(245, 158, 11, 0.06)',
+                      border: '1.5px solid rgba(245, 158, 11, 0.4)',
                     }}>
-                      O {m.place}. místo
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <div style={{
-                        padding: '2px 6px', borderRadius: 4,
-                        background: 'var(--surface)', border: '1px solid var(--border)',
-                        fontSize: 10, fontWeight: 700, color: 'var(--text)',
-                        textAlign: 'center', minWidth: 30,
-                      }}>{m.slot1}</div>
-                      <div style={{
-                        padding: '2px 6px', borderRadius: 4,
-                        background: 'var(--surface)', border: '1px solid var(--border)',
-                        fontSize: 10, fontWeight: 700, color: 'var(--text)',
-                        textAlign: 'center', minWidth: 30,
-                      }}>{m.slot2}</div>
+                        fontSize: 11, fontWeight: 800, color: 'var(--warning)',
+                        letterSpacing: 0.3, textAlign: 'center',
+                      }}>
+                        🥇 {placeLabel}
+                      </div>
+                      <BracketTree
+                        teams={tier.teams.length}
+                        thirdPlace={false}
+                        labels={tierLabels(tier.teams)}
+                        noFinaleLabel
+                        noTrophy
+                      />
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+              {/* Scheduler caveat — pro 3+ skupin je to zatím jen visual preview */}
+              {groupCount > 2 && (
+                <div style={{
+                  marginTop: 8,
+                  fontSize: 10, color: 'var(--text-muted)', fontStyle: 'italic',
+                  textAlign: 'center', lineHeight: 1.4,
+                }}>
+                  ⓘ Pro 3+ skupiny se rozpis play-out zápasů generuje na vyžádání po vytvoření turnaje.
+                </div>
+              )}
             </div>
           );
         })()}
-
-        {/* Pokud user zapne play-out pro 3+ skupin, řekneme že to nebude
-            generovat zápasy (kvůli složitosti křížení skupin v plánovači). */}
-        {playOut && groupSizes.length > 2 && (
-          <div style={{
-            padding: '8px 12px', borderRadius: 8,
-            background: 'rgba(198, 40, 40, 0.06)',
-            border: '1px dashed var(--danger)',
-            fontSize: 11, color: 'var(--danger)', fontWeight: 600,
-            textAlign: 'center',
-          }}>
-            ⚠️ Play-out funguje jen pro 2 skupiny. Pro {groupSizes.length} skupin se nevygeneruje.
-          </div>
-        )}
 
         {/* Direct toggles 3. místo + play-out */}
         {(onSetThirdPlace || onSetPlayOut) && (
