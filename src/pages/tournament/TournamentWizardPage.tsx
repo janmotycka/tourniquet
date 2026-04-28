@@ -206,70 +206,226 @@ function GroupRow({ size, advance, letter }: { size: number; advance: 1 | 2; let
 }
 
 /**
- * Knockout bracket jako vertikální seznam fází. Pro 8 týmů:
- *   Čtvrtfinále — 4×
- *   Semifinále — 2×
- *   (3. místo — 1×) ← jen pokud thirdPlace
- *   Finále — 1×
- *   🏆
- * Pro 6 týmů (které není mocnina 2): zobrazíme bye, např. "2 týmy mají bye".
+ * SVG bracket tree — skutečný vizuální pavouk.
+ * Round 0 (první kolo) má rovnoměrně rozložené matche, každé další kolo
+ * má y-pozici = průměr y dvou rodičovských matchů (proto se větve sbíhají).
+ *
+ * Pro non-power-of-2 (např. 6 týmů → bracket 8 s 2 bye): bye-sloty jsou
+ * nahoře (top seeded), zobrazené jako čárkované rámečky bez pozadí.
+ *
+ * Pokud `thirdPlace`, pod hlavním bracketem se zobrazí samostatný box
+ * "Zápas o 3. místo" (semifinálisti, kteří prohráli, hrají o bronz).
  */
-function BracketStages({ teams, thirdPlace }: { teams: number; thirdPlace: boolean }) {
+function BracketTree({ teams, thirdPlace }: { teams: number; thirdPlace: boolean }) {
   if (teams < 2) return null;
-  // Vypočítej stages — postupně dělíme týmy na poloviny
-  const stages: Array<{ name: string; matches: number; isFinal?: boolean; isThird?: boolean }> = [];
-  let current = teams;
-  while (current > 1) {
-    const matches = Math.floor(current / 2);
-    const stageName =
-      matches === 1 ? 'Finále'
-      : matches === 2 ? 'Semifinále'
-      : matches <= 4 ? 'Čtvrtfinále'
-      : matches <= 8 ? 'Osmifinále'
-      : `${matches}× zápas`;
-    stages.push({ name: stageName, matches, isFinal: matches === 1 });
-    // Pokud current je liché, někdo dostane bye — nezahrnuje se do bracketu mocniny 2
-    current = matches + (current % 2);
+
+  // Round up to next power of 2 → bracket size
+  const bracketSize = Math.pow(2, Math.ceil(Math.log2(teams)));
+  const byes = bracketSize - teams;
+
+  // Spočti rounds: [r1Count, r2Count, ...] — finále je 1
+  const rounds: number[] = [];
+  let cur = bracketSize;
+  while (cur > 1) {
+    cur = cur / 2;
+    rounds.push(cur);
   }
-  // Vlož 3. místo před finále
-  if (thirdPlace && stages.length >= 2) {
-    const finalIdx = stages.findIndex(s => s.isFinal);
-    if (finalIdx >= 0) {
-      stages.splice(finalIdx, 0, { name: 'Zápas o 3. místo', matches: 1, isThird: true });
+  const r1Count = bracketSize / 2;
+
+  // Layout konstanty (px). Mobile-friendly: kompaktní, ale čitelné.
+  const matchH = 24;
+  const matchW = 60;
+  const matchGap = 8;
+  const colGap = 14;
+
+  const totalH = r1Count * (matchH + matchGap) - matchGap;
+  // Šířka: rounds * (matchW + colGap) + místo na trofej (28px)
+  const totalW = rounds.length * (matchW + colGap) - colGap + 32;
+
+  type MatchPos = { round: number; idx: number; y: number; isReal: boolean };
+  const positions: MatchPos[] = [];
+
+  // Round 0 (první kolo): rovnoměrně rozložené, y = idx * (matchH + matchGap)
+  // bye-sloty jsou na začátku (top), takže matche s 1+ bye nejsou "real"
+  for (let i = 0; i < r1Count; i++) {
+    const slot1 = 2 * i;
+    const slot2 = 2 * i + 1;
+    const isReal = slot1 >= byes && slot2 >= byes; // oba sloty real → real R0 match
+    positions.push({
+      round: 0,
+      idx: i,
+      y: i * (matchH + matchGap),
+      isReal,
+    });
+  }
+
+  // Další kola: y = průměr y dvou rodičovských matchů (sbíhání větví)
+  for (let r = 1; r < rounds.length; r++) {
+    for (let i = 0; i < rounds[r]; i++) {
+      const p1 = positions.find(p => p.round === r - 1 && p.idx === i * 2);
+      const p2 = positions.find(p => p.round === r - 1 && p.idx === i * 2 + 1);
+      const y = (p1!.y + p2!.y) / 2;
+      positions.push({ round: r, idx: i, y, isReal: true });
     }
   }
 
+  const matchAtPos = (round: number, idx: number) =>
+    positions.find(p => p.round === round && p.idx === idx)!;
+
+  // Místo pro 3. místo box pod hlavním bracketem
+  const thirdPlaceBoxH = thirdPlace ? matchH + 16 : 0;
+  const svgH = totalH + thirdPlaceBoxH + 12;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {stages.map((s, idx) => (
-        <div key={idx} style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '6px 10px', borderRadius: 8,
-          background: s.isFinal ? 'var(--primary-light)'
-            : s.isThird ? 'rgba(245, 158, 11, 0.12)'
-            : 'var(--surface-var)',
-          border: `1px solid ${
-            s.isFinal ? 'var(--primary)'
-            : s.isThird ? 'var(--warning)'
-            : 'var(--border)'
-          }`,
-        }}>
-          <span style={{
-            fontSize: 12, fontWeight: 700,
-            color: s.isFinal ? 'var(--primary)' : s.isThird ? 'var(--warning)' : 'var(--text)',
-          }}>
-            {s.isThird ? '🥉 ' : ''}{s.name}
-          </span>
-          <div style={{ flex: 1 }} />
-          <span style={{
-            fontSize: 11, color: 'var(--text-muted)', fontWeight: 600,
-          }}>
-            {s.matches}×
-          </span>
-        </div>
-      ))}
-      {/* Trofej */}
-      <div style={{ textAlign: 'center', fontSize: 22, marginTop: 2 }}>🏆</div>
+    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', maxWidth: '100%' }}>
+      <svg
+        width={totalW}
+        height={svgH}
+        viewBox={`0 0 ${totalW} ${svgH}`}
+        style={{ display: 'block' }}
+      >
+        {/* Spojnice mezi koly */}
+        {positions.map(p => {
+          if (p.round === rounds.length - 1) return null; // poslední (finále) — není kam pokračovat
+          const x1 = (p.round + 1) * (matchW + colGap) - colGap; // pravý okraj match boxu
+          const startY = p.y + matchH / 2;
+          // Najdi cílový match v dalším kole
+          const nextIdx = Math.floor(p.idx / 2);
+          const next = matchAtPos(p.round + 1, nextIdx);
+          const nextX = (p.round + 1) * (matchW + colGap);
+          const nextStartY = next.y + matchH / 2;
+          const midX = x1 + colGap / 2;
+          // Path: vodorovně doprava → svisle (k pozici dalšího matchu) → vodorovně dál
+          return (
+            <path
+              key={`line-${p.round}-${p.idx}`}
+              d={`M${x1},${startY} L${midX},${startY} L${midX},${nextStartY} L${nextX},${nextStartY}`}
+              stroke="var(--border)"
+              strokeWidth={1.5}
+              fill="none"
+            />
+          );
+        })}
+
+        {/* Match boxy */}
+        {positions.map(p => {
+          const x = p.round * (matchW + colGap);
+          const isFinal = p.round === rounds.length - 1;
+          return (
+            <g key={`match-${p.round}-${p.idx}`}>
+              <rect
+                x={x}
+                y={p.y}
+                width={matchW}
+                height={matchH}
+                fill={
+                  !p.isReal ? 'transparent'
+                  : isFinal ? 'var(--primary-light)'
+                  : 'var(--surface-var)'
+                }
+                stroke={
+                  !p.isReal ? 'var(--border)'
+                  : isFinal ? 'var(--primary)'
+                  : 'var(--border)'
+                }
+                strokeWidth={isFinal ? 1.8 : 1.2}
+                strokeDasharray={!p.isReal ? '3,3' : 'none'}
+                rx={5}
+              />
+              {/* Match label uvnitř boxu (jen pro finále — ostatní jsou jasné z polohy) */}
+              {isFinal && (
+                <text
+                  x={x + matchW / 2}
+                  y={p.y + matchH / 2 + 4}
+                  textAnchor="middle"
+                  fontSize={11}
+                  fontWeight={800}
+                  fill="var(--primary)"
+                >
+                  Finále
+                </text>
+              )}
+              {/* Bye label */}
+              {!p.isReal && (
+                <text
+                  x={x + matchW / 2}
+                  y={p.y + matchH / 2 + 4}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fill="var(--text-muted)"
+                  fontStyle="italic"
+                >
+                  bye
+                </text>
+              )}
+              {/* Šipka z finále k trofeji */}
+              {isFinal && (() => {
+                const fx = x + matchW;
+                const fy = p.y + matchH / 2;
+                return (
+                  <line
+                    x1={fx}
+                    y1={fy}
+                    x2={fx + colGap}
+                    y2={fy}
+                    stroke="var(--primary)"
+                    strokeWidth={1.8}
+                  />
+                );
+              })()}
+            </g>
+          );
+        })}
+
+        {/* Trofej za finále */}
+        {(() => {
+          const finalPos = matchAtPos(rounds.length - 1, 0);
+          const tx = totalW - 18;
+          const ty = finalPos.y + matchH / 2 + 6;
+          return (
+            <text x={tx} y={ty} fontSize={20} textAnchor="middle">🏆</text>
+          );
+        })()}
+
+        {/* 3. místo box (samostatně pod hlavním bracketem) */}
+        {thirdPlace && (() => {
+          const y = totalH + 12;
+          // Box má vlastní styling — warning/oranžová pro odlišení
+          return (
+            <g>
+              <rect
+                x={0}
+                y={y}
+                width={matchW}
+                height={matchH}
+                fill="rgba(245, 158, 11, 0.12)"
+                stroke="var(--warning)"
+                strokeWidth={1.5}
+                rx={5}
+              />
+              <text
+                x={matchW / 2}
+                y={y + matchH / 2 + 4}
+                textAnchor="middle"
+                fontSize={11}
+                fontWeight={800}
+                fill="var(--warning)"
+              >
+                🥉 3. místo
+              </text>
+              <text
+                x={matchW + 8}
+                y={y + matchH / 2 + 4}
+                fontSize={10}
+                fill="var(--text-muted)"
+                fontStyle="italic"
+              >
+                poražení SF
+              </text>
+            </g>
+          );
+        })()}
+      </svg>
     </div>
   );
 }
@@ -336,7 +492,7 @@ function TournamentStructureDiagram({
         }}>
           🏆 Vyřazovací fáze ({teamCount} týmů)
         </div>
-        <BracketStages teams={teamCount} thirdPlace={thirdPlaceMatch} />
+        <BracketTree teams={teamCount} thirdPlace={thirdPlaceMatch} />
       </div>
     );
   }
@@ -402,7 +558,7 @@ function TournamentStructureDiagram({
           }}>
             🏆 Vyřazovací fáze
           </div>
-          <BracketStages teams={totalAdvance} thirdPlace={thirdPlaceMatch} />
+          <BracketTree teams={totalAdvance} thirdPlace={thirdPlaceMatch} />
         </div>
 
         {/* Play-out indikátor */}
