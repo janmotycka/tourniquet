@@ -368,6 +368,7 @@ function BracketTree({
   noTrophy = false,
   finalReplacementLabel,
   onSetThirdPlace,
+  thirdPlaceLabel = '3. místo',
 }: {
   teams: number;
   thirdPlace: boolean;
@@ -384,6 +385,9 @@ function BracketTree({
    *  - thirdPlace=false: rendruje dashed placeholder pod finále (klik = přidat)
    *  - thirdPlace=true:  rendruje × button v rohu 3rd place boxu (klik = odebrat) */
   onSetThirdPlace?: (v: boolean) => void;
+  /** Label pro bronze match. Default "3. místo" pro hlavní turnaj.
+   *  Pro play-out tier je to relativní (např. "11. místo" pro tier 9-12). */
+  thirdPlaceLabel?: string;
 }) {
   if (teams < 2) return null;
 
@@ -668,7 +672,7 @@ function BracketTree({
                 fontWeight={800}
                 fill="var(--warning)"
               >
-                🥉 3. místo
+                🥉 {thirdPlaceLabel}
               </text>
               {/* × button pro odstranění (stejný pattern jako u skupin) */}
               {onSetThirdPlace && (
@@ -728,7 +732,7 @@ function BracketTree({
               fill="var(--warning)"
               opacity={0.7}
             >
-              + 🥉 3. místo
+              + 🥉 {thirdPlaceLabel}
             </text>
           </g>
         )}
@@ -1093,6 +1097,9 @@ function TournamentStructureDiagram({
                         labels={tierLabels(tier.teams)}
                         noFinaleLabel
                         noTrophy
+                        // Bronze v tieru = top 3rd place tieru
+                        // (vítěz bronzu = topPlaceStart+2, poražený = topPlaceStart+3)
+                        thirdPlaceLabel={`${topPlaceStart + 2}. místo`}
                       />
                       {/* Consolation bracket pro R1 poražené (jen když N >= 5) */}
                       {consolationCount >= 2 && (
@@ -1111,6 +1118,8 @@ function TournamentStructureDiagram({
                             labels={consolationLabels(consolationCount)}
                             noFinaleLabel
                             noTrophy
+                            // Bronze v consolation = 3. místo consolation tieru
+                            thirdPlaceLabel={`${consolationPlaceStart + 2}. místo`}
                           />
                           <div style={{
                             fontSize: 9, color: 'var(--text-muted)', fontStyle: 'italic',
