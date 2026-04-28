@@ -85,13 +85,27 @@ function distributeIntoGroups(teams: number, groupCount: number): number[] {
  *  9-12      → 3 skupiny po 3-4
  *  13-16     → 4 skupiny po 3-4
  *  17+       → 4 skupiny (manual create doporučen)
+ *
+ * @param override Pokud nastaveno (≥2 a ≤floor(teams/2)), použij místo heuristiky.
  */
-function suggestGroupCount(teams: number): { groupCount: number; groupSizes: number[]; advancePerGroup: number } | null {
+function suggestGroupCount(
+  teams: number,
+  override?: number | null,
+): { groupCount: number; groupSizes: number[]; advancePerGroup: number } | null {
   if (teams < 4) return null; // minimum pro skupiny
+
   let groupCount: number;
-  if (teams <= 8) groupCount = 2;
-  else if (teams <= 12) groupCount = 3;
-  else groupCount = 4;
+  // User override (jen pokud validní pro daný count — min 2 týmy ve skupině)
+  if (override && override >= 2 && override <= Math.floor(teams / 2)) {
+    groupCount = override;
+  } else if (teams <= 8) {
+    groupCount = 2;
+  } else if (teams <= 12) {
+    groupCount = 3;
+  } else {
+    groupCount = 4;
+  }
+
   return {
     groupCount,
     groupSizes: distributeIntoGroups(teams, groupCount),
@@ -123,12 +137,15 @@ function groupsKnockoutMatchCount(
  * @param matchDurationMin Délka zápasu v minutách (default 10)
  * @param numberOfPitches Počet hřišť pro paralelní zápasy (default 1)
  * @param breakMin Pauza mezi zápasy v minutách (default 5)
+ * @param groupCountOverride User-set group count override pro groups-knockout
+ *                           (null/undefined = použít smart heuristiku).
  */
 export function suggestFormats(
   teamCount: number,
   matchDurationMin: number = DEFAULT_MATCH_DURATION_MIN,
   numberOfPitches: number = 1,
-  breakMin: number = DEFAULT_BREAK_MIN
+  breakMin: number = DEFAULT_BREAK_MIN,
+  groupCountOverride?: number | null,
 ): FormatSuggestion[] {
   if (teamCount < 2) return [];
 
@@ -149,7 +166,7 @@ export function suggestFormats(
   };
 
   // ── Groups + Knockout ────────────────────────────────────────────────
-  const gk = suggestGroupCount(teamCount);
+  const gk = suggestGroupCount(teamCount, groupCountOverride);
   let groupsKnockout: FormatSuggestion;
   if (gk) {
     const gkMatches = groupsKnockoutMatchCount(gk.groupSizes, gk.advancePerGroup);

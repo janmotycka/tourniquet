@@ -2574,6 +2574,7 @@ export const cs = {
   'tournament.wizard.settingsPreviewTitle': 'Nastavení turnaje',
   'tournament.wizard.settingsPreviewHint': 'Smart defaults — klikni na řádek pro úpravu.',
   'tournament.wizard.rulesAddLabel': 'Přidat',
+  'tournament.wizard.groupCountLabel': 'Počet skupin',
   'tournament.wizard.advanceFromGroupLabel': 'Postup ze skupiny',
   'tournament.wizard.advance1': '1 — jen vítěz',
   'tournament.wizard.advance2': '2 — nejlepší dva',

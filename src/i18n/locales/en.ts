@@ -2554,6 +2554,7 @@ export const en: Record<TranslationKey, string> = {
   'tournament.wizard.settingsPreviewTitle': 'Tournament settings',
   'tournament.wizard.settingsPreviewHint': 'Smart defaults — click any row to change.',
   'tournament.wizard.rulesAddLabel': 'Add',
+  'tournament.wizard.groupCountLabel': 'Number of groups',
   'tournament.wizard.advanceFromGroupLabel': 'Advance from group',
   'tournament.wizard.advance1': '1 \u2014 winner only',
   'tournament.wizard.advance2': '2 \u2014 top two',

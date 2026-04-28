@@ -2554,6 +2554,7 @@ export const de: Record<TranslationKey, string> = {
   'tournament.wizard.settingsPreviewTitle': 'Turniereinstellungen',
   'tournament.wizard.settingsPreviewHint': 'Smart Defaults — Zeile anklicken zum Ändern.',
   'tournament.wizard.rulesAddLabel': 'Hinzufügen',
+  'tournament.wizard.groupCountLabel': 'Anzahl Gruppen',
   'tournament.wizard.advanceFromGroupLabel': 'Aufstieg aus Gruppe',
   'tournament.wizard.advance1': '1 — nur Sieger',
   'tournament.wizard.advance2': '2 — Top zwei',

@@ -187,33 +187,81 @@ function GroupCard({ size, advance, letter }: { size: number; advance: 1 | 2; le
       border: '1px solid var(--border)',
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       gap: 8,
-      minWidth: 50,
+      minWidth: 56,
     }}>
       <span style={{
         fontSize: 12, fontWeight: 800, color: 'var(--text)',
       }}>
         {letter}
       </span>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {Array.from({ length: size }).map((_, i) => {
           const advancing = i < advance;
+          const label = `${letter}${i + 1}`;
           return (
-            <span
+            <div
               key={i}
-              title={advancing ? 'postupuje' : 'končí'}
+              title={advancing ? `${label} — postupuje` : `${label} — končí`}
               style={{
-                width: 14, height: 14, borderRadius: '50%',
+                padding: '3px 8px',
+                fontSize: 11, fontWeight: 800,
+                borderRadius: 5,
                 background: advancing ? 'var(--warning)' : 'var(--surface)',
+                color: advancing ? '#fff' : 'var(--text-muted)',
                 border: `1.5px solid ${advancing ? 'var(--warning)' : 'var(--border)'}`,
-                boxShadow: advancing ? '0 0 0 2px rgba(245, 158, 11, 0.2)' : 'none',
+                minWidth: 30,
+                textAlign: 'center',
+                opacity: advancing ? 1 : 0.65,
+                boxShadow: advancing ? '0 0 0 1.5px rgba(245, 158, 11, 0.18)' : 'none',
                 transition: 'background .2s, box-shadow .2s',
+                letterSpacing: 0.3,
               }}
-            />
+            >
+              {label}
+            </div>
           );
         })}
       </div>
     </div>
   );
+}
+
+/**
+ * Generuje labely pro první kolo bracketu (cross-bracket seeding).
+ * Standardní turnajové pravidlo: 1. místo skupiny se nesetkává s jiným 1. místem
+ * v prvním kole. Returns array slotů (délka = bracketSize), s '—' pro bye.
+ *
+ * Příklady:
+ *  - 2 groups × 1: ['A1', 'B1'] (just final)
+ *  - 2 groups × 2: ['A1', 'B2', 'B1', 'A2'] → SF1: A1 vs B2, SF2: B1 vs A2
+ *  - 4 groups × 1: ['A1', 'C1', 'B1', 'D1']
+ *  - 4 groups × 2: ['A1','B2','C1','D2','B1','A2','D1','C2']
+ *  - 3 groups × 2: ['A1','—','B2','C1','B1','—','A2','C2'] (top seedi mají bye)
+ */
+function generateBracketLabels(groupCount: number, advancePerGroup: 1 | 2): string[] {
+  const letter = (i: number) => String.fromCharCode(65 + i);
+
+  if (advancePerGroup === 1) {
+    // Pouze vítězové skupin: pair adjacent (A vs B, C vs D, ...)
+    if (groupCount === 2) return ['A1', 'B1'];
+    if (groupCount === 3) return ['A1', '—', 'B1', 'C1']; // bracket of 4 with 1 bye
+    if (groupCount === 4) return ['A1', 'C1', 'B1', 'D1']; // cross-bracket SF
+    return Array.from({ length: groupCount }, (_, i) => `${letter(i)}1`);
+  }
+
+  // advancePerGroup === 2 — cross-bracket
+  if (groupCount === 2) return ['A1', 'B2', 'B1', 'A2'];
+  if (groupCount === 4) return ['A1', 'B2', 'C1', 'D2', 'B1', 'A2', 'D1', 'C2'];
+  if (groupCount === 3) {
+    // 6 teams in bracket of 8. Top seeds (A1, B1) get bye into SF.
+    // QF1: bye/A1 → SF1
+    // QF2: B2 vs C1 → SF1
+    // QF3: bye/B1 → SF2
+    // QF4: A2 vs C2 → SF2
+    return ['A1', '—', 'B2', 'C1', 'B1', '—', 'A2', 'C2'];
+  }
+  // Fallback for unusual configs
+  return [];
 }
 
 /**
@@ -227,7 +275,14 @@ function GroupCard({ size, advance, letter }: { size: number; advance: 1 | 2; le
  * Pokud `thirdPlace`, pod hlavním bracketem se zobrazí samostatný box
  * "Zápas o 3. místo" (semifinálisti, kteří prohráli, hrají o bronz).
  */
-function BracketTree({ teams, thirdPlace }: { teams: number; thirdPlace: boolean }) {
+function BracketTree({
+  teams, thirdPlace, labels,
+}: {
+  teams: number;
+  thirdPlace: boolean;
+  /** Optional cross-bracket seeding labels (length = bracketSize, '—' for bye). */
+  labels?: string[];
+}) {
   if (teams < 2) return null;
 
   // Round up to next power of 2 → bracket size
@@ -244,7 +299,8 @@ function BracketTree({ teams, thirdPlace }: { teams: number; thirdPlace: boolean
   const r1Count = bracketSize / 2;
 
   // Layout konstanty (px). Mobile-friendly: kompaktní, ale čitelné.
-  const matchH = 24;
+  // matchH bigger pro labels — 2 řádky textu (slot1 / slot2)
+  const matchH = labels && labels.length > 0 ? 32 : 24;
   const matchW = 60;
   const matchGap = 8;
   const colGap = 14;
@@ -328,6 +384,18 @@ function BracketTree({ teams, thirdPlace }: { teams: number; thirdPlace: boolean
         {positions.map(p => {
           const x = p.round * (matchW + colGap);
           const isFinal = p.round === rounds.length - 1;
+          const isFirstRound = p.round === 0;
+          // Slot labels pro první kolo (nasazení skupin → bracket)
+          const slot1 = labels?.[p.idx * 2];
+          const slot2 = labels?.[p.idx * 2 + 1];
+          const hasLabels = isFirstRound && labels && (slot1 || slot2);
+          // "Real" v tomto bracketu znamená 0+ bye sloty z původní logiky.
+          // Když máme labels, ovlivní to: pokud jeden slot je '—' (bye),
+          // box vlastně reprezentuje "prošel bez zápasu" — render jako single label.
+          const slot1Bye = slot1 === '—';
+          const slot2Bye = slot2 === '—';
+          const isPassThrough = hasLabels && (slot1Bye || slot2Bye) && !(slot1Bye && slot2Bye);
+
           return (
             <g key={`match-${p.round}-${p.idx}`}>
               <rect
@@ -338,18 +406,20 @@ function BracketTree({ teams, thirdPlace }: { teams: number; thirdPlace: boolean
                 fill={
                   !p.isReal ? 'transparent'
                   : isFinal ? 'var(--primary-light)'
+                  : isPassThrough ? 'rgba(245, 158, 11, 0.08)'
                   : 'var(--surface-var)'
                 }
                 stroke={
                   !p.isReal ? 'var(--border)'
                   : isFinal ? 'var(--primary)'
+                  : isPassThrough ? 'var(--warning)'
                   : 'var(--border)'
                 }
                 strokeWidth={isFinal ? 1.8 : 1.2}
-                strokeDasharray={!p.isReal ? '3,3' : 'none'}
+                strokeDasharray={(!p.isReal || isPassThrough) ? '3,3' : 'none'}
                 rx={5}
               />
-              {/* Match label uvnitř boxu (jen pro finále — ostatní jsou jasné z polohy) */}
+              {/* Finale label */}
               {isFinal && (
                 <text
                   x={x + matchW / 2}
@@ -362,8 +432,52 @@ function BracketTree({ teams, thirdPlace }: { teams: number; thirdPlace: boolean
                   Finále
                 </text>
               )}
-              {/* Bye label */}
-              {!p.isReal && (
+              {/* První kolo: stacked labels A1 / B2 */}
+              {isFirstRound && hasLabels && !isFinal && (() => {
+                if (isPassThrough) {
+                  // Pass-through (bye): single label centered
+                  const realLabel = slot1Bye ? slot2 : slot1;
+                  return (
+                    <text
+                      x={x + matchW / 2}
+                      y={p.y + matchH / 2 + 4}
+                      textAnchor="middle"
+                      fontSize={11}
+                      fontWeight={800}
+                      fill="var(--warning)"
+                    >
+                      {realLabel} <tspan fontSize={9} fontWeight={600}>(bye)</tspan>
+                    </text>
+                  );
+                }
+                // Standard: two stacked labels
+                return (
+                  <>
+                    <text
+                      x={x + matchW / 2}
+                      y={p.y + matchH / 2 - 2}
+                      textAnchor="middle"
+                      fontSize={10}
+                      fontWeight={700}
+                      fill="var(--text)"
+                    >
+                      {slot1}
+                    </text>
+                    <text
+                      x={x + matchW / 2}
+                      y={p.y + matchH / 2 + 11}
+                      textAnchor="middle"
+                      fontSize={10}
+                      fontWeight={700}
+                      fill="var(--text)"
+                    >
+                      {slot2}
+                    </text>
+                  </>
+                );
+              })()}
+              {/* Bye label (oba sloty bye nebo žádné labels — fallback) */}
+              {!p.isReal && !hasLabels && (
                 <text
                   x={x + matchW / 2}
                   y={p.y + matchH / 2 + 4}
@@ -517,6 +631,7 @@ function TournamentStructureDiagram({
   // Groups + Knockout: skupiny vlevo → bracket vpravo
   if (format === 'groups-knockout' && groupSizes && groupSizes.length > 0) {
     const totalAdvance = groupSizes.length * advancePerGroup;
+    const bracketLabels = generateBracketLabels(groupSizes.length, advancePerGroup);
     return (
       <div style={{
         padding: 12, borderRadius: 10,
@@ -582,7 +697,11 @@ function TournamentStructureDiagram({
           }}>
             🏆 Vyřazovací fáze
           </div>
-          <BracketTree teams={totalAdvance} thirdPlace={thirdPlaceMatch} />
+          <BracketTree
+            teams={totalAdvance}
+            thirdPlace={thirdPlaceMatch}
+            labels={bracketLabels.length > 0 ? bracketLabels : undefined}
+          />
         </div>
 
         {/* Play-out indikátor */}
@@ -624,6 +743,8 @@ interface WizardDraft {
   // ── Settings (viditelné jako Settings Preview na Step 3) ──
   /** Pauza mezi zápasy v minutách. Default 5. */
   breakBetweenMatchesMinutes: number;
+  /** User override počtu skupin (null = smart heuristika podle teamCount). */
+  groupCountOverride: number | null;
   /** Postup z každé skupiny do KO (1 = jen vítěz, 2 = nejlepší 2). Jen pro groups-knockout. */
   advancePerGroup: 1 | 2;
   /** Hraje se zápas o 3. místo? Jen pro groups-knockout / knockout. */
@@ -652,6 +773,7 @@ function emptyDraft(): WizardDraft {
     matchDurationMinutes: 10,
     numberOfPitches: 1,
     breakBetweenMatchesMinutes: 5,
+    groupCountOverride: null,
     advancePerGroup: 2,
     thirdPlaceMatch: false,
     playOut: false,
@@ -765,8 +887,20 @@ export function TournamentWizardPage({ navigate }: Props) {
 
   // ── Smart-suggest format computations ──
   const formatSuggestions = useMemo<FormatSuggestion[]>(
-    () => suggestFormats(draft.teamCount, draft.matchDurationMinutes, draft.numberOfPitches, draft.breakBetweenMatchesMinutes),
-    [draft.teamCount, draft.matchDurationMinutes, draft.numberOfPitches, draft.breakBetweenMatchesMinutes]
+    () => suggestFormats(
+      draft.teamCount,
+      draft.matchDurationMinutes,
+      draft.numberOfPitches,
+      draft.breakBetweenMatchesMinutes,
+      draft.groupCountOverride,
+    ),
+    [
+      draft.teamCount,
+      draft.matchDurationMinutes,
+      draft.numberOfPitches,
+      draft.breakBetweenMatchesMinutes,
+      draft.groupCountOverride,
+    ]
   );
 
   // Auto-select recommended format když user změní počet týmů (pokud nemá vybráno nebo má neplatný)
@@ -1499,6 +1633,35 @@ export function TournamentWizardPage({ navigate }: Props) {
                   />
 
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {/* Počet skupin (override smart-suggest). Zobrazíme jen když
+                        je víc než 1 valid option pro daný teamCount. */}
+                    {draft.format === 'groups-knockout' && (() => {
+                      const maxGroups = Math.min(4, Math.floor(draft.teamCount / 2));
+                      const validOptions: number[] = [];
+                      for (let n = 2; n <= maxGroups; n++) validOptions.push(n);
+                      // Aktuální effective hodnota (z suggestion = co engine použil)
+                      const effective = currentSuggestion?.groupCount ?? validOptions[0] ?? 2;
+                      if (validOptions.length < 2) return null;
+                      return (
+                        <SettingRow
+                          icon="📋"
+                          label={t('tournament.wizard.groupCountLabel')}
+                        >
+                          <ChipPair
+                            value={effective}
+                            options={validOptions.map(n => ({ v: n, label: String(n) }))}
+                            onChange={v => {
+                              // Pokud user vybral default (smart heuristika), reset na null
+                              const wouldDefault =
+                                draft.teamCount <= 8 ? 2
+                                : draft.teamCount <= 12 ? 3
+                                : 4;
+                              updateDraft('groupCountOverride', v === wouldDefault ? null : (v as number));
+                            }}
+                          />
+                        </SettingRow>
+                      );
+                    })()}
                     {draft.format === 'groups-knockout' && (
                       <SettingRow
                         icon="🏆"
