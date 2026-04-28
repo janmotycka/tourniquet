@@ -367,6 +367,7 @@ function BracketTree({
   noFinaleLabel = false,
   noTrophy = false,
   finalReplacementLabel,
+  onSetThirdPlace,
 }: {
   teams: number;
   thirdPlace: boolean;
@@ -379,6 +380,10 @@ function BracketTree({
   /** Pokud noFinaleLabel=false a tohle je nastavené, použij místo "Finále" tenhle text
       (např. play-out tier konverguje k jednomu match boxu = ne fakticky "Finále"). */
   finalReplacementLabel?: string;
+  /** Direct manipulation 3. místa. Když poskytnuto:
+   *  - thirdPlace=false: rendruje dashed placeholder pod finále (klik = přidat)
+   *  - thirdPlace=true:  rendruje × button v rohu 3rd place boxu (klik = odebrat) */
+  onSetThirdPlace?: (v: boolean) => void;
 }) {
   if (teams < 2) return null;
 
@@ -442,8 +447,11 @@ function BracketTree({
   const thirdPlaceX = finalX;
   const thirdPlaceY = finalPos.y + matchH + 18;
 
-  // SVG height: bracket + (3. místo pod finále, pokud zapnuto)
-  const svgH = thirdPlace
+  // SVG height: bracket + (3. místo pod finále, pokud zapnuto NEBO toggleable).
+  // Když je onSetThirdPlace poskytnuto, rezervujeme místo pro placeholder
+  // i v off stavu (aby se layout nepřeskakoval po toggle).
+  const showThirdPlaceArea = thirdPlace || !!onSetThirdPlace;
+  const svgH = showThirdPlaceArea
     ? Math.max(totalH + 12, thirdPlaceY + matchH + 12)
     : totalH + 12;
 
@@ -621,8 +629,10 @@ function BracketTree({
           );
         })()}
 
-        {/* 3. místo box — pod finále, stejná x-coordinate. Připojené čárkovanou
-            čarou z finále dolů (poražení semifinálisti hrají o bronz). */}
+        {/* 3. místo — direct manipulation v diagramu:
+            ON: oranžový box s × button v rohu (klik = odebrat)
+            OFF + onSetThirdPlace: dashed placeholder s "+ 🥉" (klik = přidat)
+            OFF + read-only: nic (placeholder se nezobrazí) */}
         {thirdPlace && (() => {
           const finalCenterX = finalX + matchW / 2;
           const finalBottomY = finalPos.y + matchH;
@@ -660,9 +670,68 @@ function BracketTree({
               >
                 🥉 3. místo
               </text>
+              {/* × button pro odstranění (stejný pattern jako u skupin) */}
+              {onSetThirdPlace && (
+                <g
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => onSetThirdPlace(false)}
+                  aria-label="Odebrat zápas o 3. místo"
+                >
+                  <circle
+                    cx={thirdPlaceX + matchW - 2}
+                    cy={thirdPlaceY - 2}
+                    r={9}
+                    fill="var(--surface)"
+                    stroke="var(--border)"
+                    strokeWidth={1.5}
+                  />
+                  <text
+                    x={thirdPlaceX + matchW - 2}
+                    y={thirdPlaceY - 2 + 4}
+                    textAnchor="middle"
+                    fontSize={11}
+                    fontWeight={700}
+                    fill="var(--text-muted)"
+                  >×</text>
+                </g>
+              )}
             </g>
           );
         })()}
+
+        {/* Placeholder pro přidání 3. místa — jen pokud je toggleable (off stav).
+            Stejný pattern jako "+ Skupina" ghost card. */}
+        {!thirdPlace && onSetThirdPlace && (
+          <g
+            style={{ cursor: 'pointer' }}
+            onClick={() => onSetThirdPlace(true)}
+            aria-label="Přidat zápas o 3. místo"
+          >
+            <rect
+              x={thirdPlaceX}
+              y={thirdPlaceY}
+              width={matchW}
+              height={matchH}
+              fill="transparent"
+              stroke="var(--warning)"
+              strokeWidth={1.5}
+              strokeDasharray="4,3"
+              opacity={0.55}
+              rx={5}
+            />
+            <text
+              x={thirdPlaceX + matchW / 2}
+              y={thirdPlaceY + matchH / 2 + 4}
+              textAnchor="middle"
+              fontSize={11}
+              fontWeight={700}
+              fill="var(--warning)"
+              opacity={0.7}
+            >
+              + 🥉 3. místo
+            </text>
+          </g>
+        )}
       </svg>
     </div>
   );
@@ -743,16 +812,12 @@ function TournamentStructureDiagram({
         }}>
           🏆 Vyřazovací fáze ({teamCount} týmů)
         </div>
-        <BracketTree teams={teamCount} thirdPlace={thirdPlaceMatch} />
-        {/* Direct toggle 3. místo */}
-        {onSetThirdPlace && (
-          <DirectToggleButton
-            active={thirdPlaceMatch}
-            activeLabel="🥉 Zápas o 3. místo (klikni pro odebrání)"
-            inactiveLabel="+ 🥉 Přidat zápas o 3. místo"
-            onClick={() => onSetThirdPlace(!thirdPlaceMatch)}
-          />
-        )}
+        {/* 3. místo se řeší přímo v bracketu (× / + placeholder) */}
+        <BracketTree
+          teams={teamCount}
+          thirdPlace={thirdPlaceMatch}
+          onSetThirdPlace={onSetThirdPlace}
+        />
       </div>
     );
   }
@@ -878,6 +943,7 @@ function TournamentStructureDiagram({
             teams={totalAdvance}
             thirdPlace={thirdPlaceMatch}
             labels={bracketLabels.length > 0 ? bracketLabels : undefined}
+            onSetThirdPlace={onSetThirdPlace}
           />
         </div>
 
@@ -987,26 +1053,14 @@ function TournamentStructureDiagram({
           );
         })()}
 
-        {/* Direct toggles 3. místo + play-out */}
-        {(onSetThirdPlace || onSetPlayOut) && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {onSetThirdPlace && (
-              <DirectToggleButton
-                active={thirdPlaceMatch}
-                activeLabel="🥉 Zápas o 3. místo (klikni pro odebrání)"
-                inactiveLabel="+ 🥉 Přidat zápas o 3. místo"
-                onClick={() => onSetThirdPlace(!thirdPlaceMatch)}
-              />
-            )}
-            {onSetPlayOut && (
-              <DirectToggleButton
-                active={playOut}
-                activeLabel="⚔️ Play-out: poražení dohrají všechna umístění (klikni pro odebrání)"
-                inactiveLabel="+ ⚔️ Přidat play-out (zápasy o všechna umístění)"
-                onClick={() => onSetPlayOut(!playOut)}
-              />
-            )}
-          </div>
+        {/* Play-out toggle (3. místo je teď přímo v bracketu jako placeholder/×) */}
+        {onSetPlayOut && (
+          <DirectToggleButton
+            active={playOut}
+            activeLabel="⚔️ Play-out: poražení dohrají všechna umístění (klikni pro odebrání)"
+            inactiveLabel="+ ⚔️ Přidat play-out (zápasy o všechna umístění)"
+            onClick={() => onSetPlayOut(!playOut)}
+          />
         )}
       </div>
     );
