@@ -171,19 +171,30 @@ function KnockoutDiagram({ size = 56 }: { size?: number }) {
 // Reaguje na advancePerGroup, thirdPlaceMatch, playOut toggly v reálném čase.
 
 /**
- * Skupina jako mini-řádek: Letter + dots (advancující = warning oranžová,
- * vyřazení = surface-var dimmed). Ukazuje vizuálně kdo postupuje.
+ * Skupina jako kompaktní karta: Letter nahoře, týmy v sloupci pod sebou
+ * (jako klasické turnajové standings). Skupiny vedle sebe v row layoutu,
+ * coach vidí všechny naráz a porovná si je.
+ *
+ * Advancující týmy: warning oranžové glowing dots
+ * Vyřazení: surface dimmed dots
  */
-function GroupRow({ size, advance, letter }: { size: number; advance: 1 | 2; letter: string }) {
+function GroupCard({ size, advance, letter }: { size: number; advance: 1 | 2; letter: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{
+      padding: '10px 12px',
+      borderRadius: 8,
+      background: 'var(--surface-var)',
+      border: '1px solid var(--border)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      gap: 8,
+      minWidth: 50,
+    }}>
       <span style={{
-        fontSize: 11, fontWeight: 800, width: 18, textAlign: 'center',
-        color: 'var(--text-muted)',
+        fontSize: 12, fontWeight: 800, color: 'var(--text)',
       }}>
         {letter}
       </span>
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
         {Array.from({ length: size }).map((_, i) => {
           const advancing = i < advance;
           return (
@@ -192,9 +203,9 @@ function GroupRow({ size, advance, letter }: { size: number; advance: 1 | 2; let
               title={advancing ? 'postupuje' : 'končí'}
               style={{
                 width: 14, height: 14, borderRadius: '50%',
-                background: advancing ? 'var(--warning)' : 'var(--surface-var)',
+                background: advancing ? 'var(--warning)' : 'var(--surface)',
                 border: `1.5px solid ${advancing ? 'var(--warning)' : 'var(--border)'}`,
-                boxShadow: advancing ? '0 0 0 2px rgba(245, 158, 11, 0.18)' : 'none',
+                boxShadow: advancing ? '0 0 0 2px rgba(245, 158, 11, 0.2)' : 'none',
                 transition: 'background .2s, box-shadow .2s',
               }}
             />
@@ -277,12 +288,18 @@ function BracketTree({ teams, thirdPlace }: { teams: number; thirdPlace: boolean
   const svgH = totalH + thirdPlaceBoxH + 12;
 
   return (
-    <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', maxWidth: '100%' }}>
+    <div style={{
+      overflowX: 'auto',
+      WebkitOverflowScrolling: 'touch',
+      maxWidth: '100%',
+      display: 'flex',
+      justifyContent: 'center',
+    }}>
       <svg
         width={totalW}
         height={svgH}
         viewBox={`0 0 ${totalW} ${svgH}`}
-        style={{ display: 'block' }}
+        style={{ display: 'block', flexShrink: 0, margin: '0 auto' }}
       >
         {/* Spojnice mezi koly */}
         {positions.map(p => {
@@ -514,9 +531,16 @@ function TournamentStructureDiagram({
           }}>
             📋 Skupinová fáze
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {/* Skupiny vedle sebe (row), centrované, wrap pro velký počet skupin */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: 8,
+            justifyContent: 'center',
+          }}>
             {groupSizes.map((size, idx) => (
-              <GroupRow
+              <GroupCard
                 key={idx}
                 size={size}
                 advance={advancePerGroup}
