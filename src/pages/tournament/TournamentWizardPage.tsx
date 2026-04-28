@@ -1048,12 +1048,35 @@ function TournamentStructureDiagram({
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {tiers.map((tier, idx) => {
-                  const placeLabel = tier.placeStart === tier.placeEnd
-                    ? `O ${tier.placeStart}. místo`
-                    : `O ${tier.placeStart}.–${tier.placeEnd}. místo`;
+                  const N = tier.teams.length;
+                  // Top bracket určuje top 4 místa (s bronze pro 3.+4. tieru).
+                  // Pro N >= 5 přidáme consolation bracket pro R1 poražené.
+                  const hasBronze = N >= 4;
+                  const topPlacesCount = Math.min(N, 4); // Maximum 4 places ranked from top bracket
+                  const topPlaceStart = tier.placeStart;
+                  const topPlaceEnd = tier.placeStart + topPlacesCount - 1;
+                  const consolationCount = Math.max(0, N - 4); // Teams in consolation
+                  const consolationPlaceStart = topPlaceEnd + 1;
+                  const consolationPlaceEnd = tier.placeEnd;
+
+                  const placeLabel = topPlaceStart === topPlaceEnd
+                    ? `O ${topPlaceStart}. místo`
+                    : `O ${topPlaceStart}.–${topPlaceEnd}. místo`;
+
+                  // Consolation bracket labels: "P1", "P2", ... = poražený R1.X
+                  // Cross-bracket pairing pro consolation (1-3, 2-4 split jako v main)
+                  const consolationLabels = (count: number): string[] => {
+                    const losers = Array.from({ length: count }, (_, i) => `P${i + 1}`);
+                    if (losers.length === 2) return losers;
+                    if (losers.length === 4) return [losers[0], losers[2], losers[1], losers[3]];
+                    if (losers.length === 3) return [losers[0], '—', losers[1], losers[2]];
+                    const bracketSize = Math.pow(2, Math.ceil(Math.log2(count)));
+                    return Array.from({ length: bracketSize }, (_, i) => losers[i] ?? '—');
+                  };
+
                   return (
                     <div key={idx} style={{
-                      display: 'flex', flexDirection: 'column', gap: 6,
+                      display: 'flex', flexDirection: 'column', gap: 8,
                       padding: '10px 12px', borderRadius: 8,
                       background: 'rgba(245, 158, 11, 0.06)',
                       border: '1.5px solid rgba(245, 158, 11, 0.4)',
@@ -1065,12 +1088,48 @@ function TournamentStructureDiagram({
                         🥇 {placeLabel}
                       </div>
                       <BracketTree
-                        teams={tier.teams.length}
-                        thirdPlace={false}
+                        teams={N}
+                        thirdPlace={hasBronze}
                         labels={tierLabels(tier.teams)}
                         noFinaleLabel
                         noTrophy
                       />
+                      {/* Consolation bracket pro R1 poražené (jen když N >= 5) */}
+                      {consolationCount >= 2 && (
+                        <>
+                          <div style={{
+                            marginTop: 6,
+                            fontSize: 10, fontWeight: 800, color: 'var(--text-muted)',
+                            letterSpacing: 0.3, textAlign: 'center',
+                            textTransform: 'uppercase',
+                          }}>
+                            ↓ Poražení v 1. kole hrají o {consolationPlaceStart}.{consolationPlaceEnd > consolationPlaceStart ? `–${consolationPlaceEnd}.` : '.'} místo ↓
+                          </div>
+                          <BracketTree
+                            teams={consolationCount}
+                            thirdPlace={consolationCount >= 4}
+                            labels={consolationLabels(consolationCount)}
+                            noFinaleLabel
+                            noTrophy
+                          />
+                          <div style={{
+                            fontSize: 9, color: 'var(--text-muted)', fontStyle: 'italic',
+                            textAlign: 'center', opacity: 0.8,
+                          }}>
+                            P1, P2, … = poražení v 1. kole hlavního pavouka
+                          </div>
+                        </>
+                      )}
+                      {/* Singleton consolation team — N=5 → 1 R1 poražený automaticky 5. místo */}
+                      {consolationCount === 1 && (
+                        <div style={{
+                          marginTop: 4,
+                          fontSize: 10, color: 'var(--text-muted)', fontStyle: 'italic',
+                          textAlign: 'center', opacity: 0.85,
+                        }}>
+                          Poražený v 1. kole = automaticky {consolationPlaceStart}. místo
+                        </div>
+                      )}
                     </div>
                   );
                 })}
