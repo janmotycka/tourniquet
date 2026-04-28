@@ -781,13 +781,14 @@ function TournamentStructureDiagram({
           }}>
             📋 Skupinová fáze
           </div>
-          {/* Skupiny vedle sebe (row), centrované, wrap pro velký počet skupin.
-              Každá karta má × pro smazání (když lze), klik na řádek mění advance.
-              Posledním elementem je "+ Skupina" ghost card (když lze přidat). */}
+          {/* Skupiny v gridu — max 4 sloupce. Pro 8 skupin = 4+4 (čistý
+              symetrický layout místo flex-wrap 5+3 chaosu).
+              Pro 2-4 skupiny grid drží přesný počet sloupců; pro 5-8 je 4 cols
+              a další řada se naplňuje zleva. Centrované přes justify-content. */}
           <div style={{
-            display: 'flex',
-            flexDirection: 'row',
-            flexWrap: 'wrap',
+            display: 'grid',
+            // Počet sloupců = min(4, skupiny + případný "+" button)
+            gridTemplateColumns: `repeat(${Math.min(4, groupSizes.length + (canAddGroup ? 1 : 0))}, minmax(56px, auto))`,
             gap: 8,
             justifyContent: 'center',
             paddingTop: canRemoveGroup ? 8 : 0, // místo pro × buttony nahoře
