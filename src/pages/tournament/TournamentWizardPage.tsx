@@ -1017,12 +1017,50 @@ function TournamentStructureDiagram({
               border: '1.5px solid var(--border)', display: 'inline-block',
             }} />
             končí
-            {onSetAdvancePerGroup && (
-              <span style={{ marginLeft: 'auto', fontStyle: 'italic', opacity: 0.8 }}>
-                💡 klikni na řádek pro změnu postupu
-              </span>
-            )}
           </div>
+
+          {/* Postup ze skupiny — explicit chip selector pro discoverability.
+              Uživatel může taky kliknout na řádek (A1/A2) ve skupině přímo,
+              ale chip selector je hned viditelný. */}
+          {onSetAdvancePerGroup && (
+            <div style={{
+              marginTop: 10,
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '8px 12px', borderRadius: 8,
+              background: 'var(--surface-var)',
+              border: '1px solid var(--border)',
+              flexWrap: 'wrap',
+            }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+                🏆 Postup ze skupiny:
+              </span>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {([1, 2] as const).map(n => {
+                  const active = advancePerGroup === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => onSetAdvancePerGroup(n)}
+                      style={{
+                        minWidth: 36, padding: '5px 10px', borderRadius: 6,
+                        fontSize: 13, fontWeight: 700,
+                        background: active ? 'var(--primary)' : 'var(--surface)',
+                        color: active ? '#fff' : 'var(--text-muted)',
+                        border: active ? 'none' : '1.5px solid var(--border)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
+                {advancePerGroup === 1 ? 'jen vítěz' : 'nejlepší dva'}
+              </span>
+            </div>
+          )}
 
           {/* Validační warning: skupinová fáze nemá smysl když všichni postupují */}
           {everyoneAdvancesFromAll && (
@@ -1132,6 +1170,11 @@ function TournamentStructureDiagram({
             return distributeTeamsWithByes(teamLabels);
           };
 
+          // Když všechny tiery mají jen 2 týmy (jeden match per tier, malá karta),
+          // použijeme flex-wrap row layout aby se vešlo víc per řádek a šetřilo
+          // vertikální místo. Pro tiery s 3+ týmy (větší pavouk) zůstává column.
+          const allTiersSmall = tiers.every(t => t.teams.length <= 2);
+
           return (
             <div>
               <div style={{
@@ -1140,7 +1183,13 @@ function TournamentStructureDiagram({
               }}>
                 ⚔️ Zápasy o umístění (play-out)
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{
+                display: 'flex',
+                flexDirection: allTiersSmall ? 'row' : 'column',
+                flexWrap: allTiersSmall ? 'wrap' : 'nowrap',
+                gap: allTiersSmall ? 8 : 14,
+                justifyContent: allTiersSmall ? 'center' : 'flex-start',
+              }}>
                 {tiers.map((tier, idx) => {
                   const N = tier.teams.length;
                   // Top bracket určuje top 4 místa (s bronze pro 3.+4. tieru).
@@ -1173,6 +1222,8 @@ function TournamentStructureDiagram({
                       padding: '10px 12px', borderRadius: 8,
                       background: 'rgba(245, 158, 11, 0.06)',
                       border: '1.5px solid rgba(245, 158, 11, 0.4)',
+                      // Row layout: nesnažit se zaplnit celou šířku, nech kartu compact
+                      ...(allTiersSmall ? { flex: '0 0 auto', minWidth: 130 } : {}),
                     }}>
                       <div style={{
                         fontSize: 11, fontWeight: 800, color: 'var(--warning)',
