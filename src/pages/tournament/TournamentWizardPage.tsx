@@ -328,27 +328,69 @@ function DirectToggleButton({
 function generateBracketLabels(groupCount: number, advancePerGroup: 1 | 2): string[] {
   const letter = (i: number) => String.fromCharCode(65 + i);
 
+  // Explicit cases s optimálním cross-bracket seedingem (klasické turnaje):
   if (advancePerGroup === 1) {
-    // Pouze vítězové skupin: pair adjacent (A vs B, C vs D, ...)
     if (groupCount === 2) return ['A1', 'B1'];
     if (groupCount === 3) return ['A1', '—', 'B1', 'C1']; // bracket of 4 with 1 bye
     if (groupCount === 4) return ['A1', 'C1', 'B1', 'D1']; // cross-bracket SF
-    return Array.from({ length: groupCount }, (_, i) => `${letter(i)}1`);
+  } else {
+    // advancePerGroup === 2
+    if (groupCount === 2) return ['A1', 'B2', 'B1', 'A2'];
+    if (groupCount === 4) return ['A1', 'B2', 'C1', 'D2', 'B1', 'A2', 'D1', 'C2'];
+    if (groupCount === 3) {
+      // 6 teams in bracket of 8. Top seeds (A1, B1) get bye into SF.
+      return ['A1', '—', 'B2', 'C1', 'B1', '—', 'A2', 'C2'];
+    }
   }
 
-  // advancePerGroup === 2 — cross-bracket
-  if (groupCount === 2) return ['A1', 'B2', 'B1', 'A2'];
-  if (groupCount === 4) return ['A1', 'B2', 'C1', 'D2', 'B1', 'A2', 'D1', 'C2'];
-  if (groupCount === 3) {
-    // 6 teams in bracket of 8. Top seeds (A1, B1) get bye into SF.
-    // QF1: bye/A1 → SF1
-    // QF2: B2 vs C1 → SF1
-    // QF3: bye/B1 → SF2
-    // QF4: A2 vs C2 → SF2
-    return ['A1', '—', 'B2', 'C1', 'B1', '—', 'A2', 'C2'];
+  // Generic fallback pro 5+ skupin: distribuce s 1-bye-per-match.
+  // Top seedi dostávají bye do R2 (každý hraje "bye match" = pass-through).
+  // Order: 1st places nejdřív (top seeds), pak 2nd places (bottom seeds).
+  const teams: string[] = [];
+  for (let i = 0; i < groupCount; i++) teams.push(`${letter(i)}1`);
+  if (advancePerGroup === 2) {
+    for (let i = 0; i < groupCount; i++) teams.push(`${letter(i)}2`);
   }
-  // Fallback for unusual configs
-  return [];
+  return distributeTeamsWithByes(teams);
+}
+
+/**
+ * Distribuuje N týmů do bracketu velikosti next-power-of-2 tak, že:
+ * - First (bracketSize - N) R1 matchů má 1 bye (top seedi auto-postupují)
+ * - Remaining matchů jsou regular (2 týmy)
+ *
+ * Slot layout pro 10 týmů v bracketu 16 (6 byes):
+ * [A1, '—', B1, '—', C1, '—', D1, '—', E1, '—', A2, '—', B2, C2, D2, E2]
+ *
+ * R1 matches:
+ *   M0(0,1): A1 + bye → pass-through
+ *   M1(2,3): B1 + bye
+ *   M2(4,5): C1 + bye
+ *   M3(6,7): D1 + bye
+ *   M4(8,9): E1 + bye
+ *   M5(10,11): A2 + bye
+ *   M6(12,13): B2 vs C2 → real match
+ *   M7(14,15): D2 vs E2 → real match
+ */
+function distributeTeamsWithByes(teams: string[]): string[] {
+  const N = teams.length;
+  if (N < 2) return teams;
+  const bracketSize = Math.pow(2, Math.ceil(Math.log2(N)));
+  const byes = bracketSize - N;
+  const r1Count = bracketSize / 2;
+  const result: string[] = new Array(bracketSize).fill('—');
+  let teamIdx = 0;
+  for (let m = 0; m < r1Count; m++) {
+    if (m < byes) {
+      // Bye match: real team na slotu 2m, bye '—' na 2m+1
+      if (teamIdx < N) result[2 * m] = teams[teamIdx++];
+    } else {
+      // Real match: 2 týmy
+      if (teamIdx < N) result[2 * m] = teams[teamIdx++];
+      if (teamIdx < N) result[2 * m + 1] = teams[teamIdx++];
+    }
+  }
+  return result;
 }
 
 /**
@@ -1065,15 +1107,15 @@ function TournamentStructureDiagram({
 
           if (tiers.length === 0) return null;
 
-          // Cross-bracket pairing pro libovolný počet týmů (1-3, 2-4 split)
+          // Cross-bracket pairing pro libovolný počet týmů.
+          // Pro 2/3/4 týmy explicit case (clean cross-bracket).
+          // Pro 5+ generic distribution (top-N bye matches + remaining real matches).
           const tierLabels = (teamLabels: string[]): string[] => {
             const N = teamLabels.length;
             if (N === 2) return [teamLabels[0], teamLabels[1]];
             if (N === 3) return [teamLabels[0], '—', teamLabels[1], teamLabels[2]];
             if (N === 4) return [teamLabels[0], teamLabels[2], teamLabels[1], teamLabels[3]];
-            // Fallback: padding na mocninu 2
-            const bracketSize = Math.pow(2, Math.ceil(Math.log2(N)));
-            return Array.from({ length: bracketSize }, (_, i) => teamLabels[i] ?? '—');
+            return distributeTeamsWithByes(teamLabels);
           };
 
           return (
@@ -1102,14 +1144,13 @@ function TournamentStructureDiagram({
                     : `O ${topPlaceStart}.–${topPlaceEnd}. místo`;
 
                   // Consolation bracket labels: "P1", "P2", ... = poražený R1.X
-                  // Cross-bracket pairing pro consolation (1-3, 2-4 split jako v main)
+                  // Pro 2/3/4 explicit cross-bracket, pro 5+ generic bye distribution.
                   const consolationLabels = (count: number): string[] => {
                     const losers = Array.from({ length: count }, (_, i) => `P${i + 1}`);
                     if (losers.length === 2) return losers;
                     if (losers.length === 4) return [losers[0], losers[2], losers[1], losers[3]];
                     if (losers.length === 3) return [losers[0], '—', losers[1], losers[2]];
-                    const bracketSize = Math.pow(2, Math.ceil(Math.log2(count)));
-                    return Array.from({ length: bracketSize }, (_, i) => losers[i] ?? '—');
+                    return distributeTeamsWithByes(losers);
                   };
 
                   return (
