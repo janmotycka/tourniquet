@@ -247,6 +247,14 @@ export interface TournamentSettings {
   entryFeeNote?: string;                   // poznámka ke startovnému
   billingProfile?: BillingProfile;         // fakturační údaje pro faktury
 
+  // ── Soutěžní kategorie ────────────────────────────────────────────
+  /**
+   * Soutěžní/věková kategorie (např. "U11", "Žáci", "Dorost", "Mix").
+   * Volitelné — slouží pro filtraci v seznamu turnajů a smart defaults
+   * (např. doporučená délka zápasu podle věku).
+   */
+  category?: string;
+
   // ── Friendly mode (školičky — bez pořadí) ─────────────────────────
   friendlyMode?: boolean;                  // true = žádná tabulka, žádní střelci, jen zápasy
 

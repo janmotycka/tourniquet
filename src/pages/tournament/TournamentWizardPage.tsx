@@ -1271,6 +1271,9 @@ interface WizardDraft {
   startTime: string;
   /** Volitelný plánovaný konec "HH:MM". Když je set, ukáže se warning pokud predikce přesahuje. */
   plannedEndTime: string;
+  /** Soutěžní/věková kategorie (volitelná). '' = bez kategorie.
+   *  Smart default: ovlivňuje doporučenou délku zápasu (mladší = kratší). */
+  category: string;
   teamCount: number;
   format: TournamentFormat | null; // null = ještě nevybráno
   teamNames: string[];
@@ -1305,6 +1308,7 @@ function emptyDraft(): WizardDraft {
     venue: '',
     startTime: '10:00',
     plannedEndTime: '',
+    category: '',
     teamCount: 4,
     format: null,
     teamNames: ['', '', '', ''],
@@ -1606,6 +1610,7 @@ export function TournamentWizardPage({ navigate }: Props) {
             : {}),
           ...(format === 'groups-knockout' && draft.playOut ? { playOut: true } : {}),
           ...(draft.venue.trim() ? { venueName: draft.venue.trim() } : {}),
+          ...(draft.category.trim() ? { category: draft.category.trim() } : {}),
           ...(draft.rules.trim() ? { rules: draft.rules.trim() } : {}),
           ...(draft.registrationEnabled ? { registrationEnabled: true } : {}),
           ...(draft.entryFee != null && draft.entryFee > 0 ? { entryFee: draft.entryFee } : {}),
@@ -1832,6 +1837,60 @@ export function TournamentWizardPage({ navigate }: Props) {
                   style={formInputStyle}
                 />
               </FormField>
+
+              {/* Soutěžní kategorie — chip selector (volitelný).
+                  Sport-specific kategorie pro fotbal/florbal/tenis (z club.types).
+                  Použije se pro filtraci v seznamu turnajů + smart default
+                  délky zápasu v Step 3 (mladší kategorie → kratší zápasy). */}
+              <div>
+                <div style={{
+                  fontSize: 12, fontWeight: 600,
+                  color: 'var(--text-muted)', marginBottom: 8,
+                }}>
+                  {t('tournament.wizard.categoryLabel')}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {(() => {
+                    // Smart category options podle sportu (z club.types AGE_CATEGORIES_BY_SPORT,
+                    // ale zjednodušené na nejčastější pro amaterské turnaje).
+                    const options =
+                      preferredSport === 'tennis'
+                        ? ['Minitenis', 'Babytenis', 'Mladší žactvo', 'Starší žactvo', 'Dorost (tenis)', 'Dospělí (tenis)']
+                        : preferredSport === 'floorball'
+                        ? ['U7', 'U9', 'U11', 'U13', 'U15', 'U17', 'Dorost', 'Muži', 'Ženy']
+                        : ['U7', 'U9', 'U11', 'U13', 'U15', 'U17', 'Dorost', 'Muži', 'Ženy'];
+                    const allOptions = ['', ...options];
+                    return allOptions.map(opt => {
+                      const isActive = draft.category === opt;
+                      const label = opt === '' ? t('tournament.wizard.categoryNone') : opt;
+                      return (
+                        <button
+                          key={opt || 'none'}
+                          type="button"
+                          onClick={() => updateDraft('category', opt)}
+                          style={{
+                            padding: '7px 12px', borderRadius: 8,
+                            fontSize: 12, fontWeight: 700,
+                            background: isActive ? 'var(--primary)' : 'var(--surface-var)',
+                            color: isActive ? '#fff' : 'var(--text-muted)',
+                            border: isActive ? 'none' : '1.5px solid var(--border)',
+                            cursor: 'pointer',
+                            letterSpacing: 0.2,
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+                <div style={{
+                  fontSize: 11, color: 'var(--text-muted)',
+                  marginTop: 6, fontStyle: 'italic', lineHeight: 1.4,
+                }}>
+                  {t('tournament.wizard.categoryHint')}
+                </div>
+              </div>
             </FormCard>
           </>
         )}
