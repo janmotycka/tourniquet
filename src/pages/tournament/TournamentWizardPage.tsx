@@ -622,8 +622,11 @@ function BracketTree({
                   {finalReplacementLabel ?? 'Finále'}
                 </text>
               )}
-              {/* První kolo: stacked labels A1 / B2 */}
-              {isFirstRound && hasLabels && !isFinal && (() => {
+              {/* První kolo: stacked labels A1 / B2.
+                  Pozn: když noFinaleLabel=true a R1==F (2-team bracket = play-out tier),
+                  potřebujeme labels zobrazit i když isFinal=true (jinak jsou prázdné boxy).
+                  Pokud noFinaleLabel=false, "Finále" text má prioritu a labels se skryjí. */}
+              {isFirstRound && hasLabels && (!isFinal || noFinaleLabel) && (() => {
                 if (isPassThrough) {
                   // Pass-through (bye): single label centered
                   const realLabel = slot1Bye ? slot2 : slot1;
