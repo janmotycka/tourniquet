@@ -182,12 +182,12 @@ function GroupCard({
   size, advance, letter, onRemove, onSetAdvance,
 }: {
   size: number;
-  advance: 1 | 2;
+  advance: number;
   letter: string;
   /** Smazat skupinu — × button v rohu. Undefined = nelze smazat. */
   onRemove?: () => void;
   /** Klik na řádek nastaví advance na ten index. Undefined = read-only. */
-  onSetAdvance?: (n: 1 | 2) => void;
+  onSetAdvance?: (n: number) => void;
 }) {
   return (
     <div style={{
@@ -232,26 +232,26 @@ function GroupCard({
         {Array.from({ length: size }).map((_, i) => {
           const advancing = i < advance;
           const label = `${letter}${i + 1}`;
-          // Kliknutelné jsou řádky s indexem 1 nebo 2 (advance může být 1 nebo 2)
+          // Kliknutelné jsou všechny řádky kromě posledního (poslední by znamenal
+          // "všichni postupují" = skupina nemá soutěžní smysl, viz validation warning).
+          // Min 1 tým musí ve skupině končit.
           const idx = i + 1;
-          const isClickable = !!onSetAdvance && (idx === 1 || idx === 2);
+          const isClickable = !!onSetAdvance && idx < size;
           return (
             <div
               key={i}
               role={isClickable ? 'button' : undefined}
               tabIndex={isClickable ? 0 : undefined}
-              onClick={isClickable ? () => onSetAdvance!(idx as 1 | 2) : undefined}
+              onClick={isClickable ? () => onSetAdvance!(idx) : undefined}
               onKeyDown={isClickable ? (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  onSetAdvance!(idx as 1 | 2);
+                  onSetAdvance!(idx);
                 }
               } : undefined}
               title={
                 isClickable
-                  ? (idx === 1
-                    ? `Klikni — postupuje jen vítěz skupiny`
-                    : `Klikni — postupují nejlepší 2 ze skupiny`)
+                  ? `Klikni — postupují nejlepší ${idx} ze skupiny`
                   : (advancing ? `${label} — postupuje` : `${label} — končí`)
               }
               style={{
@@ -325,7 +325,7 @@ function DirectToggleButton({
  *  - 4 groups × 2: ['A1','B2','C1','D2','B1','A2','D1','C2']
  *  - 3 groups × 2: ['A1','—','B2','C1','B1','—','A2','C2'] (top seedi mají bye)
  */
-function generateBracketLabels(groupCount: number, advancePerGroup: 1 | 2): string[] {
+function generateBracketLabels(groupCount: number, advancePerGroup: number): string[] {
   const letter = (i: number) => String.fromCharCode(65 + i);
 
   // Explicit cases s optimálním cross-bracket seedingem (klasické turnaje):
@@ -333,8 +333,7 @@ function generateBracketLabels(groupCount: number, advancePerGroup: 1 | 2): stri
     if (groupCount === 2) return ['A1', 'B1'];
     if (groupCount === 3) return ['A1', '—', 'B1', 'C1']; // bracket of 4 with 1 bye
     if (groupCount === 4) return ['A1', 'C1', 'B1', 'D1']; // cross-bracket SF
-  } else {
-    // advancePerGroup === 2
+  } else if (advancePerGroup === 2) {
     if (groupCount === 2) return ['A1', 'B2', 'B1', 'A2'];
     if (groupCount === 4) return ['A1', 'B2', 'C1', 'D2', 'B1', 'A2', 'D1', 'C2'];
     if (groupCount === 3) {
@@ -343,13 +342,14 @@ function generateBracketLabels(groupCount: number, advancePerGroup: 1 | 2): stri
     }
   }
 
-  // Generic fallback pro 5+ skupin: distribuce s 1-bye-per-match.
-  // Top seedi dostávají bye do R2 (každý hraje "bye match" = pass-through).
-  // Order: 1st places nejdřív (top seeds), pak 2nd places (bottom seeds).
+  // Generic fallback (5+ skupin nebo advance ≥ 3):
+  // Order: 1st places, 2nd places, 3rd places, ... (top seeds first).
+  // distributeTeamsWithByes umístí byes 1-per-match.
   const teams: string[] = [];
-  for (let i = 0; i < groupCount; i++) teams.push(`${letter(i)}1`);
-  if (advancePerGroup === 2) {
-    for (let i = 0; i < groupCount; i++) teams.push(`${letter(i)}2`);
+  for (let pos = 1; pos <= advancePerGroup; pos++) {
+    for (let g = 0; g < groupCount; g++) {
+      teams.push(`${letter(g)}${pos}`);
+    }
   }
   return distributeTeamsWithByes(teams);
 }
@@ -835,13 +835,13 @@ function TournamentStructureDiagram({
   format: TournamentFormat | null;
   teamCount: number;
   groupSizes?: number[];
-  advancePerGroup: 1 | 2;
+  advancePerGroup: number;
   thirdPlaceMatch: boolean;
   playOut: boolean;
   /** Změnit počet skupin (přidat/ubrat). Undefined = read-only diagram. */
   onSetGroupCount?: (n: number) => void;
-  /** Změnit počet postupujících (1 nebo 2). */
-  onSetAdvancePerGroup?: (n: 1 | 2) => void;
+  /** Změnit počet postupujících (1, 2, 3, 4...). */
+  onSetAdvancePerGroup?: (n: number) => void;
   /** Toggle zápasu o 3. místo. */
   onSetThirdPlace?: (v: boolean) => void;
   /** Toggle play-out. */
@@ -1022,45 +1022,59 @@ function TournamentStructureDiagram({
           {/* Postup ze skupiny — explicit chip selector pro discoverability.
               Uživatel může taky kliknout na řádek (A1/A2) ve skupině přímo,
               ale chip selector je hned viditelný. */}
-          {onSetAdvancePerGroup && (
-            <div style={{
-              marginTop: 10,
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '8px 12px', borderRadius: 8,
-              background: 'var(--surface-var)',
-              border: '1px solid var(--border)',
-              flexWrap: 'wrap',
-            }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
-                🏆 Postup ze skupiny:
-              </span>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {([1, 2] as const).map(n => {
-                  const active = advancePerGroup === n;
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => onSetAdvancePerGroup(n)}
-                      style={{
-                        minWidth: 36, padding: '5px 10px', borderRadius: 6,
-                        fontSize: 13, fontWeight: 700,
-                        background: active ? 'var(--primary)' : 'var(--surface)',
-                        color: active ? '#fff' : 'var(--text-muted)',
-                        border: active ? 'none' : '1.5px solid var(--border)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {n}
-                    </button>
-                  );
-                })}
+          {onSetAdvancePerGroup && (() => {
+            // Dynamic chip options: 1..min(4, minGroupSize). Cap na 4 (víc než
+            // top 4 míst je u amateur turnajů extrémně neobvyklé). Min 1.
+            // Allow "everyone advances" jako poslední chip = warning case
+            // (validation warning informuje uživatele).
+            const maxAdvance = Math.min(4, minGroupSize);
+            const chipOptions = Array.from({ length: maxAdvance }, (_, i) => i + 1);
+            const advanceLabel =
+              advancePerGroup === 1 ? 'jen vítěz'
+              : advancePerGroup === 2 ? 'nejlepší dva'
+              : advancePerGroup === 3 ? 'nejlepší tři'
+              : advancePerGroup === 4 ? 'nejlepší čtyři'
+              : `nejlepší ${advancePerGroup}`;
+            return (
+              <div style={{
+                marginTop: 10,
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 12px', borderRadius: 8,
+                background: 'var(--surface-var)',
+                border: '1px solid var(--border)',
+                flexWrap: 'wrap',
+              }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+                  🏆 Postup ze skupiny:
+                </span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {chipOptions.map(n => {
+                    const active = advancePerGroup === n;
+                    return (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => onSetAdvancePerGroup(n)}
+                        style={{
+                          minWidth: 36, padding: '5px 10px', borderRadius: 6,
+                          fontSize: 13, fontWeight: 700,
+                          background: active ? 'var(--primary)' : 'var(--surface)',
+                          color: active ? '#fff' : 'var(--text-muted)',
+                          border: active ? 'none' : '1.5px solid var(--border)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {n}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
+                  {advanceLabel}
+                </span>
               </div>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>
-                {advancePerGroup === 1 ? 'jen vítěz' : 'nejlepší dva'}
-              </span>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Validační warning: skupinová fáze nemá smysl když všichni postupují */}
           {everyoneAdvancesFromAll && (
@@ -1337,8 +1351,12 @@ interface WizardDraft {
   breakBetweenMatchesMinutes: number;
   /** User override počtu skupin (null = smart heuristika podle teamCount). */
   groupCountOverride: number | null;
-  /** Postup z každé skupiny do KO (1 = jen vítěz, 2 = nejlepší 2). Jen pro groups-knockout. */
-  advancePerGroup: 1 | 2;
+  /**
+   * Postup z každé skupiny do KO. 1 = jen vítěz, 2 = nejlepší 2, 3 = top 3 atd.
+   * Maximum dle minGroupSize (validní jen pokud aspoň 1 tým ve skupině končí).
+   * Jen pro groups-knockout.
+   */
+  advancePerGroup: number;
   /** Hraje se zápas o 3. místo? Jen pro groups-knockout / knockout. */
   thirdPlaceMatch: boolean;
   /** Hrají i poražení play-out (consolation)? Jen pro groups-knockout. */
