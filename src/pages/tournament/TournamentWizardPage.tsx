@@ -960,33 +960,44 @@ function TournamentStructureDiagram({
                 onSetAdvance={onSetAdvancePerGroup}
               />
             ))}
-            {/* "+ Skupina" ghost card */}
-            {canAddGroup && (
-              <button
-                type="button"
-                onClick={() => onSetGroupCount!(groupSizes.length + 1)}
-                aria-label="Přidat skupinu"
-                title="Přidat skupinu"
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  background: 'transparent',
-                  border: '1.5px dashed var(--primary)',
-                  color: 'var(--primary)',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  minWidth: 56,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 4,
-                }}
-              >
-                <span style={{ fontSize: 22, lineHeight: 1 }}>+</span>
-                <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.85, letterSpacing: 0.3 }}>
-                  Skupina
-                </span>
-              </button>
-            )}
+            {/* "+ Skupina" ghost card. Když by byl sám na nové řadě
+                (groupSizes.length je násobek 4 sloupců = full row), nech ho
+                spanovat všechny sloupce a centrovat — jinak vypadá zarovnaný
+                vlevo divně. */}
+            {canAddGroup && (() => {
+              const isAloneOnNewRow = groupSizes.length > 0 && groupSizes.length % 4 === 0;
+              return (
+                <button
+                  type="button"
+                  onClick={() => onSetGroupCount!(groupSizes.length + 1)}
+                  aria-label="Přidat skupinu"
+                  title="Přidat skupinu"
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: 'transparent',
+                    border: '1.5px dashed var(--primary)',
+                    color: 'var(--primary)',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    minWidth: 56,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    // Když je sám na nové řadě, spannuj celou grid šířku + center self
+                    ...(isAloneOnNewRow ? {
+                      gridColumn: '1 / -1',
+                      justifySelf: 'center',
+                    } : {}),
+                  }}
+                >
+                  <span style={{ fontSize: 22, lineHeight: 1 }}>+</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, opacity: 0.85, letterSpacing: 0.3 }}>
+                    Skupina
+                  </span>
+                </button>
+              );
+            })()}
           </div>
           <div style={{
             fontSize: 10, color: 'var(--text-muted)', marginTop: 8,
