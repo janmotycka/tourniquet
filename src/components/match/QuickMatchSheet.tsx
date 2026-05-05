@@ -650,6 +650,16 @@ export function QuickMatchSheet({
         </SettingsList>
       </div>
 
+      {/* Hint o volitelnosti — audit 2026-04-29 pt4: přesunuto nad collapsibles
+          aby trenér věděl PŘEDTÍM než uvidí seznam možností. */}
+      <div style={{
+        fontSize: 11, color: 'var(--text-muted)',
+        textAlign: 'center', lineHeight: 1.5,
+        padding: '2px 8px',
+      }}>
+        ℹ️ {t('match.quickSheet.optionalHint')}
+      </div>
+
       {/* ── Player editor (row-based, jako v AdminRosterSheet) ─────────────
           Audit 2026-04-29: defaultně sbalená sekce — rychlý zápas většinou
           nepotřebuje sestavu (přátelák / plácek). Tap na hlavičku rozbalí
@@ -662,17 +672,17 @@ export function QuickMatchSheet({
           aria-expanded={rosterExpanded}
           style={{
             width: '100%',
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '12px 14px', borderRadius: 12,
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10,
             background: rosterExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
             border: `1.5px solid ${rosterExpanded ? 'var(--primary)' : 'var(--border)'}`,
             cursor: 'pointer', textAlign: 'left',
             transition: 'background .15s, border-color .15s',
           }}
         >
-          <span style={{ fontSize: 22 }}>👥</span>
+          <span style={{ fontSize: 18 }}>👥</span>
           <span style={{
-            flex: 1, fontSize: 14, fontWeight: 700,
+            flex: 1, fontSize: 13, fontWeight: 700,
             color: rosterExpanded ? 'var(--primary)' : 'var(--text)',
           }}>
             {t('match.quickSheet.rosterLabel')}
@@ -937,17 +947,17 @@ export function QuickMatchSheet({
           aria-expanded={venueExpanded}
           style={{
             width: '100%',
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '12px 14px', borderRadius: 12,
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10,
             background: venueExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
             border: `1.5px solid ${venueExpanded ? 'var(--primary)' : 'var(--border)'}`,
             cursor: 'pointer', textAlign: 'left',
             transition: 'background .15s, border-color .15s',
           }}
         >
-          <span style={{ fontSize: 22 }}>📍</span>
+          <span style={{ fontSize: 18 }}>📍</span>
           <span style={{
-            flex: 1, fontSize: 14, fontWeight: 700,
+            flex: 1, fontSize: 13, fontWeight: 700,
             color: venueExpanded ? 'var(--primary)' : 'var(--text)',
           }}>
             {t('match.quickSheet.venueLabel')}
@@ -1012,17 +1022,17 @@ export function QuickMatchSheet({
           aria-expanded={dateTimeExpanded}
           style={{
             width: '100%',
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '12px 14px', borderRadius: 12,
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10,
             background: dateTimeExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
             border: `1.5px solid ${dateTimeExpanded ? 'var(--primary)' : 'var(--border)'}`,
             cursor: 'pointer', textAlign: 'left',
             transition: 'background .15s, border-color .15s',
           }}
         >
-          <span style={{ fontSize: 22 }}>📅</span>
+          <span style={{ fontSize: 18 }}>📅</span>
           <span style={{
-            flex: 1, fontSize: 14, fontWeight: 700,
+            flex: 1, fontSize: 13, fontWeight: 700,
             color: dateTimeExpanded ? 'var(--primary)' : 'var(--text)',
           }}>
             {t('match.quickSheet.dateTimeLabel')}
@@ -1075,17 +1085,17 @@ export function QuickMatchSheet({
           aria-expanded={compCatExpanded}
           style={{
             width: '100%',
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '12px 14px', borderRadius: 12,
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10,
             background: compCatExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
             border: `1.5px solid ${compCatExpanded ? 'var(--primary)' : 'var(--border)'}`,
             cursor: 'pointer', textAlign: 'left',
             transition: 'background .15s, border-color .15s',
           }}
         >
-          <span style={{ fontSize: 22 }}>🏆</span>
+          <span style={{ fontSize: 18 }}>🏆</span>
           <span style={{
-            flex: 1, fontSize: 14, fontWeight: 700,
+            flex: 1, fontSize: 13, fontWeight: 700,
             color: compCatExpanded ? 'var(--primary)' : 'var(--text)',
           }}>
             {t('match.quickSheet.competitionCategoryLabel')}
@@ -1192,16 +1202,6 @@ export function QuickMatchSheet({
             </div>
           </div>
         )}
-      </div>
-
-      {/* Hint: collapsibles jsou volitelné — audit 2026-04-29 pt3 user feedback
-          „možná je dobré krátce uvést že zápas lze i bez toho". */}
-      <div style={{
-        fontSize: 11, color: 'var(--text-muted)',
-        textAlign: 'center', lineHeight: 1.5,
-        padding: '4px 8px',
-      }}>
-        ℹ️ {t('match.quickSheet.optionalHint')}
       </div>
 
       <button
