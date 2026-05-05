@@ -346,6 +346,7 @@ export const useMatchesStore = create<MatchesState>()(
           cards: [],
           substitutionSettings: input.substitutionSettings,
           trackAssists: input.trackAssists ?? true,
+          isQuickMatch: input.isQuickMatch,
           ratings: [],
           note: undefined,
           createdAt: now(),

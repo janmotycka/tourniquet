@@ -1382,6 +1382,7 @@ export const de: Record<TranslationKey, string> = {
   'match.detail.tournamentDayTitle': '{n} Spiele heute 💪',
   'match.detail.tournamentDayDesc': 'Weiter oder alle heutigen Ergebnisse ansehen',
   'match.detail.tournamentDayBtn': 'Heute',
+  'match.detail.sameLineupBtn': 'Gleiche Aufstellung',
   'match.detail.facrReportTitle': '📋 Verbandsbericht',
   'match.detail.facrCopyText': 'Text kopieren',
   'match.detail.facrDownloadPdf': 'PDF herunterladen',

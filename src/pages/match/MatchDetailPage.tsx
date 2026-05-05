@@ -635,7 +635,29 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
                     >
                       + {t('match.detail.nextMatchCtaBtn')}
                     </button>
-                    {isTournamentDay && (
+                    {/* „Stejná sestava" CTA — audit 2026-04-29: po Quick zápase
+                        trenér často hraje další proti jinému soupeři se stejnou
+                        sestavou (turnaj, plácek, tréninkový zápas). Tlačítko
+                        ho pošle rovnou na QuickMatchPage s předvyplněnou
+                        soupiskou. Skryté pro Advanced (tam má CreateMatchPage
+                        vlastní copy-lineup feature). */}
+                    {currentMatch.isQuickMatch && (
+                      <button
+                        onClick={() => navigate({
+                          name: 'match-quick',
+                          prefillFromMatchId: currentMatch.id,
+                        })}
+                        style={{
+                          flex: 1, padding: '10px 12px', borderRadius: 10,
+                          background: 'rgba(255,255,255,0.18)', color: '#fff',
+                          border: '1px solid rgba(255,255,255,0.35)',
+                          fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                        }}
+                      >
+                        🔁 {t('match.detail.sameLineupBtn')}
+                      </button>
+                    )}
+                    {!currentMatch.isQuickMatch && isTournamentDay && (
                       <button
                         onClick={() => navigate({ name: 'match-list' })}
                         style={{
@@ -655,9 +677,10 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
 
           {/* FAČR report — Advanced/klubová feature (oficiální zápis pro českou
               fotbalovou asociaci). Skryté v Simple módu — laik / učitel TV ho
-              nepotřebuje. Analyst audit: FAČR je killer feature pro CZ trenéry,
-              ale musí být schované před neceil cílovkou. */}
-          {currentMatch.status === 'finished' && !isSimpleMode && (
+              nepotřebuje. Audit 2026-04-29: skryté i pro Quick match (rychlý
+              zápas / přátelák) i v Advanced módu — bez kompletní sestavy
+              s pozicemi nemá FAČR co reportovat. */}
+          {currentMatch.status === 'finished' && !isSimpleMode && !currentMatch.isQuickMatch && (
             <div style={{
               background: 'var(--surface)', borderRadius: 14, padding: '12px 14px',
               border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10,

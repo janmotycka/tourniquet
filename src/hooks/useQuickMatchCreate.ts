@@ -84,6 +84,9 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       matchFormat,
       lineup,
       trackAssists: false,
+      // Audit 2026-04-29: označit jako rychlý zápas — UI některé Advanced
+      // featury (FAČR hlášení) skryje pro Quick zápasy.
+      isQuickMatch: true,
     });
     startMatch(match.id);
     navigate({ name: 'match-detail', matchId: match.id });

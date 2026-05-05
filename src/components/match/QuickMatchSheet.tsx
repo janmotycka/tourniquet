@@ -65,6 +65,18 @@ export interface QuickMatchRosterEntry {
   clubPlayerId?: string;
 }
 
+/**
+ * Initial player pro prefill (např. flow „další zápas se stejnou sestavou").
+ * Audit 2026-04-29 pt2: po dokončení zápasu trenér klikne „Stejná sestava" →
+ * QuickMatchPage předá `initialPlayers` z minulého lineup.
+ */
+export interface QuickMatchInitialPlayer {
+  name: string;
+  jerseyNumber?: number;
+  birthYear?: number;
+  clubPlayerId?: string;
+}
+
 interface PlayerRow {
   id: string;
   name: string;
@@ -91,9 +103,20 @@ interface Props {
    * Když undefined, link se neukáže.
    */
   onSwitchToFullMatch?: () => void;
+  /**
+   * Volitelný initial roster (např. „další zápas se stejnou sestavou" CTA).
+   * Pokud uvedeno, soupiska se předvyplní a sekce se rozbalí. Audit 2026-04-29.
+   */
+  initialPlayers?: QuickMatchInitialPlayer[];
 }
 
-export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToFullMatch }: Props) {
+export function QuickMatchSheet({
+  onClose,
+  onCreate,
+  mode = 'sheet',
+  onSwitchToFullMatch,
+  initialPlayers,
+}: Props) {
   const { t } = useI18n();
   const { user } = useAuth();
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
@@ -116,8 +139,17 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
   // ─── State ─────────────────────────────────────────────────────────────────
   const [opponent, setOpponent] = useState('');
   const [opponentFocused, setOpponentFocused] = useState(false);
-  // Player editor — row-based (jako AdminRosterSheet v turnaji)
-  const [players, setPlayers] = useState<PlayerRow[]>([]);
+  // Player editor — row-based (jako AdminRosterSheet v turnaji).
+  // Init z `initialPlayers` (prefill z minulého zápasu) pokud je předán.
+  const [players, setPlayers] = useState<PlayerRow[]>(() =>
+    (initialPlayers ?? []).map(p => ({
+      id: generateId(),
+      name: p.name,
+      jerseyNumber: p.jerseyNumber ? String(p.jerseyNumber) : '',
+      birthYear: p.birthYear ? String(p.birthYear) : '',
+      clubPlayerId: p.clubPlayerId,
+    })),
+  );
   // New player input row (3 inputs + tlačítko + Přidat)
   const [addName, setAddName] = useState('');
   const [addJersey, setAddJersey] = useState('');
@@ -134,8 +166,11 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
   // Modal: import z klubu
   const [clubImportOpen, setClubImportOpen] = useState(false);
   // Audit 2026-04-29: soupiska defaultně sbalená (rychlý zápas = soupeř +
-  // settings stačí). Auto-expand pokud auto-pre-pick squady přidá hráče.
-  const [rosterExpanded, setRosterExpanded] = useState(false);
+  // settings stačí). Auto-expand pokud auto-pre-pick squady přidá hráče
+  // nebo pokud byla předána initialPlayers (prefill z minulého zápasu).
+  const [rosterExpanded, setRosterExpanded] = useState(
+    (initialPlayers?.length ?? 0) > 0,
+  );
   // Audit 2026-04-29: místo konání jako collapsed accordion (doma/venku +
   // text). Default sbalený — většina rychlých zápasů hraje doma, místo
   // user obvykle nepotřebuje zadávat. Po expanze edituje přímo.

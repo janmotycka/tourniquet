@@ -95,7 +95,7 @@ export type Page =
   | { name: 'club-members' }
   | { name: 'match-list' }
   | { name: 'match-create' }
-  | { name: 'match-quick' }
+  | { name: 'match-quick'; prefillFromMatchId?: string }
   | { name: 'match-detail'; matchId: string }
   | { name: 'match-public'; matchId: string }
   | { name: 'match-stats' }
@@ -490,11 +490,13 @@ function AppRouter() {
             : <CreateMatchPage navigate={navigate} />
       )}
       {/* match-quick = full page wrapper kolem QuickMatchSheet (audit 2026-04-29).
-          Tenis nemá rychlý zápas, fallback na match-create. */}
+          Tenis nemá rychlý zápas, fallback na match-create.
+          prefillFromMatchId — pokud uvedeno, předvyplní soupisku z minulého
+          zápasu (rychlé „další zápas se stejnou sestavou"). */}
       {page.name === 'match-quick' && (
         isTennisMode
           ? <CreateMatchPage navigate={navigate} />
-          : <QuickMatchPage navigate={navigate} />
+          : <QuickMatchPage navigate={navigate} prefillFromMatchId={page.prefillFromMatchId} />
       )}
       {page.name === 'match-detail' && (
         isTennisMode

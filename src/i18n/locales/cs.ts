@@ -1394,6 +1394,7 @@ export const cs = {
   'match.detail.tournamentDayTitle': 'Dnes už jsi odehrál {n} zápasů 💪',
   'match.detail.tournamentDayDesc': 'Pokračuj v turnaji, nebo si prohlédni všechny dnešní výsledky',
   'match.detail.tournamentDayBtn': 'Dnešní den',
+  'match.detail.sameLineupBtn': 'Stejná sestava',
   'match.detail.facrReportTitle': '📋 Hlášení pro FAČR',
   'match.detail.facrCopyText': 'Zkopírovat text',
   'match.detail.facrDownloadPdf': 'Stáhnout PDF',

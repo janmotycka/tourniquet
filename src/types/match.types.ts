@@ -176,6 +176,13 @@ export interface SeasonMatch {
 
   substitutionSettings?: SubstitutionSettings;
   trackAssists?: boolean;    // true = evidovat asistence u gólů (default true)
+  /**
+   * Audit 2026-04-29: rozlišení rychlého (Quick match) zápasu od plnohodnotného.
+   * Quick match má jen jména hráčů (bez pozic / kapitánů / FAČR informací),
+   * je vytvořen z QuickMatchSheet pro rychlý přátelák / plácek. UI některé
+   * Advanced featury (FAČR hlášení, lineup picker) skrývá pro Quick zápasy.
+   */
+  isQuickMatch?: boolean;
 
   ratings: PlayerRating[];   // hodnocení po zápase
   note?: string;             // trenérova poznámka k zápasu
@@ -323,4 +330,5 @@ export interface CreateSeasonMatchInput {
   lineup: MatchLineupPlayer[];
   substitutionSettings?: SubstitutionSettings;
   trackAssists?: boolean;
+  isQuickMatch?: boolean;
 }
