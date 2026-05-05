@@ -47,6 +47,10 @@ import { useToastStore } from '../../store/toast.store';
 import { generatePinSalt, hashPin } from '../../utils/pin-hash';
 import { suggestFormats, type FormatSuggestion } from '../../utils/tournament-format-suggest';
 import {
+  generateBracketLabels,
+  distributeTeamsWithByes,
+} from '../../utils/tournament-bracket-seeding';
+import {
   PageHeader,
   FormCard, SectionTitle, FormField, PrimaryButton,
   formInputStyle,
@@ -313,118 +317,9 @@ function DirectToggleButton({
   );
 }
 
-/**
- * Generuje labely pro první kolo bracketu (cross-bracket seeding).
- * Standardní turnajové pravidlo: 1. místo skupiny se nesetkává s jiným 1. místem
- * v prvním kole. Returns array slotů (délka = bracketSize), s '—' pro bye.
- *
- * Příklady:
- *  - 2 groups × 1: ['A1', 'B1'] (just final)
- *  - 2 groups × 2: ['A1', 'B2', 'B1', 'A2'] → SF1: A1 vs B2, SF2: B1 vs A2
- *  - 4 groups × 1: ['A1', 'C1', 'B1', 'D1']
- *  - 4 groups × 2: ['A1','B2','C1','D2','B1','A2','D1','C2']
- *  - 3 groups × 2: ['A1','—','B2','C1','B1','—','A2','C2'] (top seedi mají bye)
- */
-function generateBracketLabels(groupCount: number, advancePerGroup: number): string[] {
-  const letter = (i: number) => String.fromCharCode(65 + i);
-
-  // Explicit cases s optimálním cross-bracket seedingem (klasické turnaje):
-  if (advancePerGroup === 1) {
-    if (groupCount === 2) return ['A1', 'B1'];
-    if (groupCount === 3) return ['A1', '—', 'B1', 'C1']; // bracket of 4 with 1 bye
-    if (groupCount === 4) return ['A1', 'C1', 'B1', 'D1']; // cross-bracket SF
-  } else if (advancePerGroup === 2) {
-    if (groupCount === 2) return ['A1', 'B2', 'B1', 'A2'];
-    if (groupCount === 4) return ['A1', 'B2', 'C1', 'D2', 'B1', 'A2', 'D1', 'C2'];
-    if (groupCount === 3) {
-      // 6 teams in bracket of 8. Top seeds (A1, B1) get bye into SF.
-      return ['A1', '—', 'B2', 'C1', 'B1', '—', 'A2', 'C2'];
-    }
-  }
-
-  // Generic fallback (5+ skupin nebo advance ≥ 3):
-  // Order: 1st places, 2nd places, 3rd places, ... (top seeds first).
-  // distributeTeamsWithByes umístí byes 1-per-match.
-  const teams: string[] = [];
-  for (let pos = 1; pos <= advancePerGroup; pos++) {
-    for (let g = 0; g < groupCount; g++) {
-      teams.push(`${letter(g)}${pos}`);
-    }
-  }
-  return distributeTeamsWithByes(teams);
-}
-
-/**
- * Distribuuje N týmů do bracketu velikosti next-power-of-2 podle
- * **standardního turnajového nasazení (snake/recursive bisection)**.
- *
- * Best practice (UEFA/FIFA/NCAA): top seedi jsou rozložení do opačných
- * stran bracketu, takže se mohou potkat až v SF/F. Byes jsou rozložené
- * spolu s top seedy — KAŽDÝ top seed dostane bye partnera.
- *
- * Předtím (špatně): byes na slotech 1, 3, 5, 7 → všichni top seedi v top
- * half → 1. seed potká 2. seed v R2!
- *
- * Teď (správně): standard seeding — seed 1 v slotu 0, seed 2 v posledním
- * slotu, seed 3 a 4 v opačných čtvrtinách atd.
- *
- * Příklad pro 12 týmů v bracketu 16 (4 byes):
- *   seedAtSlot = [1, 16, 8, 9, 4, 13, 5, 12, 2, 15, 7, 10, 3, 14, 6, 11]
- *   - Slot 0: A1 (seed 1)
- *   - Slot 1: bye (seed 16)
- *   - Slot 4: D1 (seed 4)
- *   - Slot 5: bye (seed 13)
- *   - Slot 8: B1 (seed 2)
- *   - Slot 9: bye (seed 15)
- *   - Slot 12: C1 (seed 3)
- *   - Slot 13: bye (seed 14)
- *   → 4 group winners ve 4 čtvrtinách bracketu, byes mezi nimi.
- */
-function distributeTeamsWithByes(teams: string[]): string[] {
-  const N = teams.length;
-  if (N < 2) return teams;
-  const bracketSize = Math.pow(2, Math.ceil(Math.log2(N)));
-  const seedAtSlot = generateSeedingOrder(bracketSize);
-
-  const result: string[] = new Array(bracketSize).fill('—');
-  for (let slot = 0; slot < bracketSize; slot++) {
-    const seed = seedAtSlot[slot]; // 1-based
-    if (seed <= N) {
-      result[slot] = teams[seed - 1];
-    }
-    // else: stays '—' (bye)
-  }
-  return result;
-}
-
-/**
- * Generuje standardní turnajové nasazení (recursive bisection).
- * Returns array kde index = slot v bracketu, value = seed (1-based).
- *
- * Algorithm: start s [1, 2], pak každé doubling:
- *   pro každý seed s v current order: push s, push (newLength + 1 - s)
- *
- * Příklady:
- *   size 2:  [1, 2]
- *   size 4:  [1, 4, 2, 3]
- *   size 8:  [1, 8, 4, 5, 2, 7, 3, 6]
- *   size 16: [1, 16, 8, 9, 4, 13, 5, 12, 2, 15, 7, 10, 3, 14, 6, 11]
- *   size 32: ... (rekurzivní pokračování)
- */
-function generateSeedingOrder(size: number): number[] {
-  if (size < 2) return [1];
-  let order: number[] = [1, 2];
-  while (order.length < size) {
-    const newLength = order.length * 2;
-    const next: number[] = [];
-    for (const s of order) {
-      next.push(s);
-      next.push(newLength + 1 - s);
-    }
-    order = next;
-  }
-  return order;
-}
+// ─── Seeding helpers se přesunuly do utils/tournament-bracket-seeding.ts ──
+// generateBracketLabels, distributeTeamsWithByes, generateSeedingOrder
+// jsou tam exportované + pokryté unit testy.
 
 /**
  * SVG bracket tree — skutečný vizuální pavouk.
