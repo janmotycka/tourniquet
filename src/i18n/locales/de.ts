@@ -1094,6 +1094,7 @@ export const de: Record<TranslationKey, string> = {
   'match.quickSheet.durationOneLabel': 'Spieldauer',
   'match.quickSheet.durationEachLabel': 'Pro Halbzeit',
   'match.quickSheet.matchFormatLabel': 'Spielformat',
+  'match.quickSheet.switchToFullMatch': '🏆 Vollständiges Spiel mit Aufstellung →',
   'match.quickSheet.durationUnit': 'Minuten',
   'match.quickSheet.durationSummary': 'Gesamt {total} min ({layout})',
   'match.quickSheet.rosterToggle': 'Spieler (optional)',

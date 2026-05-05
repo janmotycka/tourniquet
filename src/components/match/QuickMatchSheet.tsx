@@ -24,6 +24,7 @@ import {
   ChipPair,
   CompactNumberInput,
   SettingsList,
+  PageHeader,
 } from '../ui';
 
 /**
@@ -46,9 +47,21 @@ export interface QuickMatchPreset {
 interface Props {
   onClose: () => void;
   onCreate: (opponent: string, roster: string[], squadId?: string, preset?: QuickMatchPreset) => void;
+  /**
+   * 'sheet' (default) — bottom-sheet modal pattern (legacy).
+   * 'page' — full page layout konzistentní s tournament wizardem.
+   * Audit 2026-04-29: User feedback že match creation by měla být plná stránka,
+   * ne bottom sheet (jako tournament wizard má svou stránku).
+   */
+  mode?: 'sheet' | 'page';
+  /**
+   * Pro 'page' mode: navigate funkce pro link na "Plný zápas se sestavou".
+   * Když undefined, link se neukáže.
+   */
+  onSwitchToFullMatch?: () => void;
 }
 
-export function QuickMatchSheet({ onClose, onCreate }: Props) {
+export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToFullMatch }: Props) {
   const { t } = useI18n();
   const { user } = useAuth();
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
@@ -250,59 +263,13 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
     fontSize: 15, outline: 'none',
   };
 
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 900,
-        background: 'rgba(0,0,0,.5)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        animation: 'fadeIn .2s ease',
-      }}
-      role="dialog"
-      aria-modal="true"
-    >
-      <style>{`
-        @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
-        @keyframes slideUp { from { transform: translateY(40px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
-      `}</style>
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: 'var(--surface)', borderRadius: '20px 20px 0 0',
-          width: '100%', maxWidth: 480, padding: '0 0 24px',
-          maxHeight: '92dvh', overflowY: 'auto',
-          animation: 'slideUp .25s ease',
-          boxShadow: 'var(--shadow-lg)',
-        }}
-      >
-        {/* Handle */}
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
-          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
-        </div>
+  // Audit 2026-04-29: Page mode = full page layout (jako tournament wizard).
+  // Sheet mode = legacy bottom-sheet modal (zachováno pro backward compat).
+  const isPageMode = mode === 'page';
 
-        {/* Header */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '4px 18px 14px',
-        }}>
-          <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>
-            ⚡ {t('match.list.quickMatch')}
-          </div>
-          <button
-            onClick={onClose}
-            aria-label={t('common.close')}
-            style={{
-              width: 32, height: 32, borderRadius: 10, border: 'none',
-              background: 'var(--surface-var)', color: 'var(--text-muted)',
-              fontSize: 14, fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            ✕
-          </button>
-        </div>
-
-        <div style={{ padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+  // Společný formulář (oba módy ho používají uvnitř svých wrapperů).
+  const formContent = (
+    <div style={{ padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Soupeř — s autocomplete z user vlastní historie zápasů.
               Privacy: jen vlastní zápasy (m.ownerUid === user.uid). */}
           <div style={{ position: 'relative' }}>
@@ -586,7 +553,104 @@ export function QuickMatchSheet({ onClose, onCreate }: Props) {
           >
             ⚡ {t('match.quickSheet.startCta')}
           </button>
+
+          {/* Link na "Plný zápas se sestavou" — pro power users co chtějí
+              klubový zápas s lineup, střídáním, hodnocením. Audit 2026-04-29:
+              místo separátního pickeru má tenhle link uvnitř quick form. */}
+          {onSwitchToFullMatch && (
+            <button
+              type="button"
+              onClick={onSwitchToFullMatch}
+              style={{
+                marginTop: 8, padding: '10px 14px', borderRadius: 10,
+                background: 'transparent', border: '1.5px dashed var(--border)',
+                color: 'var(--text-muted)', fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', textAlign: 'center',
+              }}
+            >
+              {t('match.quickSheet.switchToFullMatch')}
+            </button>
+          )}
         </div>
+  );
+
+  // ─── Page mode: full page layout (jako tournament wizard) ─────────────
+  if (isPageMode) {
+    return (
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        minHeight: '100dvh', background: 'var(--bg)',
+      }}>
+        <div style={{
+          width: '100%', maxWidth: 720, margin: '0 auto',
+          flex: 1, display: 'flex', flexDirection: 'column',
+        }}>
+          <PageHeader
+            title={`⚡ ${t('match.list.quickMatch')}`}
+            onBack={onClose}
+          />
+          <div style={{ paddingTop: 8, paddingBottom: 24 }}>
+            {formContent}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Sheet mode (legacy): bottom-sheet modal ─────────────────────────
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 900,
+        background: 'rgba(0,0,0,.5)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        animation: 'fadeIn .2s ease',
+      }}
+      role="dialog"
+      aria-modal="true"
+    >
+      <style>{`
+        @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes slideUp { from { transform: translateY(40px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
+      `}</style>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'var(--surface)', borderRadius: '20px 20px 0 0',
+          width: '100%', maxWidth: 480, padding: '0 0 24px',
+          maxHeight: '92dvh', overflowY: 'auto',
+          animation: 'slideUp .25s ease',
+          boxShadow: 'var(--shadow-lg)',
+        }}
+      >
+        {/* Handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+        </div>
+
+        {/* Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '4px 18px 14px',
+        }}>
+          <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>
+            ⚡ {t('match.list.quickMatch')}
+          </div>
+          <button
+            onClick={onClose}
+            aria-label={t('common.close')}
+            style={{
+              width: 32, height: 32, borderRadius: 10, border: 'none',
+              background: 'var(--surface-var)', color: 'var(--text-muted)',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {formContent}
       </div>
     </div>
   );

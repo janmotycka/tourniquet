@@ -11,8 +11,6 @@ import { useToastStore } from '../../store/toast.store';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
 import { DesktopPage, FilterPill, desktopPrimaryButtonStyle, desktopSecondaryButtonStyle } from '../../components/desktop/DesktopPage';
 import { PageHeader } from '../../components/ui';
-import { NewMatchPicker } from '../../components/match/NewMatchPicker';
-import { QuickMatchSheet } from '../../components/match/QuickMatchSheet';
 import type { SeasonMatch } from '../../types/match.types';
 import { radius, fontSize, fontWeight, spacing } from '../../theme/tokens';
 import { groupMatchesBySeasonHalf } from '../../utils/season';
@@ -471,78 +469,23 @@ export function MatchListPage({ navigate }: Props) {
   const { isDesktop } = useLayoutMode();
   const allMatches = useMatchesStore(s => s.matches);
   const deleteMatch = useMatchesStore(s => s.deleteMatch);
-  const createMatch = useMatchesStore(s => s.createMatch);
-  const startMatch = useMatchesStore(s => s.startMatch);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
   const appMode = useUserPrefsStore(s => s.appMode);
   const isSimpleMode = appMode === 'simple';
   const activeClubId = useClubsStore(s => s.activeClubId);
-  const clubs = useClubsStore(s => s.clubs);
 
-  // ── Rychlý zápas ─────────────────────────────────────────────────────────
-  // Pro casual / přátelák / plácek — trenér nechce dělat setup (lineup, čas,
-  // soutěž). Jen zadá soupeře a hraje se. Otevře se přes QuickMatchSheet
-  // (konzistentní bottom sheet místo window.prompt).
-  const handleQuickMatchOpen = () => {
+  // ── Nový zápas ─────────────────────────────────────────────────────────────
+  // Audit 2026-04-29: Defaultně full-page Quick match (90% případů — rychlý
+  // přátelák / plácek bez sestavy). Uvnitř QuickMatchPage je link
+  // „Potřebuju plný zápas se sestavou →" pro power users (klubový zápas).
+  // Konzistentní s tournament wizardem (full page flow, bez bottom sheetu).
+  // Tenis: rychlý zápas nemá smysl (různé pravidla), pošle rovnou na full create.
+  const handleNewMatchCta = () => {
     if (preferredSport === 'tennis') {
-      // Tenis nemá rychlý zápas — pošle rovnou na create
       navigate({ name: 'match-create' });
       return;
     }
-    setQuickSheetOpen(true);
-  };
-
-  const handleQuickMatchCreate = (
-    opponent: string,
-    roster: string[],
-    _squadId?: string,
-    preset?: import('../../components/match/QuickMatchSheet').QuickMatchPreset,
-  ) => {
-    void _squadId; // pro budoucí audit trail (squad → match)
-    const activeClub = clubs.find(c => c.id === activeClubId);
-    const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    // Manuální roster (bez klubu) — každý řádek = hráč.
-    // Všichni jsou „starters" (trenér si později přepne pokud chce), bez
-    // čísel dresu (user je nezadával).
-    const lineup = roster.map((name, i) => ({
-      playerId: `manual-${i}-${now.getTime()}`,
-      jerseyNumber: 0,
-      name,
-      isStarter: true,
-      substituteOrder: 0,
-    }));
-    // Audit 2026-04-24 (P2.3): preset volitelný z QuickMatchSheet. Fallback
-    // = 15 min 1 perioda 5+1 (McDonald's Cup friendly default). Starší volání
-    // bez presetu funguje díky fallbacku, takže je to backward-compatible.
-    // Audit 2026-04-25: Florbal — sport bere preferredSport, default formát
-    // 4+1 (4 hráči v poli + brankář), ne 5+1.
-    const durationMinutes = preset?.durationMinutes ?? 15;
-    const periods = preset?.periods ?? 1;
-    const isFloorball = preferredSport === 'floorball';
-    const matchFormat = preset?.matchFormat ?? (isFloorball ? '4+1' : '5+1');
-    const periodDurationMinutes = Math.max(1, Math.round(durationMinutes / periods));
-    const match = createMatch({
-      sport: isFloorball ? 'floorball' : 'football',
-      matchType: 'single',
-      clubId: activeClub?.id ?? 'individual-quick',
-      clubName: activeClub?.name,
-      opponent: opponent.trim() || t('match.list.quickMatchDefaultOpponent'),
-      isHome: true,
-      date: today,
-      kickoffTime: timeStr,
-      competition: '',
-      durationMinutes,
-      periods,
-      periodDurationMinutes,
-      matchFormat,
-      lineup,
-      trackAssists: false,
-    });
-    startMatch(match.id);
-    setQuickSheetOpen(false);
-    navigate({ name: 'match-detail', matchId: match.id });
+    navigate({ name: 'match-quick' });
   };
 
   // Ukaž jen zápasy vybraného sportu a vybraného klubu (legacy = football).
@@ -562,20 +505,6 @@ export function MatchListPage({ navigate }: Props) {
   const [filter, setFilter] = useState<'all' | 'live' | 'planned' | 'finished'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isHydrating, setIsHydrating] = useState(matches.length === 0);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [quickSheetOpen, setQuickSheetOpen] = useState(false);
-
-  const handleCreateFullMatch = () => navigate({ name: 'match-create' });
-
-  // V simple módu rovnou otevřít rychlý zápas (pro laika = žádný výběr mezi
-  // „plný s klubovou sestavou" a „rychlý bez sestavy" — jen rychlý).
-  const handleNewMatchCta = () => {
-    if (isSimpleMode) {
-      handleQuickMatchOpen();
-    } else {
-      setPickerOpen(true);
-    }
-  };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -583,19 +512,6 @@ export function MatchListPage({ navigate }: Props) {
     const timer = setTimeout(() => setIsHydrating(false), 800);
     return () => clearTimeout(timer);
   }, [matches.length]);
-
-  // Audit 2026-04-29 (P0.4): pokud onboarding nastavil flag, auto-otevři
-  // Quick match sheet (Simple mode CTA jde rovnou na vytvoření, ne na
-  // prázdný seznam s druhým kliknutím).
-  useEffect(() => {
-    try {
-      if (localStorage.getItem('torq.openQuickMatchOnMount') === '1') {
-        localStorage.removeItem('torq.openQuickMatchOnMount');
-        if (isSimpleMode) setQuickSheetOpen(true);
-      }
-    } catch { /* localStorage blocked */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Sort: live → planned (newest) → finished (newest)
   // useMemo: přepočítá se jen při změně matches
@@ -941,23 +857,6 @@ export function MatchListPage({ navigate }: Props) {
         )}
       </div>
 
-      {/* Picker: jaký typ zápasu vytvořit? */}
-      {pickerOpen && (
-        <NewMatchPicker
-          onClose={() => setPickerOpen(false)}
-          onFullMatch={handleCreateFullMatch}
-          onQuickMatch={handleQuickMatchOpen}
-          showQuickMatch={preferredSport === 'football'}
-        />
-      )}
-
-      {/* Rychlý zápas — inline bottom sheet (místo window.prompt) */}
-      {quickSheetOpen && (
-        <QuickMatchSheet
-          onClose={() => setQuickSheetOpen(false)}
-          onCreate={handleQuickMatchCreate}
-        />
-      )}
     </div>
   );
 }

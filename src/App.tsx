@@ -44,6 +44,7 @@ const TournamentDetailPage = lazy(() => import('./pages/tournament/TournamentDet
 const ClubsPage = lazy(() => import('./pages/tournament/ClubsPage').then(m => ({ default: m.ClubsPage })));
 const MatchListPage = lazy(() => import('./pages/match/MatchListPage').then(m => ({ default: m.MatchListPage })));
 const CreateMatchPage = lazy(() => import('./pages/match/CreateMatchPage').then(m => ({ default: m.CreateMatchPage })));
+const QuickMatchPage = lazy(() => import('./pages/match/QuickMatchPage').then(m => ({ default: m.QuickMatchPage })));
 const MatchDetailPage = lazy(() => import('./pages/match/MatchDetailPage').then(m => ({ default: m.MatchDetailPage })));
 const MatchStatsPage = lazy(() => import('./pages/match/MatchStatsPage').then(m => ({ default: m.MatchStatsPage })));
 
@@ -94,6 +95,7 @@ export type Page =
   | { name: 'club-members' }
   | { name: 'match-list' }
   | { name: 'match-create' }
+  | { name: 'match-quick' }
   | { name: 'match-detail'; matchId: string }
   | { name: 'match-public'; matchId: string }
   | { name: 'match-stats' }
@@ -486,6 +488,13 @@ function AppRouter() {
           : isTennisMode
             ? <TennisCreateMatchPage navigate={navigate} />
             : <CreateMatchPage navigate={navigate} />
+      )}
+      {/* match-quick = full page wrapper kolem QuickMatchSheet (audit 2026-04-29).
+          Tenis nemá rychlý zápas, fallback na match-create. */}
+      {page.name === 'match-quick' && (
+        isTennisMode
+          ? <CreateMatchPage navigate={navigate} />
+          : <QuickMatchPage navigate={navigate} />
       )}
       {page.name === 'match-detail' && (
         isTennisMode

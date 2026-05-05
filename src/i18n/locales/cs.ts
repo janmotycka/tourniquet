@@ -1105,6 +1105,7 @@ export const cs = {
   'match.quickSheet.durationOneLabel': 'Délka zápasu',
   'match.quickSheet.durationEachLabel': 'Délka poločasu',
   'match.quickSheet.matchFormatLabel': 'Formát hry',
+  'match.quickSheet.switchToFullMatch': '🏆 Potřebuju plný zápas se sestavou →',
   'match.quickSheet.durationUnit': 'minut',
   'match.quickSheet.durationSummary': 'Celkem {total} min ({layout})',
   'match.quickSheet.rosterToggle': 'Hráči (volitelné)',

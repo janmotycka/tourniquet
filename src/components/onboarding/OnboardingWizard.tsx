@@ -917,13 +917,11 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                   label={t('onboarding.done.createMatch')}
                   desc={t(isSimpleMode ? 'onboarding.done.createMatchDescSimple' : 'onboarding.done.createMatchDesc')}
                   onClick={() => {
-                    // Audit 2026-04-29 (P0.4): Simple mode má jít rovnou do
-                    // QuickMatchSheet, ne na prázdný match-list. Set flag,
-                    // MatchListPage ho přečte na mount a auto-otevře sheet.
-                    if (isSimpleMode) {
-                      try { localStorage.setItem('torq.openQuickMatchOnMount', '1'); } catch { /* blocked */ }
-                    }
-                    goNext({ name: isSimpleMode ? 'match-list' : 'match-create' });
+                    // Audit 2026-04-29 (P0.4): Simple mode jde rovnou na
+                    // QuickMatchPage (quick match full page) — nezasekne se
+                    // na prázdném match-listu, ale vytvoří zápas hned.
+                    // Power user (Advanced) jde na full match-create.
+                    goNext({ name: isSimpleMode ? 'match-quick' : 'match-create' });
                   }}
                 />
                 <NextStepCard
