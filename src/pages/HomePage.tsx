@@ -15,6 +15,7 @@ import { useMyPlayersStore } from '../modules/tennis/store/myPlayers.store';
 import { useSimpleSquadsStore } from '../store/simpleSquads.store';
 import { OnboardingWizard, isOnboarded } from '../components/onboarding/OnboardingWizard';
 import { shouldHideStripeUpgrade } from '../utils/platform';
+import { TRAINING_ENABLED } from '../types/feature-flags';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -678,8 +679,10 @@ export function HomePage({ navigate }: Props) {
       {/* Module cards */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-        {/* ⚽ Training — jen fotbal + advanced mode. Florbal nemá knihovnu cviků. */}
-        {!isTennis && !isFloorball && !isSimpleMode && (
+        {/* ⚽ Training — jen fotbal + advanced mode. Florbal nemá knihovnu cviků.
+            Audit 2026-04-29: dočasně skryté (TRAINING_ENABLED=false) pro
+            pre-release fokus na zápasy + turnaje + klub. */}
+        {TRAINING_ENABLED && !isTennis && !isFloorball && !isSimpleMode && (
           <button
             onClick={() => navigate({ name: 'training-home' })}
             style={{

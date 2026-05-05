@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Page } from '../App';
 import { useI18n } from '../i18n';
 import { Z } from '../utils/z-index';
+import { TRAINING_ENABLED } from '../types/feature-flags';
 
 const STORAGE_KEY = 'torq_onboarded';
 
@@ -19,14 +20,15 @@ interface ModuleCard {
 }
 
 const MODULES: ModuleCard[] = [
-  {
+  // Training — dočasně skryté pro pre-release fokus (TRAINING_ENABLED=false)
+  ...(TRAINING_ENABLED ? [{
     emoji: '⚽',
     titleKey: 'onboarding.trainingTitle',
     descKey: 'onboarding.trainingDesc',
     color: '#1B5E20',
     bg: 'linear-gradient(135deg, #E8F5E9, #C8E6C9)',
-    page: { name: 'training-home' },
-  },
+    page: { name: 'training-home' } as Page,
+  } as ModuleCard] : []),
   {
     emoji: '🏆',
     titleKey: 'onboarding.tournamentTitle',

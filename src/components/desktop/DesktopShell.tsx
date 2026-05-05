@@ -6,6 +6,7 @@ import { useSubscriptionStore } from '../../store/subscription.store';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { ClubSwitcher } from '../clubs/ClubSwitcher';
 import { ADMIN_UID } from '../../constants/admin';
+import { TRAINING_ENABLED } from '../../types/feature-flags';
 
 // ─── DesktopShell ─────────────────────────────────────────────────────────────
 // Persistent sidebar + topbar layout for the desktop mode.
@@ -68,8 +69,10 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
   // Training modul je zatím jen pro fotbal — v tenis módu se skrývá.
   // Simple mode: jen zápasy + (optionally) rychlý turnaj; bez klubu, bez treninku, bez statistik.
   const baseModules: NavModule[] = [
-    // Training — skryt v tenisu, ve florbalu a v simple módu.
-    ...(isTennis || isFloorball || isSimpleMode ? [] : [{
+    // Training — skryt v tenisu, ve florbalu, v simple módu A pre-release
+    // (TRAINING_ENABLED=false). Až ověříme core flow s reálnými trenéry,
+    // postupně otevřeme — viz feature-flags.ts.
+    ...(!TRAINING_ENABLED || isTennis || isFloorball || isSimpleMode ? [] : [{
       key: 'training',
       labelKey: 'home.training',
       icon: '⚽',
