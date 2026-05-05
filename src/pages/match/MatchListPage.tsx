@@ -874,7 +874,8 @@ export function MatchListPage({ navigate }: Props) {
             </div>
             <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>{t('match.list.noMatchesYet')}</div>
             <div style={{ fontSize: 14, textAlign: 'center', lineHeight: 1.5, color: 'var(--text-muted)', maxWidth: 280 }}>
-              {t('match.list.noMatchesYetDesc')}
+              {/* Audit 2026-04-29 (A2): Simple variant pro mobile (desktop už ho měl). */}
+              {t(isSimpleMode ? 'match.list.noMatchesYetDescSimple' : 'match.list.noMatchesYetDesc')}
             </div>
             <button
               onClick={handleNewMatchCta}

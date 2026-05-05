@@ -16,6 +16,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useUnsavedFormGuard } from '../../hooks/useUnsavedFormGuard';
 import { ref as dbRef, get as dbGet } from 'firebase/database';
 import type { Page } from '../../App';
 import { db } from '../../firebase';
@@ -143,6 +144,10 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   const [selectedCategories, setSelectedCategories] = useState<AgeCategory[]>([]);
   const [creating, setCreating] = useState(false);
   const logoRef = useRef<HTMLInputElement>(null);
+
+  // Audit 2026-04-29 (A4): browser-level guard pro club rozpracovaný formulář.
+  // Pokud user vyplnil aspoň jméno klubu a zavře tab/refresh, varuje ho.
+  useUnsavedFormGuard(clubName.trim().length > 0 && !creating);
 
   // Catalog autocomplete (reused logic from ClubForm)
   const [catalog, setCatalog] = useState<CatalogClub[]>([]);
@@ -878,7 +883,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                   margin: '6px auto 0', color: 'var(--text-muted)',
                   fontSize: fontSize.base, lineHeight: 1.5, maxWidth: 360,
                 }}>
-                  {t('onboarding.done.subtitle')}
+                  {t(isSimpleMode ? 'onboarding.done.subtitleSimple' : 'onboarding.done.subtitle')}
                 </p>
               </div>
 
@@ -910,7 +915,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                 <NextStepCard
                   emoji="⚽"
                   label={t('onboarding.done.createMatch')}
-                  desc={t('onboarding.done.createMatchDesc')}
+                  desc={t(isSimpleMode ? 'onboarding.done.createMatchDescSimple' : 'onboarding.done.createMatchDesc')}
                   onClick={() => {
                     // Audit 2026-04-29 (P0.4): Simple mode má jít rovnou do
                     // QuickMatchSheet, ne na prázdný match-list. Set flag,

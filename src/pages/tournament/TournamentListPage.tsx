@@ -149,6 +149,14 @@ export function TournamentListPage({ navigate }: Props) {
   const limits = getLimits();
   const statusLabels = getStatusLabels(t);
 
+  // Audit 2026-04-29 (A3 fix): Log dev info do console v useEffect, ne v renderu
+  // (render side-effect-free). User vidí lidskou hlášku z UI, raw error jen pro dev.
+  useEffect(() => {
+    if (syncError) {
+      console.warn('[TORQ sync error]', syncError);
+    }
+  }, [syncError]);
+
   // Join modal state
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinId, setJoinId] = useState('');
@@ -493,15 +501,8 @@ export function TournamentListPage({ navigate }: Props) {
             <div style={{ fontSize: 12, color: '#BF360C', marginTop: 4, lineHeight: 1.4 }}>
               {t('tournament.list.syncFailedHuman')}
             </div>
-            {/* Audit 2026-04-29 (P0.2): technické detaily (raw error, Firebase rules
-                cesty) jsou pouze v console.log pro dev. User vidí lidskou hlášku. */}
-            {(() => {
-              if (syncError && typeof console !== 'undefined') {
-                // Single log per render — dev info pouze, ne user-facing
-                console.warn('[TORQ sync error]', syncError);
-              }
-              return null;
-            })()}
+            {/* Raw error pouze do console.warn pro dev. User vidí lidskou hlášku.
+                Logging je v useEffect (viz výše), ne tady — render side-effect-free. */}
           </div>
           <button onClick={clearSyncError} style={{ fontSize: 16, color: 'var(--warning)', padding: 4 }}>✕</button>
         </div>

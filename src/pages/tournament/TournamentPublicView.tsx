@@ -328,14 +328,10 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
           />
         )}
 
-        {/* Finished tournament: share summary + promo
-            Audit 2026-04-29 (P1.8): banner se zobrazoval na KAŽDÉM tabu nahoře,
-            tlačil výsledky a tabulku dolů. Teď jen na 'results' tabu (kde dává
-            kontextový smysl — finální skóre + sdílení). Na ostatních tabech
-            (standings, scorers, chat) se neukazuje. */}
-        {tournament.status === 'finished' && tab === 'results' && (
-          <FinishedBanner tournament={tournament} isGuest={!isTournamentOwner && !hasJoined} />
-        )}
+        {/* FinishedBanner přesunut DOLŮ pod obsah (Audit 2026-04-29 A5):
+            předtím tlačil primární obsah (výsledky/tabulka) dolů, marketing
+            byl výš než výsledky. Teď ho rendrujeme až po hlavní content
+            (viz konec scrollable area níže). */}
 
         {/* Awards + Auto awards — visible when any exist */}
         {(() => {
@@ -527,6 +523,14 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
             {tab === 'results' && <PublicResults tournament={tournament} selectedTeamId={selectedTeamId} />}
             {tab === 'scorers' && scorersVisible && <PublicScorers tournament={tournament} />}
           </div>
+        )}
+
+        {/* FinishedBanner přesunut sem (Audit 2026-04-29 A5): byl nahoře →
+            tlačil výsledky/tabulku dolů. Teď až POD obsahem na 'results' tabu,
+            kde dává kontextový smysl (po vidění finálních výsledků chce user
+            sdílet). Na ostatních tabech (standings/scorers/chat) skryto. */}
+        {tournament.status === 'finished' && tab === 'results' && (
+          <FinishedBanner tournament={tournament} isGuest={!isTournamentOwner && !hasJoined} />
         )}
       </div>
 

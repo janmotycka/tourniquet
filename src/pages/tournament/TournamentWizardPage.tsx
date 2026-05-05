@@ -1467,14 +1467,22 @@ export function TournamentWizardPage({ navigate }: Props) {
     ]
   );
 
-  // Auto-select recommended format když user změní počet týmů (pokud nemá vybráno nebo má neplatný)
+  // Auto-select recommended format JEN když format ještě není zvolený (initial state).
+  //
+  // Audit 2026-04-29 (BUG fix): předchozí verze taky auto-revertovala, když current
+  // format byl !valid pro daný teamCount. Tím přepisovala USER CHOICE — user klikl
+  // na "Každý s každým" (RR) pro 12 týmů, format se nastavil, useEffect viděl
+  // že RR je invalid pro 12 a revertl zpět na groups-knockout. User nemohl změnit
+  // formát pro nestandardní team count.
+  //
+  // Teď: auto-suggest jen pro initial null format. Když user explicitně klikne,
+  // jeho volba zůstane (i když je v Step 3 valid:false → uvidí warning a může
+  // upravit teamCount nebo se vrátit na Step 2).
   useEffect(() => {
+    if (draft.format) return; // Respekt user choice
     const recommended = formatSuggestions.find(f => f.recommended);
     if (!recommended) return;
-    const currentValid = draft.format && formatSuggestions.find(f => f.format === draft.format && f.valid);
-    if (!draft.format || !currentValid) {
-      setDraft(d => ({ ...d, format: recommended.format }));
-    }
+    setDraft(d => ({ ...d, format: recommended.format }));
   }, [formatSuggestions, draft.format]);
 
   // ── Templates: posledních 5 turnajů usera, nejnovější první ──
