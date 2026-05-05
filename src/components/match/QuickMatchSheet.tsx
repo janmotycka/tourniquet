@@ -546,6 +546,55 @@ export function QuickMatchSheet({
         </div>
       )}
 
+      {/* ── Detaily zápasu (audit 2026-04-29 pt3: přesunuto nahoru — defaultní
+          hodnoty, vždy viditelné, primární config). */}
+      <div style={{
+        background: 'var(--surface-var)',
+        borderRadius: 12, padding: '4px 14px',
+        border: '1px solid var(--border)',
+      }}>
+        <SettingsList>
+          <SettingRow icon="⏱" label={t('match.quickSheet.periodsLabel')}>
+            <ChipPair
+              value={periodCount}
+              options={[
+                { v: 1, label: '1' },
+                { v: 2, label: '2' },
+              ]}
+              onChange={v => setPeriodCount(v as 1 | 2)}
+            />
+          </SettingRow>
+          <SettingRow
+            icon="🕐"
+            label={periodCount === 1
+              ? t('match.quickSheet.durationOneLabel')
+              : t('match.quickSheet.durationEachLabel')}
+          >
+            <CompactNumberInput
+              value={periodMinutes}
+              min={1}
+              max={60}
+              unit="min"
+              onChange={setPeriodMinutes}
+            />
+          </SettingRow>
+          <SettingRow icon="⚽" label={t('match.quickSheet.matchFormatLabel')} isLast>
+            <ChipPair
+              value={matchFormat}
+              options={[
+                { v: '3+1', label: '3+1' },
+                { v: '4+1', label: '4+1' },
+                { v: '5+1', label: '5+1' },
+                { v: '7+1', label: '7+1' },
+                { v: '8+1', label: '8+1' },
+                { v: '11+1', label: '11+1' },
+              ]}
+              onChange={v => setMatchFormat(v as QuickMatchPreset['matchFormat'])}
+            />
+          </SettingRow>
+        </SettingsList>
+      </div>
+
       {/* ── Player editor (row-based, jako v AdminRosterSheet) ─────────────
           Audit 2026-04-29: defaultně sbalená sekce — rychlý zápas většinou
           nepotřebuje sestavu (přátelák / plácek). Tap na hlavičku rozbalí
@@ -822,54 +871,6 @@ export function QuickMatchSheet({
         </button>
       )}
 
-      {/* ── Detaily zápasu (zachováno) ────────────────────────────────────── */}
-      <div style={{
-        background: 'var(--surface-var)',
-        borderRadius: 12, padding: '4px 14px',
-        border: '1px solid var(--border)',
-      }}>
-        <SettingsList>
-          <SettingRow icon="⏱" label={t('match.quickSheet.periodsLabel')}>
-            <ChipPair
-              value={periodCount}
-              options={[
-                { v: 1, label: '1' },
-                { v: 2, label: '2' },
-              ]}
-              onChange={v => setPeriodCount(v as 1 | 2)}
-            />
-          </SettingRow>
-          <SettingRow
-            icon="🕐"
-            label={periodCount === 1
-              ? t('match.quickSheet.durationOneLabel')
-              : t('match.quickSheet.durationEachLabel')}
-          >
-            <CompactNumberInput
-              value={periodMinutes}
-              min={1}
-              max={60}
-              unit="min"
-              onChange={setPeriodMinutes}
-            />
-          </SettingRow>
-          <SettingRow icon="⚽" label={t('match.quickSheet.matchFormatLabel')} isLast>
-            <ChipPair
-              value={matchFormat}
-              options={[
-                { v: '3+1', label: '3+1' },
-                { v: '4+1', label: '4+1' },
-                { v: '5+1', label: '5+1' },
-                { v: '7+1', label: '7+1' },
-                { v: '8+1', label: '8+1' },
-                { v: '11+1', label: '11+1' },
-              ]}
-              onChange={v => setMatchFormat(v as QuickMatchPreset['matchFormat'])}
-            />
-          </SettingRow>
-        </SettingsList>
-      </div>
-
       {/* ── Místo konání (collapsed accordion) ───────────────────────────────
           Audit 2026-04-29: pro power users co potřebují zaznamenat místo
           (Strahov, U hřbitova...) nebo rozlišit doma/venku. Default sbalené
@@ -943,6 +944,16 @@ export function QuickMatchSheet({
             />
           </div>
         )}
+      </div>
+
+      {/* Hint: collapsibles jsou volitelné — audit 2026-04-29 pt3 user feedback
+          „možná je dobré krátce uvést že zápas lze i bez toho". */}
+      <div style={{
+        fontSize: 11, color: 'var(--text-muted)',
+        textAlign: 'center', lineHeight: 1.5,
+        padding: '4px 8px',
+      }}>
+        ℹ️ {t('match.quickSheet.optionalHint')}
       </div>
 
       <button

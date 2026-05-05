@@ -1126,6 +1126,7 @@ export const en: Record<TranslationKey, string> = {
   'match.quickSheet.homeAwayLabel': 'Playing',
   'match.quickSheet.home': 'Home',
   'match.quickSheet.away': 'Away',
+  'match.quickSheet.optionalHint': 'Roster and venue are optional — you can start the match without them.',
   'match.quickSheet.pickSquad': 'Pick a squad',
   'match.quickSheet.squadSize': '{n} players',
   'match.quickSheet.squadActive': '{n} players from squad',

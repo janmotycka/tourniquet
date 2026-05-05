@@ -1137,6 +1137,7 @@ export const cs = {
   'match.quickSheet.homeAwayLabel': 'Hraje se',
   'match.quickSheet.home': 'Doma',
   'match.quickSheet.away': 'Venku',
+  'match.quickSheet.optionalHint': 'Soupiska a místo konání jsou volitelné — zápas spustíš i prázdný.',
   'match.quickSheet.pickSquad': 'Vyber partu',
   'match.quickSheet.squadSize': '{n} hráčů',
   'match.quickSheet.squadActive': '{n} hráčů z party',
