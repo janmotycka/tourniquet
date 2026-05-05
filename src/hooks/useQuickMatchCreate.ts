@@ -45,8 +45,11 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
     void _squadId; // pro budoucí audit trail (squad → match)
     const activeClub = clubs.find(c => c.id === activeClubId);
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    // Audit 2026-04-29 pt3: progressive disclosure — preset může obsahovat
+    // user-zadané datum/čas/soutěž/kategorii. Fallback = teď + dnes.
+    const today = preset?.date ?? now.toISOString().split('T')[0];
+    const timeStr = preset?.kickoffTime
+      ?? `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     // Lineup zachovává jersey number + birthYear pokud user vyplnil (volitelné).
     // Pokud byl hráč importován z klubu, použijeme jeho clubPlayerId jako
     // playerId — propojí stats / hodnocení na klubový roster.
@@ -77,7 +80,8 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       venue: preset?.venue,
       date: today,
       kickoffTime: timeStr,
-      competition: '',
+      competition: preset?.competition ?? '',
+      ageCategory: preset?.ageCategory,
       durationMinutes,
       periods,
       periodDurationMinutes,
