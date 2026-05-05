@@ -268,8 +268,13 @@ export function HomePage({ navigate }: Props) {
   ) : null;
 
   if (isDesktop) {
+    // Audit 2026-04-29 (P0.1 fix): "upcoming" musí filtrovat i datum.
+    // Předtím se ukazovaly i matches s datem v minulosti pokud jejich
+    // status zůstal 'planned' (zapomenuté zápasy z minulých sezón).
+    const todayStr = new Date().toISOString().split('T')[0];
     const upcomingMatches = matches
-      .filter(m => m.status !== 'finished' && m.status !== 'live')
+      .filter(m => m.status !== 'finished' && m.status !== 'live'
+        && (!m.date || m.date >= todayStr))
       .sort((a, b) => (a.date || '').localeCompare(b.date || ''))
       .slice(0, 5);
 
@@ -432,8 +437,10 @@ export function HomePage({ navigate }: Props) {
           {/* RIGHT: Activity feed / notifications (placeholder for now) */}
           <DashSection title={t('home.activity') || 'Novinky a upozornění'}>
             <EmptyRow text={t('home.activityEmpty') || 'Zatím žádné novinky'} />
-            {/* Premium teaser — skrytý na iOS (Apple 3.1.1) */}
-            {!isPremium() && !shouldHideStripeUpgrade() && (
+            {/* Premium teaser — skrytý na iOS (Apple 3.1.1) + v Simple mode
+                (audit 2026-04-29 P0.5: Simple mode má všechno zdarma, banner
+                by byl rozporný se Settings copy "vše zdarma"). */}
+            {!isPremium() && !shouldHideStripeUpgrade() && !isSimpleMode && (
               <button
                 onClick={() => navigate({ name: 'settings' })}
                 style={{
@@ -652,8 +659,9 @@ export function HomePage({ navigate }: Props) {
         <span style={{ fontSize: 18, opacity: 0.8 }}>→</span>
       </button>
 
-      {/* Upgrade CTA banner for free users — skrytý na iOS (Apple 3.1.1 rule) */}
-      {!isPremium() && !shouldHideStripeUpgrade() && (
+      {/* Upgrade CTA banner for free users — skrytý na iOS (Apple 3.1.1 rule)
+          + v Simple mode (audit 2026-04-29 P0.5: Simple = vše zdarma). */}
+      {!isPremium() && !shouldHideStripeUpgrade() && !isSimpleMode && (
         <button
           onClick={() => navigate({ name: 'settings' })}
           style={{

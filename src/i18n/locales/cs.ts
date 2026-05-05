@@ -1146,6 +1146,8 @@ export const cs = {
   'match.list.filterCategoryAll': 'Vše',
   'match.list.noMatchesYet': 'Zatím žádné zápasy',
   'match.list.noMatchesYetDesc': 'Vytvořte svůj první zápas a sledujte výkony hráčů.',
+  // Audit 2026-04-29 (P0.3): Simple mode nemá sestavy ani statistiky hráčů
+  'match.list.noMatchesYetDescSimple': 'Vytvořte rychlý zápis zápasu — skóre a odkaz pro rodiče za 30 sekund.',
   'match.list.createFirst': 'Vytvořit první zápas',
   'match.list.noMatchesForCategory': 'Žádné zápasy v této kategorii',
   'match.list.noMatchesForCategoryDesc': 'Zkuste změnit kategorii nebo vytvořte nový zápas.',
@@ -2315,6 +2317,9 @@ export const cs = {
   'tournament.list.pageTitle': 'Turnaje',
   'tournament.list.clubsBtn': 'Kluby',
   'tournament.list.syncFailed': 'Synchronizace selhala',
+  'tournament.list.syncFailedHuman': 'Data zůstala v zařízení, zkusíme to znovu při dalším připojení.',
+  // syncHint + syncHintPaths zachovány v i18n pro backward compat (kdyby je
+  // ještě někdo používal), ale UI je už nezobrazuje (Audit 2026-04-29 P0.2).
   'tournament.list.syncHint': 'Zkontrolujte Firebase pravidla v konzoli: Database → Rules.',
   'tournament.list.syncHintPaths': 'Cesta /tournaments a /public musí mít povolen zápis pro přihlášené uživatele.',
   'tournament.list.joinIdLabel': 'ID turnaje nebo odkaz',

@@ -491,12 +491,17 @@ export function TournamentListPage({ navigate }: Props) {
               {t('tournament.list.syncFailed')}
             </div>
             <div style={{ fontSize: 12, color: '#BF360C', marginTop: 4, lineHeight: 1.4 }}>
-              {syncError}
+              {t('tournament.list.syncFailedHuman')}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--warning)', marginTop: 6, lineHeight: 1.4 }}>
-              {t('tournament.list.syncHint')}<br />
-              {t('tournament.list.syncHintPaths')}
-            </div>
+            {/* Audit 2026-04-29 (P0.2): technické detaily (raw error, Firebase rules
+                cesty) jsou pouze v console.log pro dev. User vidí lidskou hlášku. */}
+            {(() => {
+              if (syncError && typeof console !== 'undefined') {
+                // Single log per render — dev info pouze, ne user-facing
+                console.warn('[TORQ sync error]', syncError);
+              }
+              return null;
+            })()}
           </div>
           <button onClick={clearSyncError} style={{ fontSize: 16, color: 'var(--warning)', padding: 4 }}>✕</button>
         </div>

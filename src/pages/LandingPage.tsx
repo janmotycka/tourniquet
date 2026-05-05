@@ -76,11 +76,15 @@ export function LandingPage({ navigate, onLogin }: Props) {
       if (status) items.push({ kind: 'tournament', data: t, status });
     }
 
-    // Matches
+    // Matches — Audit 2026-04-29 (P0.1 fix): planned match s datem v minulosti
+    // (např. 18.04. dnes 29.04.) musí být v "finished/archive", ne "upcoming".
+    // Předtím se kontroloval jen status, ne datum → matches z minulých sezón
+    // viseli na home jako nadcházející.
     for (const m of matches) {
+      const isPastDate = m.date && m.date < todayStr;
       const status = m.status === 'live' ? 'live'
-        : m.status === 'planned' ? 'upcoming'
-        : m.status === 'finished' ? 'finished'
+        : (m.status === 'planned' && !isPastDate) ? 'upcoming'
+        : (m.status === 'finished' || (m.status === 'planned' && isPastDate)) ? 'finished'
         : null;
       if (status) items.push({ kind: 'match', data: m, status });
     }

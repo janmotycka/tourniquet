@@ -584,6 +584,19 @@ export function MatchListPage({ navigate }: Props) {
     return () => clearTimeout(timer);
   }, [matches.length]);
 
+  // Audit 2026-04-29 (P0.4): pokud onboarding nastavil flag, auto-otevři
+  // Quick match sheet (Simple mode CTA jde rovnou na vytvoření, ne na
+  // prázdný seznam s druhým kliknutím).
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('torq.openQuickMatchOnMount') === '1') {
+        localStorage.removeItem('torq.openQuickMatchOnMount');
+        if (isSimpleMode) setQuickSheetOpen(true);
+      }
+    } catch { /* localStorage blocked */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Sort: live → planned (newest) → finished (newest)
   // useMemo: přepočítá se jen při změně matches
   const sorted = useMemo(() => {
@@ -715,7 +728,7 @@ export function MatchListPage({ navigate }: Props) {
           <DesktopEmptyState
             icon="⚽"
             title={t('match.list.noMatchesYet')}
-            description={t('match.list.noMatchesYetDesc')}
+            description={t(isSimpleMode ? 'match.list.noMatchesYetDescSimple' : 'match.list.noMatchesYetDesc')}
             action={
               <button
                 onClick={handleNewMatchCta}

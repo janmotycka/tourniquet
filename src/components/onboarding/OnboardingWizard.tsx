@@ -911,7 +911,15 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                   emoji="⚽"
                   label={t('onboarding.done.createMatch')}
                   desc={t('onboarding.done.createMatchDesc')}
-                  onClick={() => goNext({ name: isSimpleMode ? 'match-list' : 'match-create' })}
+                  onClick={() => {
+                    // Audit 2026-04-29 (P0.4): Simple mode má jít rovnou do
+                    // QuickMatchSheet, ne na prázdný match-list. Set flag,
+                    // MatchListPage ho přečte na mount a auto-otevře sheet.
+                    if (isSimpleMode) {
+                      try { localStorage.setItem('torq.openQuickMatchOnMount', '1'); } catch { /* blocked */ }
+                    }
+                    goNext({ name: isSimpleMode ? 'match-list' : 'match-create' });
+                  }}
                 />
                 <NextStepCard
                   emoji="🏆"
