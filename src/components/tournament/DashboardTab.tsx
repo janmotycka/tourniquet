@@ -1289,7 +1289,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <h3 style={{ fontWeight: 800, fontSize: 18, margin: 0 }}>{t('roster.previewTitle')}</h3>
-              <button onClick={() => setRosterPreview(null)} aria-label="Close" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+              <button onClick={() => setRosterPreview(null)} aria-label={t('common.close')} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
             </div>
 
             <div style={{ marginBottom: 16 }}>

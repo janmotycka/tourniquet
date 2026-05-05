@@ -425,7 +425,7 @@ function InlineGoalEdit({ match, goal, onClose }: {
           <h3 style={{ fontWeight: 800, fontSize: 17, margin: 0 }}>
             ⚽ {t('match.field.assignScorer')}
           </h3>
-          <button onClick={onClose} aria-label="Close" style={{
+          <button onClick={onClose} aria-label={t('common.close')} style={{
             width: 32, height: 32, borderRadius: 10, background: 'var(--surface-var)',
             fontSize: 15, color: 'var(--text-muted)', fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center',

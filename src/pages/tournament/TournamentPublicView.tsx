@@ -328,8 +328,12 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
           />
         )}
 
-        {/* Finished tournament: share summary + promo */}
-        {tournament.status === 'finished' && (
+        {/* Finished tournament: share summary + promo
+            Audit 2026-04-29 (P1.8): banner se zobrazoval na KAŽDÉM tabu nahoře,
+            tlačil výsledky a tabulku dolů. Teď jen na 'results' tabu (kde dává
+            kontextový smysl — finální skóre + sdílení). Na ostatních tabech
+            (standings, scorers, chat) se neukazuje. */}
+        {tournament.status === 'finished' && tab === 'results' && (
           <FinishedBanner tournament={tournament} isGuest={!isTournamentOwner && !hasJoined} />
         )}
 

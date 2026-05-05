@@ -80,7 +80,7 @@ export function ClubPickerModal({ clubs, onSelect, onCreateClub, onClose }: Club
         }} onClick={e => e.stopPropagation()}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button onClick={() => setCategoryStep(null)} aria-label="Back" style={{ fontSize: 18, color: 'var(--text-muted)' }}>←</button>
+              <button onClick={() => setCategoryStep(null)} aria-label={t('common.back')} style={{ fontSize: 18, color: 'var(--text-muted)' }}>←</button>
               <h3 style={{ fontWeight: 800, fontSize: 17 }}>{t('clubs.selectCategory')}</h3>
             </div>
             <button onClick={onClose} style={{ fontSize: 22, color: 'var(--text-muted)' }}>✕</button>

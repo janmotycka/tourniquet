@@ -238,7 +238,7 @@ export function AdminRosterSheet({ tournament, team, rosterMap, onClose }: {
                 {t('roster.adminTitle')} · {validCount} {t('dashboard.players')}
               </div>
             </div>
-            <button onClick={onClose} aria-label="Close" style={{ background: 'var(--surface-var)', width: 28, height: 28, borderRadius: 14, border: 'none', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0 }}>✕</button>
+            <button onClick={onClose} aria-label={t('common.close')} style={{ background: 'var(--surface-var)', width: 28, height: 28, borderRadius: 14, border: 'none', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0 }}>✕</button>
           </div>
 
           {/* Coach section - collapsible */}
@@ -644,7 +644,7 @@ function ClubImportSheet({
           </div>
           <button
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             style={{ background: 'var(--surface-var)', width: 28, height: 28, borderRadius: 14, border: 'none', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0 }}
           >✕</button>
         </div>

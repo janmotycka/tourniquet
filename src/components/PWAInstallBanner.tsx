@@ -65,7 +65,7 @@ export function PWAInstallBanner() {
           border: 'none', cursor: 'pointer', fontSize: 18,
           padding: 4, lineHeight: 1, flexShrink: 0,
         }}
-        aria-label="Close"
+        aria-label={t('common.close')}
       >
         ×
       </button>

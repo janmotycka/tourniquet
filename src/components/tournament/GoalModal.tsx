@@ -47,7 +47,7 @@ export function GoalModal({ match, teams, onAdd, onClose }: {
         <div style={{ padding: '8px 20px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ fontWeight: 800, fontSize: 18 }}>⚽ {t('tournament.detail.addGoal')}</h2>
-            <button onClick={onClose} aria-label="Close" style={{ background: 'var(--surface-var)', width: 32, height: 32, borderRadius: 16, fontSize: 16, color: 'var(--text-muted)' }}>✕</button>
+            <button onClick={onClose} aria-label={t('common.close')} style={{ background: 'var(--surface-var)', width: 32, height: 32, borderRadius: 16, fontSize: 16, color: 'var(--text-muted)' }}>✕</button>
           </div>
 
           {/* Vlastní gól toggle */}

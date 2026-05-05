@@ -13,6 +13,7 @@ import { useLayoutMode } from '../../hooks/useLayoutMode';
 import { OpponentAutocomplete } from '../../components/clubs/OpponentAutocomplete';
 import { PageHeader } from '../../components/ui';
 import { radius, spacing as sp } from '../../theme/tokens';
+import { useUnsavedFormGuard } from '../../hooks/useUnsavedFormGuard';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -130,6 +131,11 @@ export function CreateMatchPage({ navigate }: Props) {
   const [venue, setVenue] = useState('');
   const [date, setDate] = useState(todayStr());
   const [kickoffTime, setKickoffTime] = useState(nowTimeStr());
+
+  // Audit 2026-04-29 (P1.6): browser-level guard proti ztrátě rozdělaného
+  // formuláře. Pokud user vyplnil alespoň soupeře, varujeme při close tab /
+  // refresh / browser back.
+  useUnsavedFormGuard(opponent.trim().length > 0);
   const [competition, setCompetition] = useState(lastMatch?.competition ?? '');
   const [periods, setPeriods] = useState(lastMatch?.periods ?? 2);
   const [periodDuration, setPeriodDuration] = useState(lastMatch?.periodDurationMinutes ?? 20);
@@ -908,14 +914,27 @@ export function CreateMatchPage({ navigate }: Props) {
       {/* Starters */}
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ fontWeight: 700, fontSize: 15 }}>{t('match.create.startingLineup')}</h3>
-          <span style={{
-            fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8,
-            background: starters.length === starterCount ? 'var(--success-light)' : 'var(--warning-light)',
-            color: starters.length === starterCount ? 'var(--success)' : 'var(--warning)',
-          }}>
-            {starters.length}/{starterCount}
-          </span>
+          <h3 style={{ fontWeight: 700, fontSize: 15 }}>
+            {t('match.create.startingLineup')}
+            {/* Audit 2026-04-29 (P1.7): 0/8 vypadalo jako "musíš to dokončit",
+                ale sestava je VOLITELNÁ. Označíme jako "volitelné" když prázdné. */}
+            {starters.length === 0 && (
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500, marginLeft: 8 }}>
+                ({t('match.create.lineupOptional')})
+              </span>
+            )}
+          </h3>
+          {/* Badge se ukazuje jen když má smysl — tj. user už začal plnit
+              sestavu (>0). Pro prázdnou sestavu badge "0/8" matoucí. */}
+          {starters.length > 0 && (
+            <span style={{
+              fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 8,
+              background: starters.length === starterCount ? 'var(--success-light)' : 'var(--warning-light)',
+              color: starters.length === starterCount ? 'var(--success)' : 'var(--warning)',
+            }}>
+              {starters.length}/{starterCount}
+            </span>
+          )}
         </div>
         {starters.length === 0 ? (
           <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
