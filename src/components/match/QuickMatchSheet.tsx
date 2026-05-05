@@ -21,6 +21,7 @@ import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useSimpleSquadsStore } from '../../store/simpleSquads.store';
 import { useMatchesStore } from '../../store/matches.store';
 import { useClubsStore } from '../../store/clubs.store';
+import { useToastStore } from '../../store/toast.store';
 import type { SimpleSquad } from '../../types/simpleSquad.types';
 import type { ClubPlayer } from '../../types/club.types';
 import {
@@ -122,7 +123,9 @@ export function QuickMatchSheet({
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
   const allSquads = useSimpleSquadsStore(s => s.squads);
   const createSquad = useSimpleSquadsStore(s => s.createSquad);
+  const updateSquad = useSimpleSquadsStore(s => s.updateSquad);
   const markUsed = useSimpleSquadsStore(s => s.markUsed);
+  const showToast = useToastStore(s => s.show);
   const allMatches = useMatchesStore(s => s.matches);
   const clubs = useClubsStore(s => s.clubs);
   const activeClubId = useClubsStore(s => s.activeClubId);
@@ -156,8 +159,9 @@ export function QuickMatchSheet({
   const [addBirthYear, setAddBirthYear] = useState('');
   // Squad (saved party) management
   const [selectedSquadId, setSelectedSquadId] = useState<string | null>(null);
-  // Save current roster as named squad (po kliknutí + zápas vyplní jméno)
-  const [saveAsSquad, setSaveAsSquad] = useState(false);
+  // Squad name input — pro „Uložit jako partu" flow.
+  // Audit 2026-04-29 pt2: nahrazen checkbox + auto-save explicitním tlačítkem.
+  // User vidí jasné potvrzení (toast) když se parta uloží.
   const [squadName, setSquadName] = useState('');
   // Match settings
   const [periodCount, setPeriodCount] = useState<1 | 2>(1);
@@ -293,14 +297,37 @@ export function QuickMatchSheet({
       jerseyNumber: '',
       birthYear: '',
     })));
-    setSaveAsSquad(false);
     setRosterExpanded(true);
   };
 
   const handleClearSquad = () => {
     setSelectedSquadId(null);
     setPlayers([]);
-    setSaveAsSquad(false);
+  };
+
+  // Audit 2026-04-29 pt2: explicit save squad — uloží partu rovnou
+  // (nepočká na Spustit zápas) a ukáže toast. User má jasnou zpětnou vazbu.
+  const handleSaveSquad = () => {
+    const trimmedName = squadName.trim();
+    if (!trimmedName || validPlayers.length === 0 || !user?.uid) return;
+    const newSquad = createSquad({
+      name: trimmedName,
+      sport: preferredSport,
+      players: validPlayers.map(p => p.name.trim()),
+    }, user.uid);
+    setSelectedSquadId(newSquad.id);
+    setSquadName('');
+    showToast('success', t('match.quickSheet.squadSaved', { name: trimmedName }));
+  };
+
+  // Aktualizace existující party (změna jmen v listu).
+  const handleUpdateSquad = () => {
+    if (!selectedSquadId || validPlayers.length === 0) return;
+    updateSquad(selectedSquadId, {
+      players: validPlayers.map(p => p.name.trim()),
+    });
+    const squad = squads.find(s => s.id === selectedSquadId);
+    showToast('success', t('match.quickSheet.squadUpdated', { name: squad?.name ?? '' }));
   };
 
   const handleImportFromClub = (picked: ClubPlayer[]) => {
@@ -355,16 +382,9 @@ export function QuickMatchSheet({
       };
     });
 
-    let finalSquadId = selectedSquadId ?? undefined;
-    if (saveAsSquad && !selectedSquadId && roster.length > 0 && squadName.trim() && user?.uid) {
-      const newSquad = createSquad({
-        name: squadName.trim(),
-        sport: preferredSport,
-        players: roster.map(r => r.name),
-      }, user.uid);
-      finalSquadId = newSquad.id;
-    }
-
+    // Pokud user předtím klikl „Uložit partu", selectedSquadId je nastavený.
+    // markUsed posílá squad nahoru v listu (sortováno podle usageCount).
+    const finalSquadId = selectedSquadId ?? undefined;
     if (selectedSquadId) {
       markUsed(selectedSquadId);
     }
@@ -737,32 +757,69 @@ export function QuickMatchSheet({
       </div>
 
       {/* ── Save as squad — jen pokud user vybral hráče a nemá vybranou partu */}
+      {/* ── Save / Update party — explicit tlačítka místo checkboxu ─────────
+          Audit 2026-04-29 pt2: user feedback „neda se to potvrdit". Teď:
+          - Pokud user nemá vybranou partu (selectedSquadId == null) a má hráče
+            → input pro jméno + tlačítko „💾 Uložit partu" které partu vytvoří
+            okamžitě (toast). Po uložení se automaticky stane selectedSquadId.
+          - Pokud má partu vybranou (loaded z předchozího) a upravil hráče
+            → tlačítko „💾 Aktualizovat partu" zaktualizuje hráče v partě. */}
       {!selectedSquadId && validPlayers.length > 0 && (
         <div style={{
           background: 'var(--surface-var)', borderRadius: 10, padding: 10,
           border: '1px solid var(--border)',
         }}>
-          <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={saveAsSquad}
-              onChange={e => setSaveAsSquad(e.target.checked)}
-              style={{ width: 18, height: 18, cursor: 'pointer' }}
-            />
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-              💾 {t('match.quickSheet.saveAsSquad')}
-            </span>
-          </label>
-          {saveAsSquad && (
+          <div style={{
+            fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 8,
+          }}>
+            💾 {t('match.quickSheet.saveAsSquad')}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
             <input
               type="text"
               value={squadName}
               onChange={e => setSquadName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && squadName.trim()) {
+                  e.preventDefault();
+                  handleSaveSquad();
+                }
+              }}
               placeholder={t('match.quickSheet.squadNamePlaceholder')}
-              style={{ ...inputStyle, marginTop: 8, padding: '8px 10px', fontSize: 13 }}
+              style={{ ...inputStyle, flex: 1, padding: '8px 10px', fontSize: 13 }}
             />
-          )}
+            <button
+              type="button"
+              onClick={handleSaveSquad}
+              disabled={!squadName.trim()}
+              style={{
+                padding: '8px 14px', borderRadius: 10,
+                background: squadName.trim() ? 'var(--primary)' : 'var(--border)',
+                color: squadName.trim() ? '#fff' : 'var(--text-muted)',
+                border: 'none', fontSize: 13, fontWeight: 700,
+                cursor: squadName.trim() ? 'pointer' : 'default',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {t('match.quickSheet.saveSquadCta')}
+            </button>
+          </div>
         </div>
+      )}
+      {selectedSquadId && validPlayers.length > 0 && (
+        <button
+          type="button"
+          onClick={handleUpdateSquad}
+          style={{
+            padding: '10px 12px', borderRadius: 10,
+            background: 'var(--surface-var)', color: 'var(--text)',
+            border: '1px solid var(--border)',
+            fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+        >
+          💾 {t('match.quickSheet.updateSquadCta')}
+        </button>
       )}
 
       {/* ── Detaily zápasu (zachováno) ────────────────────────────────────── */}
