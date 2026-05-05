@@ -18,6 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useSimpleSquadsStore } from '../../store/simpleSquads.store';
 import { useMatchesStore } from '../../store/matches.store';
+import { useClubsStore } from '../../store/clubs.store';
 import type { SimpleSquad } from '../../types/simpleSquad.types';
 import {
   SettingRow,
@@ -68,6 +69,20 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
   const allSquads = useSimpleSquadsStore(s => s.squads);
   const createSquad = useSimpleSquadsStore(s => s.createSquad);
   const markUsed = useSimpleSquadsStore(s => s.markUsed);
+  // Audit 2026-04-29 (varianta A): když user má aktivní klub s hráči, ať
+  // místo psaní jmen do textarea klikatelně vybere hráče (chip per hráč).
+  // Pokud klub nemá / nemá hráče → fallback na manuální textarea.
+  const clubs = useClubsStore(s => s.clubs);
+  const activeClubId = useClubsStore(s => s.activeClubId);
+  const activeClub = useMemo(
+    () => clubs.find(c => c.id === activeClubId) ?? null,
+    [clubs, activeClubId],
+  );
+  const clubPlayers = useMemo(
+    () => (activeClub?.players ?? []).filter(p => p.active),
+    [activeClub],
+  );
+  const hasClubPlayers = clubPlayers.length > 0;
   // Audit 2026-04-25 (user feedback): „může si torq pamatovat soupeře které
   // jsem zadával? aby mi to nabízelo jak budu psát?" → ano, vytáhneme
   // unikátní opponenty z user vlastních zápasů (stejný sport), seřadíme
@@ -102,6 +117,17 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
   // pevný format (5+1, 7+1, 11+1) — má smysl ho exponovat. Default 5+1
   // (mládež malé hřiště — dominantní amatérský fotbal v ČR).
   const [matchFormat, setMatchFormat] = useState<QuickMatchPreset['matchFormat']>('5+1');
+  // Audit 2026-04-29 (varianta A): „pickerMode" určuje jak user zadává soupisku
+  // pod accordionem „Chci zadat soupisku":
+  //   - 'club'   = klikatelný grid hráčů z aktivního klubu (default pokud má hráče)
+  //   - 'manual' = textarea (jeden hráč na řádek; default pokud není klub / hráči)
+  // User může mezi módy přepínat (např. „chci připsat hosta" → manuální).
+  const [pickerMode, setPickerMode] = useState<'club' | 'manual'>(
+    hasClubPlayers ? 'club' : 'manual',
+  );
+  // Filter podle ageCategory v club picker módu — pokud klub má hráče ve
+  // víc kategoriích (U10/U12/...), nemíchat je do jednoho seznamu.
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const inputRef = useRef<HTMLInputElement>(null);
 
   /** Historie soupeřů — unikátní `opponent` z user vlastních zápasů.
@@ -220,6 +246,35 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
     .split(/\r?\n/)
     .map(n => n.trim())
     .filter(n => n.length > 0);
+
+  // Audit 2026-04-29 (varianta A): toggle hráče z klubového pickeru.
+  // Single source of truth = `rosterText` (řádky); club picker tak může
+  // koexistovat s manual módem — selectované jméno jen přidá/uberé řádek.
+  const togglePlayer = (name: string) => {
+    const lines = rosterText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    const idx = lines.indexOf(name);
+    if (idx >= 0) lines.splice(idx, 1);
+    else lines.push(name);
+    setRosterText(lines.join('\n'));
+  };
+  const isPlayerSelected = (name: string) => parsedRoster().includes(name);
+
+  // Unikátní kategorie z klubu (pro filter chip bar v picker módu).
+  // Natural sort U6 < U7 < ... < U19, plus „all" jako default.
+  const clubCategories = useMemo(() => {
+    const set = new Set<string>();
+    clubPlayers.forEach(p => { if (p.ageCategory) set.add(p.ageCategory); });
+    return [...set].sort((a, b) => {
+      const na = parseInt(a.replace(/\D/g, ''), 10) || 0;
+      const nb = parseInt(b.replace(/\D/g, ''), 10) || 0;
+      return na - nb;
+    });
+  }, [clubPlayers]);
+
+  const visibleClubPlayers = useMemo(() => {
+    if (categoryFilter === 'all') return clubPlayers;
+    return clubPlayers.filter(p => p.ageCategory === categoryFilter);
+  }, [clubPlayers, categoryFilter]);
 
   const handleStart = () => {
     const roster = parsedRoster();
@@ -441,22 +496,156 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
               </span>
             </button>
             {wantRoster && (
-              <textarea
-                id="quick-roster"
-                value={rosterText}
-                onChange={e => setRosterText(e.target.value)}
-                placeholder={t('match.quickSheet.rosterPlaceholder')}
-                rows={selectedSquadId ? 4 : 5}
-                style={{
-                  width: '100%', boxSizing: 'border-box',
-                  padding: '10px 12px', borderRadius: 10,
-                  border: '1.5px solid var(--border)',
-                  background: 'var(--surface)', color: 'var(--text)',
-                  fontSize: 14, outline: 'none', resize: 'vertical',
-                  fontFamily: 'inherit',
-                  marginTop: 10,
-                }}
-              />
+              <div style={{ marginTop: 10 }}>
+                {/* ── Club picker mode (varianta A): klikatelný grid hráčů
+                    z aktivního klubu. Defaultně aktivní pokud klub má hráče. */}
+                {pickerMode === 'club' && hasClubPlayers && (
+                  <div>
+                    {/* Category filter chips — jen pokud klub má víc kategorií */}
+                    {clubCategories.length > 1 && (
+                      <div style={{
+                        display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10,
+                      }}>
+                        <button
+                          type="button"
+                          onClick={() => setCategoryFilter('all')}
+                          style={{
+                            padding: '5px 11px', borderRadius: 8,
+                            background: categoryFilter === 'all' ? 'var(--primary)' : 'var(--surface-var)',
+                            color: categoryFilter === 'all' ? '#fff' : 'var(--text-muted)',
+                            border: '1px solid var(--border)',
+                            fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                          }}
+                        >
+                          {t('match.quickSheet.categoryAll')}
+                        </button>
+                        {clubCategories.map(cat => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setCategoryFilter(cat)}
+                            style={{
+                              padding: '5px 11px', borderRadius: 8,
+                              background: categoryFilter === cat ? 'var(--primary)' : 'var(--surface-var)',
+                              color: categoryFilter === cat ? '#fff' : 'var(--text-muted)',
+                              border: '1px solid var(--border)',
+                              fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                            }}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Player chips grid */}
+                    {visibleClubPlayers.length === 0 ? (
+                      <div style={{
+                        padding: '14px', textAlign: 'center',
+                        color: 'var(--text-muted)', fontSize: 13,
+                        background: 'var(--surface-var)', borderRadius: 10,
+                      }}>
+                        {t('match.quickSheet.noClubPlayersInCategory')}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {visibleClubPlayers.map(p => {
+                          const selected = isPlayerSelected(p.name);
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => togglePlayer(p.name)}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '7px 12px', borderRadius: 999,
+                                background: selected ? 'var(--primary)' : 'var(--surface-var)',
+                                color: selected ? '#fff' : 'var(--text)',
+                                border: `1.5px solid ${selected ? 'var(--primary)' : 'var(--border)'}`,
+                                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                                transition: 'background .12s, border-color .12s',
+                              }}
+                              aria-pressed={selected}
+                            >
+                              {p.jerseyNumber > 0 && (
+                                <span style={{
+                                  fontWeight: 800, fontSize: 11,
+                                  opacity: selected ? 0.85 : 0.55,
+                                }}>
+                                  #{p.jerseyNumber}
+                                </span>
+                              )}
+                              <span>{p.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Status row + switch to manual */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      marginTop: 10, gap: 8, flexWrap: 'wrap',
+                    }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+                        {t('match.quickSheet.playersSelected', { n: parsedRoster().length })}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setPickerMode('manual')}
+                        style={{
+                          padding: '6px 10px', borderRadius: 8,
+                          background: 'transparent', color: 'var(--text-muted)',
+                          border: '1px dashed var(--border)',
+                          fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                        }}
+                      >
+                        ✏️ {t('match.quickSheet.switchToManual')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Manual mode: textarea (jeden hráč na řádek). Fallback
+                    pro Simple mode bez klubu, host hráče, ručně dopsané jméno. */}
+                {pickerMode === 'manual' && (
+                  <div>
+                    <textarea
+                      id="quick-roster"
+                      value={rosterText}
+                      onChange={e => setRosterText(e.target.value)}
+                      placeholder={t('match.quickSheet.rosterPlaceholder')}
+                      rows={selectedSquadId ? 4 : 5}
+                      style={{
+                        width: '100%', boxSizing: 'border-box',
+                        padding: '10px 12px', borderRadius: 10,
+                        border: '1.5px solid var(--border)',
+                        background: 'var(--surface)', color: 'var(--text)',
+                        fontSize: 14, outline: 'none', resize: 'vertical',
+                        fontFamily: 'inherit',
+                      }}
+                    />
+                    {hasClubPlayers && (
+                      <div style={{
+                        display: 'flex', justifyContent: 'flex-end', marginTop: 6,
+                      }}>
+                        <button
+                          type="button"
+                          onClick={() => setPickerMode('club')}
+                          style={{
+                            padding: '6px 10px', borderRadius: 8,
+                            background: 'transparent', color: 'var(--text-muted)',
+                            border: '1px dashed var(--border)',
+                            fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                          }}
+                        >
+                          👥 {t('match.quickSheet.switchToClub')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
