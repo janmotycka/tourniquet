@@ -2798,6 +2798,8 @@ export const cs = {
   'matchShare.lineupEarlyOn': 'Sestava je viditelná veřejně už teď.',
   'matchShare.lineupEarlyOff': 'Sestava se zobrazí až s začátkem zápasu.',
   'matchShare.makePublicHint': 'Zapni pro sdílení s rodiči',
+  'matchShare.startBroadcastTitle': 'Vysílat zápas naživo',
+  'matchShare.startBroadcastCta': 'Spustit vysílání',
   'matchShare.home': 'Doma',
   'matchShare.away': 'Venku',
   'matchShare.whatsappMessage': '⚽ *ŽIVÝ ZÁPAS* ⚽\n\n*{home}* vs *{away}*\n📅 {date} ⏰ {time}\n📍 {venue}\n🏆 {competition}\n\nSleduj živě skóre, góly a sestavu:\n\n👉 {url}',

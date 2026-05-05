@@ -2770,6 +2770,8 @@ export const en: Record<TranslationKey, string> = {
   'matchShare.lineupEarlyOn': 'Lineup is visible publicly right now.',
   'matchShare.lineupEarlyOff': 'Lineup will be shown when the match starts.',
   'matchShare.makePublicHint': 'Turn on to share with parents',
+  'matchShare.startBroadcastTitle': 'Broadcast match live',
+  'matchShare.startBroadcastCta': 'Start broadcast',
   'matchShare.home': 'Home',
   'matchShare.away': 'Away',
   'matchShare.whatsappMessage': '⚽ *LIVE MATCH* ⚽\n\n*{home}* vs *{away}*\n📅 {date} ⏰ {time}\n📍 {venue}\n🏆 {competition}\n\nFollow live score, goals and lineup:\n\n👉 {url}',

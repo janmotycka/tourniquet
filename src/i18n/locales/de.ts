@@ -2770,6 +2770,8 @@ export const de: Record<TranslationKey, string> = {
   'matchShare.lineupEarlyOn': 'Die Aufstellung ist jetzt öffentlich sichtbar.',
   'matchShare.lineupEarlyOff': 'Die Aufstellung wird erst zum Spielbeginn angezeigt.',
   'matchShare.makePublicHint': 'Einschalten, um mit Eltern zu teilen',
+  'matchShare.startBroadcastTitle': 'Spiel live übertragen',
+  'matchShare.startBroadcastCta': 'Übertragung starten',
   'matchShare.home': 'Heim',
   'matchShare.away': 'Auswärts',
   'matchShare.whatsappMessage': '⚽ *LIVE-SPIEL* ⚽\n\n*{home}* vs *{away}*\n📅 {date} ⏰ {time}\n📍 {venue}\n🏆 {competition}\n\nLive-Ergebnis, Tore und Aufstellung verfolgen:\n\n👉 {url}',

@@ -783,11 +783,40 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
               </div>
             </>
           ) : (
+            // Audit 2026-04-29: empty state když isPublic=false v Simple módu.
+            // Předtím jen text → user uvízne (toggle je v Simple módu skrytý,
+            // auto-enable mohl selhat). Teď velký explicit CTA = jednoznačný
+            // krok dál.
             <div style={{
-              textAlign: 'center', padding: '24px 12px 18px',
-              color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.55,
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              gap: 14, padding: '20px 12px 12px',
             }}>
-              {t('matchShare.makePublicHint')}
+              <div style={{ fontSize: 56, lineHeight: 1 }}>📡</div>
+              <div style={{
+                textAlign: 'center',
+                color: 'var(--text)', fontSize: 14, fontWeight: 700, lineHeight: 1.4,
+              }}>
+                {t('matchShare.startBroadcastTitle')}
+              </div>
+              <div style={{
+                textAlign: 'center',
+                color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.5,
+                maxWidth: 320,
+              }}>
+                {t('matchShare.makePublicHint')}
+              </div>
+              <button
+                onClick={onTogglePublic}
+                style={{
+                  width: '100%', marginTop: 4,
+                  padding: '14px', borderRadius: 12,
+                  background: 'var(--primary)', color: '#fff', border: 'none',
+                  fontWeight: 800, fontSize: 15, cursor: 'pointer',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
+                📡 {t('matchShare.startBroadcastCta')}
+              </button>
             </div>
           )}
         </div>
