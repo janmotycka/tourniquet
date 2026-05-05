@@ -101,7 +101,10 @@ function suggestGroupCount(
   teams: number,
   override?: number | null,
 ): { groupCount: number; groupSizes: number[]; advancePerGroup: number } | null {
-  if (teams < 4) return null; // minimum pro skupiny
+  // Audit 2026-04-29 (B4 fix): Pro <6 týmů groups-knockout nedává smysl
+  // (skupiny po 2-3, kde z každé postupují všichni nebo skoro všichni → no
+  // soutěžní hodnota skupinové fáze). Lepší doporučit round-robin.
+  if (teams < 6) return null;
 
   let groupCount: number;
   const maxAllowed = Math.min(MAX_GROUP_COUNT, Math.floor(teams / 2));
@@ -116,10 +119,16 @@ function suggestGroupCount(
     groupCount = Math.min(groupCount, maxAllowed);
   }
 
+  // Smart advance heuristic: pro malé skupiny (<3 minSize) postupuje jen vítěz,
+  // jinak top 2. Tím se vyhneme "all advance from smallest" warning case.
+  const groupSizes = distributeIntoGroups(teams, groupCount);
+  const minGroupSize = Math.min(...groupSizes);
+  const advancePerGroup = minGroupSize >= 3 ? 2 : 1;
+
   return {
     groupCount,
-    groupSizes: distributeIntoGroups(teams, groupCount),
-    advancePerGroup: 2,
+    groupSizes,
+    advancePerGroup,
   };
 }
 
@@ -176,13 +185,15 @@ export function suggestFormats(
   };
 
   // ── Groups + Knockout ────────────────────────────────────────────────
+  // Audit 2026-04-29 (B4 fix): pro <6 týmů groups-knockout=invalid (žádné
+  // smysluplné skupiny při tak malém počtu).
   const gk = suggestGroupCount(teamCount, groupCountOverride);
   let groupsKnockout: FormatSuggestion;
   if (gk) {
     const gkMatches = groupsKnockoutMatchCount(gk.groupSizes, gk.advancePerGroup);
     groupsKnockout = {
       format: 'groups-knockout',
-      valid: teamCount >= 4,
+      valid: teamCount >= 6,
       recommended: false,
       groupCount: gk.groupCount,
       groupSizes: gk.groupSizes,

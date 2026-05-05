@@ -385,25 +385,39 @@ function BracketTree({
   // Šířka: rounds * (matchW + colGap) + místo na trofej (28px)
   const totalW = rounds.length * (matchW + colGap) - colGap + 32;
 
-  // Bye distribuce: bye = empty slot, top seedi mají bye do R2.
-  // Standardní pravidlo: každý R1 match má MAX 1 bye partner (jeden tým hraje,
-  // druhý má bye = neexistuje protihráč → tým auto-postupuje).
+  // Bye distribuce — single source of truth.
   //
-  // Pokládáme byes do odd slotů (1, 3, 5, ...) — tím každý R1 match má pár
-  // (slot 2k, slot 2k+1) kde slot 2k+1 je bye, slot 2k má reálný tým.
-  // Pokud byes > r1Count (víc bye než R1 matchů), zbylé byes se umístí
-  // do even slotů (degenerate case, ale podporujeme pro robustnost).
+  // KRITICKÝ FIX (audit 2026-04-29): Předtím existovaly DVĚ nezávislé pravdy:
+  // (1) position-based slotIsBye (byes do odd slotů 1, 3, 5...) v BracketTree
+  // (2) label-based byes z generateBracketLabels (standard seeding distribution)
+  //
+  // Ty se neshodovaly pro 3+ skupiny × 2 advance: labels říkaly bye na slotech 1, 5,
+  // ale position říkala 1, 3 → Match 1 (B2 vs C1, real match) se vykreslil jako
+  // "B2 (bye)" walkover. Nejčastější McDonald's Cup config (3 skupiny, 12 týmů)
+  // měl rozbitý bracket render.
+  //
+  // Fix: pokud `labels` jsou poskytnuty, čerpat byes z nich (label[i]==='—').
+  // Jinak (žádné labels = 5+ skupin × 1 advance, KO formát atd.): position-based
+  // distribuce (byes do odd slotů first, even slotů fallback).
   const slotIsBye: boolean[] = new Array(bracketSize).fill(false);
-  let byesPlaced = 0;
-  // První pass: odd sloty (1, 3, 5, ..., bracketSize-1)
-  for (let i = 1; i < bracketSize && byesPlaced < byes; i += 2) {
-    slotIsBye[i] = true;
-    byesPlaced++;
-  }
-  // Backup pass (jen pokud byes > r1Count): even sloty
-  for (let i = 0; i < bracketSize && byesPlaced < byes; i += 2) {
-    slotIsBye[i] = true;
-    byesPlaced++;
+  if (labels && labels.length === bracketSize) {
+    // Label-based: jeden zdroj pravdy
+    for (let i = 0; i < bracketSize; i++) {
+      if (labels[i] === '—') slotIsBye[i] = true;
+    }
+  } else {
+    // Position-based fallback (žádné labels poskytnuty)
+    let byesPlaced = 0;
+    // První pass: odd sloty (1, 3, 5, ..., bracketSize-1)
+    for (let i = 1; i < bracketSize && byesPlaced < byes; i += 2) {
+      slotIsBye[i] = true;
+      byesPlaced++;
+    }
+    // Backup pass (jen pokud byes > r1Count): even sloty
+    for (let i = 0; i < bracketSize && byesPlaced < byes; i += 2) {
+      slotIsBye[i] = true;
+      byesPlaced++;
+    }
   }
 
   type MatchPos = {
@@ -861,10 +875,21 @@ function TournamentStructureDiagram({
         <div>
           <div style={{
             fontSize: 11, fontWeight: 800, color: 'var(--text-muted)',
-            textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8,
+            textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4,
           }}>
             📋 Skupinová fáze
           </div>
+          {/* Discoverability hint: bez něj user neví, že může klikat na řádky
+              ve skupině. Audit 2026-04-29 (C2 fix). */}
+          {onSetAdvancePerGroup && (
+            <div style={{
+              fontSize: 11, color: 'var(--primary)', marginBottom: 8,
+              display: 'flex', alignItems: 'center', gap: 4,
+            }}>
+              <span>💡</span>
+              <span>Klikni na A1, A2... ve skupině — nastavíš kolik postupuje</span>
+            </div>
+          )}
           {/* Skupiny v gridu — max 4 sloupce. Pro 8 skupin = 4+4 (čistý
               symetrický layout místo flex-wrap 5+3 chaosu).
               Pro 2-4 skupiny grid drží přesný počet sloupců; pro 5-8 je 4 cols
@@ -1480,12 +1505,33 @@ export function TournamentWizardPage({ navigate }: Props) {
     setShowTemplatePicker(false);
   };
 
-  // ── Team count change — adjust teamNames pole ──
+  // ── Team count change — adjust teamNames pole + reset stale override ──
   const handleTeamCountChange = (n: number) => {
     setDraft(d => {
       const next = [...d.teamNames];
       while (next.length < n) next.push('');
-      return { ...d, teamCount: n, teamNames: next.slice(0, n) };
+      // Audit 2026-04-29 (B3 fix): pokud má user groupCountOverride který už
+      // není validní pro nový teamCount (override > floor(n/2)), resetni na null
+      // aby smart-suggest mohl chytře pokračovat. Jinak by se override "tise"
+      // ignoroval, ale při návratu k většímu počtu týmů se zase aktivoval.
+      const maxGroupsForNewCount = Math.min(8, Math.floor(n / 2));
+      const overrideStillValid =
+        d.groupCountOverride === null
+        || (d.groupCountOverride >= 2 && d.groupCountOverride <= maxGroupsForNewCount);
+      // Také clamp advancePerGroup pokud nový minGroupSize je menší
+      // (pokud groupCountOverride je platný, použij ho; jinak heuristiku)
+      const effectiveGroupCount = overrideStillValid && d.groupCountOverride
+        ? d.groupCountOverride
+        : Math.max(2, Math.min(8, Math.ceil(n / 4), maxGroupsForNewCount));
+      const minGroupSize = Math.floor(n / effectiveGroupCount);
+      const newAdvance = Math.min(d.advancePerGroup, Math.max(1, minGroupSize - 1)) || 1;
+      return {
+        ...d,
+        teamCount: n,
+        teamNames: next.slice(0, n),
+        groupCountOverride: overrideStillValid ? d.groupCountOverride : null,
+        advancePerGroup: newAdvance,
+      };
     });
   };
 

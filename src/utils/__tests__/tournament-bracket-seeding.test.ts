@@ -134,6 +134,61 @@ describe('generateBracketLabels — explicit cross-bracket cases for groups+KO',
   });
 });
 
+describe('generateBracketLabels — bye position consistency (B1 regression)', () => {
+  // Audit 2026-04-29 (B1 bug): BracketTree position-based bye distribution
+  // (byes do odd slotů) se neshodovala s label-based bye sloty z generateBracketLabels.
+  // Pro 3 skupiny × 2 advance se Match 1 (B2 vs C1, real match) vykreslil
+  // jako "B2 (bye)" walkover — kritický bug pro nejčastější McDonald's Cup config.
+  //
+  // Tyto testy ověřují, že labels jsou vnitřně konzistentní:
+  // - Bye sloty jsou tam kde mají být (top seedi mají bye partnera)
+  // - Real matches nemají bye slot
+  // - BracketTree teď čte byes z labels (single source of truth)
+
+  it('3 groups × 2 advance: bye sloty na specifických pozicích (B1 fix)', () => {
+    // Klasický McDonald's pro 11-12 týmů: 3 skupiny × 2 advance = 6 týmů v bracketu 8
+    const labels = generateBracketLabels(3, 2);
+    expect(labels).toEqual(['A1', '—', 'B2', 'C1', 'B1', '—', 'A2', 'C2']);
+    // Bye sloty na 1, 5 (NE 1, 3 jak by řekla position-based logika)
+    const byeSlots = labels.map((l, i) => (l === '—' ? i : -1)).filter(i => i >= 0);
+    expect(byeSlots).toEqual([1, 5]);
+    // Match 1 (slots 2, 3 = B2, C1) je REAL — musí se renderovat jako match B2 vs C1
+    // (předtím se renderoval jako "B2 (bye)" walkover)
+    expect(labels[2]).toBe('B2');
+    expect(labels[3]).toBe('C1');
+  });
+
+  it('5 groups × 1 advance: Match 1 D1 vs E1 je real (ne walkover)', () => {
+    // Předtím se Match 1 (D1 vs E1) vykreslil jako "D1 (bye)" walkover
+    const labels = generateBracketLabels(5, 1);
+    expect(labels).toHaveLength(8);
+    // Match 1 obsahuje D1 a E1 jako real matches (slots 2, 3)
+    expect(labels[2]).toBe('D1');
+    expect(labels[3]).toBe('E1');
+    // Slot 5 a 7 jsou bye (top seedi B1 a C1 mají bye)
+    expect(labels[5]).toBe('—');
+    expect(labels[7]).toBe('—');
+  });
+
+  it('every match position has at most 1 bye (no all-bye matches)', () => {
+    // Pro různé konfigurace ověř invariantu: žádný R1 match nemá oba sloty bye
+    const configs: Array<[number, number]> = [
+      [3, 1], [3, 2], [4, 2], [4, 3], [5, 1], [5, 2], [6, 2], [8, 2],
+    ];
+    for (const [groups, advance] of configs) {
+      const labels = generateBracketLabels(groups, advance);
+      for (let i = 0; i < labels.length / 2; i++) {
+        const slot1Bye = labels[2 * i] === '—';
+        const slot2Bye = labels[2 * i + 1] === '—';
+        expect(
+          slot1Bye && slot2Bye,
+          `Config ${groups}×${advance}: match ${i} has both slots as bye`,
+        ).toBe(false);
+      }
+    }
+  });
+});
+
 describe('generateBracketLabels — generic fallback for 5+ groups', () => {
   it('5 groups × 1 advance: 5 teams in bracket of 8, top seeds spread', () => {
     const result = generateBracketLabels(5, 1);
