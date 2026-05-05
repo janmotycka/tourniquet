@@ -84,7 +84,7 @@ export function ChipPair<T extends number | string>({
   onChange: (v: T) => void;
 }) {
   return (
-    <div style={{ display: 'flex', gap: 4 }}>
+    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
       {options.map(opt => {
         const active = value === opt.v;
         return (

@@ -42,10 +42,14 @@ export interface QuickMatchPreset {
   durationMinutes: number;
   /** Počet period (1 = bez poločasu, 2 = s poločasem). */
   periods: number;
-  /** Fotbalový formát (5+1 malé hřiště, 7+1, 11+1). */
+  /** Fotbalový formát (3+1 mini, 4+1 florbal, 5+1, 7+1, 8+1, 11+1 velké hřiště). */
   matchFormat: '3+1' | '4+1' | '5+1' | '7+1' | '8+1' | '11+1';
   /** Lidský popisek pro diagnostiku. */
   label: string;
+  /** Volitelně místo konání (audit 2026-04-29). Default: nezadáno. */
+  venue?: string;
+  /** Domácí / venkovní zápas (audit 2026-04-29). Default: true (doma). */
+  isHome?: boolean;
 }
 
 /**
@@ -132,6 +136,12 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
   // Audit 2026-04-29: soupiska defaultně sbalená (rychlý zápas = soupeř +
   // settings stačí). Auto-expand pokud auto-pre-pick squady přidá hráče.
   const [rosterExpanded, setRosterExpanded] = useState(false);
+  // Audit 2026-04-29: místo konání jako collapsed accordion (doma/venku +
+  // text). Default sbalený — většina rychlých zápasů hraje doma, místo
+  // user obvykle nepotřebuje zadávat. Po expanze edituje přímo.
+  const [venueExpanded, setVenueExpanded] = useState(false);
+  const [isHome, setIsHome] = useState(true);
+  const [venue, setVenue] = useState('');
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -330,6 +340,8 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
       periods: periodCount,
       matchFormat,
       label: periodCount === 1 ? `${periodMinutes} min` : `${periodCount}×${periodMinutes}`,
+      venue: venue.trim() || undefined,
+      isHome,
     };
     onCreate(opponent, roster, finalSquadId, preset);
   };
@@ -753,14 +765,92 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
             <ChipPair
               value={matchFormat}
               options={[
+                { v: '3+1', label: '3+1' },
+                { v: '4+1', label: '4+1' },
                 { v: '5+1', label: '5+1' },
                 { v: '7+1', label: '7+1' },
+                { v: '8+1', label: '8+1' },
                 { v: '11+1', label: '11+1' },
               ]}
               onChange={v => setMatchFormat(v as QuickMatchPreset['matchFormat'])}
             />
           </SettingRow>
         </SettingsList>
+      </div>
+
+      {/* ── Místo konání (collapsed accordion) ───────────────────────────────
+          Audit 2026-04-29: pro power users co potřebují zaznamenat místo
+          (Strahov, U hřbitova...) nebo rozlišit doma/venku. Default sbalené
+          — většina rychlých zápasů hraje doma a místo není podstatné. */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setVenueExpanded(v => !v)}
+          aria-expanded={venueExpanded}
+          style={{
+            width: '100%',
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 14px', borderRadius: 12,
+            background: venueExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
+            border: `1.5px solid ${venueExpanded ? 'var(--primary)' : 'var(--border)'}`,
+            cursor: 'pointer', textAlign: 'left',
+            transition: 'background .15s, border-color .15s',
+          }}
+        >
+          <span style={{ fontSize: 22 }}>📍</span>
+          <span style={{
+            flex: 1, fontSize: 14, fontWeight: 700,
+            color: venueExpanded ? 'var(--primary)' : 'var(--text)',
+          }}>
+            {t('match.quickSheet.venueLabel')}
+            {(venue.trim() || !isHome) && (
+              <span style={{
+                marginLeft: 6, fontSize: 11,
+                color: 'var(--text-muted)', fontWeight: 600,
+              }}>
+                ({!isHome ? t('match.quickSheet.away') : ''}{!isHome && venue.trim() ? ' · ' : ''}{venue.trim()})
+              </span>
+            )}
+          </span>
+          <span style={{
+            fontSize: 12, fontWeight: 700,
+            color: venueExpanded ? 'var(--primary)' : 'var(--text-muted)',
+            transform: venueExpanded ? 'rotate(180deg)' : 'none',
+            transition: 'transform .2s',
+          }}>
+            ▼
+          </span>
+        </button>
+        {venueExpanded && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Doma / Venku */}
+            <div style={{
+              background: 'var(--surface-var)', borderRadius: 12,
+              padding: '8px 14px', border: '1px solid var(--border)',
+            }}>
+              <SettingsList>
+                <SettingRow icon="🏠" label={t('match.quickSheet.homeAwayLabel')} isLast>
+                  <ChipPair
+                    value={isHome ? 'home' : 'away'}
+                    options={[
+                      { v: 'home', label: t('match.quickSheet.home') },
+                      { v: 'away', label: t('match.quickSheet.away') },
+                    ]}
+                    onChange={v => setIsHome(v === 'home')}
+                  />
+                </SettingRow>
+              </SettingsList>
+            </div>
+            {/* Venue text input */}
+            <input
+              type="text"
+              value={venue}
+              onChange={e => setVenue(e.target.value)}
+              placeholder={t('match.quickSheet.venuePlaceholder')}
+              style={inputStyle}
+            />
+          </div>
+        )}
       </div>
 
       <button

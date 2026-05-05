@@ -71,7 +71,10 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       clubId: activeClub?.id ?? 'individual-quick',
       clubName: activeClub?.name,
       opponent: opponent.trim() || t('match.list.quickMatchDefaultOpponent'),
-      isHome: true,
+      // Audit 2026-04-29: isHome + venue z presetu (collapsed accordion).
+      // Default true (doma) pokud user accordion neotevřel.
+      isHome: preset?.isHome ?? true,
+      venue: preset?.venue,
       date: today,
       kickoffTime: timeStr,
       competition: '',
