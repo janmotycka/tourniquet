@@ -129,6 +129,9 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
   const [matchFormat, setMatchFormat] = useState<QuickMatchPreset['matchFormat']>('5+1');
   // Modal: import z klubu
   const [clubImportOpen, setClubImportOpen] = useState(false);
+  // Audit 2026-04-29: soupiska defaultně sbalená (rychlý zápas = soupeř +
+  // settings stačí). Auto-expand pokud auto-pre-pick squady přidá hráče.
+  const [rosterExpanded, setRosterExpanded] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -208,6 +211,7 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
       jerseyNumber: '',
       birthYear: '',
     })));
+    setRosterExpanded(true); // pre-pickutá parta → ukaž soupisku rovnou
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -245,6 +249,7 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
       birthYear: '',
     })));
     setSaveAsSquad(false);
+    setRosterExpanded(true);
   };
 
   const handleClearSquad = () => {
@@ -255,6 +260,7 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
 
   const handleImportFromClub = (picked: ClubPlayer[]) => {
     if (picked.length === 0) return;
+    setRosterExpanded(true);
     setPlayers(prev => {
       const existingNames = new Set(
         prev.filter(p => p.name.trim()).map(p => p.name.trim().toLowerCase()),
@@ -473,14 +479,32 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
         </div>
       )}
 
-      {/* ── Player editor (row-based, jako v AdminRosterSheet) ───────────── */}
+      {/* ── Player editor (row-based, jako v AdminRosterSheet) ─────────────
+          Audit 2026-04-29: defaultně sbalená sekce — rychlý zápas většinou
+          nepotřebuje sestavu (přátelák / plácek). Tap na hlavičku rozbalí
+          editor + import z klubu. Auto-expand pokud user vybral squad nebo
+          importoval z klubu. */}
       <div>
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: 6, gap: 8,
-        }}>
-          <label style={{ ...labelStyle, marginBottom: 0 }}>
-            👥 {t('match.quickSheet.rosterLabel')}
+        <button
+          type="button"
+          onClick={() => setRosterExpanded(v => !v)}
+          aria-expanded={rosterExpanded}
+          style={{
+            width: '100%',
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 14px', borderRadius: 12,
+            background: rosterExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
+            border: `1.5px solid ${rosterExpanded ? 'var(--primary)' : 'var(--border)'}`,
+            cursor: 'pointer', textAlign: 'left',
+            transition: 'background .15s, border-color .15s',
+          }}
+        >
+          <span style={{ fontSize: 22 }}>👥</span>
+          <span style={{
+            flex: 1, fontSize: 14, fontWeight: 700,
+            color: rosterExpanded ? 'var(--primary)' : 'var(--text)',
+          }}>
+            {t('match.quickSheet.rosterLabel')}
             {validPlayers.length > 0 && (
               <span style={{
                 marginLeft: 6, fontSize: 11,
@@ -489,8 +513,19 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
                 ({validPlayers.length})
               </span>
             )}
-          </label>
-          {hasClubPlayers && (
+          </span>
+          <span style={{
+            fontSize: 12, fontWeight: 700,
+            color: rosterExpanded ? 'var(--primary)' : 'var(--text-muted)',
+            transform: rosterExpanded ? 'rotate(180deg)' : 'none',
+            transition: 'transform .2s',
+          }}>
+            ▼
+          </span>
+        </button>
+      {rosterExpanded && (<>
+        {hasClubPlayers && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
             <button
               type="button"
               onClick={() => setClubImportOpen(true)}
@@ -504,8 +539,9 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
             >
               📥 {t('match.quickSheet.importFromClub')}
             </button>
-          )}
-        </div>
+          </div>
+        )}
+        <div style={{ marginTop: hasClubPlayers ? 8 : 10 }}>
 
         {/* Existing players list */}
         {players.length > 0 && (
@@ -649,6 +685,8 @@ export function QuickMatchSheet({ onClose, onCreate, mode = 'sheet', onSwitchToF
         }}>
           {t('match.quickSheet.rosterHintMinimal')}
         </div>
+        </div>
+      </>)}
       </div>
 
       {/* ── Save as squad — jen pokud user vybral hráče a nemá vybranou partu */}
