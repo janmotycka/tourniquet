@@ -540,7 +540,334 @@ export function QuickMatchSheet({
         )}
       </div>
 
-      {/* ── Squad picker (uložené party — pouze pokud existují) ──────────── */}
+      {/* ── Detaily zápasu (audit 2026-04-29 pt3: přesunuto nahoru — defaultní
+          hodnoty, vždy viditelné, primární config). */}
+      <div style={{
+        background: 'var(--surface-var)',
+        borderRadius: 12, padding: '4px 14px',
+        border: '1px solid var(--border)',
+      }}>
+        <SettingsList>
+          <SettingRow icon="⏱" label={t('match.quickSheet.periodsLabel')}>
+            <ChipPair
+              value={periodCount}
+              options={[
+                { v: 1, label: '1' },
+                { v: 2, label: '2' },
+              ]}
+              onChange={v => setPeriodCount(v as 1 | 2)}
+            />
+          </SettingRow>
+          <SettingRow
+            icon="🕐"
+            label={periodCount === 1
+              ? t('match.quickSheet.durationOneLabel')
+              : t('match.quickSheet.durationEachLabel')}
+          >
+            <CompactNumberInput
+              value={periodMinutes}
+              min={1}
+              max={60}
+              unit="min"
+              onChange={setPeriodMinutes}
+            />
+          </SettingRow>
+          <SettingRow icon="⚽" label={t('match.quickSheet.matchFormatLabel')} isLast>
+            <ChipPair
+              value={matchFormat}
+              options={[
+                { v: '3+1', label: '3+1' },
+                { v: '4+1', label: '4+1' },
+                { v: '5+1', label: '5+1' },
+                { v: '7+1', label: '7+1' },
+                { v: '8+1', label: '8+1' },
+                { v: '11+1', label: '11+1' },
+              ]}
+              onChange={v => setMatchFormat(v as QuickMatchPreset['matchFormat'])}
+            />
+          </SettingRow>
+        </SettingsList>
+      </div>
+
+      {/* Hint o volitelnosti — audit 2026-04-29 pt4: přesunuto nad collapsibles
+          aby trenér věděl PŘEDTÍM než uvidí seznam možností. */}
+      <div style={{
+        fontSize: 11, color: 'var(--text-muted)',
+        textAlign: 'center', lineHeight: 1.5,
+        padding: '2px 8px',
+      }}>
+        ℹ️ {t('match.quickSheet.optionalHint')}
+      </div>
+
+      {/* ── Datum a čas (collapsed accordion) ─────────────────────────────────
+          Audit 2026-04-29 pt4: první v pořadí collapsibles — má vždy default
+          preview (Dnes 19:33), user vidí že je nastaveno bez expanze. */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setDateTimeExpanded(v => !v)}
+          aria-expanded={dateTimeExpanded}
+          style={{
+            width: '100%',
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10,
+            background: dateTimeExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
+            border: `1.5px solid ${dateTimeExpanded ? 'var(--primary)' : 'var(--border)'}`,
+            cursor: 'pointer', textAlign: 'left',
+            transition: 'background .15s, border-color .15s',
+          }}
+        >
+          <span style={{ fontSize: 18 }}>📅</span>
+          <span style={{
+            flex: 1, fontSize: 13, fontWeight: 700,
+            color: dateTimeExpanded ? 'var(--primary)' : 'var(--text)',
+          }}>
+            {t('match.quickSheet.dateTimeLabel')}
+            <span style={{
+              marginLeft: 6, fontSize: 11,
+              color: 'var(--text-muted)', fontWeight: 600,
+            }}>
+              ({matchDate === new Date().toISOString().split('T')[0]
+                ? t('match.quickSheet.today')
+                : matchDate}
+              {' '}{matchTime})
+            </span>
+          </span>
+          <span style={{
+            fontSize: 12, fontWeight: 700,
+            color: dateTimeExpanded ? 'var(--primary)' : 'var(--text-muted)',
+            transform: dateTimeExpanded ? 'rotate(180deg)' : 'none',
+            transition: 'transform .2s',
+          }}>
+            ▼
+          </span>
+        </button>
+        {dateTimeExpanded && (
+          <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
+            <input
+              type="date"
+              value={matchDate}
+              onChange={e => setMatchDate(e.target.value)}
+              style={{ ...inputStyle, flex: 1, padding: '10px 12px', fontSize: 14 }}
+            />
+            <input
+              type="time"
+              value={matchTime}
+              onChange={e => setMatchTime(e.target.value)}
+              style={{ ...inputStyle, width: 110, padding: '10px 12px', fontSize: 14 }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* ── Místo konání (collapsed accordion) ───────────────────────────────
+          Audit 2026-04-29: pro power users co potřebují zaznamenat místo
+          (Strahov, U hřbitova...) nebo rozlišit doma/venku. Default sbalené
+          — většina rychlých zápasů hraje doma a místo není podstatné. */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setVenueExpanded(v => !v)}
+          aria-expanded={venueExpanded}
+          style={{
+            width: '100%',
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10,
+            background: venueExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
+            border: `1.5px solid ${venueExpanded ? 'var(--primary)' : 'var(--border)'}`,
+            cursor: 'pointer', textAlign: 'left',
+            transition: 'background .15s, border-color .15s',
+          }}
+        >
+          <span style={{ fontSize: 18 }}>📍</span>
+          <span style={{
+            flex: 1, fontSize: 13, fontWeight: 700,
+            color: venueExpanded ? 'var(--primary)' : 'var(--text)',
+          }}>
+            {t('match.quickSheet.venueLabel')}
+            {(venue.trim() || !isHome) && (
+              <span style={{
+                marginLeft: 6, fontSize: 11,
+                color: 'var(--text-muted)', fontWeight: 600,
+              }}>
+                ({!isHome ? t('match.quickSheet.away') : ''}{!isHome && venue.trim() ? ' · ' : ''}{venue.trim()})
+              </span>
+            )}
+          </span>
+          <span style={{
+            fontSize: 12, fontWeight: 700,
+            color: venueExpanded ? 'var(--primary)' : 'var(--text-muted)',
+            transform: venueExpanded ? 'rotate(180deg)' : 'none',
+            transition: 'transform .2s',
+          }}>
+            ▼
+          </span>
+        </button>
+        {venueExpanded && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Doma / Venku */}
+            <div style={{
+              background: 'var(--surface-var)', borderRadius: 12,
+              padding: '8px 14px', border: '1px solid var(--border)',
+            }}>
+              <SettingsList>
+                <SettingRow icon="🏠" label={t('match.quickSheet.homeAwayLabel')} isLast>
+                  <ChipPair
+                    value={isHome ? 'home' : 'away'}
+                    options={[
+                      { v: 'home', label: t('match.quickSheet.home') },
+                      { v: 'away', label: t('match.quickSheet.away') },
+                    ]}
+                    onChange={v => setIsHome(v === 'home')}
+                  />
+                </SettingRow>
+              </SettingsList>
+            </div>
+            {/* Venue text input */}
+            <input
+              type="text"
+              value={venue}
+              onChange={e => setVenue(e.target.value)}
+              placeholder={t('match.quickSheet.venuePlaceholder')}
+              style={inputStyle}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* ── Soutěž a kategorie (collapsed accordion) ──────────────────────────
+          Audit 2026-04-29 pt3: pro klubový zápas user často chce zaznamenat
+          do jaké soutěže to patří (KP, OP, MD, atd.) a kterou kategorii
+          tým reprezentoval (U10/U12/...). Default sbalené — pro plácek /
+          přátelák to není potřeba. */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setCompCatExpanded(v => !v)}
+          aria-expanded={compCatExpanded}
+          style={{
+            width: '100%',
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10,
+            background: compCatExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
+            border: `1.5px solid ${compCatExpanded ? 'var(--primary)' : 'var(--border)'}`,
+            cursor: 'pointer', textAlign: 'left',
+            transition: 'background .15s, border-color .15s',
+          }}
+        >
+          <span style={{ fontSize: 18 }}>🏆</span>
+          <span style={{
+            flex: 1, fontSize: 13, fontWeight: 700,
+            color: compCatExpanded ? 'var(--primary)' : 'var(--text)',
+          }}>
+            {t('match.quickSheet.competitionCategoryLabel')}
+            {(competition.trim() || ageCategory.trim()) && (
+              <span style={{
+                marginLeft: 6, fontSize: 11,
+                color: 'var(--text-muted)', fontWeight: 600,
+              }}>
+                ({[ageCategory.trim(), competition.trim()].filter(Boolean).join(' · ')})
+              </span>
+            )}
+          </span>
+          <span style={{
+            fontSize: 12, fontWeight: 700,
+            color: compCatExpanded ? 'var(--primary)' : 'var(--text-muted)',
+            transform: compCatExpanded ? 'rotate(180deg)' : 'none',
+            transition: 'transform .2s',
+          }}>
+            ▼
+          </span>
+        </button>
+        {compCatExpanded && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Kategorie — chips z aktivního klubu, pokud má kategorie */}
+            {(activeClub?.ageCategories ?? []).length > 0 && (
+              <div>
+                <div style={{
+                  fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+                  marginBottom: 6,
+                }}>
+                  {t('match.quickSheet.categoryLabel')}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => setAgeCategory('')}
+                    style={{
+                      padding: '6px 11px', borderRadius: 8,
+                      background: ageCategory === '' ? 'var(--primary)' : 'var(--surface-var)',
+                      color: ageCategory === '' ? '#fff' : 'var(--text-muted)',
+                      border: '1px solid var(--border)',
+                      fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    {t('match.quickSheet.categoryNone')}
+                  </button>
+                  {(activeClub?.ageCategories ?? []).map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setAgeCategory(cat)}
+                      style={{
+                        padding: '6px 11px', borderRadius: 8,
+                        background: ageCategory === cat ? 'var(--primary)' : 'var(--surface-var)',
+                        color: ageCategory === cat ? '#fff' : 'var(--text-muted)',
+                        border: '1px solid var(--border)',
+                        fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Soutěž — text input + suggestions z minulých zápasů */}
+            <div>
+              <div style={{
+                fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+                marginBottom: 6,
+              }}>
+                {t('match.quickSheet.competitionLabel')}
+              </div>
+              <input
+                type="text"
+                value={competition}
+                onChange={e => setCompetition(e.target.value)}
+                placeholder={t('match.quickSheet.competitionPlaceholder')}
+                style={{ ...inputStyle, padding: '10px 12px', fontSize: 14 }}
+              />
+              {competitionHistory.length > 0 && (
+                <div style={{
+                  display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6,
+                }}>
+                  {competitionHistory
+                    .filter(c => c.name !== competition)
+                    .map(c => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => setCompetition(c.name)}
+                        style={{
+                          padding: '4px 10px', borderRadius: 8,
+                          background: 'var(--surface-var)', color: 'var(--text-muted)',
+                          border: '1px dashed var(--border)',
+                          fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Squad picker (audit 2026-04-29 pt4: přesunut k Soupiska — vizuálně
+          patří dohromady jako „výběr účastníků"). */}
       {squads.length > 0 && !selectedSquadId && (
         <div>
           <label style={labelStyle}>👥 {t('match.quickSheet.pickSquad')}</label>
@@ -601,70 +928,10 @@ export function QuickMatchSheet({
         </div>
       )}
 
-      {/* ── Detaily zápasu (audit 2026-04-29 pt3: přesunuto nahoru — defaultní
-          hodnoty, vždy viditelné, primární config). */}
-      <div style={{
-        background: 'var(--surface-var)',
-        borderRadius: 12, padding: '4px 14px',
-        border: '1px solid var(--border)',
-      }}>
-        <SettingsList>
-          <SettingRow icon="⏱" label={t('match.quickSheet.periodsLabel')}>
-            <ChipPair
-              value={periodCount}
-              options={[
-                { v: 1, label: '1' },
-                { v: 2, label: '2' },
-              ]}
-              onChange={v => setPeriodCount(v as 1 | 2)}
-            />
-          </SettingRow>
-          <SettingRow
-            icon="🕐"
-            label={periodCount === 1
-              ? t('match.quickSheet.durationOneLabel')
-              : t('match.quickSheet.durationEachLabel')}
-          >
-            <CompactNumberInput
-              value={periodMinutes}
-              min={1}
-              max={60}
-              unit="min"
-              onChange={setPeriodMinutes}
-            />
-          </SettingRow>
-          <SettingRow icon="⚽" label={t('match.quickSheet.matchFormatLabel')} isLast>
-            <ChipPair
-              value={matchFormat}
-              options={[
-                { v: '3+1', label: '3+1' },
-                { v: '4+1', label: '4+1' },
-                { v: '5+1', label: '5+1' },
-                { v: '7+1', label: '7+1' },
-                { v: '8+1', label: '8+1' },
-                { v: '11+1', label: '11+1' },
-              ]}
-              onChange={v => setMatchFormat(v as QuickMatchPreset['matchFormat'])}
-            />
-          </SettingRow>
-        </SettingsList>
-      </div>
-
-      {/* Hint o volitelnosti — audit 2026-04-29 pt4: přesunuto nad collapsibles
-          aby trenér věděl PŘEDTÍM než uvidí seznam možností. */}
-      <div style={{
-        fontSize: 11, color: 'var(--text-muted)',
-        textAlign: 'center', lineHeight: 1.5,
-        padding: '2px 8px',
-      }}>
-        ℹ️ {t('match.quickSheet.optionalHint')}
-      </div>
-
       {/* ── Player editor (row-based, jako v AdminRosterSheet) ─────────────
-          Audit 2026-04-29: defaultně sbalená sekce — rychlý zápas většinou
-          nepotřebuje sestavu (přátelák / plácek). Tap na hlavičku rozbalí
-          editor + import z klubu. Auto-expand pokud user vybral squad nebo
-          importoval z klubu. */}
+          Audit 2026-04-29 pt4: přesunut na konec — nejnáročnější část (přidávat
+          hráče), trenér ji řeší naposledy. Defaultně sbalená. Auto-expand
+          pokud user vybral squad nebo importoval z klubu. */}
       <div>
         <button
           type="button"
@@ -870,14 +1137,7 @@ export function QuickMatchSheet({
       </>)}
       </div>
 
-      {/* ── Save as squad — jen pokud user vybral hráče a nemá vybranou partu */}
-      {/* ── Save / Update party — explicit tlačítka místo checkboxu ─────────
-          Audit 2026-04-29 pt2: user feedback „neda se to potvrdit". Teď:
-          - Pokud user nemá vybranou partu (selectedSquadId == null) a má hráče
-            → input pro jméno + tlačítko „💾 Uložit partu" které partu vytvoří
-            okamžitě (toast). Po uložení se automaticky stane selectedSquadId.
-          - Pokud má partu vybranou (loaded z předchozího) a upravil hráče
-            → tlačítko „💾 Aktualizovat partu" zaktualizuje hráče v partě. */}
+      {/* ── Save / Update party — explicit tlačítka místo checkboxu */}
       {!selectedSquadId && validPlayers.length > 0 && (
         <div style={{
           background: 'var(--surface-var)', borderRadius: 10, padding: 10,
@@ -935,274 +1195,6 @@ export function QuickMatchSheet({
           💾 {t('match.quickSheet.updateSquadCta')}
         </button>
       )}
-
-      {/* ── Místo konání (collapsed accordion) ───────────────────────────────
-          Audit 2026-04-29: pro power users co potřebují zaznamenat místo
-          (Strahov, U hřbitova...) nebo rozlišit doma/venku. Default sbalené
-          — většina rychlých zápasů hraje doma a místo není podstatné. */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setVenueExpanded(v => !v)}
-          aria-expanded={venueExpanded}
-          style={{
-            width: '100%',
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '9px 12px', borderRadius: 10,
-            background: venueExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
-            border: `1.5px solid ${venueExpanded ? 'var(--primary)' : 'var(--border)'}`,
-            cursor: 'pointer', textAlign: 'left',
-            transition: 'background .15s, border-color .15s',
-          }}
-        >
-          <span style={{ fontSize: 18 }}>📍</span>
-          <span style={{
-            flex: 1, fontSize: 13, fontWeight: 700,
-            color: venueExpanded ? 'var(--primary)' : 'var(--text)',
-          }}>
-            {t('match.quickSheet.venueLabel')}
-            {(venue.trim() || !isHome) && (
-              <span style={{
-                marginLeft: 6, fontSize: 11,
-                color: 'var(--text-muted)', fontWeight: 600,
-              }}>
-                ({!isHome ? t('match.quickSheet.away') : ''}{!isHome && venue.trim() ? ' · ' : ''}{venue.trim()})
-              </span>
-            )}
-          </span>
-          <span style={{
-            fontSize: 12, fontWeight: 700,
-            color: venueExpanded ? 'var(--primary)' : 'var(--text-muted)',
-            transform: venueExpanded ? 'rotate(180deg)' : 'none',
-            transition: 'transform .2s',
-          }}>
-            ▼
-          </span>
-        </button>
-        {venueExpanded && (
-          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {/* Doma / Venku */}
-            <div style={{
-              background: 'var(--surface-var)', borderRadius: 12,
-              padding: '8px 14px', border: '1px solid var(--border)',
-            }}>
-              <SettingsList>
-                <SettingRow icon="🏠" label={t('match.quickSheet.homeAwayLabel')} isLast>
-                  <ChipPair
-                    value={isHome ? 'home' : 'away'}
-                    options={[
-                      { v: 'home', label: t('match.quickSheet.home') },
-                      { v: 'away', label: t('match.quickSheet.away') },
-                    ]}
-                    onChange={v => setIsHome(v === 'home')}
-                  />
-                </SettingRow>
-              </SettingsList>
-            </div>
-            {/* Venue text input */}
-            <input
-              type="text"
-              value={venue}
-              onChange={e => setVenue(e.target.value)}
-              placeholder={t('match.quickSheet.venuePlaceholder')}
-              style={inputStyle}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* ── Datum a čas (collapsed accordion) ─────────────────────────────────
-          Audit 2026-04-29 pt3: progressive disclosure — default = dnes/teď
-          (sbalené, user nemusí nic dělat). User může otevřít a změnit
-          (např. naplánovat zápas na zítra). */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setDateTimeExpanded(v => !v)}
-          aria-expanded={dateTimeExpanded}
-          style={{
-            width: '100%',
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '9px 12px', borderRadius: 10,
-            background: dateTimeExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
-            border: `1.5px solid ${dateTimeExpanded ? 'var(--primary)' : 'var(--border)'}`,
-            cursor: 'pointer', textAlign: 'left',
-            transition: 'background .15s, border-color .15s',
-          }}
-        >
-          <span style={{ fontSize: 18 }}>📅</span>
-          <span style={{
-            flex: 1, fontSize: 13, fontWeight: 700,
-            color: dateTimeExpanded ? 'var(--primary)' : 'var(--text)',
-          }}>
-            {t('match.quickSheet.dateTimeLabel')}
-            <span style={{
-              marginLeft: 6, fontSize: 11,
-              color: 'var(--text-muted)', fontWeight: 600,
-            }}>
-              ({matchDate === new Date().toISOString().split('T')[0]
-                ? t('match.quickSheet.today')
-                : matchDate}
-              {' '}{matchTime})
-            </span>
-          </span>
-          <span style={{
-            fontSize: 12, fontWeight: 700,
-            color: dateTimeExpanded ? 'var(--primary)' : 'var(--text-muted)',
-            transform: dateTimeExpanded ? 'rotate(180deg)' : 'none',
-            transition: 'transform .2s',
-          }}>
-            ▼
-          </span>
-        </button>
-        {dateTimeExpanded && (
-          <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
-            <input
-              type="date"
-              value={matchDate}
-              onChange={e => setMatchDate(e.target.value)}
-              style={{ ...inputStyle, flex: 1, padding: '10px 12px', fontSize: 14 }}
-            />
-            <input
-              type="time"
-              value={matchTime}
-              onChange={e => setMatchTime(e.target.value)}
-              style={{ ...inputStyle, width: 110, padding: '10px 12px', fontSize: 14 }}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* ── Soutěž a kategorie (collapsed accordion) ──────────────────────────
-          Audit 2026-04-29 pt3: pro klubový zápas user často chce zaznamenat
-          do jaké soutěže to patří (KP, OP, MD, atd.) a kterou kategorii
-          tým reprezentoval (U10/U12/...). Default sbalené — pro plácek /
-          přátelák to není potřeba. */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setCompCatExpanded(v => !v)}
-          aria-expanded={compCatExpanded}
-          style={{
-            width: '100%',
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '9px 12px', borderRadius: 10,
-            background: compCatExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
-            border: `1.5px solid ${compCatExpanded ? 'var(--primary)' : 'var(--border)'}`,
-            cursor: 'pointer', textAlign: 'left',
-            transition: 'background .15s, border-color .15s',
-          }}
-        >
-          <span style={{ fontSize: 18 }}>🏆</span>
-          <span style={{
-            flex: 1, fontSize: 13, fontWeight: 700,
-            color: compCatExpanded ? 'var(--primary)' : 'var(--text)',
-          }}>
-            {t('match.quickSheet.competitionCategoryLabel')}
-            {(competition.trim() || ageCategory.trim()) && (
-              <span style={{
-                marginLeft: 6, fontSize: 11,
-                color: 'var(--text-muted)', fontWeight: 600,
-              }}>
-                ({[ageCategory.trim(), competition.trim()].filter(Boolean).join(' · ')})
-              </span>
-            )}
-          </span>
-          <span style={{
-            fontSize: 12, fontWeight: 700,
-            color: compCatExpanded ? 'var(--primary)' : 'var(--text-muted)',
-            transform: compCatExpanded ? 'rotate(180deg)' : 'none',
-            transition: 'transform .2s',
-          }}>
-            ▼
-          </span>
-        </button>
-        {compCatExpanded && (
-          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {/* Kategorie — chips z aktivního klubu, pokud má kategorie */}
-            {(activeClub?.ageCategories ?? []).length > 0 && (
-              <div>
-                <div style={{
-                  fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
-                  marginBottom: 6,
-                }}>
-                  {t('match.quickSheet.categoryLabel')}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  <button
-                    type="button"
-                    onClick={() => setAgeCategory('')}
-                    style={{
-                      padding: '6px 11px', borderRadius: 8,
-                      background: ageCategory === '' ? 'var(--primary)' : 'var(--surface-var)',
-                      color: ageCategory === '' ? '#fff' : 'var(--text-muted)',
-                      border: '1px solid var(--border)',
-                      fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                    }}
-                  >
-                    {t('match.quickSheet.categoryNone')}
-                  </button>
-                  {(activeClub?.ageCategories ?? []).map(cat => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setAgeCategory(cat)}
-                      style={{
-                        padding: '6px 11px', borderRadius: 8,
-                        background: ageCategory === cat ? 'var(--primary)' : 'var(--surface-var)',
-                        color: ageCategory === cat ? '#fff' : 'var(--text-muted)',
-                        border: '1px solid var(--border)',
-                        fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                      }}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Soutěž — text input + suggestions z minulých zápasů */}
-            <div>
-              <div style={{
-                fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
-                marginBottom: 6,
-              }}>
-                {t('match.quickSheet.competitionLabel')}
-              </div>
-              <input
-                type="text"
-                value={competition}
-                onChange={e => setCompetition(e.target.value)}
-                placeholder={t('match.quickSheet.competitionPlaceholder')}
-                style={{ ...inputStyle, padding: '10px 12px', fontSize: 14 }}
-              />
-              {competitionHistory.length > 0 && (
-                <div style={{
-                  display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6,
-                }}>
-                  {competitionHistory
-                    .filter(c => c.name !== competition)
-                    .map(c => (
-                      <button
-                        key={c.name}
-                        type="button"
-                        onClick={() => setCompetition(c.name)}
-                        style={{
-                          padding: '4px 10px', borderRadius: 8,
-                          background: 'var(--surface-var)', color: 'var(--text-muted)',
-                          border: '1px dashed var(--border)',
-                          fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                        }}
-                      >
-                        {c.name}
-                      </button>
-                    ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
 
       <button
         onClick={handleStart}
