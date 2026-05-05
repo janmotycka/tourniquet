@@ -22,6 +22,7 @@ export interface MatchLineupPlayer {
   playerId: string;
   jerseyNumber: number;
   name: string;           // kopie pro zobrazení (hráč mohl být přejmenován v klubu)
+  birthYear?: number;     // volitelný ročník — užitečný pro PDF rozpis, statistiky podle věku
   position?: string;      // volitelné: "brankář", "stoper", "záložník"...
   isStarter: boolean;     // true = základní sestava, false = náhradník
   substituteOrder: number; // pořadí na lavičce (1 = první na střídání); 0 pro startéry

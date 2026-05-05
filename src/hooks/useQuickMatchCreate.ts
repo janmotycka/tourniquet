@@ -5,6 +5,10 @@
  * mode). Audit 2026-04-29: po konverzi QuickMatchSheet na page mode
  * potřebujeme stejnou logiku v page route handleru — extrakce do hooku.
  *
+ * Audit 2026-04-29 (refaktor 2): roster signature rozšířena z `string[]` na
+ * `QuickMatchRosterEntry[]` (jméno + volitelný dres + ročník + clubPlayerId).
+ * Lineup teď uchovává čísla dresů a ročníky pokud uživatel vyplnil.
+ *
  * Hook returnuje handler, který:
  * 1. Vytvoří match přes createMatch store action
  * 2. Spustí ho přes startMatch (rovnou jde do live módu)
@@ -19,7 +23,10 @@ import { useMatchesStore } from '../store/matches.store';
 import { useClubsStore } from '../store/clubs.store';
 import { useUserPrefsStore } from '../store/userPrefs.store';
 import { useI18n } from '../i18n';
-import type { QuickMatchPreset } from '../components/match/QuickMatchSheet';
+import type {
+  QuickMatchPreset,
+  QuickMatchRosterEntry,
+} from '../components/match/QuickMatchSheet';
 
 export function useQuickMatchCreate(navigate: (p: Page) => void) {
   const createMatch = useMatchesStore(s => s.createMatch);
@@ -31,7 +38,7 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
 
   return useCallback((
     opponent: string,
-    roster: string[],
+    roster: QuickMatchRosterEntry[],
     _squadId?: string,
     preset?: QuickMatchPreset,
   ) => {
@@ -40,11 +47,14 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
     const now = new Date();
     const today = now.toISOString().split('T')[0];
     const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    // Manuální roster — každý řádek = hráč. Všichni starters bez čísel dresu.
-    const lineup = roster.map((name, i) => ({
-      playerId: `manual-${i}-${now.getTime()}`,
-      jerseyNumber: 0,
-      name,
+    // Lineup zachovává jersey number + birthYear pokud user vyplnil (volitelné).
+    // Pokud byl hráč importován z klubu, použijeme jeho clubPlayerId jako
+    // playerId — propojí stats / hodnocení na klubový roster.
+    const lineup = roster.map((entry, i) => ({
+      playerId: entry.clubPlayerId ?? `manual-${i}-${now.getTime()}`,
+      jerseyNumber: entry.jerseyNumber ?? 0,
+      name: entry.name,
+      birthYear: entry.birthYear,
       isStarter: true,
       substituteOrder: 0,
     }));
