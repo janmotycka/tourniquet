@@ -1078,6 +1078,8 @@ export const de: Record<TranslationKey, string> = {
   'match.list.quickMatchPrompt': 'Gegen wen spielt ihr? (leer lassen wenn unbekannt)',
   'match.list.quickMatchDefaultOpponent': 'Gegner',
   'match.quickSheet.opponentLabel': 'Gegner',
+  'match.quickSheet.myTeamLabel': 'Unser Team',
+  'match.quickSheet.myTeamPlaceholder': 'Wer spielt für uns?',
   'match.quickSheet.opponentMatchesAgo': 'Spiele',
   'match.quickSheet.opponentPlaceholder': 'Gegen wen spielt ihr?',
   'match.quickSheet.opponentHint': 'Leer lassen wenn unbekannt — später ergänzbar.',

@@ -72,7 +72,10 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       sport: isFloorball ? 'floorball' : 'football',
       matchType: 'single',
       clubId: activeClub?.id ?? 'individual-quick',
-      clubName: activeClub?.name,
+      // Audit 2026-05-06: explicit myTeamName z presetu má prioritu před
+      // názvem aktivního klubu — user může chtít „Vrchovina B" nebo Simple
+      // mode bez klubu vůbec definovat vlastní název.
+      clubName: preset?.myTeamName?.trim() || activeClub?.name,
       opponent: opponent.trim() || t('match.list.quickMatchDefaultOpponent'),
       // Audit 2026-04-29: isHome + venue z presetu (collapsed accordion).
       // Default true (doma) pokud user accordion neotevřel.

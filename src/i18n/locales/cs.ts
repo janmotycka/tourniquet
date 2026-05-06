@@ -1089,6 +1089,8 @@ export const cs = {
   'match.list.quickMatchPrompt': 'Proti komu hrajete? (nech prázdné pokud nevíš)',
   'match.list.quickMatchDefaultOpponent': 'Soupeř',
   'match.quickSheet.opponentLabel': 'Soupeř',
+  'match.quickSheet.myTeamLabel': 'Náš tým',
+  'match.quickSheet.myTeamPlaceholder': 'Kdo hraje za nás?',
   'match.quickSheet.opponentMatchesAgo': 'zápasů',
   'match.quickSheet.opponentPlaceholder': 'Proti komu hrajete?',
   'match.quickSheet.opponentHint': 'Nech prázdné pokud ještě nevíš — můžeš doplnit později.',

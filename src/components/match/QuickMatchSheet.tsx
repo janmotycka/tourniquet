@@ -59,6 +59,8 @@ export interface QuickMatchPreset {
   competition?: string;
   /** Věková kategorie — z klubu (audit 2026-04-29 pt3). Default: nezadáno. */
   ageCategory?: string;
+  /** Název našeho týmu (audit 2026-05-06). Default: jméno aktivního klubu. */
+  myTeamName?: string;
 }
 
 /**
@@ -148,6 +150,11 @@ export function QuickMatchSheet({
   const hasClubPlayers = clubPlayers.length > 0;
 
   // ─── State ─────────────────────────────────────────────────────────────────
+  // Audit 2026-05-06: explicit input pro „Náš tým" — předtím se odvozoval
+  // z aktivního klubu silently. Teď default = club name (pre-filled, editable).
+  // Uživatel může napsat třeba „Vrchovina B" pro B-tým, nebo cokoli vlastního
+  // pro Simple mode bez klubu.
+  const [myTeamName, setMyTeamName] = useState<string>(() => activeClub?.name ?? '');
   const [opponent, setOpponent] = useState('');
   const [opponentFocused, setOpponentFocused] = useState(false);
   // Player editor — row-based (jako AdminRosterSheet v turnaji).
@@ -452,6 +459,8 @@ export function QuickMatchSheet({
       kickoffTime: matchTime,
       competition: competition.trim() || undefined,
       ageCategory: ageCategory.trim() || undefined,
+      // Audit 2026-05-06: explicit team name (může být jiné než club.name)
+      myTeamName: myTeamName.trim() || undefined,
     };
     onCreate(opponent, roster, finalSquadId, preset);
   };
@@ -483,10 +492,34 @@ export function QuickMatchSheet({
   // ─── Form content (oba módy ho vykreslují uvnitř svých wrapperů) ─────────
   const formContent = (
     <div style={{ padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* ── Soupeř ─────────────────────────────────────────────────────────── */}
+      {/* ── Náš tým + Soupeř (audit 2026-05-06: explicit team name input) ──
+          Vizuální „X vs Y" pattern. Náš tým defaultně předvyplněn z aktivního
+          klubu, ale lze přepsat (např. „Vrchovina B" nebo Simple mode bez klubu). */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div>
+          <label htmlFor="quick-myteam" style={labelStyle}>
+            🏠 {t('match.quickSheet.myTeamLabel')}
+          </label>
+          <input
+            id="quick-myteam"
+            type="text"
+            value={myTeamName}
+            onChange={e => setMyTeamName(e.target.value)}
+            placeholder={t('match.quickSheet.myTeamPlaceholder')}
+            style={inputStyle}
+            autoComplete="off"
+          />
+        </div>
+        <div style={{
+          textAlign: 'center', fontSize: 11, fontWeight: 700,
+          color: 'var(--text-muted)', letterSpacing: 1,
+          margin: '-4px 0',
+        }}>
+          VS
+        </div>
       <div style={{ position: 'relative' }}>
         <label htmlFor="quick-opponent" style={labelStyle}>
-          {t('match.quickSheet.opponentLabel')}
+          ⚔️ {t('match.quickSheet.opponentLabel')}
         </label>
         <input
           id="quick-opponent"
@@ -538,6 +571,7 @@ export function QuickMatchSheet({
             ))}
           </div>
         )}
+      </div>
       </div>
 
       {/* ── Detaily zápasu (audit 2026-04-29 pt3: přesunuto nahoru — defaultní
