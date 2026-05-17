@@ -510,274 +510,128 @@ export function QuickMatchSheet({
             autoComplete="off"
           />
         </div>
-
-      {/* ── Player editor (row-based, jako v AdminRosterSheet) ─────────────
-          Audit 2026-04-29 pt4: přesunut na konec — nejnáročnější část (přidávat
-          hráče), trenér ji řeší naposledy. Defaultně sbalená. Auto-expand
-          pokud user vybral squad nebo importoval z klubu. */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setRosterExpanded(v => !v)}
-          aria-expanded={rosterExpanded}
-          style={{
-            width: '100%',
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '9px 12px', borderRadius: 10,
-            background: rosterExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
-            border: `1.5px solid ${rosterExpanded ? 'var(--primary)' : 'var(--border)'}`,
-            cursor: 'pointer', textAlign: 'left',
-            transition: 'background .15s, border-color .15s',
-          }}
-        >
-          <span style={{ fontSize: 18 }}>👥</span>
-          <span style={{
-            flex: 1, fontSize: 13, fontWeight: 700,
-            color: rosterExpanded ? 'var(--primary)' : 'var(--text)',
-          }}>
-            {t('match.quickSheet.rosterLabel')}
-            {validPlayers.length > 0 && (
-              <span style={{
-                marginLeft: 6, fontSize: 11,
-                color: 'var(--text-muted)', fontWeight: 600,
-              }}>
-                ({validPlayers.length})
-              </span>
-            )}
-          </span>
-          <span style={{
-            fontSize: 12, fontWeight: 700,
-            color: rosterExpanded ? 'var(--primary)' : 'var(--text-muted)',
-            transform: rosterExpanded ? 'rotate(180deg)' : 'none',
-            transition: 'transform .2s',
-          }}>
-            ▼
-          </span>
-        </button>
-      {rosterExpanded && (<>
-        {hasClubPlayers && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-            <button
-              type="button"
-              onClick={() => setClubImportOpen(true)}
-              style={{
-                padding: '6px 12px', borderRadius: 8,
-                background: 'var(--surface-var)', color: 'var(--primary)',
-                border: '1px solid var(--primary)',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              📥 {t('match.quickSheet.importFromClub')}
-            </button>
-          </div>
-        )}
-        <div style={{ marginTop: hasClubPlayers ? 8 : 10 }}>
-
-        {/* Existing players list */}
-        {players.length > 0 && (
+        <div style={{
+          textAlign: 'center', fontSize: 11, fontWeight: 700,
+          color: 'var(--text-muted)', letterSpacing: 1,
+          margin: '-4px 0',
+        }}>
+          VS
+        </div>
+      <div style={{ position: 'relative' }}>
+        <label htmlFor="quick-opponent" style={labelStyle}>
+          ⚔️ {t('match.quickSheet.opponentLabel')}
+        </label>
+        <input
+          id="quick-opponent"
+          ref={inputRef}
+          type="text"
+          value={opponent}
+          onChange={e => setOpponent(e.target.value)}
+          onFocus={() => setOpponentFocused(true)}
+          onBlur={() => setTimeout(() => setOpponentFocused(false), 200)}
+          placeholder={t('match.quickSheet.opponentPlaceholder')}
+          style={inputStyle}
+          autoComplete="off"
+        />
+        {opponentSuggestions.length > 0 && (
           <div style={{
-            display: 'flex', flexDirection: 'column', gap: 4,
-            marginBottom: 6,
+            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30,
+            background: 'var(--surface)', border: '1.5px solid var(--border)',
+            borderRadius: 12, marginTop: 4,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+            maxHeight: 200, overflowY: 'auto',
           }}>
-            {players.map(p => (
-              <div
-                key={p.id}
+            {opponentSuggestions.map(s => (
+              <button
+                key={s.name}
+                type="button"
+                onMouseDown={e => {
+                  e.preventDefault();
+                  setOpponent(s.name);
+                  setOpponentFocused(false);
+                }}
                 style={{
-                  display: 'flex', gap: 4, alignItems: 'center',
-                  padding: '4px 6px', borderRadius: 8,
-                  background: 'var(--surface-var)',
+                  width: '100%', padding: '10px 12px',
+                  background: 'transparent', border: 'none',
+                  borderBottom: '1px solid var(--border)',
+                  cursor: 'pointer', textAlign: 'left',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                 }}
               >
                 <span style={{
-                  width: 36, fontSize: 12, fontWeight: 800,
-                  textAlign: 'center', color: 'var(--text-muted)',
-                  fontVariantNumeric: 'tabular-nums',
+                  fontSize: 14, fontWeight: 600, color: 'var(--text)',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
-                  {p.jerseyNumber ? `#${p.jerseyNumber}` : '—'}
+                  {s.name}
                 </span>
-                <span style={{
-                  flex: 1, fontSize: 14, fontWeight: 600,
-                  color: 'var(--text)', overflow: 'hidden',
-                  textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {p.name}
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
+                  {s.count}× {t('match.quickSheet.opponentMatchesAgo')}
                 </span>
-                {p.birthYear && (
-                  <span style={{
-                    fontSize: 11, color: 'var(--text-muted)', fontWeight: 600,
-                    fontVariantNumeric: 'tabular-nums',
-                  }}>
-                    {p.birthYear}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => removePlayer(p.id)}
-                  aria-label={t('common.delete')}
-                  style={{
-                    width: 26, height: 26, borderRadius: 6,
-                    background: 'transparent', color: 'var(--text-muted)',
-                    border: 'none', fontSize: 14, fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  ×
-                </button>
-              </div>
+              </button>
             ))}
           </div>
         )}
-
-        {/* Add player input row — stejný pattern jako AdminRosterSheet */}
-        <div style={{
-          borderRadius: 10, overflow: 'hidden',
-          border: jerseyDuplicate
-            ? '2px solid var(--danger)'
-            : canAddPlayer ? '2px solid var(--primary)' : '1px solid var(--border)',
-          transition: 'border .2s',
-        }}>
-          <div style={{
-            padding: '5px 10px',
-            background: jerseyDuplicate
-              ? 'var(--danger)'
-              : canAddPlayer ? 'var(--primary)' : 'var(--surface-var)',
-            color: (jerseyDuplicate || canAddPlayer) ? '#fff' : 'var(--text-muted)',
-            display: 'flex', alignItems: 'center', gap: 5,
-          }}>
-            <span style={{ fontSize: 12 }}>👤</span>
-            <span style={{ fontWeight: 700, fontSize: 12 }}>
-              {t('match.quickSheet.addPlayer')}
-            </span>
-          </div>
-          <div style={{ padding: '6px 8px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={addJersey}
-                onChange={e => setAddJersey(e.target.value.replace(/\D/g, '').slice(0, 2))}
-                onKeyDown={e => e.key === 'Enter' && addPlayer()}
-                placeholder="#"
-                min={1}
-                max={99}
-                style={{
-                  ...compactInp,
-                  width: 44, textAlign: 'center', padding: '6px 2px', flexShrink: 0,
-                  borderColor: jerseyDuplicate ? 'var(--danger)' : 'var(--border)',
-                }}
-              />
-              <input
-                value={addName}
-                onChange={e => setAddName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addPlayer()}
-                placeholder={t('match.quickSheet.playerNamePlaceholder')}
-                style={{ ...compactInp, flex: 1, minWidth: 0 }}
-              />
-              <input
-                type="number"
-                inputMode="numeric"
-                value={addBirthYear}
-                onChange={e => setAddBirthYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                onKeyDown={e => e.key === 'Enter' && addPlayer()}
-                placeholder={t('match.quickSheet.birthYearPlaceholder')}
-                style={{
-                  ...compactInp,
-                  width: 54, textAlign: 'center', padding: '6px 2px', flexShrink: 0,
-                }}
-              />
-            </div>
-            {jerseyDuplicate && (
-              <div style={{ fontSize: 10, color: 'var(--danger)', fontWeight: 600 }}>
-                ⚠️ {t('match.quickSheet.duplicateJersey')}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={addPlayer}
-              disabled={!canAddPlayer}
-              style={{
-                width: '100%', padding: '7px', borderRadius: 7,
-                background: canAddPlayer ? 'var(--primary)' : 'var(--surface-var)',
-                color: canAddPlayer ? '#fff' : 'var(--text-muted)',
-                border: 'none', fontSize: 12, fontWeight: 700,
-                cursor: canAddPlayer ? 'pointer' : 'default',
-                touchAction: 'manipulation',
-              }}
-            >
-              {canAddPlayer ? `+ ${t('match.quickSheet.addPlayer')}` : t('match.quickSheet.addPlayerHint')}
-            </button>
-          </div>
-        </div>
-
-        <div style={{
-          fontSize: 11, color: 'var(--text-muted)',
-          marginTop: 6, lineHeight: 1.4,
-        }}>
-          {t('match.quickSheet.rosterHintMinimal')}
-        </div>
-        </div>
-      </>)}
+      </div>
       </div>
 
-      {/* ── Save / Update party — explicit tlačítka místo checkboxu */}
-      {!selectedSquadId && validPlayers.length > 0 && (
-        <div style={{
-          background: 'var(--surface-var)', borderRadius: 10, padding: 10,
-          border: '1px solid var(--border)',
-        }}>
-          <div style={{
-            fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 8,
-          }}>
-            💾 {t('match.quickSheet.saveAsSquad')}
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input
-              type="text"
-              value={squadName}
-              onChange={e => setSquadName(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && squadName.trim()) {
-                  e.preventDefault();
-                  handleSaveSquad();
-                }
-              }}
-              placeholder={t('match.quickSheet.squadNamePlaceholder')}
-              style={{ ...inputStyle, flex: 1, padding: '8px 10px', fontSize: 13 }}
+      {/* ── Detaily zápasu (audit 2026-04-29 pt3: přesunuto nahoru — defaultní
+          hodnoty, vždy viditelné, primární config). */}
+      <div style={{
+        background: 'var(--surface-var)',
+        borderRadius: 12, padding: '4px 14px',
+        border: '1px solid var(--border)',
+      }}>
+        <SettingsList>
+          <SettingRow icon="⏱" label={t('match.quickSheet.periodsLabel')}>
+            <ChipPair
+              value={periodCount}
+              options={[
+                { v: 1, label: '1' },
+                { v: 2, label: '2' },
+              ]}
+              onChange={v => setPeriodCount(v as 1 | 2)}
             />
-            <button
-              type="button"
-              onClick={handleSaveSquad}
-              disabled={!squadName.trim()}
-              style={{
-                padding: '8px 14px', borderRadius: 10,
-                background: squadName.trim() ? 'var(--primary)' : 'var(--border)',
-                color: squadName.trim() ? '#fff' : 'var(--text-muted)',
-                border: 'none', fontSize: 13, fontWeight: 700,
-                cursor: squadName.trim() ? 'pointer' : 'default',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {t('match.quickSheet.saveSquadCta')}
-            </button>
-          </div>
-        </div>
-      )}
-      {selectedSquadId && validPlayers.length > 0 && (
-        <button
-          type="button"
-          onClick={handleUpdateSquad}
-          style={{
-            padding: '10px 12px', borderRadius: 10,
-            background: 'var(--surface-var)', color: 'var(--text)',
-            border: '1px solid var(--border)',
-            fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}
-        >
-          💾 {t('match.quickSheet.updateSquadCta')}
-        </button>
-      )}
+          </SettingRow>
+          <SettingRow
+            icon="🕐"
+            label={periodCount === 1
+              ? t('match.quickSheet.durationOneLabel')
+              : t('match.quickSheet.durationEachLabel')}
+          >
+            <CompactNumberInput
+              value={periodMinutes}
+              min={1}
+              max={60}
+              unit="min"
+              onChange={setPeriodMinutes}
+            />
+          </SettingRow>
+          <SettingRow icon="⚽" label={t('match.quickSheet.matchFormatLabel')} isLast>
+            <ChipPair
+              value={matchFormat}
+              options={[
+                { v: '3+1', label: '3+1' },
+                { v: '4+1', label: '4+1' },
+                { v: '5+1', label: '5+1' },
+                { v: '7+1', label: '7+1' },
+                { v: '8+1', label: '8+1' },
+                { v: '11+1', label: '11+1' },
+              ]}
+              onChange={v => setMatchFormat(v as QuickMatchPreset['matchFormat'])}
+            />
+          </SettingRow>
+        </SettingsList>
+      </div>
+
+      {/* Hint o volitelnosti — audit 2026-04-29 pt4: přesunuto nad collapsibles
+          aby trenér věděl PŘEDTÍM než uvidí seznam možností. */}
+      <div style={{
+        fontSize: 11, color: 'var(--text-muted)',
+        textAlign: 'center', lineHeight: 1.5,
+        padding: '2px 8px',
+      }}>
+        ℹ️ {t('match.quickSheet.optionalHint')}
+      </div>
 
       {/* ── Datum a čas (collapsed accordion) ─────────────────────────────────
           Audit 2026-04-29 pt4: první v pořadí collapsibles — má vždy default
@@ -1106,6 +960,274 @@ export function QuickMatchSheet({
             {t('match.quickSheet.changeSquad')}
           </button>
         </div>
+      )}
+
+      {/* ── Player editor (row-based, jako v AdminRosterSheet) ─────────────
+          Audit 2026-04-29 pt4: přesunut na konec — nejnáročnější část (přidávat
+          hráče), trenér ji řeší naposledy. Defaultně sbalená. Auto-expand
+          pokud user vybral squad nebo importoval z klubu. */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setRosterExpanded(v => !v)}
+          aria-expanded={rosterExpanded}
+          style={{
+            width: '100%',
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10,
+            background: rosterExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
+            border: `1.5px solid ${rosterExpanded ? 'var(--primary)' : 'var(--border)'}`,
+            cursor: 'pointer', textAlign: 'left',
+            transition: 'background .15s, border-color .15s',
+          }}
+        >
+          <span style={{ fontSize: 18 }}>👥</span>
+          <span style={{
+            flex: 1, fontSize: 13, fontWeight: 700,
+            color: rosterExpanded ? 'var(--primary)' : 'var(--text)',
+          }}>
+            {t('match.quickSheet.rosterLabel')}
+            {validPlayers.length > 0 && (
+              <span style={{
+                marginLeft: 6, fontSize: 11,
+                color: 'var(--text-muted)', fontWeight: 600,
+              }}>
+                ({validPlayers.length})
+              </span>
+            )}
+          </span>
+          <span style={{
+            fontSize: 12, fontWeight: 700,
+            color: rosterExpanded ? 'var(--primary)' : 'var(--text-muted)',
+            transform: rosterExpanded ? 'rotate(180deg)' : 'none',
+            transition: 'transform .2s',
+          }}>
+            ▼
+          </span>
+        </button>
+      {rosterExpanded && (<>
+        {hasClubPlayers && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={() => setClubImportOpen(true)}
+              style={{
+                padding: '6px 12px', borderRadius: 8,
+                background: 'var(--surface-var)', color: 'var(--primary)',
+                border: '1px solid var(--primary)',
+                fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              📥 {t('match.quickSheet.importFromClub')}
+            </button>
+          </div>
+        )}
+        <div style={{ marginTop: hasClubPlayers ? 8 : 10 }}>
+
+        {/* Existing players list */}
+        {players.length > 0 && (
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 4,
+            marginBottom: 6,
+          }}>
+            {players.map(p => (
+              <div
+                key={p.id}
+                style={{
+                  display: 'flex', gap: 4, alignItems: 'center',
+                  padding: '4px 6px', borderRadius: 8,
+                  background: 'var(--surface-var)',
+                }}
+              >
+                <span style={{
+                  width: 36, fontSize: 12, fontWeight: 800,
+                  textAlign: 'center', color: 'var(--text-muted)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {p.jerseyNumber ? `#${p.jerseyNumber}` : '—'}
+                </span>
+                <span style={{
+                  flex: 1, fontSize: 14, fontWeight: 600,
+                  color: 'var(--text)', overflow: 'hidden',
+                  textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>
+                  {p.name}
+                </span>
+                {p.birthYear && (
+                  <span style={{
+                    fontSize: 11, color: 'var(--text-muted)', fontWeight: 600,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {p.birthYear}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => removePlayer(p.id)}
+                  aria-label={t('common.delete')}
+                  style={{
+                    width: 26, height: 26, borderRadius: 6,
+                    background: 'transparent', color: 'var(--text-muted)',
+                    border: 'none', fontSize: 14, fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add player input row — stejný pattern jako AdminRosterSheet */}
+        <div style={{
+          borderRadius: 10, overflow: 'hidden',
+          border: jerseyDuplicate
+            ? '2px solid var(--danger)'
+            : canAddPlayer ? '2px solid var(--primary)' : '1px solid var(--border)',
+          transition: 'border .2s',
+        }}>
+          <div style={{
+            padding: '5px 10px',
+            background: jerseyDuplicate
+              ? 'var(--danger)'
+              : canAddPlayer ? 'var(--primary)' : 'var(--surface-var)',
+            color: (jerseyDuplicate || canAddPlayer) ? '#fff' : 'var(--text-muted)',
+            display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            <span style={{ fontSize: 12 }}>👤</span>
+            <span style={{ fontWeight: 700, fontSize: 12 }}>
+              {t('match.quickSheet.addPlayer')}
+            </span>
+          </div>
+          <div style={{ padding: '6px 8px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={addJersey}
+                onChange={e => setAddJersey(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                onKeyDown={e => e.key === 'Enter' && addPlayer()}
+                placeholder="#"
+                min={1}
+                max={99}
+                style={{
+                  ...compactInp,
+                  width: 44, textAlign: 'center', padding: '6px 2px', flexShrink: 0,
+                  borderColor: jerseyDuplicate ? 'var(--danger)' : 'var(--border)',
+                }}
+              />
+              <input
+                value={addName}
+                onChange={e => setAddName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addPlayer()}
+                placeholder={t('match.quickSheet.playerNamePlaceholder')}
+                style={{ ...compactInp, flex: 1, minWidth: 0 }}
+              />
+              <input
+                type="number"
+                inputMode="numeric"
+                value={addBirthYear}
+                onChange={e => setAddBirthYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                onKeyDown={e => e.key === 'Enter' && addPlayer()}
+                placeholder={t('match.quickSheet.birthYearPlaceholder')}
+                style={{
+                  ...compactInp,
+                  width: 54, textAlign: 'center', padding: '6px 2px', flexShrink: 0,
+                }}
+              />
+            </div>
+            {jerseyDuplicate && (
+              <div style={{ fontSize: 10, color: 'var(--danger)', fontWeight: 600 }}>
+                ⚠️ {t('match.quickSheet.duplicateJersey')}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={addPlayer}
+              disabled={!canAddPlayer}
+              style={{
+                width: '100%', padding: '7px', borderRadius: 7,
+                background: canAddPlayer ? 'var(--primary)' : 'var(--surface-var)',
+                color: canAddPlayer ? '#fff' : 'var(--text-muted)',
+                border: 'none', fontSize: 12, fontWeight: 700,
+                cursor: canAddPlayer ? 'pointer' : 'default',
+                touchAction: 'manipulation',
+              }}
+            >
+              {canAddPlayer ? `+ ${t('match.quickSheet.addPlayer')}` : t('match.quickSheet.addPlayerHint')}
+            </button>
+          </div>
+        </div>
+
+        <div style={{
+          fontSize: 11, color: 'var(--text-muted)',
+          marginTop: 6, lineHeight: 1.4,
+        }}>
+          {t('match.quickSheet.rosterHintMinimal')}
+        </div>
+        </div>
+      </>)}
+      </div>
+
+      {/* ── Save / Update party — explicit tlačítka místo checkboxu */}
+      {!selectedSquadId && validPlayers.length > 0 && (
+        <div style={{
+          background: 'var(--surface-var)', borderRadius: 10, padding: 10,
+          border: '1px solid var(--border)',
+        }}>
+          <div style={{
+            fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 8,
+          }}>
+            💾 {t('match.quickSheet.saveAsSquad')}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input
+              type="text"
+              value={squadName}
+              onChange={e => setSquadName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && squadName.trim()) {
+                  e.preventDefault();
+                  handleSaveSquad();
+                }
+              }}
+              placeholder={t('match.quickSheet.squadNamePlaceholder')}
+              style={{ ...inputStyle, flex: 1, padding: '8px 10px', fontSize: 13 }}
+            />
+            <button
+              type="button"
+              onClick={handleSaveSquad}
+              disabled={!squadName.trim()}
+              style={{
+                padding: '8px 14px', borderRadius: 10,
+                background: squadName.trim() ? 'var(--primary)' : 'var(--border)',
+                color: squadName.trim() ? '#fff' : 'var(--text-muted)',
+                border: 'none', fontSize: 13, fontWeight: 700,
+                cursor: squadName.trim() ? 'pointer' : 'default',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {t('match.quickSheet.saveSquadCta')}
+            </button>
+          </div>
+        </div>
+      )}
+      {selectedSquadId && validPlayers.length > 0 && (
+        <button
+          type="button"
+          onClick={handleUpdateSquad}
+          style={{
+            padding: '10px 12px', borderRadius: 10,
+            background: 'var(--surface-var)', color: 'var(--text)',
+            border: '1px solid var(--border)',
+            fontSize: 13, fontWeight: 700, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}
+        >
+          💾 {t('match.quickSheet.updateSquadCta')}
+        </button>
       )}
 
       <button
