@@ -131,6 +131,11 @@ export function QuickMatchSheet({
   const { t } = useI18n();
   const { user } = useAuth();
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  // Audit 2026-05-17 (UX agent #1): Simple mode user (laik) má vidět jen
+  // minimum — soupeř + náš tým + settings + soupiska. Detaily (datum, místo,
+  // soutěž) schované za „Více možností" pokud explicitně neotevřel.
+  const appMode = useUserPrefsStore(s => s.appMode);
+  const isSimpleMode = appMode === 'simple';
   const allSquads = useSimpleSquadsStore(s => s.squads);
   const createSquad = useSimpleSquadsStore(s => s.createSquad);
   const updateSquad = useSimpleSquadsStore(s => s.updateSquad);
@@ -184,6 +189,9 @@ export function QuickMatchSheet({
   const [matchFormat, setMatchFormat] = useState<QuickMatchPreset['matchFormat']>('5+1');
   // Modal: import z klubu
   const [clubImportOpen, setClubImportOpen] = useState(false);
+  // Audit 2026-05-17: v Simple módu jsou „Více možností" (datum/místo/soutěž)
+  // schované za jedním klikem. Advanced má vždy vše viditelné.
+  const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
   // Audit 2026-04-29: soupiska defaultně sbalená (rychlý zápas = soupeř +
   // settings stačí). Auto-expand pokud auto-pre-pick squady přidá hráče
   // nebo pokud byla předána initialPlayers (prefill z minulého zápasu).
@@ -302,23 +310,19 @@ export function QuickMatchSheet({
     return () => window.removeEventListener('keydown', h);
   }, [onClose]);
 
-  // Auto-pre-pick nejužívanější party — usnadní 2.+ zápas v turnaji.
-  useEffect(() => {
-    if (selectedSquadId) return;
-    if (squads.length === 0) return;
-    if (players.length > 0) return;
-    const topSquad = squads[0];
-    if ((topSquad.usageCount ?? 0) < 1) return;
-    setSelectedSquadId(topSquad.id);
-    setPlayers(topSquad.players.map(name => ({
-      id: generateId(),
-      name,
-      jerseyNumber: '',
-      birthYear: '',
-    })));
-    setRosterExpanded(true); // pre-pickutá parta → ukaž soupisku rovnou
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Audit 2026-05-17 (UX agent #1 finding): auto-pre-pick squady byl
+  // „stealth behavior" — silently vyplnil hráče z minulého zápasu, user
+  // si toho mohl všimnout až po smazání. Teď ukážeme opt-in banner:
+  // user musí explicitně kliknout „Použít znovu" pro načtení party.
+  const [dismissedTopSquad, setDismissedTopSquad] = useState(false);
+  const topSquadCandidate = useMemo(() => {
+    if (selectedSquadId) return null;
+    if (players.length > 0) return null;
+    if (dismissedTopSquad) return null;
+    const top = squads[0];
+    if (!top || (top.usageCount ?? 0) < 1) return null;
+    return top;
+  }, [squads, selectedSquadId, players.length, dismissedTopSquad]);
 
   // ─── Player editor handlers ───────────────────────────────────────────────
   const usedJerseys = useMemo(
@@ -498,7 +502,7 @@ export function QuickMatchSheet({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div>
           <label htmlFor="quick-myteam" style={labelStyle}>
-            🏠 {t('match.quickSheet.myTeamLabel')}
+            👥 {t('match.quickSheet.myTeamLabel')}
           </label>
           <input
             id="quick-myteam"
@@ -633,6 +637,24 @@ export function QuickMatchSheet({
         ℹ️ {t('match.quickSheet.optionalHint')}
       </div>
 
+      {/* Audit 2026-05-17 (UX agent #1): v Simple módu schovat Datum/Místo/Soutěž
+          za jedním tlačítkem „Více možností" — laik je nepotřebuje a přeplácaný
+          formulář ho odrazuje. Advanced mode = vše viditelné jako dosud. */}
+      {isSimpleMode && !showAdvancedDetails && (
+        <button
+          type="button"
+          onClick={() => setShowAdvancedDetails(true)}
+          style={{
+            padding: '10px 14px', borderRadius: 10,
+            background: 'transparent', border: '1.5px dashed var(--border)',
+            color: 'var(--text-muted)', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', textAlign: 'center',
+          }}
+        >
+          ▼ {t('match.quickSheet.moreOptions')}
+        </button>
+      )}
+      {(!isSimpleMode || showAdvancedDetails) && (<>
       {/* ── Datum a čas (collapsed accordion) ─────────────────────────────────
           Audit 2026-04-29 pt4: první v pořadí collapsibles — má vždy default
           preview (Dnes 19:33), user vidí že je nastaveno bez expanze. */}
@@ -899,6 +921,52 @@ export function QuickMatchSheet({
           </div>
         )}
       </div>
+      </>)}
+
+      {/* ── Opt-in banner pro nejužívanější partu (audit 2026-05-17, UX agent).
+          Místo silent auto-fill se ptáme explicitně. */}
+      {topSquadCandidate && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '10px 12px', borderRadius: 10,
+          background: 'var(--primary-light)', border: '1.5px dashed var(--primary)',
+        }}>
+          <span style={{ fontSize: 20 }}>⚡</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--primary)' }}>
+              {t('match.quickSheet.lastSquadPrompt', { name: topSquadCandidate.name })}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+              {t('match.quickSheet.squadSize', { n: topSquadCandidate.players.length })}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => handlePickSquad(topSquadCandidate)}
+            style={{
+              padding: '6px 12px', borderRadius: 8,
+              background: 'var(--primary)', color: '#fff',
+              border: 'none',
+              fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            {t('match.quickSheet.lastSquadUse')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setDismissedTopSquad(true)}
+            aria-label={t('common.close')}
+            style={{
+              width: 26, height: 26, borderRadius: 13,
+              background: 'transparent', color: 'var(--text-muted)',
+              border: '1px solid var(--border)',
+              fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* ── Squad picker (audit 2026-04-29 pt4: přesunut k Soupiska — vizuálně
           patří dohromady jako „výběr účastníků"). */}

@@ -837,10 +837,12 @@ export function MatchListPage({ navigate }: Props) {
                     onClick={(e) => handleDelete(match, e)}
                     aria-label={t('common.delete')}
                     style={{
-                      position: 'absolute', top: -6, right: -6,
-                      width: 26, height: 26, borderRadius: 13,
+                      // Audit 2026-05-17: zvětšeno z 26→32 (tap target),
+                      // odsunuto od levého live indicator borderu (top -8/right -8)
+                      position: 'absolute', top: -8, right: -8,
+                      width: 32, height: 32, borderRadius: 16,
                       background: 'var(--surface)', color: 'var(--danger)',
-                      fontWeight: 800, fontSize: 15, lineHeight: 1,
+                      fontWeight: 800, fontSize: 17, lineHeight: 1,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       border: '1.5px solid var(--border)',
                       boxShadow: '0 2px 6px rgba(0,0,0,0.15)',

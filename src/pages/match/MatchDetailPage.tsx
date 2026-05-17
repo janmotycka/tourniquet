@@ -179,6 +179,23 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
   const isLive = currentMatch?.status === 'live';
   const isPublic = !!currentMatch?.isPublic;
 
+  // Audit 2026-05-17 (UX agent #1): onboarding spotlight pro Sdílet button.
+  // Po prvním vytvoření Quick match user neví, že může poslat odkaz rodičům
+  // přes Sdílet button v headeru. Ukážeme tooltip jednorázově.
+  const [showShareHint, setShowShareHint] = useState(false);
+  useEffect(() => {
+    if (!currentMatch || !isLive) return;
+    try {
+      if (localStorage.getItem('torq.shareHintSeen') === '1') return;
+    } catch { /* localStorage blocked */ }
+    const timer = setTimeout(() => setShowShareHint(true), 1500);
+    return () => clearTimeout(timer);
+  }, [currentMatch, isLive]);
+  const dismissShareHint = () => {
+    setShowShareHint(false);
+    try { localStorage.setItem('torq.shareHintSeen', '1'); } catch { /* blocked */ }
+  };
+
   // Live elapsed timer v headeru
   const [headerElapsed, setHeaderElapsed] = useState(() => currentMatch ? computeElapsed(currentMatch) : 0);
   useEffect(() => {
@@ -278,9 +295,9 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
           subtitle={headerSubtitle}
           onBack={() => navigate({ name: 'match-list' })}
           action={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
               <button
-                onClick={() => setShowShare(true)}
+                onClick={() => { setShowShare(true); dismissShareHint(); }}
                 aria-label={t('matchShare.title')}
                 style={{
                   background: isPublic
@@ -291,6 +308,11 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
                   display: 'flex', alignItems: 'center', gap: 6,
                   border: 'none', cursor: 'pointer',
                   boxShadow: isPublic ? '0 2px 8px rgba(0,0,0,.15)' : 'none',
+                  position: 'relative',
+                  // Glow ring během share hintu pro vizuální upoutání pozornosti
+                  outline: showShareHint ? '3px solid var(--primary)' : 'none',
+                  outlineOffset: showShareHint ? 2 : 0,
+                  animation: showShareHint ? 'shareHintPulse 1.5s ease-in-out infinite' : 'none',
                 }}
                 title={t('matchShare.title')}
               >
@@ -304,7 +326,43 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
                   }} />
                 )}
               </button>
-              <style>{`@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .4 } }`}</style>
+              <style>{`
+                @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .4 } }
+                @keyframes shareHintPulse {
+                  0%,100% { box-shadow: 0 0 0 0 rgba(46,125,50,.6) }
+                  50%     { box-shadow: 0 0 0 8px rgba(46,125,50,0) }
+                }
+              `}</style>
+              {showShareHint && (
+                <div
+                  onClick={dismissShareHint}
+                  role="tooltip"
+                  style={{
+                    position: 'absolute',
+                    top: '100%', right: 0, marginTop: 8,
+                    background: 'var(--primary)', color: '#fff',
+                    padding: '10px 14px', borderRadius: 12,
+                    fontSize: 12, fontWeight: 600, lineHeight: 1.4,
+                    maxWidth: 240,
+                    boxShadow: '0 6px 20px rgba(0,0,0,.25)',
+                    zIndex: 50, cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ fontWeight: 800, marginBottom: 2 }}>
+                    💡 {t('match.detail.shareHintTitle')}
+                  </div>
+                  <div style={{ opacity: 0.92 }}>
+                    {t('match.detail.shareHintBody')}
+                  </div>
+                  <div style={{
+                    position: 'absolute', top: -6, right: 16,
+                    width: 0, height: 0,
+                    borderLeft: '6px solid transparent',
+                    borderRight: '6px solid transparent',
+                    borderBottom: '6px solid var(--primary)',
+                  }} />
+                </div>
+              )}
               <div style={{
                 fontWeight: 900, fontSize: 20, color: isLive ? 'var(--primary)' : 'var(--text)',
                 letterSpacing: 1, flexShrink: 0,
