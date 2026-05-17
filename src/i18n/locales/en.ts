@@ -2570,6 +2570,7 @@ export const en: Record<TranslationKey, string> = {
   'tournament.simpleQuick.title': 'Tournament day — quick actions',
   'tournament.simpleQuick.desc': 'Print the bracket & schedule, send the link to parents.',
   'tournament.simpleQuick.printBtn': 'Print bracket',
+  'tournament.simpleQuick.printBtnGroups': 'Print schedule',
   'tournament.simpleQuick.shareBtn': 'Parents\u2019 link',
   'tournament.simpleQuick.inviteCta': 'Recommend to a fellow coach',
   'tournament.simpleQuick.inviteCopied': 'Recommendation text copied to clipboard \ud83d\udc4d',

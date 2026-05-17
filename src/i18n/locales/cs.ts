@@ -2590,6 +2590,7 @@ export const cs = {
   'tournament.simpleQuick.title': 'Turnajový den — rychlé akce',
   'tournament.simpleQuick.desc': 'Vytiskni si pavouka a rozpis, odkaz pošli rodičům do skupiny.',
   'tournament.simpleQuick.printBtn': 'Vytisknout pavouka',
+  'tournament.simpleQuick.printBtnGroups': 'Vytisknout rozpis',
   'tournament.simpleQuick.shareBtn': 'Odkaz pro rodiče',
   'tournament.simpleQuick.inviteCta': 'Pošli aplikaci kolegovi-trenérovi',
   'tournament.simpleQuick.inviteCopied': 'Text pro kolegy zkopírován do schránky 👍',

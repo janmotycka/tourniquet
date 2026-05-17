@@ -301,7 +301,11 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}
             >
-              📄 {pdfExporting ? t('pdf.generating') : t('tournament.simpleQuick.printBtn')}
+              📄 {pdfExporting
+                ? t('pdf.generating')
+                : tournament.format === 'round-robin'
+                  ? t('tournament.simpleQuick.printBtnGroups')
+                  : t('tournament.simpleQuick.printBtn')}
             </button>
             <button
               onClick={async () => {

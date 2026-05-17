@@ -2570,6 +2570,7 @@ export const de: Record<TranslationKey, string> = {
   'tournament.simpleQuick.title': 'Turniertag — Schnellaktionen',
   'tournament.simpleQuick.desc': 'Turnierplan drucken, Link an Eltern senden.',
   'tournament.simpleQuick.printBtn': 'Plan drucken',
+  'tournament.simpleQuick.printBtnGroups': 'Spielplan drucken',
   'tournament.simpleQuick.shareBtn': 'Eltern-Link',
   'tournament.simpleQuick.inviteCta': 'Trainer-Kollegen empfehlen',
   'tournament.simpleQuick.inviteCopied': 'Empfehlungstext in Zwischenablage 👍',
