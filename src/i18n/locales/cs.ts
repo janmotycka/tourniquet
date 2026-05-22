@@ -1160,6 +1160,7 @@ export const cs = {
   'match.quickSheet.trackAssistsSummary': 'asistence',
   'match.quickSheet.captainLabel': 'Kapitán týmu',
   'match.quickSheet.captainNone': 'Bez kapitána',
+  'match.quickSheet.opponentRequired': 'Zadej soupeře (alespoň 2 znaky) pro spuštění zápasu',
   'match.quickSheet.pickSquad': 'Vyber partu',
   'match.quickSheet.lastSquadPrompt': 'Pokračovat s partou „{name}"?',
   'match.quickSheet.lastSquadUse': 'Použít',

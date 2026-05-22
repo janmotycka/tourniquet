@@ -19,6 +19,7 @@ import { useI18n } from '../../i18n';
 import { useAuth } from '../../context/AuthContext';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useSimpleSquadsStore } from '../../store/simpleSquads.store';
+import { useUnsavedFormGuard } from '../../hooks/useUnsavedFormGuard';
 import { useMatchesStore } from '../../store/matches.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useToastStore } from '../../store/toast.store';
@@ -501,9 +502,14 @@ export function QuickMatchSheet({
     onCreate(opponent, roster, finalSquadId, preset);
   };
 
-  // Submit blokujeme jen když user napsal jméno do "+ Přidat hráče" inputu
-  // ale nezmáčkl Přidat — chceme aby se nepřišel o hráče. Auto-flush.
-  const submitDisabled = false; // jméno není povinné, soupiska volitelná
+  // Submit validace (audit 2026-05-22 Phase 1e):
+  // - Opponent je povinný (min 2 znaky) — bez něj se vytváří DB junk
+  // - Soupiska volitelná (lineup může být prázdný, edituje se později)
+  const submitDisabled = opponent.trim().length < 2;
+
+  // Unsaved guard (audit 2026-05-22 Phase 1d): zabrání ztrátě dat při refresh
+  // pokud user vyplnil opponent nebo přidal hráče.
+  useUnsavedFormGuard(opponent.trim().length > 0 || players.length > 0);
 
   // ─── Styles ────────────────────────────────────────────────────────────────
   const labelStyle: React.CSSProperties = {
@@ -555,7 +561,7 @@ export function QuickMatchSheet({
         </div>
       <div style={{ position: 'relative' }}>
         <label htmlFor="quick-opponent" style={labelStyle}>
-          ⚔️ {t('match.quickSheet.opponentLabel')}
+          ⚔️ {t('match.quickSheet.opponentLabel')} <span style={{ color: 'var(--danger)' }}>*</span>
         </label>
         <input
           id="quick-opponent"
@@ -568,6 +574,8 @@ export function QuickMatchSheet({
           placeholder={t('match.quickSheet.opponentPlaceholder')}
           style={inputStyle}
           autoComplete="off"
+          required
+          aria-required="true"
         />
         {opponentSuggestions.length > 0 && (
           <div style={{
@@ -1543,13 +1551,28 @@ export function QuickMatchSheet({
         disabled={submitDisabled}
         style={{
           padding: '14px', borderRadius: 12,
-          background: 'var(--primary)', color: '#fff', border: 'none',
-          fontWeight: 800, fontSize: 15, cursor: 'pointer',
-          marginTop: 4, boxShadow: 'var(--shadow-sm)',
+          background: submitDisabled ? 'var(--border)' : 'var(--primary)',
+          color: submitDisabled ? 'var(--text-muted)' : '#fff',
+          border: 'none',
+          fontWeight: 800, fontSize: 15,
+          cursor: submitDisabled ? 'not-allowed' : 'pointer',
+          marginTop: 4,
+          boxShadow: submitDisabled ? 'none' : 'var(--shadow-sm)',
+          opacity: submitDisabled ? 0.6 : 1,
+          transition: 'background .15s, opacity .15s',
         }}
+        title={submitDisabled ? t('match.quickSheet.opponentRequired') : undefined}
       >
         ⚡ {t('match.quickSheet.startCta')}
       </button>
+      {submitDisabled && (opponent.length > 0 || players.length > 0) && (
+        <div style={{
+          fontSize: 11, color: 'var(--text-muted)',
+          textAlign: 'center', lineHeight: 1.4,
+        }}>
+          {t('match.quickSheet.opponentRequired')}
+        </div>
+      )}
 
       {onSwitchToFullMatch && (
         <button

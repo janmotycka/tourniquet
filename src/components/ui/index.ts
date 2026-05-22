@@ -21,6 +21,8 @@ export { Stepper } from './Stepper';
 
 export { BottomSheet } from './BottomSheet';
 
+export { CollapsibleSection } from './CollapsibleSection';
+
 export { OfficialLinkButton } from './OfficialLinkButton';
 
 export {

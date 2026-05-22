@@ -1149,6 +1149,7 @@ export const en: Record<TranslationKey, string> = {
   'match.quickSheet.trackAssistsSummary': 'assists',
   'match.quickSheet.captainLabel': 'Team captain',
   'match.quickSheet.captainNone': 'No captain',
+  'match.quickSheet.opponentRequired': 'Enter opponent name (at least 2 characters) to start the match',
   'match.quickSheet.pickSquad': 'Pick a squad',
   'match.quickSheet.lastSquadPrompt': 'Continue with squad “{name}”?',
   'match.quickSheet.lastSquadUse': 'Use',
