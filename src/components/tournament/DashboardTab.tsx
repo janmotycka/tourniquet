@@ -77,6 +77,9 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
   const [showGroupDraw, setShowGroupDraw] = useState(false);
   const [regShareOpen, setRegShareOpen] = useState(!(tournament.settings.registrationClosed ?? false));
   const [rejectedOpen, setRejectedOpen] = useState(false);
+  // Audit 2026-05-22: Týmy a Soupisky sekce sbalitelná (jako Přihlášky/Platby).
+  // Default true (zachovat existing UX), user může sbalit pro kompaktní přehled.
+  const [teamsExpanded, setTeamsExpanded] = useState(true);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
   const [rejectedRegs, setRejectedRegs] = useState<Array<{ teamName: string; coachName: string; coachPhone: string }>>([]);
   const [rejectTarget, setRejectTarget] = useState<{ regId: string; reg: RegistrationSubmission } | null>(null);
@@ -583,7 +586,11 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
           background: 'var(--surface)', borderRadius: 14, padding: '16px',
           boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 10,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Header — klikatelný pro sbalení/rozbalení sekce (audit 2026-05-22) */}
+          <div
+            onClick={() => setTeamsExpanded(v => !v)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+          >
             <h3 style={{ fontWeight: 700, fontSize: 15, margin: 0, flex: 1 }}>
               👥 {t('dashboard.teams')} ({tournament.teams.length}{hasExplicitMax ? `/${maxTeams}` : ''})
               {pendingRegs.length > 0 && (
@@ -594,19 +601,25 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
             </h3>
             {isAdmin && tournament.teams.length > 0 && (
               <button
-                onClick={() => setEditTeamsMode(!editTeamsMode)}
+                onClick={(e) => { e.stopPropagation(); setEditTeamsMode(!editTeamsMode); }}
                 style={{
                   padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 600,
                   background: editTeamsMode ? 'var(--danger-light)' : 'var(--surface-var)',
                   color: editTeamsMode ? 'var(--danger)' : 'var(--text-muted)',
-                  border: editTeamsMode ? '1px solid #FFCDD2' : '1px solid var(--border)',
+                  border: editTeamsMode ? '1px solid var(--card-red-light)' : '1px solid var(--border)',
                   cursor: 'pointer', transition: 'all .15s',
                 }}
               >
                 {editTeamsMode ? `✕ ${t('dashboard.editTeamsDone')}` : `✏️ ${t('dashboard.editTeams')}`}
               </button>
             )}
+            <span style={{
+              fontSize: 12, color: 'var(--text-muted)',
+              transition: 'transform .2s',
+              transform: teamsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+            }}>▼</span>
           </div>
+          {teamsExpanded && (<>
 
           {/* Pending registrations — orange highlight at top */}
           {isRegistration && isAdmin && pendingRegs.map(([regId, reg]) => (
@@ -1053,6 +1066,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
               )}
             </div>
           )}
+          </>)}
         </div>
       )}
 
