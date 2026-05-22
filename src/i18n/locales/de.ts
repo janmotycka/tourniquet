@@ -1084,6 +1084,8 @@ export const de: Record<TranslationKey, string> = {
   'match.quickSheet.opponentPlaceholder': 'Gegen wen spielt ihr?',
   'match.quickSheet.opponentHint': 'Leer lassen wenn unbekannt — später ergänzbar.',
   'match.quickSheet.startCta': 'Spiel starten',
+  'match.quickSheet.editLineupCta': 'Aufstellung hinzufügen →',
+  'match.quickSheet.editLineupHint': 'Erstellt das Spiel und öffnet den Aufstellungs-Editor (Kapitän, Trikotnummern, Bank) — startet die Uhr nicht.',
   'match.quickSheet.durationLabel': 'Wie lange?',
   'match.quickSheet.durationHint': 'Kurzturnier = 10 min. Camp / Freundschaft = 15 min. Volles Spiel = 2×30.',
   'match.quickSheet.preset.short': 'kurz',

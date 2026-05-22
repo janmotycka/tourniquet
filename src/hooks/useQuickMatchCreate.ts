@@ -41,6 +41,13 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
     roster: QuickMatchRosterEntry[],
     _squadId?: string,
     preset?: QuickMatchPreset,
+    /**
+     * Audit 2026-05-22 Phase 3: intent rozhoduje, kam po vytvoření navigovat.
+     * - 'start' (default) — auto-startMatch + match-detail (live tab) → rychlé spuštění
+     * - 'lineup' — bez startMatch, match-detail s lineup tab → uživatel chce editovat
+     *   sestavu před spuštěním (např. označit kapitána, doplnit hráče, atd.)
+     */
+    intent: 'start' | 'lineup' = 'start',
   ) => {
     void _squadId; // pro budoucí audit trail (squad → match)
     const activeClub = clubs.find(c => c.id === activeClubId);
@@ -113,7 +120,13 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       // featury (FAČR hlášení) skryje pro Quick zápasy.
       isQuickMatch: true,
     });
-    startMatch(match.id);
-    navigate({ name: 'match-detail', matchId: match.id });
+    if (intent === 'start') {
+      startMatch(match.id);
+      navigate({ name: 'match-detail', matchId: match.id });
+    } else {
+      // Lineup intent — bez startu, otevři detail rovnou na lineup tabu,
+      // user může doplnit sestavu a startovat ručně přes „Spustit zápas".
+      navigate({ name: 'match-detail', matchId: match.id, initialTab: 'lineup' });
+    }
   }, [clubs, activeClubId, preferredSport, createMatch, startMatch, navigate, t]);
 }

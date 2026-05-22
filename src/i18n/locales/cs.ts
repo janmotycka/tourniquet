@@ -1095,6 +1095,8 @@ export const cs = {
   'match.quickSheet.opponentPlaceholder': 'Proti komu hrajete?',
   'match.quickSheet.opponentHint': 'Nech prázdné pokud ještě nevíš — můžeš doplnit později.',
   'match.quickSheet.startCta': 'Spustit zápas',
+  'match.quickSheet.editLineupCta': 'Přidat sestavu →',
+  'match.quickSheet.editLineupHint': 'Vytvoří zápas a otevře editor sestavy (kapitán, čísla dresů, lavička) — nespouští stopky.',
   'match.quickSheet.durationLabel': 'Jak dlouhý zápas?',
   'match.quickSheet.durationHint': 'McDonald\u2019s Cup = 10 min. Tábor / přátelák = 15 min. Plný fotbal = 2×30.',
   'match.quickSheet.preset.short': 'krátký',

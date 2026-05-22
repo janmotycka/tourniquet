@@ -23,7 +23,12 @@ import { useMatchPerspective } from '../../hooks/useMatchPerspective';
 import { subscribeToSingleMatch } from '../../services/match.firebase';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 
-interface Props { matchId: string; navigate: (p: Page) => void; }
+interface Props {
+  matchId: string;
+  navigate: (p: Page) => void;
+  /** Volitelně předvybrat tab (např. 'lineup' po vytvoření match z Quick flow). Audit 2026-05-22 Phase 3. */
+  initialTab?: 'live' | 'lineup' | 'ratings';
+}
 
 type Tab = 'live' | 'lineup' | 'ratings';
 
@@ -41,7 +46,7 @@ function MatchDetailSkeleton() {
 
 // ─── MatchDetailPage ──────────────────────────────────────────────────────────
 
-export function MatchDetailPage({ matchId, navigate }: Props) {
+export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
   const { t, locale } = useI18n();
   const { isDesktop } = useLayoutMode();
   const match = useMatchesStore(s => s.getMatchById(matchId));
@@ -51,7 +56,7 @@ export function MatchDetailPage({ matchId, navigate }: Props) {
   const resetMatch = useMatchesStore(s => s.resetMatch);
   const reopenMatch = useMatchesStore(s => s.reopenMatch);
   const ask = useConfirmStore(s => s.ask);
-  const [tab, setTab] = useState<Tab>('live');
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'live');
   const [showShare, setShowShare] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [isHydrating, setIsHydrating] = useState(true);

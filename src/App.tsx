@@ -96,7 +96,7 @@ export type Page =
   | { name: 'match-list' }
   | { name: 'match-create' }
   | { name: 'match-quick'; prefillFromMatchId?: string }
-  | { name: 'match-detail'; matchId: string }
+  | { name: 'match-detail'; matchId: string; initialTab?: 'live' | 'lineup' | 'ratings' }
   | { name: 'match-public'; matchId: string }
   | { name: 'match-stats' }
   | { name: 'tennis-player'; playerId: string }
@@ -501,7 +501,7 @@ function AppRouter() {
       {page.name === 'match-detail' && (
         isTennisMode
           ? <TennisMatchDetailPage matchId={page.matchId} navigate={navigate} />
-          : <MatchDetailPage matchId={page.matchId} navigate={navigate} />
+          : <MatchDetailPage matchId={page.matchId} navigate={navigate} initialTab={page.initialTab} />
       )}
       {/* match-stats je zatím jen fotbalová (tenisové statistiky budou mít vlastní metriky).
           Tenisový user sem nedorazí přes UI — sidebar mu match-stats vůbec nenabízí. */}

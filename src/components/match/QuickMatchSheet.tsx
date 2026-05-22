@@ -121,6 +121,11 @@ interface Props {
     roster: QuickMatchRosterEntry[],
     squadId?: string,
     preset?: QuickMatchPreset,
+    /**
+     * Audit 2026-05-22 Phase 3: 'start' (default) = auto-spustit match,
+     * 'lineup' = vytvořit + otevřít detail na lineup tab pro editaci.
+     */
+    intent?: 'start' | 'lineup',
   ) => void;
   /**
    * 'sheet' (default) — bottom-sheet modal pattern (legacy).
@@ -460,12 +465,12 @@ export function QuickMatchSheet({
     [players],
   );
 
-  const handleStart = () => {
-    if (!opponent.trim() && validPlayers.length === 0) {
-      // Quick safety — user nezadal opponent ani hráče. Necháme proběhnout
-      // (default opponent placeholder), ale alespoň loglet pro diagnostiku.
-    }
-
+  /**
+   * Audit 2026-05-22 Phase 3: submit handler s intent parametrem.
+   * - 'start' → auto-startMatch (rychlé spuštění)
+   * - 'lineup' → navigace na lineup tab pro editaci sestavy před spuštěním
+   */
+  const submitWithIntent = (intent: 'start' | 'lineup') => {
     const roster: QuickMatchRosterEntry[] = validPlayers.map(p => {
       const jersey = parseInt(p.jerseyNumber, 10);
       const year = parseInt(p.birthYear, 10);
@@ -509,8 +514,11 @@ export function QuickMatchSheet({
       trackAssists,
       captainPlayerId: captainPlayerId ?? undefined,
     };
-    onCreate(opponent, roster, finalSquadId, preset);
+    onCreate(opponent, roster, finalSquadId, preset, intent);
   };
+
+  const handleStart = () => submitWithIntent('start');
+  const handleEditLineup = () => submitWithIntent('lineup');
 
   // Submit validace (audit 2026-05-22 Phase 1e):
   // - Opponent je povinný (min 2 znaky) — bez něj se vytváří DB junk
@@ -1573,6 +1581,10 @@ export function QuickMatchSheet({
         </div>
       )}
 
+      {/* Audit 2026-05-22 Phase 3: Dual CTA — uživatel se rozhodne jestli
+          spustit hned nebo nejdřív doplnit sestavu. „Spustit hned" je primární
+          akce (rychlý zápas bez detailů). „Přidat sestavu →" otevře lineup
+          editor na detail page kde se dá kapitán, čísla dresů, bench, atd. */}
       <button
         onClick={handleStart}
         disabled={submitDisabled}
@@ -1592,6 +1604,28 @@ export function QuickMatchSheet({
       >
         ⚡ {t('match.quickSheet.startCta')}
       </button>
+      {/* V Simple módu lineup tab v match-detail není navigovatelný (jen 'live'),
+          takže by uživatel uvízl. CTA skrýváme — Simple flow = spustit hned. */}
+      {!isSimpleMode && (
+        <button
+          type="button"
+          onClick={handleEditLineup}
+          disabled={submitDisabled}
+          style={{
+            padding: '12px', borderRadius: 12,
+            background: 'transparent',
+            color: submitDisabled ? 'var(--text-muted)' : 'var(--primary)',
+            border: `1.5px solid ${submitDisabled ? 'var(--border)' : 'var(--primary)'}`,
+            fontWeight: 700, fontSize: 14,
+            cursor: submitDisabled ? 'not-allowed' : 'pointer',
+            opacity: submitDisabled ? 0.6 : 1,
+            transition: 'opacity .15s, border-color .15s',
+          }}
+          title={submitDisabled ? t('match.quickSheet.opponentRequired') : t('match.quickSheet.editLineupHint')}
+        >
+          📋 {t('match.quickSheet.editLineupCta')}
+        </button>
+      )}
       {submitDisabled && (opponent.length > 0 || players.length > 0) && (
         <div style={{
           fontSize: 11, color: 'var(--text-muted)',
