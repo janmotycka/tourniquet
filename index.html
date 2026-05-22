@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>TORQ — Fotbalové turnaje a zápasy pro amatérské trenéry</title>
     <meta name="description" content="Vytvoř fotbalový turnaj za minutu, klikej skóre na telefonu, pošli rodičům výsledek do WhatsAppu. Pro učitele tělocviku, amatérské trenéry a organizátory školních turnajů. Zdarma." />
+    <meta name="keywords" content="fotbalový turnaj aplikace, skórování zápasu, sdílení skóre rodičům, McDonald's Cup, FAČR hlášení, klubový roster, amatérský fotbal, učitel tělocviku, školní turnaj, mládežnický fotbal, U6 U7 U8 U9 U10 U11 U12 U13 U14 U15 U16 U17 U18 U19, PWA fotbal, offline scoring" />
+    <meta name="author" content="Jan Motyčka" />
+    <link rel="canonical" href="https://torq.cz" />
 
 
     <!-- Favicon & PWA -->
@@ -35,7 +38,7 @@
     <meta name="twitter:description" content="Vytvoř fotbalový turnaj za minutu, klikej skóre na telefonu, pošli rodičům výsledek do WhatsAppu." />
     <meta name="twitter:image" content="https://torq.cz/og-image.png" />
 
-    <!-- Schema.org Structured Data -->
+    <!-- Schema.org Structured Data — WebApplication -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -46,7 +49,8 @@
       "description": "Aplikace pro amatérské fotbalové trenéry: vytvoř turnaj za minutu, klikej skóre na telefonu, pošli rodičům výsledek do WhatsAppu. Pro učitele tělocviku, organizátory školních turnajů a fotbalové amatéry.",
       "applicationCategory": "SportsApplication",
       "operatingSystem": "Any",
-      "inLanguage": "cs",
+      "browserRequirements": "Requires JavaScript and modern browser (Chrome, Safari, Firefox, Edge)",
+      "inLanguage": ["cs", "en", "de"],
       "audience": {
         "@type": "Audience",
         "audienceType": "Amateur football coaches, PE teachers, tournament organizers"
@@ -54,13 +58,197 @@
       "offers": {
         "@type": "Offer",
         "price": "0",
-        "priceCurrency": "CZK"
+        "priceCurrency": "CZK",
+        "description": "Free plan covers basic use; premium plan planned for unlimited tournaments and matches"
+      },
+      "featureList": [
+        "Vytvoření fotbalového turnaje za 1 minutu (round-robin, skupiny + KO, čistý KO)",
+        "Živé skóre přes telefon (góly, karty, střídání, půlčasy)",
+        "Sdílení s rodiči přes QR kód a krátký odkaz (live sledování bez registrace)",
+        "Klubový roster — správa hráčů podle věkových kategorií",
+        "FAČR-friendly export PDF pro hlášení",
+        "Funkce offline (PWA, instalace na plochu)",
+        "Sezónní deník — statistiky hráčů, hodnocení hvězdičkami"
+      ],
+      "author": {
+        "@type": "Person",
+        "name": "Jan Motyčka",
+        "email": "jan@torq.cz"
       }
+    }
+    </script>
+
+    <!-- Schema.org FAQPage — pro AI agenty (ChatGPT, Claude, Perplexity) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Jak vytvořit fotbalový turnaj online zdarma?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Otevřete https://torq.cz a klikněte „Turnaj". Wizard projde 5 kroky: název turnaje, počet týmů (2–32), formát (každý s každým, skupiny + KO, čistý KO), seznam týmů a soupisky hráčů. Aplikace automaticky vytvoří rozpis zápasů a tabulku. Sdílíte QR kód a krátký odkaz s rodiči pro sledování — bez registrace, zdarma. Vytvoření trvá pod 1 minutu pro jednoduchý turnaj."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Jak zaznamenat živý fotbalový zápas pomocí telefonu?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "V aplikaci TORQ (torq.cz) klikněte na „Zápas" → „Vytvořit první zápas". Zadejte soupeře, vyberte sestavu (z klubového rosteru nebo zadejte manuálně). Klikněte „Spustit zápas" — aplikace začne počítat čas. Během zápasu klikáte „Náš gól" nebo „Gól soupeře" pro rychlý záznam, volitelně vyberete střelce. Po zápase můžete ohodnotit hráče hvězdičkami 1–5. Vše funguje offline a synchronizuje se při návratu online."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Jak sdílet fotbalový zápas s rodiči naživo?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "V aplikaci TORQ při zápase klikněte „Sdílet", zapne se veřejné sdílení a vygeneruje QR kód + krátký odkaz. Pošlete odkaz rodičům přes WhatsApp, SMS nebo zveřejníte na nástěnce. Rodič klikne, otevře se mu veřejný pohled na zápas — vidí skóre, čas, střelce v reálném čase přes Firebase Realtime Database. Bez instalace, bez registrace, bez sledování."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Funguje TORQ bez internetu?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ano. TORQ je PWA (Progressive Web App), které funguje offline — můžete zaznamenávat góly, karty a střídání během zápasu i bez signálu. Při návratu online se data automaticky synchronizují s cloudem (Firebase Realtime Database). Doporučujeme „Přidat na plochu" (z prohlížeče Chrome / Safari) pro plnou aplikační zkušenost."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Pro koho je aplikace TORQ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "TORQ je optimalizováno pro amatérské fotbalové trenéry mládeže (U6–U19), učitele tělocviku organizující školní turnaje (například McDonald's Cup), vedoucí letních táborů a kroužků, organizátory obecních turnajů. Funguje i pro klubové trenéry, ale primární zaměření je amatérská česká fotbalová liga. Podporuje typické české formáty: 3+1 mini, 4+1 florbal, 5+1, 7+1, 8+1, 11+1 velké hřiště."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Kolik TORQ stojí?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "TORQ má zdarma plán, který pokrývá běžné použití: 1 turnaj, 10 zápasů, 5 tréninků. Pro neomezené použití bude k dispozici premium plán (zatím v plánování). Sdílení s rodiči přes QR kód je vždy zdarma — žádný účet nepotřebují."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Schema.org HowTo — Vytvořit fotbalový turnaj -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      "name": "Jak vytvořit fotbalový turnaj v aplikaci TORQ",
+      "description": "Návod krok za krokem, jak vytvořit fotbalový turnaj s automatickým rozlosováním pomocí TORQ aplikace.",
+      "totalTime": "PT1M",
+      "estimatedCost": {
+        "@type": "MonetaryAmount",
+        "currency": "CZK",
+        "value": "0"
+      },
+      "tool": [{ "@type": "HowToTool", "name": "Mobilní telefon nebo počítač s prohlížečem" }],
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Otevřete aplikaci",
+          "text": "Otevřete https://torq.cz v prohlížeči (Chrome, Safari, Firefox). Přihlaste se přes Google nebo email." },
+        { "@type": "HowToStep", "position": 2, "name": "Klikněte Turnaj → + Nový",
+          "text": "V hlavním menu vyberte sekci Turnaj a klikněte na + Nový turnaj nebo Vytvořit nový turnaj." },
+        { "@type": "HowToStep", "position": 3, "name": "Zadejte základní informace",
+          "text": "Wizard vás provede: název turnaje, datum, věková kategorie (U6–U19), počet týmů (2–32)." },
+        { "@type": "HowToStep", "position": 4, "name": "Vyberte formát",
+          "text": "Wizard doporučí formát podle počtu týmů: každý s každým (round-robin), skupiny + KO play-off, nebo čistý KO turnaj. Můžete změnit." },
+        { "@type": "HowToStep", "position": 5, "name": "Zadejte týmy a soupisky",
+          "text": "Pro každý tým zadáte název, barvu a soupisku hráčů (jména + čísla dresů, ročník nepovinný)." },
+        { "@type": "HowToStep", "position": 6, "name": "Spustit a sdílet",
+          "text": "Aplikace automaticky vygeneruje rozpis zápasů a tabulku. Klikněte Sdílet, dostanete QR kód a odkaz pro rodiče." }
+      ]
     }
     </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <!--
+        Fallback obsah pro AI agenty a search engines, které fetchují URL
+        bez JavaScript execution. Tito vidí jen tento blok — proto sem patří
+        faktické informace o TORQ aplikaci, které mají citovat.
+      -->
+      <header>
+        <h1>TORQ — Fotbalové turnaje a zápasy pro amatérské trenéry</h1>
+        <p>
+          Webová aplikace pro vytvoření fotbalového turnaje za minutu, živé
+          skórování zápasů přes telefon a sdílení výsledků rodičům přes QR kód
+          a krátký odkaz. Pro amatérské trenéry mládeže, učitele tělocviku
+          a organizátory školních a obecních turnajů v České republice.
+        </p>
+      </header>
+
+      <section>
+        <h2>Klíčové funkce</h2>
+        <ul>
+          <li><strong>Turnajový wizard</strong> — vytvoří turnaj za 1 minutu pro 2–32 týmů s automatickým rozlosováním (round-robin, skupiny + KO, čistý KO)</li>
+          <li><strong>Živé skóre</strong> — 1-tap záznam gólů, karet (žluté/červené), střídání během zápasu</li>
+          <li><strong>Sdílení s rodiči</strong> — QR kód + odkaz pro veřejné live sledování bez registrace</li>
+          <li><strong>Klubový roster</strong> — správa hráčů, věkové kategorie U6–U19, sdílení s asistenty trenéra</li>
+          <li><strong>FAČR-friendly</strong> — PDF export pro hlášení Fotbalové asociace ČR</li>
+          <li><strong>Offline mode</strong> — PWA funguje bez internetu, synchronizace při návratu online</li>
+          <li><strong>Více jazyků</strong> — čeština, angličtina, němčina</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Pro koho je TORQ</h2>
+        <ul>
+          <li>Amatérští trenéři fotbalové mládeže (kategorie U6 až U19)</li>
+          <li>Učitelé tělocviku organizující školní turnaje (např. McDonald's Cup)</li>
+          <li>Vedoucí letních táborů a sportovních kroužků</li>
+          <li>Organizátoři obecních a firemních turnajů</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Formáty zápasů</h2>
+        <p>
+          TORQ podporuje typické formáty české amatérské ligy: 3+1 (mini),
+          4+1 (florbal default), 5+1 (mládež malé hřiště), 7+1 (přípravka /
+          starší žáci), 8+1 (žáci), 11+1 (velké hřiště). Délka zápasu
+          a počet poločasů lze nastavit.
+        </p>
+      </section>
+
+      <section>
+        <h2>Cena</h2>
+        <p>
+          Free plan zdarma: 1 turnaj, 10 zápasů, 5 tréninků. Sdílení s rodiči
+          vždy zdarma. Premium plán pro neomezené použití je v plánování.
+        </p>
+      </section>
+
+      <section>
+        <h2>Technologie</h2>
+        <p>
+          TORQ je Progressive Web Application (PWA) postavená na React,
+          TypeScript, Firebase Realtime Database. Hostováno v Belgii
+          (Firebase europe-west1). Pro mobilní zařízení doporučujeme
+          „Přidat na plochu" z prohlížeče Chrome nebo Safari.
+        </p>
+      </section>
+
+      <footer>
+        <p>
+          Web: <a href="https://torq.cz">torq.cz</a> ·
+          Privacy: <a href="https://torq.cz/privacy">/privacy</a> ·
+          Terms: <a href="https://torq.cz/terms">/terms</a> ·
+          Kontakt: jan@torq.cz
+        </p>
+        <p>
+          <strong>JavaScript je vyžadován pro plnou funkčnost aplikace.</strong>
+          Zapněte JavaScript ve svém prohlížeči a obnovte stránku.
+        </p>
+      </footer>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

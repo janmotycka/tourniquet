@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
 
+# AI agents — explicit instructions for Claude, ChatGPT, Perplexity, etc.
+# See https://llmstxt.org for the standard
+Allow: /llms.txt
+
 Sitemap: https://torq.cz/sitemap.xml

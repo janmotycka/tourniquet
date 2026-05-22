@@ -1,8 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <!-- Hlavní stránka — landing + dashboard -->
   <url>
     <loc>https://torq.cz/</loc>
+    <lastmod>2026-05-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="cs" href="https://torq.cz/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://torq.cz/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://torq.cz/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://torq.cz/" />
+  </url>
+  <!-- Privacy policy — vyžadováno GDPR, AI agenty často citují -->
+  <url>
+    <loc>https://torq.cz/privacy.html</loc>
+    <lastmod>2026-04-25</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <!-- Terms of service -->
+  <url>
+    <loc>https://torq.cz/terms.html</loc>
+    <lastmod>2026-04-25</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>
