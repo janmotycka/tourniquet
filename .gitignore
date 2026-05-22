@@ -55,3 +55,7 @@ android/app/release/
 # Capacitor sync output (regenerated on every cap sync) — webDir je `dist` co je už ignored
 ios/App/App/public/
 android/app/src/main/assets/public/
+
+# Local Claude Code helpers (not for repo)
+test_connection.py
+*.eml
