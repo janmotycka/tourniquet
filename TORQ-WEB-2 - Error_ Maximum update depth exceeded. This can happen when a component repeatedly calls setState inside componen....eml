@@ -1,0 +1,546 @@
+Delivered-To: honza.motyka@gmail.com
+Received: by 2002:a05:7208:c30f:b0:fd:9dba:3c57 with SMTP id s15csp373973rbf;
+        Wed, 8 Apr 2026 04:02:36 -0700 (PDT)
+X-Received: by 2002:a5d:5847:0:b0:43c:ffc1:465f with SMTP id ffacd0b85a97d-43d292e1ab6mr28640781f8f.23.1775646156103;
+        Wed, 08 Apr 2026 04:02:36 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1775646156; cv=none;
+        d=google.com; s=arc-20240605;
+        b=GcASVRojMBur3hKHTTQNKWcobE8CwU2jWARGLZSS0o5CvdkCFUzJcGKTmxVE3gqxD+
+         mTfaIA2NmR57iNCO9e1fHwqIg3erCB4MyoQSQTdlPLrmKpLtXgxsq3jGADkUbeIuo45E
+         PBgQjaG5Qk1QQK45PQ5gLNwnWzDD/Zx1fM8ux4RDrLxbVVmEpt0wZzui0xdwyZdSFORX
+         pCZOz9CsEi6iE+BtpBMOZVrtBTR9kCA6Fkn3E43/5D+3uoPIFLfysFbj0uEtEvnXMzcI
+         DjQ+o4FmUGfCyetFez+gcur8FYTR/oQvkLE+6KZt/NwIrkYSQdwVRlEGV4+bz5N1bSrw
+         SaaQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=feedback-id:message-id:list-id:date:reply-to:to:from:subject
+         :mime-version:dkim-signature:dkim-signature;
+        bh=vshjaFjqV9m0P+4DE1I3B4NznzZDlM5N34X+Cwzsr28=;
+        fh=Duvh4ja4n5/5TGVQXnlFD9yYW9oSFKT12+LXApTNuWw=;
+        b=VVQiZHPwgXHcZ1RvdwNfXcjeJA8G5bPAen5zaPJ99yMXIz6cEbH2ynxueb5bTxcdEt
+         VL/Rushr439zeP/hAN2U9svm0FYlIcP4EwcXAuu2V0jcI7+QFqEHa1H7zP/C/fBgF7Ln
+         WPykfVJLv2NsQoIf0HkrMRLxE/+vjcdy/BAp22Yd69vVgWR2/HUu5umHL0GMBdE00L7A
+         2nQltzqrAKWnca8iFazKM8ksTqimDo8sT5BBozxkZrC2LSG7DNOgSgqJvyJYKNbN2kLy
+         EF/7d+J9Y/F8/NJyqUs+vO4LavD7/iBxBujZ7/7dooVGdmS1zfzaU4uDE/A4Rn/bWLT+
+         EkQQ==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@md.getsentry.com header.s=dgiifvxgcpauw74hjvgousmem4wsca6w header.b=PoXBaNM3;
+       dkim=pass header.i=@amazonses.com header.s=sokbgaaqhfgd6qjht2wmdajpuuanpimv header.b=c3ob85bz;
+       spf=pass (google.com: domain of 0107019d6cc22401-68344a77-fa7d-4e85-855a-15944b4d6c03-000000@ses-eu.md.getsentry.com designates 69.169.224.56 as permitted sender) smtp.mailfrom=0107019d6cc22401-68344a77-fa7d-4e85-855a-15944b4d6c03-000000@ses-eu.md.getsentry.com;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=md.getsentry.com
+Return-Path: <0107019d6cc22401-68344a77-fa7d-4e85-855a-15944b4d6c03-000000@ses-eu.md.getsentry.com>
+Received: from b224-56.smtp-out.eu-central-1.amazonses.com (b224-56.smtp-out.eu-central-1.amazonses.com. [69.169.224.56])
+        by mx.google.com with ESMTPS id ffacd0b85a97d-43d1e51e788si40824142f8f.337.2026.04.08.04.02.36
+        for <honza.motyka@gmail.com>
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 08 Apr 2026 04:02:36 -0700 (PDT)
+Received-SPF: pass (google.com: domain of 0107019d6cc22401-68344a77-fa7d-4e85-855a-15944b4d6c03-000000@ses-eu.md.getsentry.com designates 69.169.224.56 as permitted sender) client-ip=69.169.224.56;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@md.getsentry.com header.s=dgiifvxgcpauw74hjvgousmem4wsca6w header.b=PoXBaNM3;
+       dkim=pass header.i=@amazonses.com header.s=sokbgaaqhfgd6qjht2wmdajpuuanpimv header.b=c3ob85bz;
+       spf=pass (google.com: domain of 0107019d6cc22401-68344a77-fa7d-4e85-855a-15944b4d6c03-000000@ses-eu.md.getsentry.com designates 69.169.224.56 as permitted sender) smtp.mailfrom=0107019d6cc22401-68344a77-fa7d-4e85-855a-15944b4d6c03-000000@ses-eu.md.getsentry.com;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=md.getsentry.com
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple;
+	s=dgiifvxgcpauw74hjvgousmem4wsca6w; d=md.getsentry.com;
+	t=1775646155;
+	h=Content-Type:MIME-Version:Subject:From:To:Reply-To:Date:List-Id:Message-Id;
+	bh=E3SEXYqDzE0CnppA+79bB+YUmrs5ZQUDM+QpHMXcIL4=;
+	b=PoXBaNM3Z6PlBlUH74Jul1Ksz3yZRrJMePuc7LkqO6QqGgiQr4wR8XSwh1lLsRqp
+	0oQMCI9q4FZvRCIuLuE3WZMziLJZNUJCrdWNlnTBbIdgA25WshUlITPYQGEhbp8cwFU
+	vSlOJyBee7GojuuzNM77OQjnAo4JqGk7NKDLyg17rOAdQ4NVL9qoz3zZVoq8/sy1yAg
+	N27dcIoQWG84+CThzbfDYcQkLtugwn3+6c+JiwgrP4UKD/eV2HAIPah2x1RTMbRyi7Z
+	P7JEDW74Km0czSn3uOM8zSkV3tW1MkPMkbSPdyHqAcih9cMFrhuzsB848qFfi+6j7H0
+	9LLacZuPTg==
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple;
+	s=sokbgaaqhfgd6qjht2wmdajpuuanpimv; d=amazonses.com; t=1775646155;
+	h=Content-Type:MIME-Version:Subject:From:To:Reply-To:Date:List-Id:Message-Id:Feedback-ID;
+	bh=E3SEXYqDzE0CnppA+79bB+YUmrs5ZQUDM+QpHMXcIL4=;
+	b=c3ob85bzVv4q9V2DwNa82news3CWSkGqkdTYC3nRYzVspPp7isjZJ6YhJ3NO2CFp
+	yKrGl2BQwQbUKjtc4fMl+wFQLiggsPKRJujM8IlJpt5SxoUNfdv33B0wGQiNfNu0Ufe
+	k/9vv5LE03Kvf5UIlu8rykTXrxjgO2Q5rQowRYGI=
+Content-Type: multipart/alternative;
+ boundary="===============0728010826052698049=="
+MIME-Version: 1.0
+Subject:  TORQ-WEB-2 - Error: Maximum update depth exceeded. This can happen
+ when a
+ component repeatedly calls setState inside componen...
+From: Sentry <noreply@md.getsentry.com>
+To: honza.motyka@gmail.com
+Reply-To: 
+	110572908.4510997338193920+rrc8xe17ogc_otxpiqdsbmqojmq@md.getsentry.com
+Date: Wed, 8 Apr 2026 11:02:35 +0000
+X-SMTPAPI: {"category":"issue_alert"}
+X-Sentry-Project: torq-web
+X-Sentry-Logger: 
+X-Sentry-Logger-Level: error
+X-Sentry-Reply-To: 
+ 110572908.4510997338193920+rrc8xe17ogc_otxpiqdsbmqojmq@md.getsentry.com
+List-Id: <torq-web.jan-motycka.getsentry.com>
+Message-ID: <0107019d6cc22401-68344a77-fa7d-4e85-855a-15944b4d6c03-000000@eu-central-1.amazonses.com>
+Feedback-ID: ::1.eu-central-1.EhjBqsUiece89PThycS+jt7e2y7FuoNiVQcBSPfiyuM=:AmazonSES
+X-SES-Outgoing: 2026.04.08-69.169.224.56
+
+--===============0728010826052698049==
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+
+Details
+-------
+
+https://jan-motycka.sentry.io/issues/110572908/?referrer=alert_email&alert_type=email&alert_timestamp=1775646152684&alert_rule_id=444805&notification_uuid=70801869-21c5-47be-ae74-51414bc49dff&environment=production
+
+
+
+Tags
+----
+
+* browser = Chrome 146.0.0
+* browser.name = Chrome
+* device = Mac
+* device.family = Mac
+* environment = production
+* handled = yes
+* level = error
+* mechanism = generic
+* os = Mac OS X >=10.15.7
+* os.name = Mac OS X
+* url = https://torq.cz/
+
+
+Exception
+-----------
+
+Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+  at Xe (/assets/vendor-react-D1h_O76p.js:8:27648)
+  at Du (/assets/vendor-react-D1h_O76p.js:8:27221)
+  at X0 (/assets/vendor-react-D1h_O76p.js:8:52591)
+  at Y0 (/assets/vendor-react-D1h_O76p.js:8:52420)
+  at le (/assets/vendor-react-D1h_O76p.js:8:92440)
+...
+(45 additional frame(s) were not displayed)
+
+
+Request
+-----------
+
+
+
+
+User
+-----------
+
+
+
+
+
+
+Unsubscribe:
+
+--===============0728010826052698049==
+Content-Type: text/html; charset="utf-8"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+
+<!DOCTYPE html>
+<html style="font-weight: 400">
+<head style="font-weight: 400">
+  <meta charset="utf-8" style="font-weight: 400">
+  <meta name="viewport" content="width=device-width, initial-scale=1" style="font-weight: 400">
+
+  
+
+<style type="text/css" style="font-weight: 400">
+  @import url(https://fonts.googleapis.com/css?family=Lato:400,700);
+</style>
+
+
+  
+  
+  <style type="text/css" style="font-weight: 400">
+    @media only screen and (max-device-width: 480px) {
+      /* Hide CTA in header on mobile */
+      .header-buttons .integration-link {
+        display: none !important;
+      }
+      .banner {
+        display: none !important;
+      }
+    }
+    @media only screen and (max-device-width: 768px) {
+      .text-desktop-only {
+        display: none !important;
+      }
+    }
+  </style>
+
+
+</head>
+<body class="" style='font-weight: 400; background-image: url(https://s1.sentry-cdn.com/_static/61b7948bdd3d25891123c2e386ded495/sentry/images/email/sentry-pattern.png); width: 100%; font-size: 16px; font-family: "Lato", "Helvetica Neue", helvetica, sans-serif; background-color: #fff; color: #2f2936; -webkit-font-smoothing: antialiased; margin: 0; padding: 0'>
+<div class="preheader" style="font-weight: 400; display: none; font-size: 0; max-height: 0; line-height: 0; mso-hide: all; padding: 0">
+  New issue from torq-web.
+</div>
+<table class="main" style='font-weight: 400; width: 100%; border-collapse: separate; font-size: 16px; font-family: "Lato", "Helvetica Neue", helvetica, sans-serif; background-color: #fff; color: #2f2936; -webkit-font-smoothing: antialiased; max-width: 700px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); border-radius: 4px; border: 1px solid #c7d0d4; border-spacing: 0; margin: 15px auto; padding: 0'>
+  <tr style="font-weight: 400">
+    <td style="font-weight: 400; text-align: center; margin: 0; padding: 0">
+      <div class="header" style="font-weight: 400; font-size: 14px; border-bottom: 1px solid #dee7eb; padding: 23px 0">
+        <div class="container" style="font-weight: 400; max-width: 600px; text-align: left; margin: 0 auto; padding: 0 20px">
+          
+  <div class="header-with-buttons" style="font-weight: 400; display: inline-block; width: 100%; align-items: center">
+    
+          <h1 style="font-weight: normal; float: left; font-size: 38px; line-height: 42px; color: #000; letter-spacing: -1px; margin: 0; padding: 0">
+            <a href="https://sentry.io" style="font-weight: 500; color: #4674ca; text-decoration: none"><img src="https://s1.sentry-cdn.com/_static/61b7948bdd3d25891123c2e386ded495/sentry/images/email/sentry_logo_full.png" width="125px" height="29px" alt="Sentry" style="font-weight: 400"></a>
+          </h1>
+          
+    <div class="header-buttons" style="font-weight: 400; display: flex; height: fit-content; float: right">
+      
+        <a href="https://jan-motycka.sentry.io/settings/integrations/slack/?referrer=alert_email&amp;notification_uuid=70801869-21c5-47be-ae74-51414bc49dff" class="btn btn-default integration-link" style="font-weight: 600; color: #493e54; text-decoration: none; background-color: #fdfcfd; border: 1px solid #c1b8ca; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.05); line-height: 18px; border-radius: 4px; display: flex; font-size: 16px; align-items: center; float: right; margin: 3px 0; padding: 8px 15px">
+          <img src="https://s1.sentry-cdn.com/_static/61b7948bdd3d25891123c2e386ded495/sentry/images/email/slack-logo.png" class="logo-small" style="font-weight: 400; width: 16px; height: 16px; margin: auto 8px auto 0">
+          Set up in Slack
+        </a>
+      
+      <a href="https://jan-motycka.sentry.io/issues/110572908/?referrer=alert_email&amp;alert_type=email&amp;alert_timestamp=1775646152684&amp;alert_rule_id=444805&amp;notification_uuid=70801869-21c5-47be-ae74-51414bc49dff&amp;environment=production" class="btn view-on-sentry" style="font-weight: 600; color: #fff; text-decoration: none; background-color: #6C5FC7; border: 1px solid #413496; box-shadow: 0 2px 0 rgba(0, 0, 0, 0.08); line-height: 18px; border-radius: 4px; display: inline-block; font-size: 16px; float: right; margin: 3px 0 3px 8px; padding: 8px 15px">View on Sentry</a>
+    </div>
+  </div>
+
+        </div>
+      </div>
+    </td>
+  </tr>
+  <tr style="font-weight: 400">
+    <td style="font-weight: 400; text-align: center; margin: 0; padding: 0">
+      
+
+<div class="banner" style="font-weight: 400; background-color: #F3F0F5; border-bottom: 1px solid #dee7eb">
+  <div class="container banner-content" style="font-weight: 400; max-width: 600px; text-align: left; font-size: 14px; display: flex; align-items: center; margin: 0 auto; padding: 14px 20px">
+    <img src="https://s1.sentry-cdn.com/_static/61b7948bdd3d25891123c2e386ded495/sentry/images/email/icon-lightning.png" class="banner-icon" style="font-weight: 400; height: 14px; width: 14px; margin-right: 6px">
+    <span style="font-weight: 400">
+      <span class="text-desktop-only" style="font-weight: 400">Errors are half the story.</span> Start tracking latency across your application.
+    </span>
+    <a href="https://sentry.io/organizations/jan-motycka/explore/traces/?project=4510997348548688&amp;referrer=alert_email" class="banner-action" style="font-weight: 500; color: #4674ca; text-decoration: none; margin-left: auto">
+      <b style="font-weight: bold">Set up Performance</b>
+    </a>
+  </div>
+</div>
+
+
+<div class="container" style="font-weight: 400; max-width: 600px; text-align: left; margin: 0 auto; padding: 0 20px">
+  <div class="inner" style="font-weight: 400; background-color: #fff; padding: 30px 0 20px">
+    <h2 style="font-weight: 700; font-size: 22px; margin: 0 0 4px">
+        
+        New issue
+        
+    </h2>
+    
+      <div class="event-notification-reason" style="font-weight: 400; color: #80708F; font-size: 14px; margin-bottom: 15px">
+        We notified recently active members in the torq-web project of this issue
+      </div>
+    
+
+    
+      <table class="event-list" style="font-weight: 400; width: 100%; border-collapse: collapse; text-align: left; margin: 0 0 15px">
+        <tr style="font-weight: 400">
+            <th colspan="2" style="font-weight: bold; text-align: left; min-width: 60px; color: #9CA3AD; text-transform: uppercase; font-size: 12px; border-bottom: 2px solid #E7EBEE; margin: 0 0 5px; padding: 2px 0 10px">Issue</th>
+        </tr>
+        <tr style="font-weight: 400">
+          <td class="event-detail" style="font-weight: 400; text-align: left; border-top: 1px solid #E7EBEE; line-height: 22px; width: 400px; margin: 0; padding: 10px 0">
+            <div class="issue" style="font-weight: 400; line-height: 22px">
+              
+                
+                  <div class="event-type error" style="font-weight: 400">
+                    <h3 style="font-weight: 700; font-size: 18px; line-height: 22px; margin: 0">
+                      
+                        <a href="https://jan-motycka.sentry.io/issues/110572908/?referrer=alert_email&amp;alert_type=email&amp;alert_timestamp=1775646152684&amp;alert_rule_id=444805&amp;notification_uuid=70801869-21c5-47be-ae74-51414bc49dff&amp;environment=production" style="font-weight: 600; color: #4674ca; text-decoration: none; font-size: 16px; margin-right: 10px">Error</a>
+                        
+                        <br style="font-weight: 400">
+                        
+                          <small style="font-weight: 400; font-size: 14px; color: #968ba0">Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside ...</small>
+                        
+                      
+                    </h3>
+                  </div>
+                
+              
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      
+        <div class="event" style="font-weight: 400; margin-bottom: 30px">
+          <div class="event-id" style="font-weight: 400; color: #889092; float: right">ID: 198f6908e88440f3a891192ab9653d65</div>
+            <div class="event-date" style="font-weight: 400; color: #889092">
+              
+                April 8, 2026, 11:02:11 a.m. UTC
+              
+            </div>
+        </div>
+      
+
+      
+      <div class="interface" style="font-weight: 400; margin-bottom: 30px">
+        <table style="font-weight: 400; width: 100%; border-collapse: separate; border-spacing: 5px; margin: 0 -5px">
+          <colgroup style="font-weight: 400">
+            <col style="font-weight: 400; width: 130px">
+          </colgroup>
+          <tbody style="font-weight: 400">
+            <tr style="font-weight: 400">
+              <th style="font-weight: 500; text-align: left; min-width: 60px; color: #968ba0; padding: 2px 0 0">Project</th>
+              <td style="font-weight: 400; text-align: left; background-color: #f4f5f6; border-radius: 3px; margin: 0 0 5px; padding: 5px 10px"><a href="https://jan-motycka.sentry.io/issues/?project=4510997348548688" style="font-weight: 500; color: #4674ca; text-decoration: none">torq-web</a></td>
+            </tr>
+            
+              <tr style="font-weight: 400">
+                <th style="font-weight: 500; text-align: left; min-width: 60px; color: #968ba0; padding: 2px 0 0">environment</th>
+                <td style="font-weight: 400; text-align: left; background-color: #f4f5f6; border-radius: 3px; margin: 0 0 5px; padding: 5px 10px">production</td>
+              </tr>
+            
+            
+              <tr style="font-weight: 400">
+                <th style="font-weight: 500; text-align: left; min-width: 60px; color: #968ba0; padding: 2px 0 0">Level</th>
+                <td style="font-weight: 400; text-align: left; background-color: #f4f5f6; border-radius: 3px; margin: 0 0 5px; padding: 5px 10px">error</td>
+              </tr>
+            
+          </tbody>
+        </table>
+      </div>
+
+
+      
+
+
+
+      
+
+      
+
+
+      
+    
+    <div class="interface" style="font-weight: 400; margin-bottom: 30px">
+      <h3 class="title" style="font-weight: 700; font-size: 18px; margin: 0 0 15px">Exception</h3>
+      <pre style='font-weight: normal; font-family: Menlo, Monaco, "Courier New", monospace; font-size: 14px; white-space: pre-wrap; background-color: #F4F5F6; color: #3D4649; border-radius: 4px; overflow-wrap: break-word; word-wrap: break-word; margin: 0 0 15px; padding: 15px'>Error: Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.
+  at Xe (/assets/vendor-react-D1h_O76p.js:8:27648)
+  at Du (/assets/vendor-react-D1h_O76p.js:8:27221)
+  at X0 (/assets/vendor-react-D1h_O76p.js:8:52591)
+  at Y0 (/assets/vendor-react-D1h_O76p.js:8:52420)
+  at le (/assets/vendor-react-D1h_O76p.js:8:92440)
+...
+(45 additional frame(s) were not displayed)</pre>
+    </div>
+    
+    <div class="interface" style="font-weight: 400; margin-bottom: 30px">
+      <h3 class="title" style="font-weight: 700; font-size: 18px; margin: 0 0 15px">Request</h3>
+      
+<table style="font-weight: 400; width: 100%; border-collapse: separate; border-spacing: 5px; margin: 0 -5px">
+    <colgroup style="font-weight: 400">
+      <col style="font-weight: 400; width: 130px">
+    </colgroup>
+    <tbody style="font-weight: 400">
+        
+        <tr style="font-weight: 400">
+            <th style="font-weight: 500; text-align: left; min-width: 60px; color: #968ba0; padding: 2px 0 0">URL</th>
+            <td style="font-weight: 400; text-align: left; background-color: #f4f5f6; border-radius: 3px; margin: 0 0 5px; padding: 5px 10px"><a href="https://torq.cz/" style="font-weight: 500; color: #4674ca; text-decoration: none">https://torq.cz/</a></td>
+        </tr>
+        
+        
+        
+        
+    </tbody>
+</table>
+
+    </div>
+    
+    <div class="interface" style="font-weight: 400; margin-bottom: 30px">
+      <h3 class="title" style="font-weight: 700; font-size: 18px; margin: 0 0 15px">User</h3>
+      
+
+
+<table class="reset" style="font-weight: 400; width: 100%; border-collapse: collapse; border-spacing: 0; margin: 0 -5px">
+  <tr style="font-weight: 400">
+    <td style="font-weight: 400; text-align: left; background-color: #fff; border-radius: 3px; margin: 0 0 5px; padding: 0">
+      <table style="font-weight: 400; width: 100%; border-collapse: separate; border-spacing: 5px; margin: 0">
+        <colgroup style="font-weight: 400">
+          <col style="font-weight: 400; width: 130px">
+        </colgroup>
+        <tbody style="font-weight: 400">
+          
+          
+          
+          
+          
+        </tbody>
+      </table>
+    </td>
+    
+  </tr>
+</table>
+
+    </div>
+    
+
+
+      
+        <h3 style="font-weight: 700; font-size: 18px; margin: 0 0 20px">Tags</h3>
+
+        <ul class="tag-list" style="font-weight: 400; list-style: none; margin: 0 0 20px; padding: 0">
+        
+          <li style="font-weight: 400; display: inline-block; margin-right: 5px; margin-bottom: 10px; border-radius: 3px; background-color: #F4F5F6; padding: 5px 10px 6px">
+              <strong style="font-weight: 200">browser</strong>
+              <em style="font-weight: 400">=</em>
+              <span style="font-weight: 400">
+              
+                <a href="https://sentry.io/organizations/jan-motycka/issues/?project=4510997348548688&amp;query=browser%3A%22Chrome%20146.0.0%22" style="font-weight: 500; color: #4674ca; text-decoration: none">Chrome 146.0.0</a> 
+              
+              </span>
+          </li>
+        
+          <li style="font-weight: 400; display: inline-block; margin-right: 5px; margin-bottom: 10px; border-radius: 3px; background-color: #F4F5F6; padding: 5px 10px 6px">
+              <strong style="font-weight: 200">browser.name</strong>
+              <em style="font-weight: 400">=</em>
+              <span style="font-weight: 400">
+              
+                <a href="https://sentry.io/organizations/jan-motycka/issues/?project=4510997348548688&amp;query=browser.name%3A%22Chrome%22" style="font-weight: 500; color: #4674ca; text-decoration: none">Chrome</a> 
+              
+              </span>
+          </li>
+        
+          <li style="font-weight: 400; display: inline-block; margin-right: 5px; margin-bottom: 10px; border-radius: 3px; background-color: #F4F5F6; padding: 5px 10px 6px">
+              <strong style="font-weight: 200">device</strong>
+              <em style="font-weight: 400">=</em>
+              <span style="font-weight: 400">
+              
+                <a href="https://sentry.io/organizations/jan-motycka/issues/?project=4510997348548688&amp;query=device%3A%22Mac%22" style="font-weight: 500; color: #4674ca; text-decoration: none">Mac</a> 
+              
+              </span>
+          </li>
+        
+          <li style="font-weight: 400; display: inline-block; margin-right: 5px; margin-bottom: 10px; border-radius: 3px; background-color: #F4F5F6; padding: 5px 10px 6px">
+              <strong style="font-weight: 200">device.family</strong>
+              <em style="font-weight: 400">=</em>
+              <span style="font-weight: 400">
+              
+                <a href="https://sentry.io/organizations/jan-motycka/issues/?project=4510997348548688&amp;query=device.family%3A%22Mac%22" style="font-weight: 500; color: #4674ca; text-decoration: none">Mac</a> 
+              
+              </span>
+          </li>
+        
+          <li style="font-weight: 400; display: inline-block; margin-right: 5px; margin-bottom: 10px; border-radius: 3px; background-color: #F4F5F6; padding: 5px 10px 6px">
+              <strong style="font-weight: 200">environment</strong>
+              <em style="font-weight: 400">=</em>
+              <span style="font-weight: 400">
+              
+                <a href="https://sentry.io/organizations/jan-motycka/issues/?project=4510997348548688&amp;query=environment%3A%22production%22" style="font-weight: 500; color: #4674ca; text-decoration: none">production</a> 
+              
+              </span>
+          </li>
+        
+          <li style="font-weight: 400; display: inline-block; margin-right: 5px; margin-bottom: 10px; border-radius: 3px; background-color: #F4F5F6; padding: 5px 10px 6px">
+              <strong style="font-weight: 200">handled</strong>
+              <em style="font-weight: 400">=</em>
+              <span style="font-weight: 400">
+              
+                <a href="https://sentry.io/organizations/jan-motycka/issues/?project=4510997348548688&amp;query=handled%3A%22yes%22" style="font-weight: 500; color: #4674ca; text-decoration: none">yes</a> 
+              
+              </span>
+          </li>
+        
+          <li style="font-weight: 400; display: inline-block; margin-right: 5px; margin-bottom: 10px; border-radius: 3px; background-color: #F4F5F6; padding: 5px 10px 6px">
+              <strong style="font-weight: 200">level</strong>
+              <em style="font-weight: 400">=</em>
+              <span style="font-weight: 400">
+              
+                <a href="https://sentry.io/organizations/jan-motycka/issues/?project=4510997348548688&amp;query=level%3A%22error%22" style="font-weight: 500; color: #4674ca; text-decoration: none">error</a> 
+              
+              </span>
+          </li>
+        
+          <li style="font-weight: 400; display: inline-block; margin-right: 5px; margin-bottom: 10px; border-radius: 3px; background-color: #F4F5F6; padding: 5px 10px 6px">
+              <strong style="font-weight: 200">mechanism</strong>
+              <em style="font-weight: 400">=</em>
+              <span style="font-weight: 400">
+              
+                <a href="https://sentry.io/organizations/jan-motycka/issues/?project=4510997348548688&amp;query=mechanism%3A%22generic%22" style="font-weight: 500; color: #4674ca; text-decoration: none">generic</a> 
+              
+              </span>
+          </li>
+        
+          <li style="font-weight: 400; display: inline-block; margin-right: 5px; margin-bottom: 10px; border-radius: 3px; background-color: #F4F5F6; padding: 5px 10px 6px">
+              <strong style="font-weight: 200">os</strong>
+              <em style="font-weight: 400">=</em>
+              <span style="font-weight: 400">
+              
+                <a href="https://sentry.io/organizations/jan-motycka/issues/?project=4510997348548688&amp;query=os%3A%22Mac%20OS%20X%20%3E%3D10.15.7%22" style="font-weight: 500; color: #4674ca; text-decoration: none">Mac OS X &gt;=10.15.7</a> 
+              
+              </span>
+          </li>
+        
+          <li style="font-weight: 400; display: inline-block; margin-right: 5px; margin-bottom: 10px; border-radius: 3px; background-color: #F4F5F6; padding: 5px 10px 6px">
+              <strong style="font-weight: 200">os.name</strong>
+              <em style="font-weight: 400">=</em>
+              <span style="font-weight: 400">
+              
+                <a href="https://sentry.io/organizations/jan-motycka/issues/?project=4510997348548688&amp;query=os.name%3A%22Mac%20OS%20X%22" style="font-weight: 500; color: #4674ca; text-decoration: none">Mac OS X</a> 
+              
+              </span>
+          </li>
+        
+          <li style="font-weight: 400; display: inline-block; margin-right: 5px; margin-bottom: 10px; border-radius: 3px; background-color: #F4F5F6; padding: 5px 10px 6px">
+              <strong style="font-weight: 200">url</strong>
+              <em style="font-weight: 400">=</em>
+              <span style="font-weight: 400">
+              
+                <a href="https://sentry.io/organizations/jan-motycka/issues/?project=4510997348548688&amp;query=url%3A%22https%3A//torq.cz/%22" style="font-weight: 500; color: #4674ca; text-decoration: none">https://torq.cz/</a> <a href="https://torq.cz/" class="icon-share" style="font-weight: 500; color: #4674ca; text-decoration: none"></a>
+              
+              </span>
+          </li>
+        
+        </ul>
+      
+    
+
+    <p class="info-box" style="font-weight: 400; background-color: #f8fbff; border: 1px solid #cce3f3; border-radius: 3px; text-align: left; font-size: 16px; line-height: 24px; margin: 0 0 15px; padding: 15px">
+      
+         <a class="mute" href="https://sentry.io/organizations/jan-motycka/issues/alerts/rules/torq-web/444805/details/?referrer=issue_alert-email&amp;notification_uuid=70801869-21c5-47be-ae74-51414bc49dff&amp;mute=1" style="font-weight: 700; color: #4674ca; text-decoration: none; float: right">Mute this alert</a>
+      
+      This email was triggered by
+      
+          <a href="https://sentry.io/organizations/jan-motycka/issues/alerts/rules/torq-web/444805/?referrer=issue_alert-email&amp;notification_uuid=70801869-21c5-47be-ae74-51414bc49dff?referrer=issue_alert-email&amp;notification_uuid=70801869-21c5-47be-ae74-51414bc49dff" style="font-weight: 500; color: #493e54; text-decoration: underline">Send a notification for high priority issues</a>
+      
+  </p>
+
+    
+
+    
+    <div itemscope itemtype="http://schema.org/EmailMessage" style="font-weight: 400">
+      <meta itemprop="description" content="View Issue Details in Sentry" style="font-weight: 400">
+      <div itemprop="action" itemscope itemtype="http://schema.org/ViewAction" style="font-weight: 400">
+        <link itemprop="url" href="https://jan-motycka.sentry.io/issues/110572908/?referrer=alert_email&amp;alert_type=email&amp;alert_timestamp=1775646152684&amp;alert_rule_id=444805&amp;notification_uuid=70801869-21c5-47be-ae74-51414bc49dff&amp;environment=production" style="font-weight: 400">
+        <meta itemprop="name" content="View in Sentry" style="font-weight: 400">
+      </div>
+      <div itemprop="publisher" itemscope itemtype="http://schema.org/Organization" style="font-weight: 400">
+        <meta itemprop="name" content="Sentry.io" style="font-weight: 400">
+        <link itemprop="url" href="https://sentry.io/" style="font-weight: 400">
+      </div>
+    </div>
+  </div>
+</div>
+
+      <div class="container" style="font-weight: 400; max-width: 600px; text-align: left; margin: 0 auto; padding: 0 20px">
+        <div class="footer" style="font-weight: 400; border-top: 1px solid #E7EBEE; padding: 35px 0">
+          
+          <a href="https://sentry.io" style="font-weight: 500; color: #687276; text-decoration: none; float: right">Home</a>
+
+          
+          <a href="https://sentry.io/settings/account/notifications/alerts/?referrer=issue_alert-email&amp;notification_uuid=70801869-21c5-47be-ae74-51414bc49dff" style="font-weight: 500; color: #687276; text-decoration: none">Notification Settings</a>
+          
+
+          
+          
+        </div>
+      </div>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
+--===============0728010826052698049==--
