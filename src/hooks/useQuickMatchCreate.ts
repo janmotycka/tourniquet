@@ -50,6 +50,25 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
     const today = preset?.date ?? now.toISOString().split('T')[0];
     const timeStr = preset?.kickoffTime
       ?? `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    // Audit 2026-04-24 (P2.3): preset volitelný. Fallback = 15 min 1 perioda 5+1.
+    // Audit 2026-04-25: Florbal default 4+1.
+    const durationMinutes = preset?.durationMinutes ?? 15;
+    const periods = preset?.periods ?? 1;
+    const isFloorball = preferredSport === 'floorball';
+    const matchFormat = preset?.matchFormat ?? (isFloorball ? '4+1' : '5+1');
+    const periodDurationMinutes = Math.max(1, Math.round(durationMinutes / periods));
+
+    // Audit 2026-05-22: sub assistant podporuje auto-rozdělení.
+    // Match format „5+1" = 5 hráčů v poli + 1 brankář = celkem 6 starters.
+    // Pokud user zapnul sub assistant, rozdělí prvních N jako starter,
+    // zbytek na lavičku v pořadí jak je v rosteru.
+    const startersCount = (() => {
+      const m = matchFormat.match(/^(\d+)\+(\d+)$/);
+      if (!m) return roster.length;
+      return parseInt(m[1], 10) + parseInt(m[2], 10);
+    })();
+    const useSubAssistant = !!preset?.subAssistant && roster.length > startersCount;
+
     // Lineup zachovává jersey number + birthYear pokud user vyplnil (volitelné).
     // Pokud byl hráč importován z klubu, použijeme jeho clubPlayerId jako
     // playerId — propojí stats / hodnocení na klubový roster.
@@ -58,16 +77,10 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       jerseyNumber: entry.jerseyNumber ?? 0,
       name: entry.name,
       birthYear: entry.birthYear,
-      isStarter: true,
-      substituteOrder: 0,
+      // Auto-split: prvních startersCount = isStarter, zbytek = bench
+      isStarter: useSubAssistant ? i < startersCount : true,
+      substituteOrder: useSubAssistant && i >= startersCount ? i - startersCount + 1 : 0,
     }));
-    // Audit 2026-04-24 (P2.3): preset volitelný. Fallback = 15 min 1 perioda 5+1.
-    // Audit 2026-04-25: Florbal default 4+1.
-    const durationMinutes = preset?.durationMinutes ?? 15;
-    const periods = preset?.periods ?? 1;
-    const isFloorball = preferredSport === 'floorball';
-    const matchFormat = preset?.matchFormat ?? (isFloorball ? '4+1' : '5+1');
-    const periodDurationMinutes = Math.max(1, Math.round(durationMinutes / periods));
     const match = createMatch({
       sport: isFloorball ? 'floorball' : 'football',
       matchType: 'single',
@@ -91,6 +104,8 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       matchFormat,
       lineup,
       trackAssists: false,
+      // Audit 2026-05-22: sub assistant — settings z presetu (volitelné).
+      substitutionSettings: preset?.subAssistant,
       // Audit 2026-04-29: označit jako rychlý zápas — UI některé Advanced
       // featury (FAČR hlášení) skryje pro Quick zápasy.
       isQuickMatch: true,

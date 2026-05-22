@@ -61,6 +61,15 @@ export interface QuickMatchPreset {
   ageCategory?: string;
   /** Název našeho týmu (audit 2026-05-06). Default: jméno aktivního klubu. */
   myTeamName?: string;
+  /**
+   * Sub assistant settings (audit 2026-05-22). Když nastavený, useQuickMatchCreate
+   * rozdělí prvních N hráčů (= match format starters count) jako základ a zbytek
+   * na lavičku. LiveTab pak ukazuje sub alert každých `intervalMinutes`.
+   */
+  subAssistant?: {
+    intervalMinutes: number;
+    playersAtOnce: number;
+  };
 }
 
 /**
@@ -217,6 +226,12 @@ export function QuickMatchSheet({
   const [compCatExpanded, setCompCatExpanded] = useState(false);
   const [competition, setCompetition] = useState('');
   const [ageCategory, setAgeCategory] = useState<string>('');
+  // Audit 2026-05-22: Sub assistant — defaultně off (Quick match je pro single
+  // přátelák/plácek). User explicitně zapne pokud hraje turnaj s rotací.
+  const [subAssistantExpanded, setSubAssistantExpanded] = useState(false);
+  const [useSubAssistant, setUseSubAssistant] = useState(false);
+  const [subInterval, setSubInterval] = useState(5); // 5 min default (rychlý zápas)
+  const [subCount, setSubCount] = useState(1);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -465,6 +480,11 @@ export function QuickMatchSheet({
       ageCategory: ageCategory.trim() || undefined,
       // Audit 2026-05-06: explicit team name (může být jiné než club.name)
       myTeamName: myTeamName.trim() || undefined,
+      // Audit 2026-05-22: sub assistant — useQuickMatchCreate auto-rozdělí
+      // starters/bench podle formátu, pokud je nastaveno.
+      subAssistant: useSubAssistant
+        ? { intervalMinutes: subInterval, playersAtOnce: subCount }
+        : undefined,
     };
     onCreate(opponent, roster, finalSquadId, preset);
   };
@@ -1186,6 +1206,134 @@ export function QuickMatchSheet({
                 </div>
               )}
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Asistent střídání (audit 2026-05-22) ──────────────────────────────
+          Pro turnajové dny / McDonald's Cup scénář — trenér chce auto-alert
+          každých N minut na střídání. Aplikace pak rozdělí prvních N hráčů
+          (= match format) jako základ, zbytek na lavičku. */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setSubAssistantExpanded(v => !v)}
+          aria-expanded={subAssistantExpanded}
+          style={{
+            width: '100%',
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '9px 12px', borderRadius: 10,
+            background: subAssistantExpanded ? 'var(--primary-light)' : 'var(--surface-var)',
+            border: `1.5px solid ${subAssistantExpanded ? 'var(--primary)' : 'var(--border)'}`,
+            cursor: 'pointer', textAlign: 'left',
+            transition: 'background .15s, border-color .15s',
+          }}
+        >
+          <span style={{ fontSize: 18 }}>🔄</span>
+          <span style={{
+            flex: 1, fontSize: 13, fontWeight: 700,
+            color: subAssistantExpanded ? 'var(--primary)' : 'var(--text)',
+          }}>
+            {t('match.quickSheet.subAssistantLabel')}
+            {useSubAssistant && (
+              <span style={{
+                marginLeft: 6, fontSize: 11,
+                color: 'var(--text-muted)', fontWeight: 600,
+              }}>
+                ({t('match.quickSheet.subAssistantSummary', { interval: subInterval, count: subCount })})
+              </span>
+            )}
+          </span>
+          <span style={{
+            fontSize: 12, fontWeight: 700,
+            color: subAssistantExpanded ? 'var(--primary)' : 'var(--text-muted)',
+            transform: subAssistantExpanded ? 'rotate(180deg)' : 'none',
+            transition: 'transform .2s',
+          }}>
+            ▼
+          </span>
+        </button>
+        {subAssistantExpanded && (
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Toggle Zapnout / Vypnout */}
+            <label style={{
+              display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer',
+              padding: '10px 12px', borderRadius: 10,
+              background: useSubAssistant ? 'var(--success-light)' : 'var(--surface-var)',
+              border: `1.5px solid ${useSubAssistant ? 'var(--success)' : 'var(--border)'}`,
+            }}>
+              <input
+                type="checkbox"
+                checked={useSubAssistant}
+                onChange={e => setUseSubAssistant(e.target.checked)}
+                style={{ width: 20, height: 20, cursor: 'pointer' }}
+              />
+              <span style={{
+                fontSize: 14, fontWeight: 700,
+                color: useSubAssistant ? 'var(--success)' : 'var(--text)',
+              }}>
+                {useSubAssistant
+                  ? t('match.quickSheet.subAssistantEnabled')
+                  : t('match.quickSheet.subAssistantEnable')}
+              </span>
+            </label>
+            {useSubAssistant && (
+              <>
+                {/* Steppers */}
+                <div style={{
+                  background: 'var(--surface-var)', borderRadius: 10, padding: 10,
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>
+                      {t('match.quickSheet.subInterval')}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => setSubInterval(Math.max(1, subInterval - 1))}
+                        style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--surface)', border: 'none', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}
+                      >−</button>
+                      <span style={{ fontWeight: 800, fontSize: 16, minWidth: 50, textAlign: 'center', color: 'var(--primary)' }}>
+                        {subInterval} {t('common.min')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSubInterval(Math.min(45, subInterval + 1))}
+                        style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--surface)', border: 'none', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}
+                      >+</button>
+                    </div>
+                  </div>
+                  <div style={{ height: 1, background: 'var(--border)' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600 }}>
+                      {t('match.quickSheet.subCount')}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => setSubCount(Math.max(1, subCount - 1))}
+                        style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--surface)', border: 'none', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}
+                      >−</button>
+                      <span style={{ fontWeight: 800, fontSize: 16, minWidth: 30, textAlign: 'center', color: 'var(--primary)' }}>
+                        {subCount}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSubCount(Math.min(4, subCount + 1))}
+                        style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--surface)', border: 'none', fontSize: 18, fontWeight: 700, cursor: 'pointer' }}
+                      >+</button>
+                    </div>
+                  </div>
+                </div>
+                <div style={{
+                  fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5,
+                  padding: '0 4px',
+                }}>
+                  {t('match.quickSheet.subAssistantHint', { interval: subInterval, count: subCount })}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
