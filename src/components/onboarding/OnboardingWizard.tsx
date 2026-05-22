@@ -109,7 +109,11 @@ interface Props {
   onComplete: () => void;
 }
 
-type Step = 'welcome' | 'sport' | 'mode' | 'club' | 'done';
+// Audit 2026-05-22: 'mode' step smazán (Simple/Advanced volba zrušena —
+// default je advanced, progressive disclosure v formulářích). Florbal stále
+// auto-set 'simple' protože nemá klub. Deep-link #mode=simple zachován pro
+// viral akvizici z MatchPublicView.
+type Step = 'welcome' | 'sport' | 'club' | 'done';
 
 // ─── Component ─────────────────────────────────────────────────────────────
 export function OnboardingWizard({ navigate, onComplete }: Props) {
@@ -327,40 +331,30 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   };
 
   // ─── Step indicator ───────────────────────────────────────────────────
-  const showProgress = step === 'sport' || step === 'mode' || step === 'club';
+  const showProgress = step === 'sport' || step === 'club';
   const stepIndex = step === 'welcome' ? 0
     : step === 'sport' ? 1
-    : step === 'mode' ? 2
-    : step === 'club' ? 3
-    : 4;
+    : step === 'club' ? 2
+    : 3;
 
   // Pomocníci z userPrefs pro sport picker step
   const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
   const markSportOnboardingShown = useUserPrefsStore(s => s.markSportOnboardingShown);
+  const setAppMode = useUserPrefsStore(s => s.setAppMode);
   const handleSportPick = (sport: 'football' | 'tennis' | 'floorball') => {
     setPreferredSport(sport);
     markSportOnboardingShown();
-    // Audit 2026-04-25: Florbal je Simple-only modul (nemá Advanced ani klub).
-    // Skipujeme mode picker — uživatel by ho stejně musel projít na 'simple'.
+    // Florbal je Simple-only modul (nemá klub) — auto-set 'simple'.
     if (sport === 'floorball') {
-      useUserPrefsStore.getState().setAppMode('simple');
+      setAppMode('simple');
       if (user?.uid) markOnboarded(user.uid, sport);
       setStep('done');
       return;
     }
-    setStep('mode');
-  };
-
-  const setAppMode = useUserPrefsStore(s => s.setAppMode);
-  const handleModePick = (mode: 'simple' | 'advanced') => {
-    setAppMode(mode);
-    // Simple user nemá klub → rovnou done.
-    if (mode === 'simple') {
-      if (user?.uid) markOnboarded(user.uid, preferredSport);
-      setStep('done');
-    } else {
-      setStep('club');
-    }
+    // Audit 2026-05-22: mode picker smazán — default 'advanced'.
+    // Progressive disclosure ve formulářích nahrazuje globální volbu.
+    setAppMode('advanced');
+    setStep('club');
   };
 
   // Hash-based akvizice z viral CTA (MatchPublicView): `#mode=simple`
@@ -428,7 +422,9 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                 if (user?.uid) markOnboarded(user.uid, onlySport);
                 setStep('done');
               } else {
-                setStep('mode');
+                // Audit 2026-05-22: 'mode' step smazán, jdeme rovnou na club
+                useUserPrefsStore.getState().setAppMode('advanced');
+                setStep('club');
               }
               return;
             }
@@ -464,8 +460,8 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                 // mode → welcome (přehodnocení „chci to vůbec?")
                 // club → mode (přehodnocení Advanced vs Simple)
                 // sport → welcome (kdyby ENABLED_SPORTS narostl v budoucnu)
-                if (step === 'club') setStep('mode');
-                else if (step === 'mode') setStep('welcome');
+                // Audit 2026-05-22: 'mode' step smazán, club → welcome přímo
+                if (step === 'club') setStep('welcome');
                 else if (step === 'sport') setStep('welcome');
               }}
               aria-label={t('common.back')}
@@ -550,96 +546,10 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
           )}
 
           {/* ── Step 2: Mode picker (Simple vs Advanced) ── */}
-          {step === 'mode' && (
-            <div style={{
-              flex: 1, display: 'flex', flexDirection: 'column',
-              padding: `${spacing.xl}px ${spacing.lg}px ${spacing.lg}px`,
-              gap: spacing.lg,
-              animation: 'torq-onb-in .35s ease-out',
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 56, marginBottom: spacing.md }}>🎛</div>
-                <h2 style={{ margin: 0, fontWeight: 900, fontSize: 22, color: 'var(--text)' }}>
-                  {t('onboarding.mode.title')}
-                </h2>
-                <p style={{
-                  margin: `${spacing.sm}px auto 0`, color: 'var(--text-muted)',
-                  fontSize: fontSize.sm, lineHeight: 1.5, maxWidth: 320,
-                }}>
-                  {t('onboarding.mode.subtitle')}
-                </p>
-              </div>
+          {/* ── Step 3: Mode picker SMAZÁN (audit 2026-05-22) — progressive
+              disclosure ve formulářích nahradila globální volbu. ── */}
 
-              {/* Simple mode — zvýrazněný */}
-              <button
-                onClick={() => handleModePick('simple')}
-                style={{
-                  display: 'flex', gap: 14, padding: '18px 16px', borderRadius: 16,
-                  background: 'var(--primary-light)', border: '2px solid var(--primary)',
-                  textAlign: 'left', cursor: 'pointer', alignItems: 'flex-start',
-                  transition: 'all .15s',
-                }}
-              >
-                <div style={{ fontSize: 36, lineHeight: 1, flexShrink: 0 }}>🟢</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--primary)', marginBottom: 4 }}>
-                    {t('onboarding.mode.simpleTitle')}
-                  </div>
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                    {t('onboarding.mode.simpleDesc')}
-                  </div>
-                  <div style={{
-                    marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4,
-                    fontSize: 12, color: 'var(--primary)', fontWeight: 600,
-                  }}>
-                    <span>✓ {t('onboarding.mode.simpleBullet1')}</span>
-                    <span>✓ {t('onboarding.mode.simpleBullet2')}</span>
-                    <span>✓ {t('onboarding.mode.simpleBullet3')}</span>
-                  </div>
-                </div>
-                <div style={{ fontSize: 20, color: 'var(--primary)', alignSelf: 'center', fontWeight: 700 }}>›</div>
-              </button>
-
-              {/* Advanced mode */}
-              <button
-                onClick={() => handleModePick('advanced')}
-                style={{
-                  display: 'flex', gap: 14, padding: '18px 16px', borderRadius: 16,
-                  background: 'var(--surface-var)', border: '1.5px solid var(--border)',
-                  textAlign: 'left', cursor: 'pointer', alignItems: 'flex-start',
-                  transition: 'all .15s',
-                }}
-              >
-                <div style={{ fontSize: 36, lineHeight: 1, flexShrink: 0 }}>⚙️</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text)', marginBottom: 4 }}>
-                    {t('onboarding.mode.advancedTitle')}
-                  </div>
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                    {t('onboarding.mode.advancedDesc')}
-                  </div>
-                  <div style={{
-                    marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4,
-                    fontSize: 12, color: 'var(--text-muted)', fontWeight: 600,
-                  }}>
-                    <span>✓ {t('onboarding.mode.advancedBullet1')}</span>
-                    <span>✓ {t('onboarding.mode.advancedBullet2')}</span>
-                    <span>✓ {t('onboarding.mode.advancedBullet3')}</span>
-                  </div>
-                </div>
-                <div style={{ fontSize: 20, color: 'var(--text-muted)', alignSelf: 'center', fontWeight: 700 }}>›</div>
-              </button>
-
-              <p style={{
-                fontSize: fontSize.xs, color: 'var(--text-muted)',
-                textAlign: 'center', marginTop: spacing.sm, lineHeight: 1.4,
-              }}>
-                {t('onboarding.mode.hintLater')}
-              </p>
-            </div>
-          )}
-
-          {/* ── Step 3: Create Club (jen v advanced módu) ── */}
+          {/* ── Step 3: Create Club ── */}
           {step === 'club' && (
             <div style={{
               flex: 1, display: 'flex', flexDirection: 'column', gap: spacing.lg,
