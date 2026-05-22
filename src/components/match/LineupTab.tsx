@@ -35,6 +35,7 @@ function JerseyBadge({
   /** Všechna čísla přidělená hráčům v tomto zápase (včetně tohoto hráče). */
   existingNumbers: number[];
 }) {
+  const { t } = useI18n();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const isDuplicate = existingNumbers.filter(n => n === number).length > 1;
@@ -55,7 +56,7 @@ function JerseyBadge({
     <>
       <div
         onClick={() => editable && setPickerOpen(true)}
-        title={editable ? 'Klikni pro změnu čísla' : undefined}
+        title={editable ? t('match.lineup.jerseyPickerHint') : undefined}
         style={style}
       >
         {number || '—'}
@@ -83,6 +84,7 @@ function JerseyNumberPicker({
   onPick: (n: number) => void;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [expandedRange, setExpandedRange] = useState(false);
   const [manualInput, setManualInput] = useState('');
 
@@ -140,13 +142,13 @@ function JerseyNumberPicker({
         {/* Header */}
         <div style={{ padding: '4px 20px 14px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-            👕 Vyber číslo dresu
+            👕 {t('match.lineup.jerseyPickerTitle')}
           </div>
           <div style={{ fontSize: 16, fontWeight: 800, marginTop: 2 }}>
             {playerName}
             {currentNumber > 0 && (
               <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginLeft: 8 }}>
-                (aktuálně #{currentNumber})
+                ({t('match.lineup.jerseyCurrent', { n: currentNumber })})
               </span>
             )}
           </div>

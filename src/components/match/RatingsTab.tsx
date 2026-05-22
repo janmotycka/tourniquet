@@ -18,7 +18,7 @@ function MiniStarRating({ value, onChange }: { value: number; onChange: (v: 1 | 
           onClick={() => onChange(star)}
           style={{
             fontSize: 16, lineHeight: 1, padding: 1, borderRadius: 3,
-            color: star <= value ? '#FFB300' : 'var(--border)',
+            color: star <= value ? 'var(--star)' : 'var(--border)',
             background: 'none', border: 'none', cursor: 'pointer',
           }}
         >

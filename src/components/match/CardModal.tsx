@@ -31,27 +31,53 @@ export function CardModal({ match, onAdd, onClose, t }: CardModalProps) {
     }} onClick={onClose}>
       <div
         style={{
-          background: 'var(--surface)', borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+          background: 'var(--surface)', borderRadius: '20px 20px 0 0', padding: '10px 16px 32px',
           width: '100%', maxWidth: 480, maxHeight: '85dvh', overflowY: 'auto',
         }}
         onClick={e => e.stopPropagation()}
       >
+        {/* Drag handle — konzistentní s SubstitutionModal */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)' }} />
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <h3 style={{ fontWeight: 800, fontSize: 18 }}>{t('match.detail.card')}</h3>
-          <button onClick={onClose} style={{ fontSize: 22, color: 'var(--text-muted)', fontWeight: 700 }}>×</button>
+          <button
+            onClick={onClose}
+            aria-label={t('common.close')}
+            style={{
+              width: 36, height: 36, borderRadius: 10, border: 'none',
+              background: 'var(--surface-var)', color: 'var(--text-muted)',
+              fontSize: 18, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            ×
+          </button>
         </div>
 
-        {/* Type */}
+        {/* Type — audit 2026-05-22: ikony + tokens (žádné hardcoded hex). */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          {([['yellow', t('match.detail.yellowCard')], ['red', t('match.detail.redCard')], ['yellow-red', t('match.detail.yellowRed')]] as [string, string][]).map(([v, label]) => (
+          {([
+            ['yellow', '🟨', t('match.detail.yellowCard')],
+            ['red', '🟥', t('match.detail.redCard')],
+            ['yellow-red', '🟨🟥', t('match.detail.yellowRed')],
+          ] as [string, string, string][]).map(([v, icon, label]) => (
             <button key={v} onClick={() => setType(v as 'yellow' | 'red' | 'yellow-red')}
               style={{
-                flex: 1, padding: '8px 4px', borderRadius: 10, fontSize: 12, fontWeight: 700,
-                background: type === v ? (v === 'yellow' ? '#FFF9C4' : v === 'red' ? 'var(--danger-light)' : 'var(--warning-light)') : 'var(--surface-var)',
-                color: type === v ? (v === 'yellow' ? '#F9A825' : v === 'red' ? 'var(--danger)' : 'var(--warning)') : 'var(--text-muted)',
+                flex: 1, padding: '12px 8px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                background: type === v
+                  ? (v === 'yellow' ? 'var(--card-yellow-light)' : v === 'red' ? 'var(--card-red-light)' : 'var(--warning-light)')
+                  : 'var(--surface-var)',
+                color: type === v
+                  ? (v === 'yellow' ? 'var(--card-yellow)' : v === 'red' ? 'var(--card-red)' : 'var(--warning)')
+                  : 'var(--text-muted)',
                 border: `2px solid ${type === v ? 'currentColor' : 'transparent'}`,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               }}
-            >{label}</button>
+            >
+              <span style={{ fontSize: 16, lineHeight: 1 }}>{icon}</span>
+              <span>{label}</span>
+            </button>
           ))}
         </div>
 

@@ -72,7 +72,7 @@ export function GoalModal({ match, isOpponentGoal, onAdd, onClose, t }: GoalModa
                 marginBottom: 14, padding: '8px 14px', borderRadius: 10, fontSize: 13, fontWeight: 700,
                 background: isOwnGoal ? 'var(--danger-light)' : 'var(--surface-var)',
                 color: isOwnGoal ? 'var(--danger)' : 'var(--text-muted)',
-                border: `1.5px solid ${isOwnGoal ? '#FFCDD2' : 'var(--border)'}`,
+                border: `1.5px solid ${isOwnGoal ? 'var(--card-red-light)' : 'var(--border)'}`,
               }}
             >
               {isOwnGoal ? t('match.detail.ownGoalConfirmed') : t('match.detail.ownGoal')}

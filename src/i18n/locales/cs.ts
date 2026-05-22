@@ -1279,6 +1279,9 @@ export const cs = {
   'match.create.createMatch': '✅ Vytvořit zápas',
 
   // ─── Match Lineup ──────────────────────────────────────────────────────────
+  'match.lineup.jerseyPickerTitle': 'Vyber číslo dresu',
+  'match.lineup.jerseyPickerHint': 'Klikni pro změnu čísla',
+  'match.lineup.jerseyCurrent': 'aktuálně #{n}',
   'match.lineup.starters': 'Základní sestava',
   'match.lineup.bench': 'Náhradníci',
   'match.lineup.emptyStarters': 'Zatím žádní hráči v základní sestavě',

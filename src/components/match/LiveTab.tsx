@@ -174,7 +174,7 @@ function LandscapeScoreboard({ match, elapsed, onQuickGoal, onPause, onResume, t
         </div>
         <div style={{
           fontFeatureSettings: '"tnum"', fontWeight: 900, fontSize: 22,
-          color: isPeriodOvertime ? '#FFD54F' : isPaused ? '#FF9800' : '#fff',
+          color: isPeriodOvertime ? 'var(--card-yellow)' : isPaused ? 'var(--warning)' : '#fff',
           letterSpacing: 1,
         }}>
           {isPeriodOvertime ? '+' : ''}{formatTime(isPeriodOvertime ? periodElapsed - periodSeconds : periodRemaining)}
@@ -184,7 +184,7 @@ function LandscapeScoreboard({ match, elapsed, onQuickGoal, onPause, onResume, t
         </div>
         {isPaused && (
           <div style={{
-            fontSize: 10, fontWeight: 700, color: '#FF9800',
+            fontSize: 10, fontWeight: 700, color: 'var(--warning)',
             animation: 'pulse 1s infinite',
           }}>
             {t('match.detail.pausedBadge')}
@@ -911,7 +911,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             bottom: 'calc(168px + env(safe-area-inset-bottom, 0px))',
             left: 16, right: 16, zIndex: 150,
             padding: '10px 14px', borderRadius: 14,
-            background: isOurs ? '#1B5E20' : '#B71C1C',
+            background: isOurs ? 'var(--success)' : 'var(--danger)',
             color: '#fff', boxShadow: '0 -4px 20px rgba(0,0,0,.3)',
             animation: 'undoToastSlideUp .25s ease-out',
             maxWidth: 480, marginLeft: 'auto', marginRight: 'auto',
@@ -1056,7 +1056,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
       <div style={{
         background: match.status === 'live' ? 'var(--primary)' : 'var(--surface)',
         borderRadius: 20, padding: match.status === 'live' ? '14px 20px 18px' : '20px',
-        boxShadow: match.status === 'live' ? '0 4px 20px rgba(21,101,192,.30)' : '0 1px 4px rgba(0,0,0,.06)',
+        boxShadow: match.status === 'live' ? 'var(--shadow-primary)' : '0 1px 4px rgba(0,0,0,.06)',
         position: 'relative', overflow: 'hidden',
       }}>
         {/* Goal flash tint overlay — contained within score card */}
@@ -1085,7 +1085,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             <span style={{
               padding: '2px 10px', borderRadius: 6, fontSize: 10, fontWeight: 800, letterSpacing: 1,
               background: match.pausedAt ? 'rgba(255,152,0,.3)' : 'rgba(76,175,80,.3)',
-              color: match.pausedAt ? '#FFD54F' : '#A5D6A7',
+              color: match.pausedAt ? 'var(--card-yellow)' : 'var(--success)',
               animation: match.pausedAt ? undefined : 'pulse 2s infinite',
             }}>
               {match.pausedAt ? t('match.detail.pausedBadge') : t('match.detail.liveBadge')}
@@ -1100,7 +1100,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
             )}
             <span style={{
               fontFeatureSettings: '"tnum"', fontWeight: 900, fontSize: 28,
-              color: isPeriodOvertime ? '#FFD54F' : '#fff', letterSpacing: 2,
+              color: isPeriodOvertime ? 'var(--card-yellow)' : '#fff', letterSpacing: 2,
             }}>
               {isPeriodOvertime ? '+' : ''}{formatTime(isPeriodOvertime ? periodElapsed - periodSeconds : periodRemaining)}
             </span>
@@ -1153,7 +1153,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
         {match.status === 'live' && (
           <>
             <div style={{ height: 3, background: 'rgba(255,255,255,.2)', borderRadius: 3, marginTop: 12, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${periodProgress * 100}%`, background: isPeriodOvertime ? '#FFD54F' : '#fff', borderRadius: 3, transition: 'width .5s' }} />
+              <div style={{ height: '100%', width: `${periodProgress * 100}%`, background: isPeriodOvertime ? 'var(--card-yellow)' : '#fff', borderRadius: 3, transition: 'width .5s' }} />
             </div>
           </>
         )}
@@ -1460,7 +1460,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
           }}
           style={{
             width: '100%', padding: '18px', borderRadius: 16, fontWeight: 800, fontSize: 18,
-            background: 'var(--success)', color: '#fff', boxShadow: '0 4px 12px rgba(46,125,50,.30)',
+            background: 'var(--success)', color: '#fff', boxShadow: 'var(--shadow-success)',
           }}
         >
           {t('match.detail.startMatch')}
@@ -1479,7 +1479,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               style={{
                 flex: 1, padding: '24px 10px', borderRadius: 18, fontWeight: 900, fontSize: 20,
                 background: 'var(--success)', color: '#fff',
-                boxShadow: '0 4px 16px rgba(46,125,50,.35)',
+                boxShadow: 'var(--shadow-success)',
                 userSelect: 'none', WebkitUserSelect: 'none',
                 touchAction: 'manipulation',
                 letterSpacing: 0.5,
@@ -1495,7 +1495,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               style={{
                 flex: 1, padding: '24px 10px', borderRadius: 18, fontWeight: 900, fontSize: 20,
                 background: 'var(--danger)', color: '#fff',
-                boxShadow: '0 4px 16px rgba(198,40,40,.30)',
+                boxShadow: 'var(--shadow-danger)',
                 userSelect: 'none', WebkitUserSelect: 'none',
                 touchAction: 'manipulation',
                 letterSpacing: 0.5,
@@ -1618,7 +1618,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                       style={{
                         flex: 2, padding: '18px', borderRadius: 16, fontWeight: 800, fontSize: 18,
                         background: 'var(--success)', color: '#fff',
-                        boxShadow: '0 4px 12px rgba(46,125,50,.30)',
+                        boxShadow: 'var(--shadow-success)',
                       }}
                     >
                       ▶ {t('match.detail.startNextPeriod', { period: getPeriodLabel(t, periods, currentPeriod) })}
@@ -1755,7 +1755,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                       <div style={{
                         height: '100%', borderRadius: 4, transition: 'width .5s',
                         width: `${pct}%`,
-                        background: pct > 80 ? 'var(--success)' : pct > 40 ? 'var(--primary)' : pct > 0 ? '#FF9800' : 'transparent',
+                        background: pct > 80 ? 'var(--success)' : pct > 40 ? 'var(--primary)' : pct > 0 ? 'var(--warning)' : 'transparent',
                       }} />
                     </div>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', minWidth: 30, textAlign: 'right' }}>
@@ -1851,7 +1851,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                     <button
                       onClick={() => removeGoal(match.id, g.id)}
                       aria-label="Remove goal"
-                      style={{ fontSize: 16, color: 'var(--text-muted)', fontWeight: 600, padding: '4px 6px', background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}
+                      style={{ width: 36, height: 36, fontSize: 18, color: 'var(--text-muted)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       ×
                     </button>
@@ -1939,7 +1939,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                 const ok = await ask({ title: t('veo.removeConfirm'), message: '' });
                 if (ok) updateMatch(match.id, { veoUrl: undefined });
               }}
-              style={{ fontSize: 11, fontWeight: 600, color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+              style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: '10px 12px', minHeight: 36 }}
             >
               {t('veo.remove')}
             </button>

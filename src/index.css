@@ -29,6 +29,21 @@
   --shadow-md: 0 4px 16px rgba(0,0,0,.12);
   --shadow-lg: 0 8px 32px rgba(0,0,0,.20);
 
+  /* ─── Match-specific tokens (light) ──────────────────────────────────── */
+  /* Yellow / red cards, star rating, period banners, tinted shadows. */
+  --card-yellow: #F9A825;
+  --card-yellow-light: #FFF9C4;
+  --card-red: #C62828;
+  --card-red-light: #FFCDD2;
+  --star: #FFB300;
+  --warning-gradient: linear-gradient(135deg, #FF6F00 0%, #E65100 100%);
+  --success-gradient: linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%);
+  --primary-gradient: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%);
+  --shadow-primary: 0 4px 16px rgba(21,101,192,.30);
+  --shadow-success: 0 4px 16px rgba(46,125,50,.30);
+  --shadow-danger: 0 4px 16px rgba(198,40,40,.30);
+  --shadow-warning: 0 4px 16px rgba(230,81,0,.30);
+
   --pripravka: #FF6B35; --pripravka-light: #FFF0EB;
   --mladsi: #4CAF50;    --mladsi-light: #F0FBF0;
   --starsi: #2196F3;    --starsi-light: #EBF5FF;
@@ -72,6 +87,20 @@
   --shadow-sm: 0 1px 4px rgba(0,0,0,.25);
   --shadow-md: 0 4px 16px rgba(0,0,0,.40);
   --shadow-lg: 0 8px 32px rgba(0,0,0,.55);
+
+  /* ─── Match-specific tokens (dark) ───────────────────────────────────── */
+  --card-yellow: #FFD54F;
+  --card-yellow-light: #3A2F15;
+  --card-red: #EF5350;
+  --card-red-light: #3A1A1A;
+  --star: #FFB74D;
+  --warning-gradient: linear-gradient(135deg, #FFB74D 0%, #FF9800 100%);
+  --success-gradient: linear-gradient(135deg, #66BB6A 0%, #43A047 100%);
+  --primary-gradient: linear-gradient(135deg, #5C6BC0 0%, #3949AB 100%);
+  --shadow-primary: 0 4px 16px rgba(92,107,192,.40);
+  --shadow-success: 0 4px 16px rgba(102,187,106,.40);
+  --shadow-danger: 0 4px 16px rgba(239,83,80,.40);
+  --shadow-warning: 0 4px 16px rgba(255,167,38,.40);
 
   --pripravka: #FF8A50; --pripravka-light: #2A1A10;
   --mladsi: #66BB6A;    --mladsi-light: #1A2A1A;

@@ -1267,6 +1267,9 @@ export const en: Record<TranslationKey, string> = {
   'match.create.createMatch': '✅ Create match',
 
   // ─── Match Lineup ──────────────────────────────────────────────────────────
+  'match.lineup.jerseyPickerTitle': 'Pick jersey number',
+  'match.lineup.jerseyPickerHint': 'Tap to change number',
+  'match.lineup.jerseyCurrent': 'currently #{n}',
   'match.lineup.starters': 'Starting lineup',
   'match.lineup.bench': 'Substitutes',
   'match.lineup.emptyStarters': 'No players in starting lineup yet',
