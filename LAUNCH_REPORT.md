@@ -1,45 +1,52 @@
-# Launch Report — TORQ 2026-05-22 (Round 3)
+# Launch Report — TORQ 2026-05-22 (Round 4)
 
-Verifikace produkce po posledních deployech + App Check monitoring update.
+Sentry verifikace + Soupiska reorder + cleanup local helpers.
 
 ---
 
 ## ✅ Round 1 — 2026-05-16
 - 22 commitů pushnuto, CI deploy úspěšný
 - Smoke test produkce — všechny featury fungují
-- Test match „Smoke Test FC" vytvořen v produkci
 
 ## ✅ Round 2 — 2026-05-17
 - 5 UX zlepšení implementovaných z 3 paralelních UX agentů
-- Náš tým ikona, delete bubble enlarge, Sdílet spotlight, squad opt-in, Simple form
-- i18n parity 2829 → 2835 klíčů
+- Náš tým ikona, delete bubble, Sdílet spotlight, squad opt-in, Simple form
 
-## ✅ Round 3 — 2026-05-22 (tato session)
+## ✅ Round 3 — 2026-05-22 ráno
+- CI build fix (Tournament.format → Tournament.settings.format)
+- App Check verified % audit: 11% → 91% (RTDB)
 
-### Fix produkce
-- **CI build error opraven** — `Tournament.format` → `Tournament.settings.format` (s fallback `?? 'round-robin'`)
-- Předchozí commit (8bff185) selhal v CI (`tsc -b` přísnější než `tsc --noEmit`)
-- Oprava (23d3fcf) → CI success
+## ✅ Round 4 — 2026-05-22 odpoledne (tato session)
 
-### Smoke test produkce (Chrome MCP)
-| Test | Výsledek |
-|---|---|
-| torq.cz load | ✅ |
-| Home dashboard | ✅ (po SW cache clear) |
-| Turnaj listing → Archive | ✅ |
-| Detail turnaje "Vrchovina CUP U9 (3+1)" | ✅ |
-| Tabulka / Střelci / Nastavení tabs | ✅ |
-| Console errors | ✅ 0 errors / warnings z app |
+### Sentry audit
+- ✅ Přihlášení do Sentry dashboard
+- **1 error, 6 dní zpět, 0 affected users 30d** — „Maximum update depth exceeded"
+- Handled: true (error boundary catch)
+- Non-blocking, předpokládaný source: `HomePage.tsx:74` (lint warning už identifikovaný)
+- Bez source mapy — nelze identifikovat přesné místo, ale low priority
 
-### Monitoring update — App Check
-**Výrazné zlepšení verified %:**
+### Test data cleanup
+- Match list je prázdný (žádné test matches v produkci)
+- Archive obsahuje 2 reálné turnaje (Vrchovina CUP U9 obě verze)
+- **Nic ke smazání** ✅
 
-| API | 5 dní zpět | Teď | Cíl pro enforcement |
-|---|---|---|---|
-| Realtime Database | 11% | **91%** | 95%+ |
-| Authentication | 50% | **90%** | 95%+ |
+### Soupiska reorder → první pozice
+- Player editor blok přesunut z konce layoutu na první pozici po Hintu
+- Soupiska sedí MIMO `(!isSimpleMode || showAdvancedDetails)` wrapper
+  → vždy viditelná pro všechny módy
+- Build fix: original script error u JSX boundary — opraveno, build OK
 
-**Doporučení:** počkat ještě 2-3 dny pro 95%+, pak enforce.
+### Cleanup
+- 2 nechtěné local soubory smazány z repo:
+  - `test_connection.py` (Claude Code helper)
+  - `TORQ-WEB-2 - Error.eml` (Sentry export, 30 KB)
+- `.gitignore` updated pro `*.eml` + `test_connection.py`
+
+### Validace
+- ✅ TS clean, full `npm run build` pass (replicates CI)
+- ✅ 245/245 tests
+- ✅ CI deploy 2× úspěšný (commits bb16fbe + 47992dd)
+- ✅ Smoke test produkce: layout správný, vše funguje
 
 ---
 
@@ -47,67 +54,59 @@ Verifikace produkce po posledních deployech + App Check monitoring update.
 
 | | |
 |---|---|
-| Branch `main` | `23d3fcf` |
+| Branch `main` | `47992dd` |
 | Live URL | https://torq.cz |
-| Last successful deploy | 2026-05-22 09:19 UTC (run 26279431483) |
+| Posledních deployů | 4 (vše success) |
 | Tests | 245/245 |
 | TypeScript | Clean |
 | Lint | 0 errors |
-| Build | OK |
 | Console errors v produkci | 0 |
-| App Check | Monitoring mode, 91% verified |
-| Sentry | Configured (DSN active, user-only dashboard) |
+| Sentry errors (30d) | 1 (handled, 0 users affected) |
+| App Check | Monitoring, 91% verified |
 
 ---
 
-## ⏳ Co zbývá (doporučení podle priority)
+## ⏳ Co zbývá
 
 ### 🟢 Beta launch ready
-**App je v produkčním stavu, doporučuju spustit beta:**
+**Aplikace je v solidním produkčním stavu.**
+
 - Pošli odkaz `torq.cz` 3-5 trenérům
 - 3-7 dní sběru feedback
 - Pak iterace podle reálných problémů
 
-### 🟡 Sledovat (24-48h)
-- **App Check verified %** v Firebase Console — cílíme 95%+
-- **Sentry errors** dashboard — žádné nové crashes po deployi
-- **PWA SW update** — uživatelé na starou cached verzi se časem updatují
+### 🟡 Monitoring
+- App Check % v Firebase Console (cíl 95%+ pro enforce)
+- Sentry dashboard pro nové errors
 
-### 🔵 Nedoporučeno automaticky (vyžaduje user input)
-- Reorder Soupiska → první (script-based přesun selhal, manuální Edit risky)
+### 🔵 Nedoporučeno automaticky
 - Hex literály → CSS tokens (audit-heavy)
-- htmlFor/id label-input pairing (audit-heavy)
+- htmlFor/id label pairing (a11y audit)
 - Walkover one-tap (UX flow rozhodnutí)
 - Manual seed override (UX design)
 - Stripe integrace (business rozhodnutí)
-- Privacy Policy / ToS právník
+- Privacy/ToS revize právníkem
 - Marketing landing page
-
-### ⚠️ Risk-aware
-- **App Check enforcement** — počkat na 95%+, jinak vyhodí legitimní uživatele
-- **Real device test** — bez fyzického zařízení nemůžu udělat
+- Real device test iOS + Android
 
 ---
 
-## 📊 Statistika 3 rounds celkem
+## 📊 Statistika celkem (Round 1-4)
 
-- Commitů pushnuto na produkci: ~30
-- UX agent reports: 3
-- UX zlepšení implementovaných: 5+
-- Smoke testů: 3 (po každém Round)
+- Commitů na produkci: ~35
+- UX agent audits: 3
+- UX zlepšení: 7+ (5 UI + 1 reorder + 1 print label)
+- Smoke testů: 4
 - Pre-flight audity: 3
-- i18n klíčů celkem: 2835 (cs/en/de)
-- Tests: 245/245 napříč všemi rounds
+- i18n klíčů: 2835 napříč cs/en/de
 
 ---
 
 ## 🚀 Doporučený další krok
 
-**Beta launch s 3-5 trenéry.**
-
-Aplikace je technicky připravená. Další iterace už mají být řízené reálnou zpětnou vazbou, ne našimi domněnkami. Po týdnu beta zpětné vazby → priorita 2-3 nejbolavějších problémů → cílená oprava.
+**Pusť beta s 3-5 trenéry.** Aplikace má vše co potřebuje. Další iterace musí být řízené reálnou zpětnou vazbou, ne našimi domněnkami.
 
 ---
 
-_Generated 2026-05-22 by automated launch run + Chrome MCP verification._
-_Latest deploy: https://github.com/janmotycka/tourniquet/actions/runs/26279431483_
+_Generated 2026-05-22 by automated launch run (Round 4)._
+_Latest deploy: https://github.com/janmotycka/tourniquet/actions/runs/26280768911_
