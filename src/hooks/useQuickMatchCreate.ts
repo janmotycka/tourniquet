@@ -80,6 +80,8 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       // Auto-split: prvních startersCount = isStarter, zbytek = bench
       isStarter: useSubAssistant ? i < startersCount : true,
       substituteOrder: useSubAssistant && i >= startersCount ? i - startersCount + 1 : 0,
+      // Audit 2026-05-22 Stage 2b: kapitán z presetu
+      isCaptain: entry.isCaptain,
     }));
     const match = createMatch({
       sport: isFloorball ? 'floorball' : 'football',
@@ -103,7 +105,8 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       periodDurationMinutes,
       matchFormat,
       lineup,
-      trackAssists: false,
+      // Audit 2026-05-22 Stage 2: trackAssists z presetu (default false).
+      trackAssists: preset?.trackAssists ?? false,
       // Audit 2026-05-22: sub assistant — settings z presetu (volitelné).
       substitutionSettings: preset?.subAssistant,
       // Audit 2026-04-29: označit jako rychlý zápas — UI některé Advanced

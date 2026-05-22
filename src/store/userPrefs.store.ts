@@ -44,7 +44,13 @@ interface UserPrefsState {
   sportOnboardingShown: boolean;
   /** Tenisový sub-mód. null = ještě nevybráno (ukáže se picker). */
   tennisUserType: TennisUserType | null;
-  /** Režim aplikace (jednoduchý vs. pokročilý). null = ještě nezvoleno. */
+  /**
+   * Režim aplikace (jednoduchý vs. pokročilý).
+   * Audit 2026-05-22: smazán globální toggle ze Settings — místo toho
+   * progressive disclosure uvnitř formulářů (collapsibles). Nový default
+   * = 'advanced' (= všechny featury dostupné). Existing users zůstávají
+   * na svém uloženém appMode (kompatibilita s isSimpleMode checks).
+   */
   appMode: AppMode | null;
 
   setPreferredSport: (sport: Sport) => void;
@@ -61,13 +67,15 @@ export const useUserPrefsStore = create<UserPrefsState>()(
       preferredSport: 'football',
       sportOnboardingShown: false,
       tennisUserType: null,
-      appMode: null,
+      // Audit 2026-05-22: default 'advanced' pro nové users — toggle smazán
+      // ze Settings, progressive disclosure uvnitř formulářů.
+      appMode: 'advanced',
 
       setPreferredSport: (sport) => set({ preferredSport: sport, sportOnboardingShown: true }),
       markSportOnboardingShown: () => set({ sportOnboardingShown: true }),
       setTennisUserType: (type) => set({ tennisUserType: type }),
       setAppMode: (mode) => set({ appMode: mode }),
-      reset: () => set({ preferredSport: 'football', sportOnboardingShown: false, tennisUserType: null, appMode: null }),
+      reset: () => set({ preferredSport: 'football', sportOnboardingShown: false, tennisUserType: null, appMode: 'advanced' }),
     }),
     {
       name: 'torq-user-prefs',

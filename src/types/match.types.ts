@@ -28,6 +28,7 @@ export interface MatchLineupPlayer {
   substituteOrder: number; // pořadí na lavičce (1 = první na střídání); 0 pro startéry
   attendance?: AttendanceStatus; // účast na zápase; default (unset) = 'tentative'
   guestCategory?: string; // domovská kategorie, pokud hráč hostuje z jiné kategorie (např. U8 hraje za U9)
+  isCaptain?: boolean;    // audit 2026-05-22: kapitán týmu (max 1 hráč v lineup)
 }
 
 // ─── Events ───────────────────────────────────────────────────────────────────
