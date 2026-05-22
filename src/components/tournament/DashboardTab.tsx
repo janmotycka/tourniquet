@@ -303,7 +303,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
             >
               📄 {pdfExporting
                 ? t('pdf.generating')
-                : tournament.format === 'round-robin'
+                : (tournament.settings.format ?? 'round-robin') === 'round-robin'
                   ? t('tournament.simpleQuick.printBtnGroups')
                   : t('tournament.simpleQuick.printBtn')}
             </button>
