@@ -2,6 +2,30 @@
 
 Pro tebe (Jan), abys mohl plynule rozjet beta s 3-5 trenéry.
 
+**Updated 2026-05-22 22:25** — po deep audit + UX research + Phase 1+2
+refactoru. Stav je solidní pro beta. Phase 3 (lineup page rewrite) v
+další session.
+
+---
+
+## 🎁 Co nového po deep audit (Phase 1 + Phase 2)
+
+**2 paralelní agenti** prošli code (CreateMatchPage + QuickMatchSheet) +
+UX research (Strava, GameChanger, TeamSnap, FotMob best practices).
+Identifikovali 30+ findings. Implementoval jsem nejhodnotnější:
+
+### Quick match — kritické bug fixy
+- ✅ **Opponent validation** — Spustit zápas je teď disabled bez opponenta (min 2 znaky). Žádný DB junk.
+- ✅ **Unsaved form guard** — refresh už neztratí 18 hráčů
+- ✅ **Smart defaults z lastMatch** — format/délka/soutěž/kategorie/trackAssists se přebírá z minulého zápasu
+- ✅ **Smart defaults banner** — „💡 Předvyplněno z minulého zápasu (14. 5.). Můžeš změnit." Konec silent auto-fill.
+- ✅ **Match format dropdown** — místo 6 chips (overflow na mobile 360px), native select s edukativními labels („5+1 — malá kopaná, 6 hráčů")
+
+### Shared infrastructure (pro budoucí Phase 3)
+- ✅ `<CollapsibleSection>` shared component
+- ✅ `useMatchSmartDefaults` hook (sjednocený zdroj defaults)
+- ✅ `<MatchFormatSelect>` component (dropdown s i18n hints)
+
 ---
 
 ## 📋 Pro tebe — co předtím udělat
@@ -58,14 +82,18 @@ Jan
 
 ### Pro trenéra
 - ✅ Vytvořit turnaj (2-32 týmů, 3 formáty)
-- ✅ Vytvořit zápas (Quick match nebo plný s sestavou)
+- ✅ Vytvořit zápas (Quick match s smart defaults z minula)
 - ✅ Živé skóre (góly, karty žluté/červené, střídání, půlčasy)
+- ✅ Asistent střídání (auto-alert + auto-split starters/bench)
+- ✅ Captain selector
+- ✅ Track assists toggle
 - ✅ Klubový roster (správa hráčů, věkové kategorie U6-U19)
 - ✅ Sdílení s asistenty trenéra
 - ✅ Statistiky hráčů (góly, asistence, hodnocení)
 - ✅ FAČR export PDF
 - ✅ Offline mode (PWA)
 - ✅ Multi-language (cs/en/de)
+- ✅ Unsaved form guard (refresh už neztratí data)
 
 ### Pro rodiče
 - ✅ Sledování zápasu naživo přes QR kód / odkaz
