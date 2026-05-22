@@ -32,6 +32,8 @@ import {
   SettingsList,
   PageHeader,
 } from '../ui';
+import { MatchFormatSelect } from './MatchFormatSelect';
+import { useMatchSmartDefaults } from '../../hooks/useMatchSmartDefaults';
 import { generateId } from '../../utils/id';
 
 /**
@@ -171,10 +173,13 @@ export function QuickMatchSheet({
   const hasClubPlayers = clubPlayers.length > 0;
 
   // ─── State ─────────────────────────────────────────────────────────────────
+  // Audit 2026-05-22 Phase 2: smart defaults z lastMatch (sjednocený zdroj
+  // pro Quick + Full match). Vrací format, periods, duration, competition,
+  // trackAssists. Pro Quick nadále use jen subset (zbytek je collapsibles).
+  const smartDefaults = useMatchSmartDefaults();
+
   // Audit 2026-05-06: explicit input pro „Náš tým" — předtím se odvozoval
   // z aktivního klubu silently. Teď default = club name (pre-filled, editable).
-  // Uživatel může napsat třeba „Vrchovina B" pro B-tým, nebo cokoli vlastního
-  // pro Simple mode bez klubu.
   const [myTeamName, setMyTeamName] = useState<string>(() => activeClub?.name ?? '');
   const [opponent, setOpponent] = useState('');
   const [opponentFocused, setOpponentFocused] = useState(false);
@@ -199,10 +204,14 @@ export function QuickMatchSheet({
   // Audit 2026-04-29 pt2: nahrazen checkbox + auto-save explicitním tlačítkem.
   // User vidí jasné potvrzení (toast) když se parta uloží.
   const [squadName, setSquadName] = useState('');
-  // Match settings
-  const [periodCount, setPeriodCount] = useState<1 | 2>(1);
-  const [periodMinutes, setPeriodMinutes] = useState(15);
-  const [matchFormat, setMatchFormat] = useState<QuickMatchPreset['matchFormat']>('5+1');
+  // Match settings — smart defaults from lastMatch (Phase 2)
+  const [periodCount, setPeriodCount] = useState<1 | 2>(
+    smartDefaults.periods === 2 ? 2 : 1,
+  );
+  const [periodMinutes, setPeriodMinutes] = useState(smartDefaults.periodDuration);
+  const [matchFormat, setMatchFormat] = useState<QuickMatchPreset['matchFormat']>(
+    smartDefaults.matchFormat,
+  );
   // Modal: import z klubu
   const [clubImportOpen, setClubImportOpen] = useState(false);
   // Audit 2026-05-17: v Simple módu jsou „Více možností" (datum/místo/soutěž)
@@ -231,8 +240,9 @@ export function QuickMatchSheet({
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   });
   const [compCatExpanded, setCompCatExpanded] = useState(false);
-  const [competition, setCompetition] = useState('');
-  const [ageCategory, setAgeCategory] = useState<string>('');
+  // Smart defaults from lastMatch (Phase 2)
+  const [competition, setCompetition] = useState(smartDefaults.competition);
+  const [ageCategory, setAgeCategory] = useState<string>(smartDefaults.ageCategory);
   // Audit 2026-05-22: Pokročilá nastavení — sub assistant + track assists + captain.
   // Defaultně sbalené, vše opt-in. Quick match má být jednoduchý, advanced
   // featury jen pro power users.
@@ -240,7 +250,7 @@ export function QuickMatchSheet({
   const [useSubAssistant, setUseSubAssistant] = useState(false);
   const [subInterval, setSubInterval] = useState(5);
   const [subCount, setSubCount] = useState(1);
-  const [trackAssists, setTrackAssists] = useState(false);
+  const [trackAssists, setTrackAssists] = useState(smartDefaults.trackAssists);
   const [captainPlayerId, setCaptainPlayerId] = useState<string | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -532,8 +542,33 @@ export function QuickMatchSheet({
   const isPageMode = mode === 'page';
 
   // ─── Form content (oba módy ho vykreslují uvnitř svých wrapperů) ─────────
+  const showSmartDefaultsBanner = smartDefaults.hasLastMatch && !initialPlayers;
   const formContent = (
     <div style={{ padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* ── Smart auto-fill banner (audit 2026-05-22 Phase 2) ─────────────
+          Pokud existuje lastMatch a user nepřišel přes „Stejná sestava",
+          ukazujeme banner s vysvětlením že defaults pochází z minula. */}
+      {showSmartDefaultsBanner && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '10px 12px', borderRadius: 10,
+          background: 'var(--primary-light)',
+          border: '1.5px dashed var(--primary)',
+        }}>
+          <span style={{ fontSize: 20, lineHeight: 1 }}>💡</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>
+              {t('match.quickSheet.smartDefaultsTitle')}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+              {smartDefaults.lastMatchLabel
+                ? t('match.quickSheet.smartDefaultsHint', { date: smartDefaults.lastMatchLabel })
+                : t('match.quickSheet.smartDefaultsHintGeneric')}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Náš tým + Soupeř (audit 2026-05-06: explicit team name input) ──
           Vizuální „X vs Y" pattern. Náš tým defaultně předvyplněn z aktivního
           klubu, ale lze přepsat (např. „Vrchovina B" nebo Simple mode bez klubu). */}
@@ -651,17 +686,9 @@ export function QuickMatchSheet({
             />
           </SettingRow>
           <SettingRow icon="⚽" label={t('match.quickSheet.matchFormatLabel')} isLast>
-            <ChipPair
+            <MatchFormatSelect
               value={matchFormat}
-              options={[
-                { v: '3+1', label: '3+1' },
-                { v: '4+1', label: '4+1' },
-                { v: '5+1', label: '5+1' },
-                { v: '7+1', label: '7+1' },
-                { v: '8+1', label: '8+1' },
-                { v: '11+1', label: '11+1' },
-              ]}
-              onChange={v => setMatchFormat(v as QuickMatchPreset['matchFormat'])}
+              onChange={setMatchFormat}
             />
           </SettingRow>
         </SettingsList>
