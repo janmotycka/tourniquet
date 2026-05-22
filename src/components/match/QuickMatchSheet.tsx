@@ -530,21 +530,23 @@ export function QuickMatchSheet({
   useUnsavedFormGuard(opponent.trim().length > 0 || players.length > 0);
 
   // ─── Styles ────────────────────────────────────────────────────────────────
+  // Audit 2026-05-22 Phase 3 review: zvýšen labelStyle font + bold pro lepší
+  // hierarchii. iOS zoom mitigation — všechny inputy fontSize ≥ 16px.
   const labelStyle: React.CSSProperties = {
-    display: 'block', fontWeight: 600, fontSize: 13, marginBottom: 6, color: 'var(--text)',
+    display: 'block', fontWeight: 700, fontSize: 14, marginBottom: 6, color: 'var(--text)',
   };
   const inputStyle: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
     padding: '12px 14px', borderRadius: 12,
     border: '1.5px solid var(--border)',
     background: 'var(--surface)', color: 'var(--text)',
-    fontSize: 15, outline: 'none',
+    fontSize: 16, outline: 'none', // 16+ aby iOS Safari nezoomoval na focus
   };
   const compactInp: React.CSSProperties = {
-    padding: '8px 10px', borderRadius: 8,
+    padding: '10px 10px', borderRadius: 8,
     border: '1.5px solid var(--border)',
     background: 'var(--surface)', color: 'var(--text)',
-    fontSize: 14, outline: 'none', boxSizing: 'border-box',
+    fontSize: 16, outline: 'none', boxSizing: 'border-box', // 16+ proti iOS zoomu
   };
 
   const isPageMode = mode === 'page';
@@ -552,7 +554,7 @@ export function QuickMatchSheet({
   // ─── Form content (oba módy ho vykreslují uvnitř svých wrapperů) ─────────
   const showSmartDefaultsBanner = smartDefaults.hasLastMatch && !initialPlayers;
   const formContent = (
-    <div style={{ padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div style={{ padding: '0 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* ── Smart auto-fill banner (audit 2026-05-22 Phase 2) ─────────────
           Pokud existuje lastMatch a user nepřišel přes „Stejná sestava",
           ukazujeme banner s vysvětlením že defaults pochází z minula. */}
@@ -651,7 +653,7 @@ export function QuickMatchSheet({
                 }}>
                   {s.name}
                 </span>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
                   {s.count}× {t('match.quickSheet.opponentMatchesAgo')}
                 </span>
               </button>
@@ -802,15 +804,16 @@ export function QuickMatchSheet({
               <div
                 key={p.id}
                 style={{
-                  display: 'flex', gap: 4, alignItems: 'center',
-                  padding: '4px 6px', borderRadius: 8,
+                  display: 'flex', gap: 6, alignItems: 'center',
+                  padding: '6px 6px 6px 10px', borderRadius: 8,
                   background: 'var(--surface-var)',
+                  minHeight: 44, // Audit 2026-05-22: tap target row
                 }}
               >
                 <span style={{
                   width: 36, fontSize: 12, fontWeight: 800,
                   textAlign: 'center', color: 'var(--text-muted)',
-                  fontVariantNumeric: 'tabular-nums',
+                  fontVariantNumeric: 'tabular-nums', flexShrink: 0,
                 }}>
                   {p.jerseyNumber ? `#${p.jerseyNumber}` : '—'}
                 </span>
@@ -818,13 +821,14 @@ export function QuickMatchSheet({
                   flex: 1, fontSize: 14, fontWeight: 600,
                   color: 'var(--text)', overflow: 'hidden',
                   textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  minWidth: 0,
                 }}>
                   {p.name}
                 </span>
                 {p.birthYear && (
                   <span style={{
-                    fontSize: 11, color: 'var(--text-muted)', fontWeight: 600,
-                    fontVariantNumeric: 'tabular-nums',
+                    fontSize: 12, color: 'var(--text-muted)', fontWeight: 600,
+                    fontVariantNumeric: 'tabular-nums', flexShrink: 0,
                   }}>
                     {p.birthYear}
                   </span>
@@ -834,10 +838,11 @@ export function QuickMatchSheet({
                   onClick={() => removePlayer(p.id)}
                   aria-label={t('common.delete')}
                   style={{
-                    width: 26, height: 26, borderRadius: 6,
+                    width: 36, height: 36, borderRadius: 8,
                     background: 'transparent', color: 'var(--text-muted)',
-                    border: 'none', fontSize: 14, fontWeight: 700,
-                    cursor: 'pointer',
+                    border: 'none', fontSize: 18, fontWeight: 700,
+                    cursor: 'pointer', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}
                 >
                   ×
@@ -868,8 +873,8 @@ export function QuickMatchSheet({
               {t('match.quickSheet.addPlayer')}
             </span>
           </div>
-          <div style={{ padding: '6px 8px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <div style={{ padding: '8px 8px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <input
                 type="number"
                 inputMode="numeric"
@@ -881,7 +886,7 @@ export function QuickMatchSheet({
                 max={99}
                 style={{
                   ...compactInp,
-                  width: 44, textAlign: 'center', padding: '6px 2px', flexShrink: 0,
+                  width: 48, textAlign: 'center', padding: '8px 2px', flexShrink: 0,
                   borderColor: jerseyDuplicate ? 'var(--danger)' : 'var(--border)',
                 }}
               />
@@ -901,12 +906,12 @@ export function QuickMatchSheet({
                 placeholder={t('match.quickSheet.birthYearPlaceholder')}
                 style={{
                   ...compactInp,
-                  width: 54, textAlign: 'center', padding: '6px 2px', flexShrink: 0,
+                  width: 60, textAlign: 'center', padding: '8px 2px', flexShrink: 0,
                 }}
               />
             </div>
             {jerseyDuplicate && (
-              <div style={{ fontSize: 10, color: 'var(--danger)', fontWeight: 600 }}>
+              <div style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600 }}>
                 ⚠️ {t('match.quickSheet.duplicateJersey')}
               </div>
             )}
@@ -915,12 +920,13 @@ export function QuickMatchSheet({
               onClick={addPlayer}
               disabled={!canAddPlayer}
               style={{
-                width: '100%', padding: '7px', borderRadius: 7,
+                width: '100%', padding: '10px', borderRadius: 8,
                 background: canAddPlayer ? 'var(--primary)' : 'var(--surface-var)',
                 color: canAddPlayer ? '#fff' : 'var(--text-muted)',
-                border: 'none', fontSize: 12, fontWeight: 700,
+                border: 'none', fontSize: 13, fontWeight: 700,
                 cursor: canAddPlayer ? 'pointer' : 'default',
                 touchAction: 'manipulation',
+                minHeight: 40,
               }}
             >
               {canAddPlayer ? `+ ${t('match.quickSheet.addPlayer')}` : t('match.quickSheet.addPlayerHint')}
@@ -1042,18 +1048,18 @@ export function QuickMatchSheet({
           </span>
         </button>
         {dateTimeExpanded && (
-          <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
+          <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
             <input
               type="date"
               value={matchDate}
               onChange={e => setMatchDate(e.target.value)}
-              style={{ ...inputStyle, flex: 1, padding: '10px 12px', fontSize: 14 }}
+              style={{ ...inputStyle, flex: 2, padding: '10px 12px', fontSize: 16 }}
             />
             <input
               type="time"
               value={matchTime}
               onChange={e => setMatchTime(e.target.value)}
-              style={{ ...inputStyle, width: 110, padding: '10px 12px', fontSize: 14 }}
+              style={{ ...inputStyle, flex: 1, minWidth: 0, padding: '10px 12px', fontSize: 16 }}
             />
           </div>
         )}
@@ -1194,11 +1200,12 @@ export function QuickMatchSheet({
                     type="button"
                     onClick={() => setAgeCategory('')}
                     style={{
-                      padding: '6px 11px', borderRadius: 8,
+                      padding: '8px 12px', borderRadius: 8,
                       background: ageCategory === '' ? 'var(--primary)' : 'var(--surface-var)',
                       color: ageCategory === '' ? '#fff' : 'var(--text-muted)',
                       border: '1px solid var(--border)',
                       fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                      minHeight: 36,
                     }}
                   >
                     {t('match.quickSheet.categoryNone')}
@@ -1209,11 +1216,12 @@ export function QuickMatchSheet({
                       type="button"
                       onClick={() => setAgeCategory(cat)}
                       style={{
-                        padding: '6px 11px', borderRadius: 8,
+                        padding: '8px 12px', borderRadius: 8,
                         background: ageCategory === cat ? 'var(--primary)' : 'var(--surface-var)',
                         color: ageCategory === cat ? '#fff' : 'var(--text-muted)',
                         border: '1px solid var(--border)',
                         fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                        minHeight: 36,
                       }}
                     >
                       {cat}
@@ -1235,11 +1243,11 @@ export function QuickMatchSheet({
                 value={competition}
                 onChange={e => setCompetition(e.target.value)}
                 placeholder={t('match.quickSheet.competitionPlaceholder')}
-                style={{ ...inputStyle, padding: '10px 12px', fontSize: 14 }}
+                style={{ ...inputStyle, padding: '10px 12px', fontSize: 16 }}
               />
               {competitionHistory.length > 0 && (
                 <div style={{
-                  display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6,
+                  display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8,
                 }}>
                   {competitionHistory
                     .filter(c => c.name !== competition)
@@ -1249,10 +1257,13 @@ export function QuickMatchSheet({
                         type="button"
                         onClick={() => setCompetition(c.name)}
                         style={{
-                          padding: '4px 10px', borderRadius: 8,
+                          padding: '8px 12px', borderRadius: 8,
                           background: 'var(--surface-var)', color: 'var(--text-muted)',
                           border: '1px dashed var(--border)',
-                          fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          minHeight: 32,
+                          maxWidth: '100%',
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}
                       >
                         {c.name}
@@ -1980,7 +1991,7 @@ function ClubImportModal({
                       {p.name}
                       {alreadyAdded && (
                         <span style={{
-                          marginLeft: 6, fontSize: 10, fontWeight: 700,
+                          marginLeft: 6, fontSize: 11, fontWeight: 700,
                           color: 'var(--text-muted)',
                         }}>
                           ✓ {t('match.quickSheet.alreadyAdded')}

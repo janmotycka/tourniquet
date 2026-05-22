@@ -93,7 +93,7 @@ export function ChipPair<T extends number | string>({
             type="button"
             onClick={() => onChange(opt.v)}
             style={{
-              minWidth: 36, padding: '6px 10px', borderRadius: 8,
+              minWidth: 40, minHeight: 36, padding: '8px 12px', borderRadius: 8,
               fontSize: 13, fontWeight: 700,
               background: active ? 'var(--primary)' : 'var(--surface-var)',
               color: active ? '#fff' : 'var(--text-muted)',
@@ -139,8 +139,8 @@ export function CompactNumberInput({
           if (Number.isFinite(n)) onChange(Math.max(min, Math.min(max, n)));
         }}
         style={{
-          width, padding: '6px 8px',
-          fontSize: 13, fontWeight: 700, textAlign: 'center',
+          width, padding: '8px 8px', minHeight: 36,
+          fontSize: 16, fontWeight: 700, textAlign: 'center',
           borderRadius: 8, border: '1.5px solid var(--border)',
           background: 'var(--surface)', color: 'var(--text)',
         }}

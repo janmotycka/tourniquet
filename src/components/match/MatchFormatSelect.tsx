@@ -5,8 +5,9 @@
  * na 360px mobile screen. Native <select> řeší overflow + dává OS-level picker
  * + accessibility zdarma.
  *
- * Option labels obsahují edukativní hint („5+1 — malá kopaná, 6 hráčů celkem").
- * Pomáhá trenérovi pochopit co znamená co.
+ * Audit 2026-05-22 Phase 3 review: edukativní popisky („florbal default")
+ * matou trenéra („proč mi tam visí florbal?"). Necháváme jen format string
+ * — trenér ví co je co.
  */
 import type { MatchFormat } from '../../types/match.types';
 
@@ -18,19 +19,6 @@ interface Props {
 }
 
 const ALL_FORMATS: MatchFormat[] = ['3+1', '4+1', '5+1', '7+1', '8+1', '11+1'];
-
-/**
- * Edukativní hint pro každý formát (cs).
- * 5+1 = 5 hráčů v poli + 1 brankář = 6 celkem.
- */
-const FORMAT_DESCRIPTIONS_CS: Record<MatchFormat, string> = {
-  '3+1': '3+1 — mini fotbal, 4 hráči celkem',
-  '4+1': '4+1 — florbal default, 5 hráčů',
-  '5+1': '5+1 — malá kopaná, 6 hráčů',
-  '7+1': '7+1 — přípravka, 8 hráčů',
-  '8+1': '8+1 — žáci, 9 hráčů',
-  '11+1': '11+1 — velké hřiště, 12 hráčů',
-};
 
 export function MatchFormatSelect({ value, onChange, options }: Props) {
   const formats = options ?? ALL_FORMATS;
@@ -60,7 +48,7 @@ export function MatchFormatSelect({ value, onChange, options }: Props) {
     >
       {formats.map(f => (
         <option key={f} value={f}>
-          {FORMAT_DESCRIPTIONS_CS[f]}
+          {f}
         </option>
       ))}
     </select>
