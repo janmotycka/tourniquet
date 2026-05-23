@@ -1158,7 +1158,7 @@ export const cs = {
   'match.quickSheet.subAssistantHint': 'Aplikace ti připomene každých {interval} min vystřídat {count} hráče. Prvních N hráčů (podle formátu) jde do základu, zbytek na lavičku v pořadí soupisky.',
   'match.quickSheet.advancedLabel': 'Pokročilá nastavení',
   'match.quickSheet.trackAssistsLabel': 'Sledovat asistence',
-  'match.quickSheet.trackAssistsDesc': 'U každého gólu ti aplikace nabídne výběr asistenta. Vypnuto = jen střelec.',
+  'match.quickSheet.trackAssistsDesc': 'U gólu nabídnout asistenta',
   'match.quickSheet.trackAssistsSummary': 'asistence',
   'match.quickSheet.captainLabel': 'Kapitán týmu',
   'match.quickSheet.captainNone': 'Bez kapitána',

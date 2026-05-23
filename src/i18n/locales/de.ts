@@ -1147,7 +1147,7 @@ export const de: Record<TranslationKey, string> = {
   'match.quickSheet.subAssistantHint': 'App erinnert dich alle {interval} min, {count} Spieler zu wechseln. Erste N Spieler (laut Format) in der Startaufstellung, Rest auf der Bank in Aufstellungsreihenfolge.',
   'match.quickSheet.advancedLabel': 'Erweiterte Einstellungen',
   'match.quickSheet.trackAssistsLabel': 'Assists verfolgen',
-  'match.quickSheet.trackAssistsDesc': 'Bei jedem Tor kannst du den Vorlagengeber wählen. Aus = nur Torschütze.',
+  'match.quickSheet.trackAssistsDesc': 'Vorlagengeber bei Toren wählen',
   'match.quickSheet.trackAssistsSummary': 'Assists',
   'match.quickSheet.captainLabel': 'Mannschaftskapitän',
   'match.quickSheet.captainNone': 'Ohne Kapitän',

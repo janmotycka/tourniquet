@@ -1147,7 +1147,7 @@ export const en: Record<TranslationKey, string> = {
   'match.quickSheet.subAssistantHint': 'App will remind you every {interval} min to swap {count} player(s). First N players (per match format) go to starting lineup, rest to bench in roster order.',
   'match.quickSheet.advancedLabel': 'Advanced settings',
   'match.quickSheet.trackAssistsLabel': 'Track assists',
-  'match.quickSheet.trackAssistsDesc': 'For each goal you can pick the assist provider. Off = only scorer.',
+  'match.quickSheet.trackAssistsDesc': 'Pick assist provider on goals',
   'match.quickSheet.trackAssistsSummary': 'assists',
   'match.quickSheet.captainLabel': 'Team captain',
   'match.quickSheet.captainNone': 'No captain',

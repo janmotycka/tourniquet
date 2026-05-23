@@ -31,9 +31,9 @@ export function SettingRow({ icon, label, hint, isLast, children }: SettingRowPr
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 0',
+      padding: '8px 0',
       borderBottom: isLast ? 'none' : '1px solid var(--border)',
-      minHeight: 48,
+      minHeight: 44,
     }}>
       <span style={{ fontSize: 18, width: 24, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>

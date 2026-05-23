@@ -557,25 +557,24 @@ export function QuickMatchSheet({
     <div style={{ padding: '0 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
       {/* ── Smart auto-fill banner (audit 2026-05-22 Phase 2) ─────────────
           Pokud existuje lastMatch a user nepřišel přes „Stejná sestava",
-          ukazujeme banner s vysvětlením že defaults pochází z minula. */}
+          ukazujeme banner s vysvětlením že defaults pochází z minula.
+          Audit 2026-05-23: 1-řádkový kompaktní pruh místo 2-řádkového bloku. */}
       {showSmartDefaultsBanner && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 12px', borderRadius: 10,
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '6px 10px', borderRadius: 8,
           background: 'var(--primary-light)',
-          border: '1.5px dashed var(--primary)',
+          border: '1px dashed var(--primary)',
+          fontSize: 11, lineHeight: 1.3,
         }}>
-          <span style={{ fontSize: 20, lineHeight: 1 }}>💡</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>
-              {t('match.quickSheet.smartDefaultsTitle')}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
-              {smartDefaults.lastMatchLabel
-                ? t('match.quickSheet.smartDefaultsHint', { date: smartDefaults.lastMatchLabel })
-                : t('match.quickSheet.smartDefaultsHintGeneric')}
-            </div>
-          </div>
+          <span style={{ fontSize: 14, flexShrink: 0 }}>💡</span>
+          <span style={{ flex: 1, minWidth: 0, color: 'var(--text-muted)' }}>
+            <strong style={{ color: 'var(--primary)' }}>{t('match.quickSheet.smartDefaultsTitle')}</strong>
+            {' · '}
+            {smartDefaults.lastMatchLabel
+              ? t('match.quickSheet.smartDefaultsHint', { date: smartDefaults.lastMatchLabel })
+              : t('match.quickSheet.smartDefaultsHintGeneric')}
+          </span>
         </div>
       )}
 
@@ -705,11 +704,12 @@ export function QuickMatchSheet({
       </div>
 
       {/* Hint o volitelnosti — audit 2026-04-29 pt4: přesunuto nad collapsibles
-          aby trenér věděl PŘEDTÍM než uvidí seznam možností. */}
+          aby trenér věděl PŘEDTÍM než uvidí seznam možností.
+          Audit 2026-05-23: -gap navíc (původní gap 12px už bylo dost). */}
       <div style={{
         fontSize: 11, color: 'var(--text-muted)',
-        textAlign: 'center', lineHeight: 1.5,
-        padding: '2px 8px',
+        textAlign: 'center', lineHeight: 1.4,
+        margin: '-4px 0',
       }}>
         ℹ️ {t('match.quickSheet.optionalHint')}
       </div>
@@ -775,24 +775,7 @@ export function QuickMatchSheet({
           </span>
         </button>
       {rosterExpanded && (<>
-        {hasClubPlayers && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-            <button
-              type="button"
-              onClick={() => setClubImportOpen(true)}
-              style={{
-                padding: '6px 12px', borderRadius: 8,
-                background: 'var(--surface-var)', color: 'var(--primary)',
-                border: '1px solid var(--primary)',
-                fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              📥 {t('match.quickSheet.importFromClub')}
-            </button>
-          </div>
-        )}
-        <div style={{ marginTop: hasClubPlayers ? 8 : 10 }}>
+        <div style={{ marginTop: 8 }}>
 
         {/* Existing players list */}
         {players.length > 0 && (
@@ -861,7 +844,7 @@ export function QuickMatchSheet({
           transition: 'border .2s',
         }}>
           <div style={{
-            padding: '5px 10px',
+            padding: '5px 6px 5px 10px',
             background: jerseyDuplicate
               ? 'var(--danger)'
               : canAddPlayer ? 'var(--primary)' : 'var(--surface-var)',
@@ -872,6 +855,25 @@ export function QuickMatchSheet({
             <span style={{ fontWeight: 700, fontSize: 12 }}>
               {t('match.quickSheet.addPlayer')}
             </span>
+            {/* Audit 2026-05-23: "Z klubu" tlačítko inline vpravo místo
+                samostatného řádku (šetří ~50px vertikál + odstraňuje hluché místo). */}
+            {hasClubPlayers && (
+              <button
+                type="button"
+                onClick={() => setClubImportOpen(true)}
+                style={{
+                  marginLeft: 'auto',
+                  padding: '4px 10px', borderRadius: 6,
+                  background: (jerseyDuplicate || canAddPlayer) ? 'rgba(255,255,255,.18)' : 'var(--surface)',
+                  color: (jerseyDuplicate || canAddPlayer) ? '#fff' : 'var(--primary)',
+                  border: (jerseyDuplicate || canAddPlayer) ? 'none' : '1px solid var(--primary)',
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                📥 {t('match.quickSheet.importFromClub')}
+              </button>
+            )}
           </div>
           <div style={{ padding: '8px 8px', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -944,18 +946,15 @@ export function QuickMatchSheet({
       </>)}
       </div>
 
-      {/* ── Save / Update party — explicit tlačítka místo checkboxu */}
+      {/* ── Save / Update party — explicit tlačítka místo checkboxu.
+          Audit 2026-05-23: zúžený layout — hlavička inline místo nad inputem. */}
       {!selectedSquadId && validPlayers.length > 0 && (
         <div style={{
-          background: 'var(--surface-var)', borderRadius: 10, padding: 10,
+          background: 'var(--surface-var)', borderRadius: 10, padding: 8,
           border: '1px solid var(--border)',
         }}>
-          <div style={{
-            fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 8,
-          }}>
-            💾 {t('match.quickSheet.saveAsSquad')}
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>💾</span>
             <input
               type="text"
               value={squadName}
@@ -967,7 +966,7 @@ export function QuickMatchSheet({
                 }
               }}
               placeholder={t('match.quickSheet.squadNamePlaceholder')}
-              style={{ ...inputStyle, flex: 1, padding: '8px 10px', fontSize: 13 }}
+              style={{ ...inputStyle, flex: 1, padding: '8px 10px', fontSize: 16, minWidth: 0 }}
             />
             <button
               type="button"
@@ -979,7 +978,7 @@ export function QuickMatchSheet({
                 color: squadName.trim() ? '#fff' : 'var(--text-muted)',
                 border: 'none', fontSize: 13, fontWeight: 700,
                 cursor: squadName.trim() ? 'pointer' : 'default',
-                whiteSpace: 'nowrap',
+                whiteSpace: 'nowrap', flexShrink: 0,
               }}
             >
               {t('match.quickSheet.saveSquadCta')}
@@ -1324,11 +1323,13 @@ export function QuickMatchSheet({
           </span>
         </button>
         {advancedExpanded && (
-          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {/* ── Track assists toggle (audit 2026-05-22 Stage 2c) */}
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* ── Track assists toggle (audit 2026-05-22 Stage 2c)
+                Audit 2026-05-23: zúžené 1-řádkové layouty — popisek inline místo
+                pod hlavičkou (-30% výšky, no wasted space). */}
             <label style={{
               display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer',
-              padding: '10px 12px', borderRadius: 10,
+              padding: '8px 12px', borderRadius: 10,
               background: trackAssists ? 'var(--success-light)' : 'var(--surface-var)',
               border: `1.5px solid ${trackAssists ? 'var(--success)' : 'var(--border)'}`,
             }}>
@@ -1336,20 +1337,19 @@ export function QuickMatchSheet({
                 type="checkbox"
                 checked={trackAssists}
                 onChange={e => setTrackAssists(e.target.checked)}
-                style={{ width: 20, height: 20, cursor: 'pointer' }}
+                style={{ width: 20, height: 20, cursor: 'pointer', flexShrink: 0 }}
               />
-              <span style={{ flex: 1 }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{
-                  display: 'block', fontSize: 14, fontWeight: 700,
+                  fontSize: 14, fontWeight: 700,
                   color: trackAssists ? 'var(--success)' : 'var(--text)',
                 }}>
                   🎯 {t('match.quickSheet.trackAssistsLabel')}
                 </span>
                 <span style={{
-                  display: 'block', fontSize: 11, color: 'var(--text-muted)',
-                  marginTop: 2, lineHeight: 1.4,
+                  marginLeft: 8, fontSize: 12, color: 'var(--text-muted)',
                 }}>
-                  {t('match.quickSheet.trackAssistsDesc')}
+                  · {t('match.quickSheet.trackAssistsDesc')}
                 </span>
               </span>
             </label>
@@ -1404,7 +1404,7 @@ export function QuickMatchSheet({
             {/* ── Sub assistant toggle (audit 2026-05-22) */}
             <label style={{
               display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer',
-              padding: '10px 12px', borderRadius: 10,
+              padding: '8px 12px', borderRadius: 10,
               background: useSubAssistant ? 'var(--success-light)' : 'var(--surface-var)',
               border: `1.5px solid ${useSubAssistant ? 'var(--success)' : 'var(--border)'}`,
             }}>
@@ -1412,7 +1412,7 @@ export function QuickMatchSheet({
                 type="checkbox"
                 checked={useSubAssistant}
                 onChange={e => setUseSubAssistant(e.target.checked)}
-                style={{ width: 20, height: 20, cursor: 'pointer' }}
+                style={{ width: 20, height: 20, cursor: 'pointer', flexShrink: 0 }}
               />
               <span style={{
                 fontSize: 14, fontWeight: 700,
@@ -1596,46 +1596,70 @@ export function QuickMatchSheet({
           spustit hned nebo nejdřív doplnit sestavu. „Spustit hned" je primární
           akce (rychlý zápas bez detailů). „Přidat sestavu →" otevře lineup
           editor na detail page kde se dá kapitán, čísla dresů, bench, atd. */}
-      <button
-        onClick={handleStart}
-        disabled={submitDisabled}
-        style={{
-          padding: '14px', borderRadius: 12,
-          background: submitDisabled ? 'var(--border)' : 'var(--primary)',
-          color: submitDisabled ? 'var(--text-muted)' : '#fff',
-          border: 'none',
-          fontWeight: 800, fontSize: 15,
-          cursor: submitDisabled ? 'not-allowed' : 'pointer',
-          marginTop: 4,
-          boxShadow: submitDisabled ? 'none' : 'var(--shadow-sm)',
-          opacity: submitDisabled ? 0.6 : 1,
-          transition: 'background .15s, opacity .15s',
-        }}
-        title={submitDisabled ? t('match.quickSheet.opponentRequired') : undefined}
-      >
-        ⚡ {t('match.quickSheet.startCta')}
-      </button>
-      {/* V Simple módu lineup tab v match-detail není navigovatelný (jen 'live'),
-          takže by uživatel uvízl. CTA skrýváme — Simple flow = spustit hned. */}
-      {!isSimpleMode && (
+      {/* Audit 2026-05-23: dual CTA v gridu (50/50) místo dvou full-width řádků
+          — šetří ~50px vertikál + symmetrickější mobile layout. */}
+      {isSimpleMode ? (
         <button
-          type="button"
-          onClick={handleEditLineup}
+          onClick={handleStart}
           disabled={submitDisabled}
           style={{
             padding: '12px', borderRadius: 12,
-            background: 'transparent',
-            color: submitDisabled ? 'var(--text-muted)' : 'var(--primary)',
-            border: `1.5px solid ${submitDisabled ? 'var(--border)' : 'var(--primary)'}`,
-            fontWeight: 700, fontSize: 14,
+            background: submitDisabled ? 'var(--border)' : 'var(--primary)',
+            color: submitDisabled ? 'var(--text-muted)' : '#fff',
+            border: 'none',
+            fontWeight: 800, fontSize: 15,
             cursor: submitDisabled ? 'not-allowed' : 'pointer',
+            marginTop: 4,
+            boxShadow: submitDisabled ? 'none' : 'var(--shadow-sm)',
             opacity: submitDisabled ? 0.6 : 1,
-            transition: 'opacity .15s, border-color .15s',
+            transition: 'background .15s, opacity .15s',
+            minHeight: 48,
           }}
-          title={submitDisabled ? t('match.quickSheet.opponentRequired') : t('match.quickSheet.editLineupHint')}
+          title={submitDisabled ? t('match.quickSheet.opponentRequired') : undefined}
         >
-          📋 {t('match.quickSheet.editLineupCta')}
+          ⚡ {t('match.quickSheet.startCta')}
         </button>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 4 }}>
+          <button
+            type="button"
+            onClick={handleEditLineup}
+            disabled={submitDisabled}
+            style={{
+              padding: '12px 10px', borderRadius: 12,
+              background: 'transparent',
+              color: submitDisabled ? 'var(--text-muted)' : 'var(--primary)',
+              border: `1.5px solid ${submitDisabled ? 'var(--border)' : 'var(--primary)'}`,
+              fontWeight: 700, fontSize: 14,
+              cursor: submitDisabled ? 'not-allowed' : 'pointer',
+              opacity: submitDisabled ? 0.6 : 1,
+              transition: 'opacity .15s, border-color .15s',
+              minHeight: 48,
+            }}
+            title={submitDisabled ? t('match.quickSheet.opponentRequired') : t('match.quickSheet.editLineupHint')}
+          >
+            📋 {t('match.quickSheet.editLineupCta')}
+          </button>
+          <button
+            onClick={handleStart}
+            disabled={submitDisabled}
+            style={{
+              padding: '12px 10px', borderRadius: 12,
+              background: submitDisabled ? 'var(--border)' : 'var(--primary)',
+              color: submitDisabled ? 'var(--text-muted)' : '#fff',
+              border: 'none',
+              fontWeight: 800, fontSize: 15,
+              cursor: submitDisabled ? 'not-allowed' : 'pointer',
+              boxShadow: submitDisabled ? 'none' : 'var(--shadow-sm)',
+              opacity: submitDisabled ? 0.6 : 1,
+              transition: 'background .15s, opacity .15s',
+              minHeight: 48,
+            }}
+            title={submitDisabled ? t('match.quickSheet.opponentRequired') : undefined}
+          >
+            ⚡ {t('match.quickSheet.startCta')}
+          </button>
+        </div>
       )}
       {submitDisabled && (opponent.length > 0 || players.length > 0) && (
         <div style={{
