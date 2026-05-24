@@ -18,6 +18,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
+import { checkRateLimit, recordFailedAttempt, resetRateLimit } from './rate-limiter';
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -68,6 +69,9 @@ export const joinTournamentByPin = functions.region('europe-west1').https.onCall
     throw new functions.https.HttpsError('invalid-argument', 'tournamentId and pin are required');
   }
 
+  // Audit 2026-05-23 S-7: rate limit (10 failed / 10 min → block 30 min)
+  await checkRateLimit('tournament-join', uid);
+
   // Načti PIN data (primárně z /pin-auth, fallback na /public pro starší turnaje)
   const [pinSnap, publicSnap] = await Promise.all([
     db.ref(`pin-auth/${tournamentId}`).get(),
@@ -105,8 +109,11 @@ export const joinTournamentByPin = functions.region('europe-west1').https.onCall
 
   const expected = hashPinClientCompat(pin, pinSalt);
   if (expected !== pinHash) {
+    await recordFailedAttempt('tournament-join', uid);
     throw new functions.https.HttpsError('permission-denied', 'Invalid PIN');
   }
+
+  await resetRateLimit('tournament-join', uid);
 
   // Role: anonymní uživatelé NESMÍ být admin (bezpečnost — admin role dává
   // přístup ke změně skóre, startu/ukončení zápasů, atd.)
@@ -131,7 +138,7 @@ export const joinTournamentByPin = functions.region('europe-west1').https.onCall
  * bez udělení admin role (např. score writing gate pro logged-in diváky).
  */
 export const verifyTournamentPin = functions.region('europe-west1').https.onCall(async (data, context) => {
-  requireAuth(context);
+  const uid = requireAuth(context);
 
   const tournamentId = sanitizeString(data?.tournamentId, 100);
   const pin = sanitizeString(data?.pin, 20);
@@ -139,6 +146,10 @@ export const verifyTournamentPin = functions.region('europe-west1').https.onCall
   if (!tournamentId || !pin) {
     throw new functions.https.HttpsError('invalid-argument', 'tournamentId and pin are required');
   }
+
+  // Audit 2026-05-23 S-7: rate limit (sdílí counter s join, takže brute force
+  // přes verify+join se nesčítá obojí, ale jakoukoli kombinace je counted).
+  await checkRateLimit('tournament-join', uid);
 
   const [pinSnap, publicSnap] = await Promise.all([
     db.ref(`pin-auth/${tournamentId}`).get(),
@@ -168,8 +179,11 @@ export const verifyTournamentPin = functions.region('europe-west1').https.onCall
 
   const expected = hashPinClientCompat(pin, pinSalt);
   if (expected !== pinHash) {
+    await recordFailedAttempt('tournament-join', uid);
     throw new functions.https.HttpsError('permission-denied', 'Invalid PIN');
   }
+
+  await resetRateLimit('tournament-join', uid);
 
   return { success: true };
 });

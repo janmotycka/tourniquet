@@ -19,6 +19,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import { ADMIN_UID } from './constants';
+import { checkRateLimit, recordFailedAttempt, resetRateLimit } from './rate-limiter';
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -457,6 +458,9 @@ export const joinClubByInvite = functions.region('europe-west1').https.onCall(as
     throw new functions.https.HttpsError('invalid-argument', 'inviteId and pin are required');
   }
 
+  // Audit 2026-05-23 S-7: rate limit check (10 failed attempts / 10 min → block 30 min)
+  await checkRateLimit('club-join', uid);
+
   const [inviteSnap, pinSnap] = await Promise.all([
     db.ref(`clubInvites/${inviteId}`).get(),
     db.ref(`clubPinAuth/${inviteId}`).get(),
@@ -485,8 +489,11 @@ export const joinClubByInvite = functions.region('europe-west1').https.onCall(as
 
   const expectedHash = hashPin(pin, pinData.pinSalt);
   if (expectedHash !== pinData.pinHash) {
+    await recordFailedAttempt('club-join', uid);
     throw new functions.https.HttpsError('permission-denied', 'Invalid PIN');
   }
+
+  await resetRateLimit('club-join', uid);
 
   // Anonymous users povolené — mohou se přidávat do klubu přes invite (stejně jako u turnajů)
   // ale dáváme jim vždy roli `viewer` aby nemohli měnit data

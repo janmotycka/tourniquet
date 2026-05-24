@@ -1305,6 +1305,7 @@ export const en: Record<TranslationKey, string> = {
   'match.lineup.toStart': 'To start',
   'match.lineup.edit': 'Edit',
   'match.lineup.startMatchCta': 'Start match',
+  'match.lineup.captainTooltip': 'Captain',
 
   // ─── Match Attendance ─────────────────────────────────────────────────────
   'match.attendance.confirmed': 'Coming',

@@ -432,6 +432,14 @@
       }
     },
 
+    // ─── Rate limiting state — admin SDK only (audit 2026-05-23 S-7) ─────────
+    // Server-side counter pro PIN brute force protection. Client NESMÍ číst/psát —
+    // jediné modifikace přes Cloud Functions (rate-limiter.ts).
+    "rate-limits": {
+      ".read": false,
+      ".write": false
+    },
+
     // ─── Kontakty trenérů (klubový scope) ───────────────────────────────────
     "contacts": {
       "$scopeId": {

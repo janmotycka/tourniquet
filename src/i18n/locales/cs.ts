@@ -1317,6 +1317,7 @@ export const cs = {
   'match.lineup.toStart': 'Do sestavy',
   'match.lineup.edit': 'Upravit',
   'match.lineup.startMatchCta': 'Spustit zápas',
+  'match.lineup.captainTooltip': 'Kapitán',
 
   // ─── Match Attendance ─────────────────────────────────────────────────────
   'match.attendance.confirmed': 'Dorazí',

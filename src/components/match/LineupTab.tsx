@@ -755,8 +755,20 @@ export function LineupTab({ match }: { match: SeasonMatch }) {
           {p.jerseyNumber}
         </div>
         <div style={{ flex: 1, minWidth: 100 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {p.name}
+          <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {/* Audit 2026-05-23 J-7: captain pásek po startu, dříve isCaptain
+                ukládán do lineup ale nikde nedisplayed. */}
+            {p.isCaptain && (
+              <span
+                title={t('match.lineup.captainTooltip')}
+                style={{
+                  fontSize: 10, fontWeight: 800, color: '#fff',
+                  background: 'var(--primary)', padding: '2px 5px', borderRadius: 4,
+                  flexShrink: 0,
+                }}
+              >C</span>
+            )}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
           </div>
           {p.position && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.position}</div>}
         </div>

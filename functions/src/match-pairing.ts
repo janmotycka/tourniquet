@@ -24,6 +24,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
+import { checkRateLimit, recordFailedAttempt, resetRateLimit } from './rate-limiter';
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -84,6 +85,10 @@ export const joinMatchPairingByPin = functions.region('europe-west1').https.onCa
     throw new functions.https.HttpsError('invalid-argument', 'scopeId, matchId and pin required');
   }
 
+  // Audit 2026-05-23 S-7: rate limit check před PIN ověřením.
+  // Throws 'resource-exhausted' pokud user překročil 10 failed attempts / 10 min.
+  await checkRateLimit('match-pairing', uid);
+
   // Načti match + pairing-auth paralelně
   const [matchSnap, authSnap] = await Promise.all([
     db.ref(`matches/${scopeId}/${matchId}`).get(),
@@ -122,8 +127,12 @@ export const joinMatchPairingByPin = functions.region('europe-west1').https.onCa
 
   const computed = hashPinClientCompat(pin, pinData.pinSalt);
   if (computed !== pinData.pinHash) {
+    await recordFailedAttempt('match-pairing', uid);
     throw new functions.https.HttpsError('permission-denied', 'invalid_pin');
   }
+
+  // Úspěšný PIN — resetovat counter.
+  await resetRateLimit('match-pairing', uid);
 
   // Zapiš awayCoachUid + smaž pin-auth (one-time use)
   const nextPairing: Record<string, unknown> = {
