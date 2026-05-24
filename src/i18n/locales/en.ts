@@ -1073,6 +1073,7 @@ export const en: Record<TranslationKey, string> = {
   'match.away': '✈️ Away',
   'match.list.title': '📋 Matches',
   'match.list.newMatch': 'New',
+  'match.list.limitReachedToast': 'Free plan limit reached ({max} matches). Upgrade to premium or delete an old match.',
   'match.list.quickMatch': 'Quick match',
   'match.list.quickMatchHint': 'Instant start — no lineup, no setup. For pickup games.',
   'match.list.quickMatchPrompt': 'Who are you playing? (leave empty if unknown)',
@@ -1303,6 +1304,7 @@ export const en: Record<TranslationKey, string> = {
   'match.lineup.toBench': 'To bench',
   'match.lineup.toStart': 'To start',
   'match.lineup.edit': 'Edit',
+  'match.lineup.startMatchCta': 'Start match',
 
   // ─── Match Attendance ─────────────────────────────────────────────────────
   'match.attendance.confirmed': 'Coming',

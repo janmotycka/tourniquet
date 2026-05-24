@@ -786,7 +786,7 @@ export function HomePage({ navigate }: Props) {
                 .map(squad => (
                   <button
                     key={squad.id}
-                    onClick={() => navigate({ name: 'match-list' })}
+                    onClick={() => navigate({ name: 'match-quick', prefillSquadId: squad.id })}
                     style={{
                       flexShrink: 0,
                       padding: '8px 12px', borderRadius: 10,

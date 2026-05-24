@@ -1084,6 +1084,7 @@ export const cs = {
   'match.away': '✈️ Venkovní',
   'match.list.title': '📋 Zápasy',
   'match.list.newMatch': 'Nový',
+  'match.list.limitReachedToast': 'Dosáhl jsi limitu {max} zápasů na free plánu. Upgraduj na premium nebo smaž starý zápas.',
   'match.list.quickMatch': 'Rychlý zápas',
   'match.list.quickMatchHint': 'Okamžitě start — bez sestavy a nastavení. Pro přátelák nebo plácek.',
   'match.list.quickMatchPrompt': 'Proti komu hrajete? (nech prázdné pokud nevíš)',
@@ -1315,6 +1316,7 @@ export const cs = {
   'match.lineup.toBench': 'Na lavičku',
   'match.lineup.toStart': 'Do sestavy',
   'match.lineup.edit': 'Upravit',
+  'match.lineup.startMatchCta': 'Spustit zápas',
 
   // ─── Match Attendance ─────────────────────────────────────────────────────
   'match.attendance.confirmed': 'Dorazí',

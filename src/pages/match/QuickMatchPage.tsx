@@ -19,20 +19,33 @@ import type { Page } from '../../App';
 import { QuickMatchSheet, type QuickMatchInitialPlayer } from '../../components/match/QuickMatchSheet';
 import { useQuickMatchCreate } from '../../hooks/useQuickMatchCreate';
 import { useMatchesStore } from '../../store/matches.store';
+import { useSimpleSquadsStore } from '../../store/simpleSquads.store';
 
 interface Props {
   navigate: (p: Page) => void;
   prefillFromMatchId?: string;
+  /**
+   * Audit 2026-05-23 J-5: prefill soupisky ze Simple squad (HomePage chip).
+   * Dříve squad chip navigoval na match-list bez prefill → broken UX promise.
+   */
+  prefillSquadId?: string;
 }
 
-export function QuickMatchPage({ navigate, prefillFromMatchId }: Props) {
+export function QuickMatchPage({ navigate, prefillFromMatchId, prefillSquadId }: Props) {
   const handleCreate = useQuickMatchCreate(navigate);
   const matches = useMatchesStore(s => s.matches);
+  const squads = useSimpleSquadsStore(s => s.squads);
 
   // Pokud byl předán prefillFromMatchId, vyextrahujeme lineup z minulého
   // zápasu a předáme ho do QuickMatchSheet jako initial roster. User vidí
   // soupisku rovnou předvyplněnou, může editovat / přidávat / mazat.
+  // prefillSquadId má prioritu (typicky z HomePage chipu).
   const initialPlayers: QuickMatchInitialPlayer[] | undefined = useMemo(() => {
+    if (prefillSquadId) {
+      const squad = squads.find(s => s.id === prefillSquadId);
+      if (!squad || squad.players.length === 0) return undefined;
+      return squad.players.map(name => ({ name }));
+    }
     if (!prefillFromMatchId) return undefined;
     const source = matches.find(m => m.id === prefillFromMatchId);
     if (!source || source.lineup.length === 0) return undefined;
@@ -44,7 +57,7 @@ export function QuickMatchPage({ navigate, prefillFromMatchId }: Props) {
       // ratings / stats se pak propíšou na ten samý profil.
       clubPlayerId: p.playerId.startsWith('manual-') ? undefined : p.playerId,
     }));
-  }, [matches, prefillFromMatchId]);
+  }, [matches, prefillFromMatchId, prefillSquadId, squads]);
 
   return (
     <QuickMatchSheet

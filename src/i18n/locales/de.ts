@@ -1073,6 +1073,7 @@ export const de: Record<TranslationKey, string> = {
   'match.away': '✈️ Auswärts',
   'match.list.title': '📋 Spiele',
   'match.list.newMatch': 'Neu',
+  'match.list.limitReachedToast': 'Free-Limit erreicht ({max} Spiele). Upgrade auf Premium oder älteres Spiel löschen.',
   'match.list.quickMatch': 'Schnellspiel',
   'match.list.quickMatchHint': 'Sofort starten — ohne Aufstellung, ohne Setup. Für Freundschaftsspiele.',
   'match.list.quickMatchPrompt': 'Gegen wen spielt ihr? (leer lassen wenn unbekannt)',
@@ -1303,6 +1304,7 @@ export const de: Record<TranslationKey, string> = {
   'match.lineup.toBench': 'Auf die Bank',
   'match.lineup.toStart': 'In die Startelf',
   'match.lineup.edit': 'Bearbeiten',
+  'match.lineup.startMatchCta': 'Spiel starten',
 
   // ─── Match Attendance ─────────────────────────────────────────────────────
   'match.attendance.confirmed': 'Kommt',

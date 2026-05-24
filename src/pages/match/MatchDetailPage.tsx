@@ -71,13 +71,18 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
   const activeClub = useClubsStore(s => s.clubs.find(c => c.id === currentMatch?.clubId));
   const clubDisplayName = currentMatch?.clubName || activeClub?.name || t('match.detail.us');
 
-  // Safety guard — pokud zápas patří jinému sportu (uživatel přepnul sport po
-  // otevření stránky nebo přišel na starý URL), přesměruj na seznam.
+  // Safety guard — pokud zápas patří jinému sportu než aktivnímu preferred sport,
+  // přesměruj na seznam (audit 2026-05-23 J-4: dříve řešil jen tennis, ale
+  // floorball match otevřený ve football módu zůstával a crashoval na format-specific
+  // featurech jako sub assistant pro 4+1).
+  const guardPreferredSport = useUserPrefsStore(s => s.preferredSport);
   useEffect(() => {
-    if (currentMatch && (currentMatch.sport ?? 'football') === 'tennis') {
+    if (!currentMatch) return;
+    const matchSport = currentMatch.sport ?? 'football';
+    if (matchSport !== guardPreferredSport) {
       navigate({ name: 'match-list' });
     }
-  }, [currentMatch, navigate]);
+  }, [currentMatch, navigate, guardPreferredSport]);
 
   const handleTogglePublic = useCallback(() => {
     togglePublicMatch(matchId);

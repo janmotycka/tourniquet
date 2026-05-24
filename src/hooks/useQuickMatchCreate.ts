@@ -22,6 +22,8 @@ import type { Page } from '../App';
 import { useMatchesStore } from '../store/matches.store';
 import { useClubsStore } from '../store/clubs.store';
 import { useUserPrefsStore } from '../store/userPrefs.store';
+import { useSubscriptionStore } from '../store/subscription.store';
+import { useToastStore } from '../store/toast.store';
 import { useI18n } from '../i18n';
 import type {
   QuickMatchPreset,
@@ -31,9 +33,13 @@ import type {
 export function useQuickMatchCreate(navigate: (p: Page) => void) {
   const createMatch = useMatchesStore(s => s.createMatch);
   const startMatch = useMatchesStore(s => s.startMatch);
+  const matches = useMatchesStore(s => s.matches);
   const clubs = useClubsStore(s => s.clubs);
   const activeClubId = useClubsStore(s => s.activeClubId);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
+  const appMode = useUserPrefsStore(s => s.appMode);
+  const getLimits = useSubscriptionStore(s => s.getLimits);
+  const showToast = useToastStore(s => s.show);
   const { t } = useI18n();
 
   return useCallback((
@@ -50,6 +56,20 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
     intent: 'start' | 'lineup' = 'start',
   ) => {
     void _squadId; // pro budoucí audit trail (squad → match)
+
+    // Audit 2026-05-23 J-3: limit check v hook (ne jen v UI button).
+    // Dříve šel obejít přes deep-link nebo "Stejná sestava" CTA.
+    // Simple mode má unlimited (komentář v subscription.types.ts).
+    if (appMode !== 'simple') {
+      const limits = getLimits();
+      const matchesForSport = matches.filter(m => (m.sport ?? 'football') === preferredSport);
+      if (matchesForSport.length >= limits.maxMatches) {
+        showToast('error', t('match.list.limitReachedToast', { max: limits.maxMatches }));
+        navigate({ name: 'settings' });
+        return;
+      }
+    }
+
     const activeClub = clubs.find(c => c.id === activeClubId);
     const now = new Date();
     // Audit 2026-04-29 pt3: progressive disclosure — preset může obsahovat
@@ -128,5 +148,5 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       // user může doplnit sestavu a startovat ručně přes „Spustit zápas".
       navigate({ name: 'match-detail', matchId: match.id, initialTab: 'lineup' });
     }
-  }, [clubs, activeClubId, preferredSport, createMatch, startMatch, navigate, t]);
+  }, [clubs, activeClubId, preferredSport, appMode, matches, getLimits, showToast, createMatch, startMatch, navigate, t]);
 }

@@ -98,9 +98,10 @@
       "$tournamentId": {
         ".read": true,
         "$messageId": {
-          // Kdokoli může vytvořit novou zprávu (push);
-          // Smazat může pouze owner turnaje nebo joined user (admin/rozhodčí)
-          ".write": "!data.exists()
+          // Audit 2026-05-23 S-3: write vyžaduje auth na CREATE i DELETE.
+          // Dříve `!data.exists()` šlo bez auth → bot spam unauthenticated.
+          // Vytvořit může jakýkoli přihlášený user; smazat owner turnaje nebo joined.
+          ".write": "(auth != null && !data.exists())
             || (auth != null && newData.val() === null && (
               root.child('public').child($tournamentId).child('ownerUid').val() === auth.uid
               || root.child('public').child($tournamentId).child('joinedUsers').child(auth.uid).exists()
@@ -295,8 +296,10 @@
           "$teamId": {
             "$emoji": {
               // Musí růst o 1 (increment-only). Brání přímému zapsání 999999.
+              // Audit 2026-05-23 S-5: initial value MUSÍ být 1 (dříve šlo přímo
+              // 999999 jako start protože !data.exists() ho akceptoval).
               // Reset na 0 smí jen owner/joined přes parent .write.
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999999 && (!data.exists() || newData.val() === data.val() + 1)"
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999999 && ((!data.exists() && newData.val() === 1) || (data.exists() && newData.val() === data.val() + 1))"
             }
           }
         }
@@ -338,13 +341,23 @@
 
     // ─── Katalog zápasů (pro landing page) ──────────────────────────────────
     // Čtení: kdokoli; Zápis: vlastník záznamu
+    // Audit 2026-05-23 S-4: přidán validate per pole — storage abuse mitigation
+    // (dříve RTDB akceptoval libovolné struktury až 32MB per write).
     "match-catalog": {
       ".read": true,
       "$matchId": {
         ".write": "auth != null && (
           !data.exists() && newData.child('ownerUid').val() === auth.uid
           || data.exists() && data.child('ownerUid').val() === auth.uid
-        )"
+        )",
+        "ownerUid":  { ".validate": "newData.isString() && newData.val().length <= 128" },
+        "name":      { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "clubName":  { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "opponent":  { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "status":    { ".validate": "newData.isString() && (newData.val() === 'planned' || newData.val() === 'live' || newData.val() === 'finished')" },
+        "date":      { ".validate": "newData.isString() && newData.val().length <= 30" },
+        "sport":     { ".validate": "newData.isString() && newData.val().length <= 30" },
+        "$other":    { ".validate": false }
       }
     },
 
@@ -399,15 +412,19 @@
     // ─── Cross-team pairing PIN auth (oddělený path — client ho nečte) ────
     // Uloženo admin SDK přes Cloud Function / klient zapisuje jen při vytvoření
     // pozvánky (owner scope). Čtení JEN přes CF (admin SDK bypass).
+    // Audit 2026-05-23 S-2: write vyžaduje ownership matche. Dříve `auth != null`
+    // umožňovalo komukoli přepsat pinHash cizího zápasu → join with own PIN →
+    // privilege escalation na write rights v lineup/scores/goals.
     "match-pairing-auth": {
       ".read": false,
       "$matchId": {
         ".read": false,
-        // Owner/klub-member může zapsat při vytvoření invite. Ověření, že
-        // ownerUid / clubId je stejný jako ve matchi, dělá klient; server-side
-        // check stačí skrz ownership, nic citlivějšího než ověření kdo může
-        // dělat invite.
-        ".write": "auth != null",
+        // Owner matche (jeho uid v `matches/{uid}/$matchId`) nebo klub-coach
+        // (přes match-catalog.ownerUid). Both kontrolují existenci/ownership.
+        ".write": "auth != null && (
+          root.child('matches').child(auth.uid).child($matchId).exists()
+          || root.child('match-catalog').child($matchId).child('ownerUid').val() === auth.uid
+        )",
         ".validate": "newData.hasChildren(['pinHash', 'pinSalt'])",
         "pinHash": { ".validate": "newData.isString() && newData.val().length <= 256" },
         "pinSalt": { ".validate": "newData.isString() && newData.val().length <= 64" },

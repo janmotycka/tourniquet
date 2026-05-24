@@ -95,7 +95,7 @@ export type Page =
   | { name: 'club-members' }
   | { name: 'match-list' }
   | { name: 'match-create' }
-  | { name: 'match-quick'; prefillFromMatchId?: string }
+  | { name: 'match-quick'; prefillFromMatchId?: string; prefillSquadId?: string }
   | { name: 'match-detail'; matchId: string; initialTab?: 'live' | 'lineup' | 'ratings' }
   | { name: 'match-public'; matchId: string }
   | { name: 'match-stats' }
@@ -496,7 +496,7 @@ function AppRouter() {
       {page.name === 'match-quick' && (
         isTennisMode
           ? <CreateMatchPage navigate={navigate} />
-          : <QuickMatchPage navigate={navigate} prefillFromMatchId={page.prefillFromMatchId} />
+          : <QuickMatchPage navigate={navigate} prefillFromMatchId={page.prefillFromMatchId} prefillSquadId={page.prefillSquadId} />
       )}
       {page.name === 'match-detail' && (
         isTennisMode

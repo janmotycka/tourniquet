@@ -685,8 +685,13 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
 export function LineupTab({ match }: { match: SeasonMatch }) {
   const { t } = useI18n();
   const setLineupAttendance = useMatchesStore(s => s.setLineupAttendance);
+  // Audit 2026-05-23 J-1: dual CTA z QuickMatchSheet posílá usera s
+  // `initialTab='lineup'` — bez startMatch button by uvízl, musel by ručně
+  // přepnout na Live tab. Sticky CTA dole = clear next action.
+  const startMatch = useMatchesStore(s => s.startMatch);
   const [editMode, setEditMode] = useState(false);
   const showAttendance = match.status === 'planned';
+  const isPlanned = match.status === 'planned';
 
   const starters = match.lineup.filter(p => p.isStarter).sort((a, b) => a.jerseyNumber - b.jerseyNumber);
   const bench = match.lineup.filter(p => !p.isStarter).sort((a, b) => a.substituteOrder - b.substituteOrder);
@@ -826,6 +831,23 @@ export function LineupTab({ match }: { match: SeasonMatch }) {
             );
           })}
         </div>
+      )}
+
+      {/* Audit 2026-05-23 J-1: Sticky "Spustit zápas" CTA pro planned status.
+          Bez něj uvízne user co přišel přes "Přidat sestavu" z Quick flow. */}
+      {isPlanned && (
+        <button
+          onClick={() => startMatch(match.id)}
+          style={{
+            marginTop: 6, padding: '14px', borderRadius: 12,
+            background: 'var(--primary)', color: '#fff',
+            border: 'none', fontWeight: 800, fontSize: 15,
+            cursor: 'pointer', boxShadow: 'var(--shadow-sm)',
+            minHeight: 48, width: '100%',
+          }}
+        >
+          ⚡ {t('match.lineup.startMatchCta')}
+        </button>
       )}
     </div>
   );
