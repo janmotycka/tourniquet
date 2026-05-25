@@ -93,11 +93,10 @@ interface CheckoutData {
   currency?: SupportedCurrency;
 }
 
-// TODO Audit 2026-05-24 S-1: Po nastavení secrets přidat:
-// .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_PRODUCT_ID'] })
-// Postup v SECURITY_MIGRATION.md bod 1.
 export const createCheckoutSession = functions
   .region('europe-west1')
+  // Audit 2026-05-25 S-1: secrets ze Secret Manager (rotated + nastaveno)
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_PRODUCT_ID'] })
   .https.onCall(async (data, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
@@ -149,7 +148,7 @@ export const createCheckoutSession = functions
 
 export const createPortalSession = functions
   .region('europe-west1')
-  // TODO S-1: .runWith({ secrets: ['STRIPE_SECRET_KEY'] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY'] })
   .https.onCall(async (data, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
