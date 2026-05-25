@@ -33,6 +33,7 @@ import {
   CompactNumberInput,
   SettingsList,
   PageHeader,
+  Toggle,
 } from '../ui';
 import { MatchFormatSelect } from './MatchFormatSelect';
 import { useMatchSmartDefaults } from '../../hooks/useMatchSmartDefaults';
@@ -1420,21 +1421,23 @@ export function QuickMatchSheet({
         </button>
         {advancedExpanded && (
           <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {/* ── Track assists toggle (audit 2026-05-22 Stage 2c)
-                Audit 2026-05-23: zúžené 1-řádkové layouty — popisek inline místo
-                pod hlavičkou (-30% výšky, no wasted space). */}
-            <label style={{
-              display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer',
-              padding: '8px 12px', borderRadius: 10,
-              background: trackAssists ? 'var(--success-light)' : 'var(--surface-var)',
-              border: `1.5px solid ${trackAssists ? 'var(--success)' : 'var(--border)'}`,
-            }}>
-              <input
-                type="checkbox"
-                checked={trackAssists}
-                onChange={e => setTrackAssists(e.target.checked)}
-                style={{ width: 20, height: 20, cursor: 'pointer', flexShrink: 0 }}
-              />
+            {/* Audit 2026-05-25: reorder — Asistent střídání před Kapitánem
+                (logické pořadí: nejdřív settings zápasu, pak hráč-specific).
+                Použít iOS-style Toggle místo nativního checkboxu — konzistentní
+                s ostatkem aplikace (Settings, atd.). */}
+
+            {/* ── Track assists toggle (audit 2026-05-22 Stage 2c) */}
+            <button
+              type="button"
+              onClick={() => setTrackAssists(!trackAssists)}
+              style={{
+                display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer',
+                padding: '8px 12px', borderRadius: 10,
+                background: trackAssists ? 'var(--success-light)' : 'var(--surface-var)',
+                border: `1.5px solid ${trackAssists ? 'var(--success)' : 'var(--border)'}`,
+                textAlign: 'left', width: '100%',
+              }}
+            >
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{
                   fontSize: 14, fontWeight: 700,
@@ -1448,77 +1451,31 @@ export function QuickMatchSheet({
                   · {t('match.quickSheet.trackAssistsDesc')}
                 </span>
               </span>
-            </label>
+              <Toggle checked={trackAssists} onChange={setTrackAssists} />
+            </button>
 
-            {/* ── Captain selector (audit 2026-05-22 Stage 2b) */}
-            {validPlayers.length > 0 && (
-              <div style={{
-                background: 'var(--surface-var)', borderRadius: 10, padding: 10,
-                border: '1px solid var(--border)',
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>
-                  © {t('match.quickSheet.captainLabel')}
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  <button
-                    type="button"
-                    onClick={() => setCaptainPlayerId(null)}
-                    style={{
-                      padding: '6px 12px', borderRadius: 999,
-                      background: captainPlayerId === null ? 'var(--primary)' : 'var(--surface)',
-                      color: captainPlayerId === null ? '#fff' : 'var(--text-muted)',
-                      border: `1.5px solid ${captainPlayerId === null ? 'var(--primary)' : 'var(--border)'}`,
-                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    }}
-                  >
-                    {t('match.quickSheet.captainNone')}
-                  </button>
-                  {players.filter(p => p.name.trim()).map(p => {
-                    const selected = captainPlayerId === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setCaptainPlayerId(p.id)}
-                        style={{
-                          padding: '6px 12px', borderRadius: 999,
-                          background: selected ? 'var(--primary)' : 'var(--surface)',
-                          color: selected ? '#fff' : 'var(--text)',
-                          border: `1.5px solid ${selected ? 'var(--primary)' : 'var(--border)'}`,
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                        }}
-                      >
-                        {p.jerseyNumber && <span style={{ opacity: 0.7, marginRight: 4 }}>#{p.jerseyNumber}</span>}
-                        {p.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* ── Sub assistant toggle (audit 2026-05-22) */}
-            <label style={{
-              display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer',
-              padding: '8px 12px', borderRadius: 10,
-              background: useSubAssistant ? 'var(--success-light)' : 'var(--surface-var)',
-              border: `1.5px solid ${useSubAssistant ? 'var(--success)' : 'var(--border)'}`,
-            }}>
-              <input
-                type="checkbox"
-                checked={useSubAssistant}
-                onChange={e => setUseSubAssistant(e.target.checked)}
-                style={{ width: 20, height: 20, cursor: 'pointer', flexShrink: 0 }}
-              />
+            {/* ── Sub assistant toggle (audit 2026-05-22, reorder 2026-05-25 — před kapitánem) */}
+            <button
+              type="button"
+              onClick={() => setUseSubAssistant(!useSubAssistant)}
+              style={{
+                display: 'flex', gap: 10, alignItems: 'center', cursor: 'pointer',
+                padding: '8px 12px', borderRadius: 10,
+                background: useSubAssistant ? 'var(--success-light)' : 'var(--surface-var)',
+                border: `1.5px solid ${useSubAssistant ? 'var(--success)' : 'var(--border)'}`,
+                textAlign: 'left', width: '100%',
+              }}
+            >
               <span style={{
-                fontSize: 14, fontWeight: 700,
+                flex: 1, fontSize: 14, fontWeight: 700,
                 color: useSubAssistant ? 'var(--success)' : 'var(--text)',
               }}>
                 🔄 {useSubAssistant
                   ? t('match.quickSheet.subAssistantEnabled')
                   : t('match.quickSheet.subAssistantEnable')}
               </span>
-            </label>
+              <Toggle checked={useSubAssistant} onChange={setUseSubAssistant} />
+            </button>
             {useSubAssistant && (
               <>
                 {/* Steppers */}
@@ -1575,6 +1532,53 @@ export function QuickMatchSheet({
                   {t('match.quickSheet.subAssistantHint', { interval: subInterval, count: subCount })}
                 </div>
               </>
+            )}
+
+            {/* ── Captain selector (audit 2026-05-22 Stage 2b, reorder 2026-05-25 — po sub assistant) */}
+            {validPlayers.length > 0 && (
+              <div style={{
+                background: 'var(--surface-var)', borderRadius: 10, padding: 10,
+                border: '1px solid var(--border)',
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>
+                  © {t('match.quickSheet.captainLabel')}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => setCaptainPlayerId(null)}
+                    style={{
+                      padding: '6px 12px', borderRadius: 999,
+                      background: captainPlayerId === null ? 'var(--primary)' : 'var(--surface)',
+                      color: captainPlayerId === null ? '#fff' : 'var(--text-muted)',
+                      border: `1.5px solid ${captainPlayerId === null ? 'var(--primary)' : 'var(--border)'}`,
+                      fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    {t('match.quickSheet.captainNone')}
+                  </button>
+                  {players.filter(p => p.name.trim()).map(p => {
+                    const selected = captainPlayerId === p.id;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setCaptainPlayerId(p.id)}
+                        style={{
+                          padding: '6px 12px', borderRadius: 999,
+                          background: selected ? 'var(--primary)' : 'var(--surface)',
+                          color: selected ? '#fff' : 'var(--text)',
+                          border: `1.5px solid ${selected ? 'var(--primary)' : 'var(--border)'}`,
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        {p.jerseyNumber && <span style={{ opacity: 0.7, marginRight: 4 }}>#{p.jerseyNumber}</span>}
+                        {p.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
         )}
