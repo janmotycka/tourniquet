@@ -800,6 +800,23 @@ export function LineupTab({ match }: { match: SeasonMatch }) {
 
   return (
     <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Audit 2026-05-25: instruction banner pro planned status — vysvětluje co
+          trenér může dělat před spuštěním. Sticky "Spustit zápas" CTA dole. */}
+      {isPlanned && (
+        <div style={{
+          padding: '10px 12px', borderRadius: 10,
+          background: 'var(--primary-light)',
+          border: '1px dashed var(--primary)',
+          fontSize: 12, color: 'var(--primary)', lineHeight: 1.45,
+        }}>
+          <strong>📝 {t('match.lineup.plannedBannerTitle')}</strong>
+          <br />
+          <span style={{ color: 'var(--text-muted)' }}>
+            {t('match.lineup.plannedBannerHint')}
+          </span>
+        </div>
+      )}
+
       {/* Edit button */}
       {match.status !== 'finished' && (
         <button

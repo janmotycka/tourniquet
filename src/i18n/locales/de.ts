@@ -1089,6 +1089,11 @@ export const de: Record<TranslationKey, string> = {
   'match.quickSheet.startCta': 'Spiel starten',
   'match.quickSheet.editLineupCta': 'Aufstellung hinzufügen →',
   'match.quickSheet.editLineupHint': 'Erstellt das Spiel und öffnet den Aufstellungs-Editor (Kapitän, Trikotnummern, Bank) — startet die Uhr nicht.',
+  'match.quickSheet.createCta': 'Spiel erstellen',
+  'match.quickSheet.createCtaHint': 'Spiel wird erstellt. Im Detail kannst du die Aufstellung anpassen (Trikotnummern, Kapitän, Anwesenheit) und über den „Live"-Tab starten.',
+  'match.quickSheet.createCtaTip': 'Nach dem Erstellen kannst du Aufstellung, Trikotnummern und Kapitän anpassen, bevor du startest.',
+  'match.quickSheet.startNowCta': 'Oder sofort starten',
+  'match.quickSheet.startNowHint': 'Spiel wird sofort mit aktueller Aufstellung gestartet (für ein schnelles Spiel ohne Anpassung).',
   'match.quickSheet.durationLabel': 'Wie lange?',
   'match.quickSheet.durationHint': 'Kurzturnier = 10 min. Camp / Freundschaft = 15 min. Volles Spiel = 2×30.',
   'match.quickSheet.preset.short': 'kurz',
@@ -1308,6 +1313,8 @@ export const de: Record<TranslationKey, string> = {
   'match.lineup.edit': 'Bearbeiten',
   'match.lineup.startMatchCta': 'Spiel starten',
   'match.lineup.captainTooltip': 'Kapitän',
+  'match.lineup.plannedBannerTitle': 'Aufstellung vor dem Start anpassen',
+  'match.lineup.plannedBannerHint': 'Tippe auf eine Trikotnummer zum Bearbeiten, auf einen Spieler zum Wechseln zwischen Aufstellung/Bank. Wenn fertig, tippe unten auf „Spiel starten".',
 
   // ─── Match Attendance ─────────────────────────────────────────────────────
   'match.attendance.confirmed': 'Kommt',

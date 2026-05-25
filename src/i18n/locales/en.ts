@@ -1089,6 +1089,11 @@ export const en: Record<TranslationKey, string> = {
   'match.quickSheet.startCta': 'Start match',
   'match.quickSheet.editLineupCta': 'Add lineup →',
   'match.quickSheet.editLineupHint': 'Creates the match and opens the lineup editor (captain, jersey numbers, bench) — does not start the clock.',
+  'match.quickSheet.createCta': 'Create match',
+  'match.quickSheet.createCtaHint': 'Match will be created. In the detail you can refine the lineup (jersey numbers, captain, attendance) and start it from the "Live" tab.',
+  'match.quickSheet.createCtaTip': 'After creating you can refine the lineup, jersey numbers and captain before starting.',
+  'match.quickSheet.startNowCta': 'Or start immediately',
+  'match.quickSheet.startNowHint': 'Match will be created and started immediately with the current lineup (for a quick pickup match without refinement).',
   'match.quickSheet.durationLabel': 'How long?',
   'match.quickSheet.durationHint': 'Short tournament = 10 min. Camp / friendly = 15 min. Full football = 2×30.',
   'match.quickSheet.preset.short': 'short',
@@ -1308,6 +1313,8 @@ export const en: Record<TranslationKey, string> = {
   'match.lineup.edit': 'Edit',
   'match.lineup.startMatchCta': 'Start match',
   'match.lineup.captainTooltip': 'Captain',
+  'match.lineup.plannedBannerTitle': 'Refine lineup before starting',
+  'match.lineup.plannedBannerHint': 'Tap a jersey number to edit it, tap a player to move them to lineup/bench. When ready, tap "Start match" at the bottom.',
 
   // ─── Match Attendance ─────────────────────────────────────────────────────
   'match.attendance.confirmed': 'Coming',

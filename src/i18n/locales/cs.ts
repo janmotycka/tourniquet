@@ -1100,6 +1100,11 @@ export const cs = {
   'match.quickSheet.startCta': 'Spustit zápas',
   'match.quickSheet.editLineupCta': 'Přidat sestavu →',
   'match.quickSheet.editLineupHint': 'Vytvoří zápas a otevře editor sestavy (kapitán, čísla dresů, lavička) — nespouští stopky.',
+  'match.quickSheet.createCta': 'Vytvořit zápas',
+  'match.quickSheet.createCtaHint': 'Zápas se vytvoří. V detailu si pak doladíš sestavu (čísla dresů, kapitán, kdo přijel) a spustíš ho tlačítkem v tabu „Live".',
+  'match.quickSheet.createCtaTip': 'Po vytvoření můžeš doladit sestavu, čísla dresů a kapitána před spuštěním.',
+  'match.quickSheet.startNowCta': 'Nebo spustit hned',
+  'match.quickSheet.startNowHint': 'Zápas se vytvoří a okamžitě spustí s aktuální soupiskou (pro rychlý plácek bez doladění).',
   'match.quickSheet.durationLabel': 'Jak dlouhý zápas?',
   'match.quickSheet.durationHint': 'McDonald\u2019s Cup = 10 min. Tábor / přátelák = 15 min. Plný fotbal = 2×30.',
   'match.quickSheet.preset.short': 'krátký',
@@ -1320,6 +1325,8 @@ export const cs = {
   'match.lineup.edit': 'Upravit',
   'match.lineup.startMatchCta': 'Spustit zápas',
   'match.lineup.captainTooltip': 'Kapitán',
+  'match.lineup.plannedBannerTitle': 'Doladění sestavy před spuštěním',
+  'match.lineup.plannedBannerHint': 'Klikni na číslo dresu pro úpravu, na hráče pro přesun do sestavy/lavičky. Až bude soupiska hotová, klikni „Spustit zápas" dole.',
 
   // ─── Match Attendance ─────────────────────────────────────────────────────
   'match.attendance.confirmed': 'Dorazí',

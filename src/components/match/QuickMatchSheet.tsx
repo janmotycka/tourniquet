@@ -1692,12 +1692,10 @@ export function QuickMatchSheet({
         </div>
       )}
 
-      {/* Audit 2026-05-22 Phase 3: Dual CTA — uživatel se rozhodne jestli
-          spustit hned nebo nejdřív doplnit sestavu. „Spustit hned" je primární
-          akce (rychlý zápas bez detailů). „Přidat sestavu →" otevře lineup
-          editor na detail page kde se dá kapitán, čísla dresů, bench, atd. */}
-      {/* Audit 2026-05-23: dual CTA v gridu (50/50) místo dvou full-width řádků
-          — šetří ~50px vertikál + symmetrickější mobile layout. */}
+      {/* Audit 2026-05-25 redesign: PRIMARY = "Vytvořit zápas" (planned status,
+          trenér si pak doladí sestavu/čísla dresů/kapitána a teprve potom v
+          live tabu klikne "Spustit"). SECONDARY = "Spustit hned" pro plácek/
+          rychlý zápas bez prepare. Simple mode má jen jednu akci (auto-start). */}
       {isSimpleMode ? (
         <button
           onClick={handleStart}
@@ -1720,31 +1718,13 @@ export function QuickMatchSheet({
           ⚡ {t('match.quickSheet.startCta')}
         </button>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+          {/* PRIMARY: Vytvořit zápas (planned) — výchozí akce pro klubový workflow */}
           <button
-            type="button"
             onClick={handleEditLineup}
             disabled={submitDisabled}
             style={{
-              padding: '12px 10px', borderRadius: 12,
-              background: 'transparent',
-              color: submitDisabled ? 'var(--text-muted)' : 'var(--primary)',
-              border: `1.5px solid ${submitDisabled ? 'var(--border)' : 'var(--primary)'}`,
-              fontWeight: 700, fontSize: 14,
-              cursor: submitDisabled ? 'not-allowed' : 'pointer',
-              opacity: submitDisabled ? 0.6 : 1,
-              transition: 'opacity .15s, border-color .15s',
-              minHeight: 48,
-            }}
-            title={submitDisabled ? t('match.quickSheet.opponentRequired') : t('match.quickSheet.editLineupHint')}
-          >
-            📋 {t('match.quickSheet.editLineupCta')}
-          </button>
-          <button
-            onClick={handleStart}
-            disabled={submitDisabled}
-            style={{
-              padding: '12px 10px', borderRadius: 12,
+              padding: '14px', borderRadius: 12,
               background: submitDisabled ? 'var(--border)' : 'var(--primary)',
               color: submitDisabled ? 'var(--text-muted)' : '#fff',
               border: 'none',
@@ -1755,10 +1735,37 @@ export function QuickMatchSheet({
               transition: 'background .15s, opacity .15s',
               minHeight: 48,
             }}
-            title={submitDisabled ? t('match.quickSheet.opponentRequired') : undefined}
+            title={submitDisabled ? t('match.quickSheet.opponentRequired') : t('match.quickSheet.createCtaHint')}
           >
-            ⚡ {t('match.quickSheet.startCta')}
+            ✓ {t('match.quickSheet.createCta')}
           </button>
+          {/* SECONDARY: Spustit hned (auto-start) — fast path pro plácek */}
+          <button
+            type="button"
+            onClick={handleStart}
+            disabled={submitDisabled}
+            style={{
+              padding: '10px', borderRadius: 12,
+              background: 'transparent',
+              color: submitDisabled ? 'var(--text-muted)' : 'var(--text-muted)',
+              border: `1px dashed var(--border)`,
+              fontWeight: 600, fontSize: 13,
+              cursor: submitDisabled ? 'not-allowed' : 'pointer',
+              opacity: submitDisabled ? 0.6 : 0.9,
+              transition: 'opacity .15s',
+              minHeight: 40,
+            }}
+            title={submitDisabled ? t('match.quickSheet.opponentRequired') : t('match.quickSheet.startNowHint')}
+          >
+            ⚡ {t('match.quickSheet.startNowCta')}
+          </button>
+          {/* Tip: co se stane po kliknutí na Vytvořit */}
+          <div style={{
+            fontSize: 11, color: 'var(--text-muted)',
+            textAlign: 'center', lineHeight: 1.4, marginTop: 2,
+          }}>
+            ℹ️ {t('match.quickSheet.createCtaTip')}
+          </div>
         </div>
       )}
       {submitDisabled && (opponent.length > 0 || players.length > 0) && (
