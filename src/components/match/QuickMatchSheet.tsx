@@ -25,6 +25,7 @@ import { useClubsStore } from '../../store/clubs.store';
 import { useToastStore } from '../../store/toast.store';
 import type { SimpleSquad } from '../../types/simpleSquad.types';
 import type { ClubPlayer } from '../../types/club.types';
+import type { MatchFormat } from '../../types/match.types';
 import {
   SettingRow,
   ChipPair,
@@ -46,8 +47,8 @@ export interface QuickMatchPreset {
   durationMinutes: number;
   /** Počet period (1 = bez poločasu, 2 = s poločasem). */
   periods: number;
-  /** Fotbalový formát (3+1 mini, 4+1 florbal, 5+1, 7+1, 8+1, 11+1 velké hřiště). */
-  matchFormat: '3+1' | '4+1' | '5+1' | '7+1' | '8+1' | '11+1';
+  /** Fotbalový/florbalový formát (3+1 … 11+1). Audit 2026-05-25: reuse MatchFormat type. */
+  matchFormat: MatchFormat;
   /** Lidský popisek pro diagnostiku. */
   label: string;
   /** Volitelně místo konání (audit 2026-04-29). Default: nezadáno. */

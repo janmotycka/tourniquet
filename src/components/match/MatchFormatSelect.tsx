@@ -18,7 +18,7 @@ interface Props {
   options?: MatchFormat[];
 }
 
-const ALL_FORMATS: MatchFormat[] = ['3+1', '4+1', '5+1', '7+1', '8+1', '11+1'];
+const ALL_FORMATS: MatchFormat[] = ['3+1', '4+1', '5+1', '6+1', '7+1', '8+1', '9+1', '10+1', '11+1'];
 
 export function MatchFormatSelect({ value, onChange, options }: Props) {
   const formats = options ?? ALL_FORMATS;

@@ -502,10 +502,13 @@ export function MatchListPage({ navigate }: Props) {
 
   // ── Nový zápas ─────────────────────────────────────────────────────────────
   // Audit 2026-04-29: Defaultně full-page Quick match (90% případů — rychlý
-  // přátelák / plácek bez sestavy). Uvnitř QuickMatchPage je link
-  // „Potřebuju plný zápas se sestavou →" pro power users (klubový zápas).
+  // přátelák / plácek bez sestavy). Quick flow pokrývá veškerou funkčnost
+  // — pozice / kapitán / attendance se dolaďují v match-detail tabu Sestava.
   // Konzistentní s tournament wizardem (full page flow, bez bottom sheetu).
-  // Tenis: rychlý zápas nemá smysl (různé pravidla), pošle rovnou na full create.
+  // Tenis: rychlý zápas nemá smysl (různá pravidla, sub-matches pro týmy),
+  // pošle rovnou na CreateMatchPage který obsahuje tennis-specific flow.
+  // Audit 2026-05-25: link "Plný zápas se sestavou" z QuickMatchSheet odebrán
+  // pro football/floorball — Quick je teď jediný flow.
   const handleNewMatchCta = () => {
     if (preferredSport === 'tennis') {
       navigate({ name: 'match-create' });

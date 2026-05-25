@@ -3,10 +3,12 @@
 export type SeasonMatchStatus = 'planned' | 'live' | 'finished';
 
 // ─── Match format (počet hráčů v poli + brankář) ─────────────────────────────
-// Typické formáty mládežnického fotbalu v ČR. Číslo = hráči v poli + brankář.
-export type MatchFormat = '3+1' | '4+1' | '5+1' | '7+1' | '8+1' | '11+1';
+// Audit 2026-05-25: kompletní rozsah včetně 6+1, 9+1, 10+1 — friendly zápasy
+// se hrají v různých počtech podle dostupnosti hráčů (typický scénář
+// "přijelo nás málo, zahrajeme 6+1 místo 8+1").
+export type MatchFormat = '3+1' | '4+1' | '5+1' | '6+1' | '7+1' | '8+1' | '9+1' | '10+1' | '11+1';
 
-export const MATCH_FORMATS: MatchFormat[] = ['3+1', '4+1', '5+1', '7+1', '8+1', '11+1'];
+export const MATCH_FORMATS: MatchFormat[] = ['3+1', '4+1', '5+1', '6+1', '7+1', '8+1', '9+1', '10+1', '11+1'];
 
 /** Počet hráčů v základní sestavě pro daný formát (včetně brankáře). */
 export function formatToStarterCount(format: MatchFormat): number {
