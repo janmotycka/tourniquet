@@ -84,9 +84,24 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
     }
   }, [currentMatch, navigate, guardPreferredSport]);
 
-  const handleTogglePublic = useCallback(() => {
+  const handleTogglePublic = useCallback(async () => {
+    // Audit 2026-05-23 J-2: GDPR consent gate. Před prvním zveřejněním vyžádáme
+    // explicitní potvrzení trenéra, že má souhlas rodičů (nebo že hraje bez
+    // mladistvých). Lepší než tichý opt-in. Po publikaci toggle dál bez ptaní
+    // (re-toggle pro existující published match = OK).
+    if (!currentMatch) return;
+    const isCurrentlyPublic = currentMatch.isPublic;
+    if (!isCurrentlyPublic && currentMatch.lineup.length > 0) {
+      const ok = await ask({
+        title: `🔒 ${t('match.detail.gdprConsentTitle')}`,
+        message: t('match.detail.gdprConsentMessage'),
+        confirmLabel: t('match.detail.gdprConsentConfirm'),
+        cancelLabel: t('common.cancel'),
+      });
+      if (!ok) return;
+    }
     togglePublicMatch(matchId);
-  }, [matchId, togglePublicMatch]);
+  }, [matchId, currentMatch, togglePublicMatch, ask, t]);
 
   const handleToggleLineupEarly = useCallback(() => {
     if (!currentMatch) return;

@@ -72,6 +72,10 @@ Bugs nebo zmatky pošli mi prosím:
 - Email: jan@torq.cz
 - Případně screenshot + popis co tě štvalo
 
+⚠️ Když budeš chtít sdílet zápas přes QR/odkaz s rodiči, app se zeptá
+na GDPR souhlas (musíš mít souhlas od rodičů nezletilých hráčů).
+Pokud souhlas nemáš, neaktivuj „Zveřejnit" — výsledky pošli ručně.
+
 Díky moc!
 Jan
 ```
@@ -202,12 +206,12 @@ git push origin main
 
 ---
 
-## 📊 Stav po této session (2026-05-22)
+## 📊 Stav po této session (2026-05-24)
 
 | | |
 |---|---|
-| Branch `main` | `429eac9` (latest) |
-| Last deploy | 2026-05-22, success |
+| Branch `main` | latest |
+| Last deploy | success |
 | Tests | 245/245 |
 | Sentry errors 14d | 1 (handled, 0 users affected) |
 | App Check RTDB | 92% verified (target 95%+) |
@@ -215,9 +219,20 @@ git push origin main
 | AEO assets | ✅ llms.txt, JSON-LD (3 schemas), noscript, sitemap |
 | Console errors v produkci | 0 |
 | Public test data | ✅ Cleaned |
+| Security RTDB rules | ✅ S-2, S-3, S-4, S-5 fixed |
+| PIN brute force | ✅ S-7 server-side rate limit (10 fail/10min → block 30min) |
+| GDPR consent gate | ✅ J-2 modal před prvním Zveřejnit |
+| Quick→Lineup edit flow | ✅ J-1 sticky Spustit zápas v LineupTab |
+| Match creation paywall | ✅ J-3 limit check v useQuickMatchCreate |
+| Sport switch guard | ✅ J-4 redirect pro mismatch |
+| Squad chip navigation | ✅ J-5 prefillSquadId |
+| Captain display | ✅ J-7 "C" badge v LineupTab |
+| Tournament free limit | ✅ J-8 bumped 1 → 3 |
+| npm audit | ✅ 0 vulnerabilities (root) |
+| Pending user actions | ⚠️ Viz SECURITY_MIGRATION.md (Stripe key rotation) |
 
 ---
 
 _Good luck! Pokud někdo z beta ti řekne něco překvapivého — slušné, špatné, neutrální — pošli mi to. Můžeme iterovat cíleně podle reálné zpětné vazby._
 
-_— Jan & Claude, 2026-05-22_
+_— Jan & Claude, 2026-05-24_

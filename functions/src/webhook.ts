@@ -72,6 +72,8 @@ function mapStripeStatus(stripeStatus: string): 'active' | 'past_due' | 'cancell
 
 export const stripeWebhook = functions
   .region('europe-west1')
+  // Audit 2026-05-24 S-1: Stripe webhook signing secret + secret key ze Secret Manager.
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'] })
   .https.onRequest(async (req, res) => {
     if (req.method !== 'POST') {
       res.status(405).send('Method Not Allowed');

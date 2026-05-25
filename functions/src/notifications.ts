@@ -44,6 +44,8 @@ function getFromAddress(): string {
  */
 export const onNewRegistration = functions
   .region('europe-west1')
+  // Audit 2026-05-24 S-1: Resend API key ze Secret Manager.
+  .runWith({ secrets: ['RESEND_API_KEY'] })
   .database.ref('/registrations/{tournamentId}/{registrationId}')
   .onCreate(async (snapshot, context) => {
     const { tournamentId } = context.params;
@@ -130,6 +132,7 @@ export const onNewRegistration = functions
  */
 export const rosterReminder = functions
   .region('europe-west1')
+  .runWith({ secrets: ['RESEND_API_KEY'] })
   .pubsub.schedule('0 8 * * *')
   .timeZone('Europe/Prague')
   .onRun(async () => {

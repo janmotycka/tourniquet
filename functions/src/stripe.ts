@@ -95,6 +95,9 @@ interface CheckoutData {
 
 export const createCheckoutSession = functions
   .region('europe-west1')
+  // Audit 2026-05-24 S-1: Firebase Secrets místo .env (loadne sk_live_*** ze
+  // Secret Manager — viz SECURITY_MIGRATION.md bod 1).
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_PRODUCT_ID'] })
   .https.onCall(async (data, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
@@ -146,6 +149,7 @@ export const createCheckoutSession = functions
 
 export const createPortalSession = functions
   .region('europe-west1')
+  .runWith({ secrets: ['STRIPE_SECRET_KEY'] })
   .https.onCall(async (data, context) => {
     if (!context.auth) {
       throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
