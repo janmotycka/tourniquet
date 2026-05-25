@@ -26,6 +26,7 @@ import { useToastStore } from '../../store/toast.store';
 import type { SimpleSquad } from '../../types/simpleSquad.types';
 import type { ClubPlayer } from '../../types/club.types';
 import type { MatchFormat } from '../../types/match.types';
+import { loadClubsCatalog, type CatalogClub } from '../clubs/OpponentAutocomplete';
 import {
   SettingRow,
   ChipPair,
@@ -316,18 +317,50 @@ export function QuickMatchSheet({
       .slice(0, 5);
   }, [allMatches, preferredSport, user?.uid]);
 
+  // Audit 2026-05-25: Klubový katalog (FAČR kluby) jako fallback po historii.
+  // Lazy-load při focusu opponent inputu, cached module-level.
+  const [catalogClubs, setCatalogClubs] = useState<CatalogClub[]>([]);
+  useEffect(() => {
+    if (!opponentFocused) return;
+    if (catalogClubs.length > 0) return;
+    let cancelled = false;
+    loadClubsCatalog().then(list => {
+      if (!cancelled) setCatalogClubs(list);
+    });
+    return () => { cancelled = true; };
+  }, [opponentFocused, catalogClubs.length]);
+
   const opponentSuggestions = useMemo(() => {
     const q = opponent.trim().toLowerCase();
-    if (!opponentFocused) return [];
-    if (opponentHistory.length === 0) return [];
-    if (q.length === 0) return opponentHistory.slice(0, 5);
-    const exactMatch = opponentHistory.find(o => o.name.toLowerCase() === q);
-    if (exactMatch && opponentHistory.length === 1) return [];
-    return opponentHistory
-      .filter(o => o.name.toLowerCase().includes(q))
-      .filter(o => o.name.toLowerCase() !== q)
-      .slice(0, 6);
-  }, [opponent, opponentFocused, opponentHistory]);
+    if (!opponentFocused) return { history: [], catalog: [] };
+    // History (vlastní zápasy) — primární zdroj
+    const history = (() => {
+      if (opponentHistory.length === 0) return [];
+      if (q.length === 0) return opponentHistory.slice(0, 5);
+      const exactMatch = opponentHistory.find(o => o.name.toLowerCase() === q);
+      if (exactMatch && opponentHistory.length === 1) return [];
+      return opponentHistory
+        .filter(o => o.name.toLowerCase().includes(q))
+        .filter(o => o.name.toLowerCase() !== q)
+        .slice(0, 6);
+    })();
+    // Catalog (FAČR kluby) — pokud user píše ≥2 znaky. Odfiltrujeme duplicity
+    // s history (case-insensitive name match) + match preferredSport.
+    const catalog = q.length >= 2
+      ? catalogClubs
+          .filter(c => (c.sport ?? 'football') === preferredSport)
+          .filter(c => c.name.toLowerCase().includes(q))
+          .filter(c => !history.some(h => h.name.toLowerCase() === c.name.toLowerCase()))
+          .sort((a, b) => {
+            const aStarts = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+            const bStarts = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+            if (aStarts !== bStarts) return aStarts - bStarts;
+            return a.name.localeCompare(b.name);
+          })
+          .slice(0, 6)
+      : [];
+    return { history, catalog };
+  }, [opponent, opponentFocused, opponentHistory, catalogClubs, preferredSport]);
 
   const squads = useMemo(() => {
     return allSquads
@@ -622,17 +655,27 @@ export function QuickMatchSheet({
           required
           aria-required="true"
         />
-        {opponentSuggestions.length > 0 && (
+        {(opponentSuggestions.history.length > 0 || opponentSuggestions.catalog.length > 0) && (
           <div style={{
             position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 30,
             background: 'var(--surface)', border: '1.5px solid var(--border)',
             borderRadius: 12, marginTop: 4,
             boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            maxHeight: 200, overflowY: 'auto',
+            maxHeight: 280, overflowY: 'auto',
           }}>
-            {opponentSuggestions.map(s => (
+            {/* History items — vlastní zápasy s "3× za 30 dní" badge */}
+            {opponentSuggestions.history.length > 0 && (
+              <div style={{
+                padding: '6px 12px', fontSize: 10, fontWeight: 700,
+                color: 'var(--text-muted)', textTransform: 'uppercase',
+                letterSpacing: 0.5, background: 'var(--surface-var)',
+              }}>
+                {t('match.quickSheet.opponentFromHistory')}
+              </div>
+            )}
+            {opponentSuggestions.history.map(s => (
               <button
-                key={s.name}
+                key={`h-${s.name}`}
                 type="button"
                 onMouseDown={e => {
                   e.preventDefault();
@@ -656,6 +699,55 @@ export function QuickMatchSheet({
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
                   {s.count}× {t('match.quickSheet.opponentMatchesAgo')}
                 </span>
+              </button>
+            ))}
+            {/* Catalog items — FAČR kluby s logo + city */}
+            {opponentSuggestions.catalog.length > 0 && (
+              <div style={{
+                padding: '6px 12px', fontSize: 10, fontWeight: 700,
+                color: 'var(--text-muted)', textTransform: 'uppercase',
+                letterSpacing: 0.5, background: 'var(--surface-var)',
+              }}>
+                {t('match.quickSheet.opponentFromCatalog')}
+              </div>
+            )}
+            {opponentSuggestions.catalog.map(club => (
+              <button
+                key={`c-${club.id}`}
+                type="button"
+                onMouseDown={e => {
+                  e.preventDefault();
+                  setOpponent(club.name);
+                  setOpponentFocused(false);
+                }}
+                style={{
+                  width: '100%', padding: '10px 12px',
+                  background: 'transparent', border: 'none',
+                  borderBottom: '1px solid var(--border)',
+                  cursor: 'pointer', textAlign: 'left',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                }}
+              >
+                {(club.logoBase64 || club.logoUrl) ? (
+                  <img
+                    src={club.logoBase64 || club.logoUrl}
+                    alt=""
+                    style={{ width: 24, height: 24, objectFit: 'contain', flexShrink: 0, borderRadius: 4 }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 18, flexShrink: 0, width: 24, textAlign: 'center' }}>🏟</span>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 14, fontWeight: 600, color: 'var(--text)',
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
+                    {club.name}
+                  </div>
+                  {club.city && (
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{club.city}</div>
+                  )}
+                </div>
               </button>
             ))}
           </div>

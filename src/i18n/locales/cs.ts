@@ -1093,6 +1093,8 @@ export const cs = {
   'match.quickSheet.myTeamLabel': 'Náš tým',
   'match.quickSheet.myTeamPlaceholder': 'Kdo hraje za nás?',
   'match.quickSheet.opponentMatchesAgo': 'zápasů',
+  'match.quickSheet.opponentFromHistory': 'Hráli jste proti',
+  'match.quickSheet.opponentFromCatalog': 'Klubový katalog (FAČR)',
   'match.quickSheet.opponentPlaceholder': 'Proti komu hrajete?',
   'match.quickSheet.opponentHint': 'Nech prázdné pokud ještě nevíš — můžeš doplnit později.',
   'match.quickSheet.startCta': 'Spustit zápas',

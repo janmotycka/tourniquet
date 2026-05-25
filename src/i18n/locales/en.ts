@@ -1082,6 +1082,8 @@ export const en: Record<TranslationKey, string> = {
   'match.quickSheet.myTeamLabel': 'Our team',
   'match.quickSheet.myTeamPlaceholder': 'Who plays for us?',
   'match.quickSheet.opponentMatchesAgo': 'matches',
+  'match.quickSheet.opponentFromHistory': 'You played against',
+  'match.quickSheet.opponentFromCatalog': 'Club catalog (FAČR)',
   'match.quickSheet.opponentPlaceholder': 'Who are you playing?',
   'match.quickSheet.opponentHint': 'Leave empty if unknown — you can add it later.',
   'match.quickSheet.startCta': 'Start match',

@@ -36,6 +36,12 @@ export interface CatalogClub {
 let cachedCatalog: CatalogClub[] | null = null;
 let catalogLoading: Promise<CatalogClub[]> | null = null;
 
+// Audit 2026-05-25: exportováno pro reuse v QuickMatchSheet (opponent autocomplete
+// v Quick flow kombinuje history + catalog).
+export async function loadClubsCatalog(): Promise<CatalogClub[]> {
+  return loadCatalog();
+}
+
 async function loadCatalog(): Promise<CatalogClub[]> {
   if (cachedCatalog) return cachedCatalog;
   if (catalogLoading) return catalogLoading;
