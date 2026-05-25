@@ -1193,14 +1193,15 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               </span>
             </div>
 
-            {/* Dvousloupce — DOLŮ (armuj) | NAHORU (tap = proveď) */}
+            {/* Dvousloupce — DOLŮ (armuj) | NAHORU (tap = proveď).
+                Audit 2026-05-25: zmenšeny padding/gap pro mobile UX. */}
             <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6,
-              background: 'rgba(255,255,255,.08)', borderRadius: 12, padding: 6,
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5,
+              background: 'rgba(255,255,255,.08)', borderRadius: 10, padding: 5,
               maxHeight: 360, overflowY: 'auto',
             }}>
               {/* OUT sloupec — multi-select, pořadí = pořadí tapů */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
                 <div style={{
                   fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: 0.5,
                   textAlign: 'center', padding: '2px 0', position: 'sticky', top: 0,
@@ -1217,10 +1218,10 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                       onClick={() => toggleOut(c.player.playerId)}
                       style={{
                         position: 'relative',
-                        display: 'flex', alignItems: 'center', gap: 6,
+                        display: 'flex', alignItems: 'center', gap: 5,
                         background: isSelected ? '#fff' : 'rgba(255,255,255,.92)',
                         color: 'var(--text)',
-                        borderRadius: 10, padding: '8px 8px',
+                        borderRadius: 8, padding: '5px 6px',
                         cursor: 'pointer', textAlign: 'left',
                         border: isSelected ? '2px solid var(--danger)' : '2px solid transparent',
                         boxShadow: isSelected ? '0 2px 8px rgba(198,40,40,.3)' : 'none',
@@ -1228,12 +1229,12 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                       }}
                     >
                       <span style={{
-                        width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                        width: 22, height: 22, borderRadius: 5, flexShrink: 0,
                         background: 'var(--danger-light)', color: 'var(--danger)',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 10, fontWeight: 900,
                       }}>{c.player.jerseyNumber}</span>
-                      <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ minWidth: 0, flex: 1, lineHeight: 1.2 }}>
                         <div style={{
                           fontWeight: 700, fontSize: 12,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -1241,7 +1242,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                           {c.player.name}
                         </div>
                         <div style={{
-                          fontSize: 11, fontWeight: 800,
+                          fontSize: 10, fontWeight: 800,
                           color: c.stretchMinutes >= 15 ? 'var(--danger)'
                             : c.stretchMinutes >= 10 ? 'var(--warning)'
                             : 'var(--text-muted)',
@@ -1251,11 +1252,11 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                       </div>
                       {isSelected && (
                         <span style={{
-                          position: 'absolute', top: 4, right: 4,
-                          width: 18, height: 18, borderRadius: '50%',
+                          position: 'absolute', top: 3, right: 3,
+                          width: 16, height: 16, borderRadius: '50%',
                           background: 'var(--danger)', color: '#fff',
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 10, fontWeight: 900,
+                          fontSize: 9, fontWeight: 900,
                         }}>{orderIdx + 1}</span>
                       )}
                     </button>
@@ -1264,7 +1265,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
               </div>
 
               {/* IN sloupec — multi-select, pořadí = pořadí tapů */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
                 <div style={{
                   fontSize: 10, fontWeight: 800, color: '#fff', letterSpacing: 0.5,
                   textAlign: 'center', padding: '2px 0', position: 'sticky', top: 0,
@@ -1281,10 +1282,10 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                       onClick={() => toggleIn(c.player.playerId)}
                       style={{
                         position: 'relative',
-                        display: 'flex', alignItems: 'center', gap: 6,
+                        display: 'flex', alignItems: 'center', gap: 5,
                         background: isSelected ? '#fff' : 'rgba(255,255,255,.92)',
                         color: 'var(--text)',
-                        borderRadius: 10, padding: '8px 8px',
+                        borderRadius: 8, padding: '5px 6px',
                         cursor: 'pointer', textAlign: 'left',
                         border: isSelected ? '2px solid var(--success)' : '2px solid transparent',
                         boxShadow: isSelected ? '0 2px 8px rgba(46,125,50,.3)' : 'none',
@@ -1292,12 +1293,12 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                       }}
                     >
                       <span style={{
-                        width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                        width: 22, height: 22, borderRadius: 5, flexShrink: 0,
                         background: 'var(--success-light)', color: 'var(--success)',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 10, fontWeight: 900,
                       }}>{c.player.jerseyNumber}</span>
-                      <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ minWidth: 0, flex: 1, lineHeight: 1.2 }}>
                         <div style={{
                           fontWeight: 700, fontSize: 12,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -1305,7 +1306,7 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                           {c.player.name}
                         </div>
                         <div style={{
-                          fontSize: 11, fontWeight: 800,
+                          fontSize: 10, fontWeight: 800,
                           color: c.stretchMinutes >= 15 ? 'var(--success)'
                             : c.stretchMinutes >= 10 ? 'var(--primary)'
                             : 'var(--text-muted)',
@@ -1315,11 +1316,11 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
                       </div>
                       {isSelected && (
                         <span style={{
-                          position: 'absolute', top: 4, right: 4,
-                          width: 18, height: 18, borderRadius: '50%',
+                          position: 'absolute', top: 3, right: 3,
+                          width: 16, height: 16, borderRadius: '50%',
                           background: 'var(--success)', color: '#fff',
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 10, fontWeight: 900,
+                          fontSize: 9, fontWeight: 900,
                         }}>{orderIdx + 1}</span>
                       )}
                     </button>
