@@ -5,6 +5,7 @@ import { useSubscriptionStore } from '../../store/subscription.store';
 import { useConfirmStore } from '../../store/confirm.store';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useClubsStore } from '../../store/clubs.store';
+import { useAuth } from '../../context/AuthContext';
 import { FeatureGate } from '../../components/FeatureGate';
 import { useI18n } from '../../i18n';
 import { useToastStore } from '../../store/toast.store';
@@ -37,7 +38,12 @@ function statusBadge(m: SeasonMatch, t: (key: string, params?: Record<string, st
 
 // ─── MatchCard ─────────────────────────────────────────────────────────────────
 
-function MatchCard({ match, onClick, t }: { match: SeasonMatch; onClick: () => void; t: (key: string, params?: Record<string, string | number>) => string }) {
+function MatchCard({ match, onClick, t, currentUid }: { match: SeasonMatch; onClick: () => void; t: (key: string, params?: Record<string, string | number>) => string; currentUid?: string | null }) {
+  // Audit 2026-05-25 J-6: spectator badge — pokud zápas vede někdo jiný z klubu,
+  // ukaž ho subtilně. Konzistentní s HomePage cards.
+  const isOwnMatch = !match.createdByUid || match.createdByUid === currentUid;
+  const ownerLabel = match.createdByName && !isOwnMatch ? match.createdByName : null;
+
   const result = matchResult(match, t);
   const badge = statusBadge(match, t);
   const isLive = match.status === 'live';
@@ -80,6 +86,15 @@ function MatchCard({ match, onClick, t }: { match: SeasonMatch; onClick: () => v
               padding: '2px 7px', borderRadius: radius.sm, fontWeight: fontWeight.bold, whiteSpace: 'nowrap',
             }}>
               {match.squad}
+            </span>
+          )}
+          {ownerLabel && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              fontSize: fontSize.xs, background: 'var(--surface-var)', color: 'var(--text-muted)',
+              padding: '2px 7px', borderRadius: radius.sm, fontWeight: fontWeight.bold, whiteSpace: 'nowrap',
+            }}>
+              👤 {ownerLabel}
             </span>
           )}
         </div>
@@ -194,11 +209,12 @@ function MatchListSkeleton() {
 
 // ─── Desktop table view ──────────────────────────────────────────────────────
 
-function MatchesTable({ sections, t, onRowClick, onDelete }: {
+function MatchesTable({ sections, t, onRowClick, onDelete, currentUid }: {
   sections: Array<{ key: string; label: string; matches: SeasonMatch[] }>;
   t: (key: string, params?: Record<string, string | number>) => string;
   onRowClick: (m: SeasonMatch) => void;
   onDelete: (m: SeasonMatch, e: React.MouseEvent) => void;
+  currentUid?: string | null;
 }) {
   const totalCols = 7;
   const showHeaders = sections.length > 1;
@@ -238,7 +254,7 @@ function MatchesTable({ sections, t, onRowClick, onDelete }: {
             )}
             {section.matches.map((m, i) => {
               const isFirstRow = !showHeaders && sIdx === 0 && i === 0;
-              return renderMatchRow(m, isFirstRow ? 0 : 1, t, onRowClick, onDelete);
+              return renderMatchRow(m, isFirstRow ? 0 : 1, t, onRowClick, onDelete, currentUid);
             })}
           </tbody>
         ))}
@@ -253,12 +269,16 @@ function renderMatchRow(
   t: (key: string, params?: Record<string, string | number>) => string,
   onRowClick: (m: SeasonMatch) => void,
   onDelete: (m: SeasonMatch, e: React.MouseEvent) => void,
+  currentUid?: string | null,
 ) {
   const result = matchResult(m, t);
   const badge = statusBadge(m, t);
   const isLive = m.status === 'live';
   const our = m.isHome ? m.homeScore : m.awayScore;
   const their = m.isHome ? m.awayScore : m.homeScore;
+  // Audit 2026-05-25 J-6: ownership badge pro desktop tabulku (konzistentní s mobile cards)
+  const isOwnMatch = !m.createdByUid || m.createdByUid === currentUid;
+  const ownerLabel = m.createdByName && !isOwnMatch ? m.createdByName : null;
   return (
     <tr
       key={m.id}
@@ -278,6 +298,11 @@ function renderMatchRow(
       </td>
       <td style={tdStyle}>
         <div style={{ fontWeight: 700, color: 'var(--text)' }}>{m.opponent}</div>
+        {ownerLabel && (
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+            👤 {ownerLabel}
+          </div>
+        )}
       </td>
       <td style={tdStyle}>
         <span style={{ color: 'var(--text-muted)' }}>{m.competition || '—'}</span>
@@ -467,6 +492,7 @@ function CategoryChip({ label, active, onClick }: { label: string; active: boole
 export function MatchListPage({ navigate }: Props) {
   const { t } = useI18n();
   const { isDesktop } = useLayoutMode();
+  const { user } = useAuth();
   const allMatches = useMatchesStore(s => s.matches);
   const deleteMatch = useMatchesStore(s => s.deleteMatch);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
@@ -672,6 +698,7 @@ export function MatchListPage({ navigate }: Props) {
           <MatchesTable
             sections={seasonSections}
             t={t}
+            currentUid={user?.uid ?? null}
             onRowClick={(m) => navigate({ name: 'match-detail', matchId: m.id })}
             onDelete={(m, e) => handleDelete(m, e)}
           />
@@ -831,6 +858,7 @@ export function MatchListPage({ navigate }: Props) {
                   <MatchCard
                     match={match}
                     t={t}
+                    currentUid={user?.uid ?? null}
                     onClick={() => navigate({ name: 'match-detail', matchId: match.id })}
                   />
                   <button
