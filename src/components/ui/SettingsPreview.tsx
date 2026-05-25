@@ -110,8 +110,12 @@ export function ChipPair<T extends number | string>({
 }
 
 // Compact number input with unit suffix (used inline in settings rows)
+// Audit 2026-05-25: type="text" + inputMode="numeric" místo type="number",
+// abychom se zbavili desktopových spinner arrows (zabíraly prostor v 60px
+// width inputu → render "02↕" místo "20"). Mobile dostane numerickou
+// klávesnici stejně skrz inputMode.
 export function CompactNumberInput({
-  value, min, max, unit, onChange, nullable, width = 60,
+  value, min, max, unit, onChange, nullable, width = 64,
 }: {
   value: number;
   min: number;
@@ -127,24 +131,25 @@ export function CompactNumberInput({
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
       <input
-        type="number"
-        min={min}
-        max={max}
-        value={isEmpty ? '' : value}
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={isEmpty ? '' : String(value)}
         placeholder={isEmpty ? '—' : undefined}
         onChange={e => {
-          const raw = e.target.value;
+          // Akceptuj jen číslice (strip whitespace, mínus, atd.)
+          const raw = e.target.value.replace(/\D/g, '');
           if (raw === '') { onChange(0); return; }
-          const n = Number(raw);
+          const n = parseInt(raw, 10);
           if (Number.isFinite(n)) onChange(Math.max(min, Math.min(max, n)));
         }}
+        onFocus={e => e.currentTarget.select()}
         style={{
           width, padding: '8px 8px', minHeight: 36,
           fontSize: 16, fontWeight: 700, textAlign: 'center',
           borderRadius: 8, border: '1.5px solid var(--border)',
           background: 'var(--surface)', color: 'var(--text)',
         }}
-        inputMode="numeric"
       />
       {unit && (
         <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
