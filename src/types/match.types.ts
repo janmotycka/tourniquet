@@ -185,6 +185,29 @@ export interface SeasonMatch {
    */
   isQuickMatch?: boolean;
 
+  /**
+   * Audit 2026-05-25 J-6: Ownership pro klubový workspace.
+   * Kdo zápas vytvořil — primárně určuje "spectator mode" v UI: ostatní
+   * trenéři klubu vidí cizí zápas read-only s bannerem "Sleduješ X zápas".
+   * Lze převzít přes `takeoverMatch` action (zapíše do `takeoverHistory`).
+   *
+   * Backward-compat: legacy zápasy bez createdByUid používají `scopeId` z
+   * Firebase path jako fallback (matchFromFirebase reader to nastaví).
+   */
+  createdByUid?: string;
+  createdByName?: string;
+  /**
+   * Audit log převzetí zápasu mezi kolegy klubu. Audit trail pro spor
+   * "kdo zápas pokazil". Příklad: Petr vytvořil, Honza ho převzal kvůli nemoci.
+   */
+  takeoverHistory?: Array<{
+    fromUid: string;
+    fromName: string;
+    toUid: string;
+    toName: string;
+    at: string; // ISO
+  }>;
+
   ratings: PlayerRating[];   // hodnocení po zápase
   note?: string;             // trenérova poznámka k zápasu
 
@@ -332,4 +355,7 @@ export interface CreateSeasonMatchInput {
   substitutionSettings?: SubstitutionSettings;
   trackAssists?: boolean;
   isQuickMatch?: boolean;
+  /** Audit 2026-05-25: creator metadata pro spectator mode (volitelné — fallback z auth context). */
+  createdByUid?: string;
+  createdByName?: string;
 }

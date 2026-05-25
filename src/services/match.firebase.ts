@@ -39,7 +39,7 @@ function ensureArray(val: unknown): unknown[] {
   return [];
 }
 
-function normalizeMatch(raw: Record<string, unknown>): SeasonMatch {
+function normalizeMatch(raw: Record<string, unknown>, scopeFallback?: string): SeasonMatch {
   // Tennis sub-matches — normalizuj homePlayerIds a sets (Firebase stripuje [])
   const subMatchesRaw = raw.subMatches;
   const normalizedSubMatches = subMatchesRaw
@@ -56,6 +56,15 @@ function normalizeMatch(raw: Record<string, unknown>): SeasonMatch {
   // Některé starší záznamy v Firebase nemají createdAt/updatedAt (před zavedením
   // těchto polí). Používají se jako sort klíče, takže musí být string.
   const fallbackISO = new Date(0).toISOString();
+
+  // Audit 2026-05-25: createdByUid fallback pro legacy zápasy.
+  // Stará data nemají createdByUid — pokud je scope Firebase Auth UID (28 znaků,
+  // ne clubId UUID), použijeme ho jako fallback ownera. Pro klubový scope
+  // (UUID 36 znaků) nemůžeme určit, zůstane undefined → spectator mode "vlastník neznámý".
+  const isLikelyUid = (s: string | undefined): boolean =>
+    !!s && s.length >= 20 && s.length <= 32 && !s.includes('-');
+  const createdByFallback = (raw.createdByUid as string | undefined)
+    ?? (isLikelyUid(scopeFallback) ? scopeFallback : undefined);
 
   return {
     ...raw,
@@ -74,6 +83,7 @@ function normalizeMatch(raw: Record<string, unknown>): SeasonMatch {
     finishedAt: (raw.finishedAt as string) ?? null,
     createdAt: (raw.createdAt as string) ?? fallbackISO,
     updatedAt: (raw.updatedAt as string) ?? fallbackISO,
+    ...(createdByFallback ? { createdByUid: createdByFallback } : {}),
   } as SeasonMatch;
 }
 
@@ -231,7 +241,7 @@ export async function loadSingleMatch(scopeId: string, matchId: string): Promise
   const snapshot = await get(matchRef(scopeId, matchId));
   if (!snapshot.exists()) return null;
   const raw = snapshot.val() as Record<string, unknown>;
-  const m = normalizeMatch(raw);
+  const m = normalizeMatch(raw, scopeId);
   if (!isValidMatch(m)) return null;
   return m;
 }
@@ -253,7 +263,7 @@ export function subscribeToSingleMatch(
       return;
     }
     const raw = snapshot.val() as Record<string, unknown>;
-    const m = normalizeMatch(raw);
+    const m = normalizeMatch(raw, scopeId);
     callback(isValidMatch(m) ? m : null);
   };
   onValue(r, handler, (err) => {
@@ -317,7 +327,7 @@ export async function loadMatchesFromFirebase(scopeId: string): Promise<SeasonMa
   const snapshot = await get(matchesRef(scopeId));
   if (!snapshot.exists()) return [];
   const data = snapshot.val() as Record<string, Record<string, unknown>>;
-  const matches = Object.values(data).map(normalizeMatch).filter(isValidMatch);
+  const matches = Object.values(data).map(m => normalizeMatch(m, scopeId)).filter(isValidMatch);
   logger.debug(`[Firebase] Loaded ${matches.length} matches from scope ${scopeId}`);
   return matches;
 }
@@ -379,7 +389,7 @@ export function subscribeToMatchesMultiScope(
         byScope.set(scope, []);
       } else {
         const data = snapshot.val() as Record<string, Record<string, unknown>>;
-        byScope.set(scope, Object.values(data).map(normalizeMatch));
+        byScope.set(scope, Object.values(data).map(m => normalizeMatch(m, scope)));
       }
       emit();
     };

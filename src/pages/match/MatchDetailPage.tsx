@@ -22,6 +22,7 @@ import { useMatchLock } from '../../hooks/useMatchLock';
 import { useMatchPerspective } from '../../hooks/useMatchPerspective';
 import { subscribeToSingleMatch } from '../../services/match.firebase';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
+import { useAuth } from '../../context/AuthContext';
 
 interface Props {
   matchId: string;
@@ -49,12 +50,14 @@ function MatchDetailSkeleton() {
 export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
   const { t, locale } = useI18n();
   const { isDesktop } = useLayoutMode();
+  const { user } = useAuth();
   const match = useMatchesStore(s => s.getMatchById(matchId));
   const matches = useMatchesStore(s => s.matches); // Subscribe for reactivity
   const togglePublicMatch = useMatchesStore(s => s.togglePublicMatch);
   const updateMatch = useMatchesStore(s => s.updateMatch);
   const resetMatch = useMatchesStore(s => s.resetMatch);
   const reopenMatch = useMatchesStore(s => s.reopenMatch);
+  const takeoverMatch = useMatchesStore(s => s.takeoverMatch);
   const ask = useConfirmStore(s => s.ask);
   const [tab, setTab] = useState<Tab>(initialTab ?? 'live');
   const [showShare, setShowShare] = useState(false);
@@ -248,7 +251,23 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
   const isPairedAwayCoach = perspective.role === 'away';
   const isPairedMatch = !!(currentMatch?.pairing?.awayCoachUid);
   const needsLock = (isClubMatch || isPairedMatch) && !isSimpleMode;
-  const canEdit = !needsLock || lock.status === 'mine' || lock.status === 'idle';
+
+  // Audit 2026-05-25 J-6: Spectator mode pro klubový workspace.
+  // Vlastník zápasu = trenér který ho vytvořil. Ostatní klubu vidí read-only
+  // s tlačítkem „Převzít zápas". Quick match bez clubId = soukromý.
+  // Pro paired away coach (cross-team) toto neplatí — má vlastní edit přístup.
+  const myUid = user?.uid ?? null;
+  const matchCreatorUid = currentMatch?.createdByUid ?? null;
+  // Spectator = ne já + zápas má vlastníka + klubový zápas + nejsem away coach
+  const isSpectator = !!(
+    isClubMatch && matchCreatorUid && myUid &&
+    matchCreatorUid !== myUid &&
+    !isPairedAwayCoach && !isSimpleMode
+  );
+  const isOwner = !isSpectator;
+
+  // canEdit = (lock OK) AND (jsem owner / převzal jsem). Spectator nikdy needituje.
+  const canEdit = isOwner && (!needsLock || lock.status === 'mine' || lock.status === 'idle');
 
   // Real-time subscribe na single match pro paired away coach-e.
   const ownerScopeForSubscribe = currentMatch?.pairing?.ownerScope
@@ -269,12 +288,14 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
   // Auto-claim při idle — pokud jsem otevřel zápas v klubu/paired a nikdo
   // aktivně needituje, automaticky se stanu editorem. Tím se skryje matoucí
   // banner „Nikdo nespravuje" + jiný trenér hned uvidí že jsem v zápase.
+  // Audit 2026-05-25 J-6: pro spectator NEclaim — sledování bez převzetí.
   useEffect(() => {
     if (!needsLock) return;
+    if (isSpectator) return;
     if (lock.status !== 'idle') return;
     void lock.claim();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsLock, lock.status]);
+  }, [needsLock, lock.status, isSpectator]);
 
   const handleClaim = useCallback(async () => {
     if (lock.status === 'other' && lock.editor) {
@@ -289,6 +310,24 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
       useToastStore.getState().show('error', t('matchLock.claimFailed'));
     }
   }, [lock, ask, t]);
+
+  // Audit 2026-05-25 J-6: Převzetí ownership zápasu kolegy v klubu (např.
+  // trenér onemocněl, asistent dokončí zápis). Confirm dialog → store action
+  // → cizí zápas se stává vlastním (creator switch + audit log).
+  const handleTakeover = useCallback(async () => {
+    if (!currentMatch || !user?.uid) return;
+    const ownerName = currentMatch.createdByName || t('match.detail.unknownCoach');
+    const ok = await ask({
+      title: `🔄 ${t('match.detail.takeoverConfirmTitle')}`,
+      message: t('match.detail.takeoverConfirmMessage', { name: ownerName }),
+      confirmLabel: t('match.detail.takeoverConfirmBtn'),
+      cancelLabel: t('common.cancel'),
+    });
+    if (!ok) return;
+    const myName = user.displayName ?? user.email?.split('@')[0] ?? 'Trenér';
+    takeoverMatch(currentMatch.id, user.uid, myName);
+    useToastStore.getState().show('success', t('match.detail.takeoverSuccess'));
+  }, [currentMatch, user, ask, takeoverMatch, t]);
 
   if (!currentMatch && isHydrating) {
     return <MatchDetailSkeleton />;
@@ -444,10 +483,46 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 20 }}>
+        {/* Audit 2026-05-25 J-6: Spectator banner — pokud zápas patří jinému
+            trenérovi klubu, ukaž read-only s tlačítkem „Převzít". Zobrazuje se
+            PŘED lock bannerem (priorita), protože ownership > concurrent edit. */}
+        {isSpectator && currentMatch && (
+          <div style={{
+            margin: '10px 16px 0',
+            padding: '10px 14px', borderRadius: 12,
+            background: 'var(--surface-var)',
+            border: '1.5px solid var(--primary)',
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <span style={{ fontSize: 22, flexShrink: 0 }}>👁</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
+                {t('match.detail.spectatorTitle', { name: currentMatch.createdByName || t('match.detail.unknownCoach') })}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.35 }}>
+                {t('match.detail.spectatorHint')}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => { void handleTakeover(); }}
+              style={{
+                padding: '8px 12px', borderRadius: 8, border: 'none',
+                background: 'var(--primary)', color: '#fff',
+                fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                flexShrink: 0, whiteSpace: 'nowrap',
+              }}
+            >
+              ✏️ {t('match.detail.takeoverBtn')}
+            </button>
+          </div>
+        )}
+
         {/* Multi-trainer lock banner — jen když zápas aktivně spravuje NĚKDO JINÝ.
             Pro idle stav automaticky claim-ujeme (níže v useEffect), takže
-            banner se prakticky objeví jen v konfliktu (other/stale). */}
-        {needsLock && (lock.status === 'other' || lock.status === 'stale') && (
+            banner se prakticky objeví jen v konfliktu (other/stale).
+            Spectator banner má prioritu — pokud jsem spectator, lock banner skryjeme. */}
+        {!isSpectator && needsLock && (lock.status === 'other' || lock.status === 'stale') && (
           <div style={{
             margin: '10px 16px 0',
             padding: '10px 14px', borderRadius: 12,
@@ -492,8 +567,8 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
           </div>
         )}
 
-        {/* Pokud mám lock — subtilní green banner "Spravuji" */}
-        {needsLock && lock.status === 'mine' && (
+        {/* Pokud mám lock — subtilní green banner "Spravuji" (skryj pro spectator) */}
+        {!isSpectator && needsLock && lock.status === 'mine' && (
           <div style={{
             margin: '10px 16px 0',
             padding: '8px 14px', borderRadius: 12,

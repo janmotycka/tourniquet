@@ -82,6 +82,11 @@ interface MatchesState {
   updateMatch: (id: string, patch: Partial<SeasonMatch>) => void;
   deleteMatch: (id: string) => void;
   getMatchById: (id: string) => SeasonMatch | undefined;
+  /**
+   * Audit 2026-05-25: Převzetí zápasu kolegy klubu (např. trenér onemocněl,
+   * asistent dokončí zápis). Změní createdByUid + zaloguje do takeoverHistory.
+   */
+  takeoverMatch: (id: string, newOwnerUid: string, newOwnerName: string) => void;
 
   // Řízení zápasu
   startMatch: (id: string) => void;
@@ -347,6 +352,9 @@ export const useMatchesStore = create<MatchesState>()(
           substitutionSettings: input.substitutionSettings,
           trackAssists: input.trackAssists ?? true,
           isQuickMatch: input.isQuickMatch,
+          // Audit 2026-05-25: creator metadata pro spectator mode v klubovém workspace
+          createdByUid: input.createdByUid,
+          createdByName: input.createdByName,
           ratings: [],
           note: undefined,
           createdAt: now(),
@@ -380,6 +388,36 @@ export const useMatchesStore = create<MatchesState>()(
       },
 
       getMatchById: (id) => get().matches.find(m => m.id === id),
+
+      // Audit 2026-05-25: Převzetí ownership (klubový workspace spectator mode).
+      // Trenér klubu může převzít zápas kolegy (např. když onemocněl). Změna
+      // createdByUid + audit log do takeoverHistory.
+      takeoverMatch: (id, newOwnerUid, newOwnerName) => {
+        const existing = get().matches.find(m => m.id === id);
+        if (!existing) return;
+        const prevUid = existing.createdByUid ?? '(unknown)';
+        const prevName = existing.createdByName ?? '(unknown)';
+        const entry = {
+          fromUid: prevUid,
+          fromName: prevName,
+          toUid: newOwnerUid,
+          toName: newOwnerName,
+          at: new Date().toISOString(),
+        };
+        set(state => ({
+          matches: state.matches.map(m =>
+            m.id !== id ? m : {
+              ...m,
+              createdByUid: newOwnerUid,
+              createdByName: newOwnerName,
+              takeoverHistory: [...(m.takeoverHistory ?? []), entry],
+              updatedAt: now(),
+            }
+          ),
+        }));
+        const updated = get().matches.find(m => m.id === id);
+        if (updated) syncMatchAndTrack(get().firebaseUid, updated, set);
+      },
 
       // ── Řízení zápasu ────────────────────────────────────────────────────────
 

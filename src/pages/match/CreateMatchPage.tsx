@@ -3,6 +3,7 @@ import type { Page } from '../../App';
 import { useMatchesStore } from '../../store/matches.store';
 import { useClubsStore } from '../../store/clubs.store';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
+import { useAuth } from '../../context/AuthContext';
 import { TEAM_MATCH_FORMATS, createDefaultSubMatches } from '../../modules/tennis/utils/tennis-team';
 import { useI18n } from '../../i18n';
 import type { MatchLineupPlayer, SubstitutionSettings, MatchFormat } from '../../types/match.types';
@@ -68,6 +69,7 @@ export function CreateMatchPage({ navigate }: Props) {
   const { isDesktop } = useLayoutMode();
   const allClubs = useClubsStore(s => s.clubs);
   const createMatch = useMatchesStore(s => s.createMatch);
+  const { user } = useAuth();
   const allMatchesRaw = useMatchesStore(s => s.matches);
   // Sport mode — default z user preferences (onboarding zvolený sport)
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
@@ -344,6 +346,9 @@ export function CreateMatchPage({ navigate }: Props) {
       lineup,
       substitutionSettings: subSettings,
       trackAssists,
+      // Audit 2026-05-25: creator metadata pro spectator mode (klubový workspace)
+      createdByUid: user?.uid,
+      createdByName: user?.displayName ?? user?.email?.split('@')[0] ?? undefined,
     });
     useToastStore.getState().show('success', t('toast.matchCreated'));
     navigate({ name: 'match-list' });

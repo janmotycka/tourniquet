@@ -321,6 +321,10 @@ export function HomePage({ navigate }: Props) {
                 const our = m.isHome ? m.homeScore : m.awayScore;
                 const their = m.isHome ? m.awayScore : m.homeScore;
                 const ourName = m.clubName ?? t('match.our');
+                // Audit 2026-05-25 J-6: spectator badge — pokud zápas vede někdo
+                // jiný z klubu, ukaž jeho jméno. Trenér tak ví, že není jeho.
+                const isOwnMatch = !m.createdByUid || m.createdByUid === user?.uid;
+                const ownerLabel = m.createdByName && !isOwnMatch ? m.createdByName : null;
                 return (
                   <button
                     key={m.id}
@@ -332,8 +336,18 @@ export function HomePage({ navigate }: Props) {
                       <div style={{ fontWeight: 700, fontSize: 14 }}>
                         {ourName} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>vs</span> {m.opponent}
                       </div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                        {m.competition || t('home.match')}
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span>{m.competition || t('home.match')}</span>
+                        {ownerLabel && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                            padding: '1px 6px', borderRadius: 4,
+                            background: 'var(--surface-var)', color: 'var(--text-muted)',
+                            fontSize: 10, fontWeight: 700,
+                          }}>
+                            👤 {ownerLabel}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div style={liveScoreStyle}>{our}:{their}</div>
@@ -403,6 +417,9 @@ export function HomePage({ navigate }: Props) {
                 {upcomingMatches.map(m => {
                   const ourName = m.clubName ?? t('match.our');
                   const date = m.date ? new Date(m.date).toLocaleDateString() : '—';
+                  // Audit 2026-05-25 J-6: ukaž jméno vlastníka pro cizí zápasy
+                  const isOwnMatch = !m.createdByUid || m.createdByUid === user?.uid;
+                  const ownerLabel = m.createdByName && !isOwnMatch ? m.createdByName : null;
                   return (
                     <button
                       key={m.id}
@@ -422,8 +439,18 @@ export function HomePage({ navigate }: Props) {
                         <div style={{ fontWeight: 700, fontSize: 14 }}>
                           {ourName} <span style={{ color: 'var(--text-muted)' }}>vs</span> {m.opponent}
                         </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                          {m.competition || t('home.match')} · {date}
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span>{m.competition || t('home.match')} · {date}</span>
+                          {ownerLabel && (
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 3,
+                              padding: '1px 6px', borderRadius: 4,
+                              background: 'var(--surface-var)', color: 'var(--text-muted)',
+                              fontSize: 10, fontWeight: 700,
+                            }}>
+                              👤 {ownerLabel}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <span style={{ color: 'var(--text-muted)', fontSize: 16 }}>→</span>
@@ -559,6 +586,9 @@ export function HomePage({ navigate }: Props) {
               const our = m.isHome ? m.homeScore : m.awayScore;
               const their = m.isHome ? m.awayScore : m.homeScore;
               const ourName = m.clubName ?? t('match.our');
+              // Audit 2026-05-25 J-6: spectator badge pro cizí klubové zápasy
+              const isOwnMatch = !m.createdByUid || m.createdByUid === user?.uid;
+              const ownerLabel = m.createdByName && !isOwnMatch ? m.createdByName : null;
               return (
                 <button
                   key={m.id}
@@ -584,8 +614,18 @@ export function HomePage({ navigate }: Props) {
                     }}>
                       {ourName} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>vs</span> {m.opponent}
                     </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
-                      {m.competition || t('home.match')}
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span>{m.competition || t('home.match')}</span>
+                      {ownerLabel && (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 3,
+                          padding: '1px 6px', borderRadius: 4,
+                          background: 'var(--surface)', color: 'var(--text-muted)',
+                          fontSize: 10, fontWeight: 700,
+                        }}>
+                          👤 {ownerLabel}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div style={{
