@@ -1315,6 +1315,10 @@ export const de: Record<TranslationKey, string> = {
   'match.lineup.captainTooltip': 'Kapitän',
   'match.lineup.plannedBannerTitle': 'Aufstellung vor dem Start anpassen',
   'match.lineup.plannedBannerHint': 'Tippe auf eine Trikotnummer zum Bearbeiten, auf einen Spieler zum Wechseln zwischen Aufstellung/Bank. Wenn fertig, tippe unten auf „Spiel starten".',
+  'match.live.emptyLineupTitle': 'Spiel läuft ohne Aufstellung',
+  'match.live.emptyLineupHint': 'Du kannst Spieler manuell oder aus dem Verein hinzufügen (Tab Aufstellung), oder nur mit Ergebnis weitermachen. Wenn du keine individuellen Statistiken brauchst, tippe „Ausblenden".',
+  'match.live.emptyLineupAddBtn': 'Aufstellung hinzufügen',
+  'match.live.emptyLineupDismiss': 'Ausblenden',
 
   // ─── Match Attendance ─────────────────────────────────────────────────────
   'match.attendance.confirmed': 'Kommt',

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import type { Page } from '../../App';
 import type { SeasonMatch, MatchLineupPlayer, MatchGoal } from '../../types/match.types';
 import { formatToStarterCount } from '../../types/match.types';
 import { useMatchesStore } from '../../store/matches.store';
@@ -510,7 +511,7 @@ function getPeriodLabel(t: (k: string, p?: Record<string, string | number>) => s
 
 // ── LiveTab component ──
 
-export function LiveTab({ match }: { match: SeasonMatch }) {
+export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p: Page) => void }) {
   const { t } = useI18n();
   // Simple mode = laik bez klubu: skrýváme karty/střídání/VEO/playing-time tracker
   // (laik chce jen skóre + tlačítka, žádné fotbalové pokročilosti).
@@ -544,6 +545,22 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
     const t = setTimeout(() => setQuickFlash(null), 1500);
     return () => clearTimeout(t);
   }, [quickFlash]);
+
+  // Audit 2026-05-25: Empty lineup warning dismissal (per match, localStorage).
+  // Trenér může zápas vést bez sestavy (přátelák, plácek). Banner mu nabídne
+  // možnost doplnit sestavu ručně / z klubu, nebo pokračovat bez. Po dismiss
+  // už se neobjeví pro tento zápas.
+  const emptyLineupDismissKey = `match-empty-lineup-dismissed-${match.id}`;
+  const [emptyLineupDismissed, setEmptyLineupDismissed] = useState(() => {
+    try { return localStorage.getItem(emptyLineupDismissKey) === '1'; } catch { return false; }
+  });
+  const dismissEmptyLineupWarning = () => {
+    try { localStorage.setItem(emptyLineupDismissKey, '1'); } catch {/* QuotaExceeded etc. */}
+    setEmptyLineupDismissed(true);
+  };
+  const showEmptyLineupBanner = match.lineup.length === 0
+    && match.status !== 'finished'
+    && !emptyLineupDismissed;
 
   // Undo toast for quick goals
   const [undoToast, setUndoToast] = useState<{ goalId: string; side: 'ours' | 'theirs' } | null>(null);
@@ -856,6 +873,57 @@ export function LiveTab({ match }: { match: SeasonMatch }) {
           100% { opacity: 0; }
         }
       `}</style>
+
+      {/* Audit 2026-05-25: Empty lineup warning — dismissable banner pro trenéry,
+          kteří chtějí zápas vést bez sestavy (přátelák, plácek). Nabídne
+          možnost doplnit ručně / z klubu / pokračovat bez. */}
+      {showEmptyLineupBanner && (
+        <div style={{
+          padding: '10px 12px', borderRadius: 10,
+          background: 'var(--warning-light)',
+          border: '1px dashed var(--warning)',
+          display: 'flex', flexDirection: 'column', gap: 8,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning)' }}>
+                {t('match.live.emptyLineupTitle')}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
+                {t('match.live.emptyLineupHint')}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              type="button"
+              onClick={() => navigate?.({ name: 'match-detail', matchId: match.id, initialTab: 'lineup' })}
+              style={{
+                flex: 1, padding: '8px', borderRadius: 8,
+                background: 'var(--primary)', color: '#fff',
+                border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                minHeight: 36,
+              }}
+            >
+              📝 {t('match.live.emptyLineupAddBtn')}
+            </button>
+            <button
+              type="button"
+              onClick={dismissEmptyLineupWarning}
+              style={{
+                padding: '8px 14px', borderRadius: 8,
+                background: 'transparent', color: 'var(--text-muted)',
+                border: '1px solid var(--border)',
+                fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                whiteSpace: 'nowrap', minHeight: 36,
+              }}
+            >
+              {t('match.live.emptyLineupDismiss')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Away coach info — vysvětli omezení (nemá svou sestavu, jen score) */}
       {isAwayView && match.status === 'live' && (

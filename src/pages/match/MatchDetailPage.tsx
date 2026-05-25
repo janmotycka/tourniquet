@@ -632,7 +632,7 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
           if (isTennisTeam) {
             return <TennisTeamTab match={currentMatch} clubDisplayName={clubDisplayName} />;
           }
-          if (tab === 'live') return <LiveTab match={currentMatch} />;
+          if (tab === 'live') return <LiveTab match={currentMatch} navigate={navigate} />;
           // Pro paired away coach-e — lineup/ratings patří druhému trenérovi;
           // nezobrazujeme data soupeře, jen vysvětlující placeholder.
           if (isPairedAwayCoach && (tab === 'lineup' || tab === 'ratings')) {

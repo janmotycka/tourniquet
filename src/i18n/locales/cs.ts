@@ -1327,6 +1327,10 @@ export const cs = {
   'match.lineup.captainTooltip': 'Kapitán',
   'match.lineup.plannedBannerTitle': 'Doladění sestavy před spuštěním',
   'match.lineup.plannedBannerHint': 'Klikni na číslo dresu pro úpravu, na hráče pro přesun do sestavy/lavičky. Až bude soupiska hotová, klikni „Spustit zápas" dole.',
+  'match.live.emptyLineupTitle': 'Zápas běží bez soupisky',
+  'match.live.emptyLineupHint': 'Můžeš doplnit sestavu ručně nebo z klubu (tab Sestava), nebo pokračovat jen se skóre. Pokud zápas nepotřebuje individuální statistiky, klikni „Skrýt".',
+  'match.live.emptyLineupAddBtn': 'Doplnit sestavu',
+  'match.live.emptyLineupDismiss': 'Skrýt',
 
   // ─── Match Attendance ─────────────────────────────────────────────────────
   'match.attendance.confirmed': 'Dorazí',

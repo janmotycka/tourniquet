@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import type { SeasonMatch, MatchLineupPlayer, AttendanceStatus } from '../../types/match.types';
 import { formatToStarterCount } from '../../types/match.types';
 import { useMatchesStore } from '../../store/matches.store';
+import { useClubsStore } from '../../store/clubs.store';
 import { useI18n } from '../../i18n';
+import { ClubImportModal } from './ClubImportModal';
 
 // ── Attendance helpers ──
 
@@ -307,6 +309,12 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
   const { t } = useI18n();
   const updateMatch = useMatchesStore(s => s.updateMatch);
   const setLineupAttendance = useMatchesStore(s => s.setLineupAttendance);
+  // Audit 2026-05-25: import z klubu pro existující match (PlayerEditor reuse
+  // sdílené ClubImportModal s Quick flow). Aktivuje se jen pro klubový match.
+  const activeClub = useClubsStore(s =>
+    s.clubs.find(c => c.id === match.clubId) ?? null,
+  );
+  const [clubImportOpen, setClubImportOpen] = useState(false);
   const [name, setName] = useState('');
   const [jersey, setJersey] = useState('');
   // Slot picker — když trenér klepne na prázdné místo, otevře se výběr z lavice
@@ -319,6 +327,7 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
   const starters = match.lineup.filter(p => p.isStarter).sort((a, b) => a.jerseyNumber - b.jerseyNumber);
   const benchers = match.lineup.filter(p => !p.isStarter).sort((a, b) => a.substituteOrder - b.substituteOrder);
   const emptySlots = Math.max(0, targetStarters - starters.length);
+  const hasClubPlayers = !!(activeClub && (activeClub.players ?? []).length > 0);
 
   const handleAdd = () => {
     const j = parseInt(jersey);
@@ -379,8 +388,62 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
     setSlotPickerOpen(false);
   };
 
+  // Audit 2026-05-25: import handler — přidá vybrané klubové hráče do lineup.
+  // Filtruje duplicity podle case-insensitive jména. Auto-assign starter/bench
+  // podle targetStarters (nejprve fill starters, pak bench).
+  const handleClubImport = (picked: import('../../types/club.types').ClubPlayer[]) => {
+    setClubImportOpen(false);
+    const existingNames = new Set(match.lineup.map(p => p.name.trim().toLowerCase()));
+    const newPlayers: MatchLineupPlayer[] = [];
+    let startersCount = starters.length;
+    let benchCount = benchers.length;
+    const ts = Date.now();
+    for (const cp of picked) {
+      if (existingNames.has(cp.name.trim().toLowerCase())) continue;
+      const isStarter = startersCount < targetStarters;
+      newPlayers.push({
+        playerId: cp.id || `manual-${ts}-${newPlayers.length}`,
+        jerseyNumber: cp.jerseyNumber || 0,
+        name: cp.name,
+        birthYear: cp.birthYear ?? undefined,
+        isStarter,
+        substituteOrder: isStarter ? 0 : benchCount + 1,
+      });
+      if (isStarter) startersCount += 1;
+      else benchCount += 1;
+    }
+    if (newPlayers.length > 0) {
+      updateMatch(match.id, { lineup: [...match.lineup, ...newPlayers] });
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Audit 2026-05-25: Import z klubu — primárně viditelný button v editor
+          headeru pro klubové matches. Otevře ClubImportModal (sdílený s Quick). */}
+      {hasClubPlayers && activeClub && match.status !== 'finished' && (
+        <button
+          type="button"
+          onClick={() => setClubImportOpen(true)}
+          style={{
+            alignSelf: 'flex-start', padding: '8px 14px', borderRadius: 10,
+            background: 'var(--primary-light)', color: 'var(--primary)',
+            border: '1.5px solid var(--primary)',
+            fontSize: 13, fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          📥 {t('match.quickSheet.importFromClub')}
+        </button>
+      )}
+      {clubImportOpen && activeClub && (
+        <ClubImportModal
+          club={{ id: activeClub.id, name: activeClub.name, players: activeClub.players ?? [] }}
+          existingNames={match.lineup.map(p => p.name)}
+          onClose={() => setClubImportOpen(false)}
+          onConfirm={handleClubImport}
+        />
+      )}
+
       {/* Starters */}
       <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>

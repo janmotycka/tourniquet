@@ -1315,6 +1315,10 @@ export const en: Record<TranslationKey, string> = {
   'match.lineup.captainTooltip': 'Captain',
   'match.lineup.plannedBannerTitle': 'Refine lineup before starting',
   'match.lineup.plannedBannerHint': 'Tap a jersey number to edit it, tap a player to move them to lineup/bench. When ready, tap "Start match" at the bottom.',
+  'match.live.emptyLineupTitle': 'Match running without lineup',
+  'match.live.emptyLineupHint': 'You can add players manually or from the club (Lineup tab), or continue with score only. If you don\'t need individual stats, tap "Hide".',
+  'match.live.emptyLineupAddBtn': 'Add lineup',
+  'match.live.emptyLineupDismiss': 'Hide',
 
   // ─── Match Attendance ─────────────────────────────────────────────────────
   'match.attendance.confirmed': 'Coming',
