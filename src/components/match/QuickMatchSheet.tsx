@@ -26,7 +26,7 @@ import { useToastStore } from '../../store/toast.store';
 import type { SimpleSquad } from '../../types/simpleSquad.types';
 import type { ClubPlayer } from '../../types/club.types';
 import type { MatchFormat } from '../../types/match.types';
-import { loadClubsCatalog, type CatalogClub } from '../clubs/OpponentAutocomplete';
+import { loadClubsCatalog, type CatalogClub } from '../../services/clubs-catalog';
 import {
   SettingRow,
   ChipPair,

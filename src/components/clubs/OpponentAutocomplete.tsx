@@ -16,53 +16,13 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ref as dbRef, get as dbGet } from 'firebase/database';
-import { db } from '../../firebase';
-import { logger } from '../../utils/logger';
+import { loadClubsCatalog, type CatalogClub } from '../../services/clubs-catalog';
 import type { Sport } from '../../types/sport.types';
 
-export interface CatalogClub {
-  id: string;
-  name: string;
-  city?: string;
-  logoUrl?: string;
-  logoBase64?: string;
-  source?: string;
-  /** Sport katalogového záznamu. Legacy záznamy bez sport = 'football'. */
-  sport?: Sport;
-}
-
-// Module-level cache — shared napříč všemi instancemi
-let cachedCatalog: CatalogClub[] | null = null;
-let catalogLoading: Promise<CatalogClub[]> | null = null;
-
-// Audit 2026-05-25: exportováno pro reuse v QuickMatchSheet (opponent autocomplete
-// v Quick flow kombinuje history + catalog).
-export async function loadClubsCatalog(): Promise<CatalogClub[]> {
-  return loadCatalog();
-}
-
-async function loadCatalog(): Promise<CatalogClub[]> {
-  if (cachedCatalog) return cachedCatalog;
-  if (catalogLoading) return catalogLoading;
-
-  catalogLoading = dbGet(dbRef(db, 'clubsCatalog'))
-    .then(snap => {
-      const data = snap.val() as Record<string, CatalogClub> | null;
-      cachedCatalog = data ? Object.values(data) : [];
-      return cachedCatalog;
-    })
-    .catch(err => {
-      logger.warn('[OpponentAutocomplete] Catalog load failed:', err);
-      cachedCatalog = [];
-      return cachedCatalog;
-    })
-    .finally(() => {
-      catalogLoading = null;
-    });
-
-  return catalogLoading;
-}
+// Audit 2026-05-25: catalog loader extrahován do services/clubs-catalog.ts
+// (Fast Refresh vyžaduje aby component file exportoval jen komponenty).
+// Re-export typu pro backward-compat callerů.
+export type { CatalogClub } from '../../services/clubs-catalog';
 
 interface Props {
   value: string;
@@ -93,7 +53,7 @@ export function OpponentAutocomplete({
   // Lazy-load katalog
   useEffect(() => {
     let cancelled = false;
-    loadCatalog().then(list => {
+    loadClubsCatalog().then(list => {
       if (!cancelled) setCatalog(list);
     });
     return () => { cancelled = true; };
