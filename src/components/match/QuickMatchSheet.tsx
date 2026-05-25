@@ -1036,64 +1036,67 @@ export function QuickMatchSheet({
           {t('match.quickSheet.rosterHintMinimal')}
         </div>
         </div>
+
+        {/* ── Save / Update party — uvnitř Soupiska collapsible (audit 2026-05-25).
+            Předtím byla sekce mimo accordion → po sbalení Soupisky zůstávala
+            visible, což matlo trenéra. Teď se sbaluje společně se soupiskou. */}
+        {!selectedSquadId && validPlayers.length > 0 && (
+          <div style={{
+            background: 'var(--surface-var)', borderRadius: 10, padding: 8,
+            border: '1px solid var(--border)', marginTop: 8,
+          }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ fontSize: 18, flexShrink: 0 }}>💾</span>
+              <input
+                type="text"
+                value={squadName}
+                onChange={e => setSquadName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && squadName.trim()) {
+                    e.preventDefault();
+                    handleSaveSquad();
+                  }
+                }}
+                placeholder={t('match.quickSheet.squadNamePlaceholder')}
+                style={{ ...inputStyle, flex: 1, padding: '8px 10px', fontSize: 16, minWidth: 0 }}
+              />
+              <button
+                type="button"
+                onClick={handleSaveSquad}
+                disabled={!squadName.trim()}
+                style={{
+                  padding: '8px 14px', borderRadius: 10,
+                  background: squadName.trim() ? 'var(--primary)' : 'var(--border)',
+                  color: squadName.trim() ? '#fff' : 'var(--text-muted)',
+                  border: 'none', fontSize: 13, fontWeight: 700,
+                  cursor: squadName.trim() ? 'pointer' : 'default',
+                  whiteSpace: 'nowrap', flexShrink: 0,
+                }}
+              >
+                {t('match.quickSheet.saveSquadCta')}
+              </button>
+            </div>
+          </div>
+        )}
+        {selectedSquadId && validPlayers.length > 0 && (
+          <button
+            type="button"
+            onClick={handleUpdateSquad}
+            style={{
+              marginTop: 8,
+              padding: '10px 12px', borderRadius: 10,
+              background: 'var(--surface-var)', color: 'var(--text)',
+              border: '1px solid var(--border)',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              width: '100%',
+            }}
+          >
+            💾 {t('match.quickSheet.updateSquadCta')}
+          </button>
+        )}
       </>)}
       </div>
-
-      {/* ── Save / Update party — explicit tlačítka místo checkboxu.
-          Audit 2026-05-23: zúžený layout — hlavička inline místo nad inputem. */}
-      {!selectedSquadId && validPlayers.length > 0 && (
-        <div style={{
-          background: 'var(--surface-var)', borderRadius: 10, padding: 8,
-          border: '1px solid var(--border)',
-        }}>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ fontSize: 18, flexShrink: 0 }}>💾</span>
-            <input
-              type="text"
-              value={squadName}
-              onChange={e => setSquadName(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && squadName.trim()) {
-                  e.preventDefault();
-                  handleSaveSquad();
-                }
-              }}
-              placeholder={t('match.quickSheet.squadNamePlaceholder')}
-              style={{ ...inputStyle, flex: 1, padding: '8px 10px', fontSize: 16, minWidth: 0 }}
-            />
-            <button
-              type="button"
-              onClick={handleSaveSquad}
-              disabled={!squadName.trim()}
-              style={{
-                padding: '8px 14px', borderRadius: 10,
-                background: squadName.trim() ? 'var(--primary)' : 'var(--border)',
-                color: squadName.trim() ? '#fff' : 'var(--text-muted)',
-                border: 'none', fontSize: 13, fontWeight: 700,
-                cursor: squadName.trim() ? 'pointer' : 'default',
-                whiteSpace: 'nowrap', flexShrink: 0,
-              }}
-            >
-              {t('match.quickSheet.saveSquadCta')}
-            </button>
-          </div>
-        </div>
-      )}
-      {selectedSquadId && validPlayers.length > 0 && (
-        <button
-          type="button"
-          onClick={handleUpdateSquad}
-          style={{
-            padding: '10px 12px', borderRadius: 10,
-            background: 'var(--surface-var)', color: 'var(--text)',
-            border: '1px solid var(--border)',
-            fontSize: 13, fontWeight: 700, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}
-        >
-          💾 {t('match.quickSheet.updateSquadCta')}
-        </button>
-      )}
 
       {(!isSimpleMode || showAdvancedDetails) && (<>
       {/* ── Datum a čas (collapsed accordion) ─────────────────────────────────
