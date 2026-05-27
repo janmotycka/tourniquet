@@ -23,6 +23,7 @@ import { useMatchPerspective } from '../../hooks/useMatchPerspective';
 import { subscribeToSingleMatch } from '../../services/match.firebase';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useAuth } from '../../context/AuthContext';
+import { GdprGuideModal } from '../../components/match/GdprGuideModal';
 
 interface Props {
   matchId: string;
@@ -87,24 +88,20 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
     }
   }, [currentMatch, navigate, guardPreferredSport]);
 
-  const handleTogglePublic = useCallback(async () => {
-    // Audit 2026-05-23 J-2: GDPR consent gate. Před prvním zveřejněním vyžádáme
-    // explicitní potvrzení trenéra, že má souhlas rodičů (nebo že hraje bez
-    // mladistvých). Lepší než tichý opt-in. Po publikaci toggle dál bez ptaní
-    // (re-toggle pro existující published match = OK).
+  // Audit 2026-05-25: GDPR guide modal — rozšíření J-2 consent gate.
+  // Pokud trenér publikuje poprvé s lineup, ukáže se modal s tipy jak
+  // získat souhlas rodičů + šablona pro stanovy klubu + confirm button.
+  const [gdprGuideOpen, setGdprGuideOpen] = useState(false);
+  const handleTogglePublic = useCallback(() => {
     if (!currentMatch) return;
     const isCurrentlyPublic = currentMatch.isPublic;
+    // První publikace + má lineup → GDPR guide modal s confirm. Jinak rovnou toggle.
     if (!isCurrentlyPublic && currentMatch.lineup.length > 0) {
-      const ok = await ask({
-        title: `🔒 ${t('match.detail.gdprConsentTitle')}`,
-        message: t('match.detail.gdprConsentMessage'),
-        confirmLabel: t('match.detail.gdprConsentConfirm'),
-        cancelLabel: t('common.cancel'),
-      });
-      if (!ok) return;
+      setGdprGuideOpen(true);
+      return;
     }
     togglePublicMatch(matchId);
-  }, [matchId, currentMatch, togglePublicMatch, ask, t]);
+  }, [matchId, currentMatch, togglePublicMatch]);
 
   const handleToggleLineupEarly = useCallback(() => {
     if (!currentMatch) return;
@@ -926,6 +923,12 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
         <EditMatchSheet
           match={currentMatch}
           onClose={() => setShowEdit(false)}
+        />
+      )}
+      {gdprGuideOpen && (
+        <GdprGuideModal
+          onClose={() => setGdprGuideOpen(false)}
+          onConfirmPublish={() => togglePublicMatch(matchId)}
         />
       )}
     </div>
