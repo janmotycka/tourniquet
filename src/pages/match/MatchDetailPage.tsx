@@ -75,18 +75,30 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
   const activeClub = useClubsStore(s => s.clubs.find(c => c.id === currentMatch?.clubId));
   const clubDisplayName = currentMatch?.clubName || activeClub?.name || t('match.detail.us');
 
-  // Safety guard — pokud zápas patří jinému sportu než aktivnímu preferred sport,
-  // přesměruj na seznam (audit 2026-05-23 J-4: dříve řešil jen tennis, ale
-  // floorball match otevřený ve football módu zůstával a crashoval na format-specific
-  // featurech jako sub assistant pro 4+1).
+  // Sport guard — pokud zápas patří jinému sportu než aktivnímu preferred sport,
+  // PŘEPNI sport automaticky (audit 2026-05-27: dříve tichý redirect na match-list,
+  // kde zápas nebyl vidět (taky sport-filtered) → dead-end "zápas zmizel". Teď
+  // přepneme preferred sport + toast, zápas zůstane otevřený a funkční.
   const guardPreferredSport = useUserPrefsStore(s => s.preferredSport);
+  const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
   useEffect(() => {
     if (!currentMatch) return;
     const matchSport = currentMatch.sport ?? 'football';
     if (matchSport !== guardPreferredSport) {
-      navigate({ name: 'match-list' });
+      // Tennis má vlastní detail page (TennisMatchDetailPage v App.tsx routeru),
+      // takže football detail page tennis match nikdy nezobrazí — redirect.
+      if (matchSport === 'tennis') {
+        navigate({ name: 'match-list' });
+        return;
+      }
+      // Football ↔ floorball — přepni sport, zápas zůstane viditelný.
+      setPreferredSport(matchSport);
+      useToastStore.getState().show('info', t('match.detail.sportSwitched', {
+        sport: matchSport === 'floorball' ? t('sport.floorball') : t('sport.football'),
+      }));
+      return;
     }
-  }, [currentMatch, navigate, guardPreferredSport]);
+  }, [currentMatch, navigate, guardPreferredSport, setPreferredSport, t]);
 
   // Audit 2026-05-25: GDPR guide modal — rozšíření J-2 consent gate.
   // Pokud trenér publikuje poprvé s lineup, ukáže se modal s tipy jak
@@ -867,7 +879,10 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
               </div>
             </div>
           )}
-          {currentMatch.status === 'finished' && (
+          {/* Audit 2026-05-27: Reset/Reopen jen pro vlastníka zápasu (isOwner).
+             Spectator (cizí klubový zápas) NESMÍ smazat/reopenout kolegovi data
+             — destruktivní akce mimo canEdit gate byly data-loss risk. */}
+          {isOwner && currentMatch.status === 'finished' && (
             <button
               onClick={async () => {
                 const ok = await ask({
@@ -885,7 +900,7 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
               {t('match.detail.reopenBtn')}
             </button>
           )}
-          {(currentMatch.status === 'live' || currentMatch.status === 'finished') && (
+          {isOwner && (currentMatch.status === 'live' || currentMatch.status === 'finished') && (
             <button
               onClick={async () => {
                 const ok = await ask({

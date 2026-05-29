@@ -199,7 +199,7 @@ function JerseyNumberPicker({
                 fontSize: 13, fontWeight: 700, cursor: 'pointer',
               }}
             >
-              Zobrazit čísla 21–99
+              {t('match.lineup.jerseyShowMore')}
             </button>
           )}
         </div>
@@ -210,7 +210,7 @@ function JerseyNumberPicker({
           display: 'flex', gap: 8, alignItems: 'center',
         }}>
           <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>
-            Nebo napsat ručně:
+            {t('match.lineup.jerseyManual')}
           </span>
           <input
             type="number"
@@ -241,7 +241,7 @@ function JerseyNumberPicker({
               cursor: manualInput ? 'pointer' : 'not-allowed',
             }}
           >
-            OK
+            {t('common.ok')}
           </button>
         </div>
 
@@ -255,7 +255,7 @@ function JerseyNumberPicker({
               fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
             }}
           >
-            Zavřít
+            {t('common.close')}
           </button>
         </div>
       </div>

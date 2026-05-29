@@ -1213,7 +1213,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
             animation: 'goalBannerFade 1.5s ease-out forwards',
             position: 'relative', zIndex: 2,
           }}>
-            ⚽ GÓÓL!
+            ⚽ {t('match.live.goalBanner')}
           </div>
         )}
 
@@ -1286,31 +1286,31 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
                       onClick={() => toggleOut(c.player.playerId)}
                       style={{
                         position: 'relative',
-                        display: 'flex', alignItems: 'center', gap: 5,
+                        display: 'flex', alignItems: 'center', gap: 6,
                         background: isSelected ? '#fff' : 'rgba(255,255,255,.92)',
                         color: 'var(--text)',
-                        borderRadius: 8, padding: '5px 6px',
+                        borderRadius: 8, padding: '6px 8px',
                         cursor: 'pointer', textAlign: 'left',
                         border: isSelected ? '2px solid var(--danger)' : '2px solid transparent',
                         boxShadow: isSelected ? '0 2px 8px rgba(198,40,40,.3)' : 'none',
-                        minWidth: 0,
+                        minWidth: 0, minHeight: 44, // Audit 2026-05-27: tap target na hřišti
                       }}
                     >
                       <span style={{
-                        width: 22, height: 22, borderRadius: 5, flexShrink: 0,
+                        width: 24, height: 24, borderRadius: 6, flexShrink: 0,
                         background: 'var(--danger-light)', color: 'var(--danger)',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10, fontWeight: 900,
+                        fontSize: 11, fontWeight: 900,
                       }}>{c.player.jerseyNumber}</span>
                       <div style={{ minWidth: 0, flex: 1, lineHeight: 1.2 }}>
                         <div style={{
-                          fontWeight: 700, fontSize: 12,
+                          fontWeight: 700, fontSize: 13,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>
                           {c.player.name}
                         </div>
                         <div style={{
-                          fontSize: 10, fontWeight: 800,
+                          fontSize: 11, fontWeight: 800,
                           color: c.stretchMinutes >= 15 ? 'var(--danger)'
                             : c.stretchMinutes >= 10 ? 'var(--warning)'
                             : 'var(--text-muted)',
@@ -1321,10 +1321,10 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
                       {isSelected && (
                         <span style={{
                           position: 'absolute', top: 3, right: 3,
-                          width: 16, height: 16, borderRadius: '50%',
+                          width: 18, height: 18, borderRadius: '50%',
                           background: 'var(--danger)', color: '#fff',
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 9, fontWeight: 900,
+                          fontSize: 10, fontWeight: 900,
                         }}>{orderIdx + 1}</span>
                       )}
                     </button>
@@ -1350,31 +1350,31 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
                       onClick={() => toggleIn(c.player.playerId)}
                       style={{
                         position: 'relative',
-                        display: 'flex', alignItems: 'center', gap: 5,
+                        display: 'flex', alignItems: 'center', gap: 6,
                         background: isSelected ? '#fff' : 'rgba(255,255,255,.92)',
                         color: 'var(--text)',
-                        borderRadius: 8, padding: '5px 6px',
+                        borderRadius: 8, padding: '6px 8px',
                         cursor: 'pointer', textAlign: 'left',
                         border: isSelected ? '2px solid var(--success)' : '2px solid transparent',
                         boxShadow: isSelected ? '0 2px 8px rgba(46,125,50,.3)' : 'none',
-                        minWidth: 0,
+                        minWidth: 0, minHeight: 44, // Audit 2026-05-27: tap target na hřišti
                       }}
                     >
                       <span style={{
-                        width: 22, height: 22, borderRadius: 5, flexShrink: 0,
+                        width: 24, height: 24, borderRadius: 6, flexShrink: 0,
                         background: 'var(--success-light)', color: 'var(--success)',
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10, fontWeight: 900,
+                        fontSize: 11, fontWeight: 900,
                       }}>{c.player.jerseyNumber}</span>
                       <div style={{ minWidth: 0, flex: 1, lineHeight: 1.2 }}>
                         <div style={{
-                          fontWeight: 700, fontSize: 12,
+                          fontWeight: 700, fontSize: 13,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>
                           {c.player.name}
                         </div>
                         <div style={{
-                          fontSize: 10, fontWeight: 800,
+                          fontSize: 11, fontWeight: 800,
                           color: c.stretchMinutes >= 15 ? 'var(--success)'
                             : c.stretchMinutes >= 10 ? 'var(--primary)'
                             : 'var(--text-muted)',
@@ -1385,10 +1385,10 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
                       {isSelected && (
                         <span style={{
                           position: 'absolute', top: 3, right: 3,
-                          width: 16, height: 16, borderRadius: '50%',
+                          width: 18, height: 18, borderRadius: '50%',
                           background: 'var(--success)', color: '#fff',
                           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 9, fontWeight: 900,
+                          fontSize: 10, fontWeight: 900,
                         }}>{orderIdx + 1}</span>
                       )}
                     </button>
