@@ -372,6 +372,11 @@
 
     // ─── Veřejný zápas (sdílení s rodiči) ──────────────────────────────────
     // Čtení: kdokoli; Zápis: vlastník zápasu napříč scope (legacy uid + klubový).
+    // Audit 2026-05-27 (security P1-1): přidán validate na string pole — omezuje
+    // storage abuse přes dlouhé texty na veřejně čitelné cestě. Útočník musí
+    // zapsat vlastní ownerUid (write gate), takže nemůže impersonovat; toto
+    // brání junk-MB-string zneužití. Plný $other:false lockdown je post-beta
+    // (schéma PublicSeasonMatch je rozsáhlé + se vyvíjí).
     "public-matches": {
       "$matchId": {
         ".read": true,
@@ -380,7 +385,15 @@
           root.child('match-catalog').child($matchId).child('ownerUid').val() === auth.uid ||
           (!data.exists() && newData.child('ownerUid').val() === auth.uid) ||
           (data.exists() && data.child('ownerUid').val() === auth.uid)
-        )"
+        )",
+        "ownerUid":            { ".validate": "newData.isString() && newData.val().length <= 128" },
+        "opponent":            { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "clubName":            { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "venue":               { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "competition":         { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "officialResultsNote": { ".validate": "newData.isString() && newData.val().length <= 500" },
+        "officialResultsUrl":  { ".validate": "newData.isString() && newData.val().length <= 500" },
+        "veoUrl":              { ".validate": "newData.isString() && newData.val().length <= 500" }
       }
     },
 
