@@ -2098,6 +2098,8 @@ export const en: Record<TranslationKey, string> = {
   'knockout.playoffStage': 'Playoff',
   'knockout.winner': 'Winner',
   'knockout.tbd': 'TBD',
+  'knockout.allTeams': 'All teams',
+  'knockout.liveShort': 'Live',
   'knockout.vs': 'vs',
 
   // ─── CSV Export ──────────────────────────────────────────────────────────

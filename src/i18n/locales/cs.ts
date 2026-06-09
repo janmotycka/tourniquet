@@ -2117,6 +2117,8 @@ export const cs = {
   'knockout.winner': 'Vítěz',
   'knockout.tbd': 'Čeká se…',
   'knockout.vs': 'vs',
+  'knockout.allTeams': 'Všechny týmy',
+  'knockout.liveShort': 'Hraje se',
 
   // ─── CSV Export ──────────────────────────────────────────────────────────
   'csv.exportTitle': 'Export dat',
