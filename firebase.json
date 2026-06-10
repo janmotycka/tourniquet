@@ -29,6 +29,14 @@
     ],
     "rewrites": [
       {
+        "source": "/m/**",
+        "function": "publicPreview"
+      },
+      {
+        "source": "/t/**",
+        "function": "publicPreview"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

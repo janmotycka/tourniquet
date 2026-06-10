@@ -8,6 +8,23 @@ import type { Page } from '../App';
 import { parseTournamentHashFromUrl, parseRosterHashFromUrl, parseRegistrationHashFromUrl, parseMatchHashFromUrl, parseMatchPairingHashFromUrl } from '../utils/qr-code';
 
 function getInitialPage(): Page {
+  // Path-based share linky /m/{id} a /t/{id} (audit 2026-06-10, OG tagy).
+  // Normálně je obslouží Hosting rewrite → publicPreview funkce (OG + redirect
+  // na hash routu), ale nainstalovaná PWA se service workerem může navigaci
+  // odbavit lokálně cached index.html — pak path doparsujeme tady (belt &
+  // suspenders) a URL normalizujeme na hash formu, se kterou počítá navigate().
+  try {
+    const pathShare = window.location.pathname.match(/^\/(m|t)\/([a-zA-Z0-9_-]{1,64})\/?$/);
+    if (pathShare) {
+      const [, kind, id] = pathShare;
+      const hash = kind === 'm' ? `#match=${id}` : `#tournament=${id}`;
+      history.replaceState(null, '', '/' + window.location.search + hash);
+      return kind === 'm'
+        ? { name: 'match-public', matchId: id }
+        : { name: 'tournament-public', tournamentId: id };
+    }
+  } catch { /* SSR / exotická prostředí — pokračuj hash parsováním */ }
+
   // Roster form link (#roster={tournamentId}&k={token})
   const roster = parseRosterHashFromUrl();
   if (roster) return { name: 'roster-form', tournamentId: roster.tournamentId, teamToken: roster.teamToken };

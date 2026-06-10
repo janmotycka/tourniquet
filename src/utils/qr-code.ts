@@ -1,11 +1,14 @@
 import QRCode from 'qrcode';
 
-/** Vrátí veřejnou URL pro daný turnaj (hash-based deep link) */
+/**
+ * Vrátí veřejnou URL pro daný turnaj.
+ * Audit 2026-06-10 (OG tagy): path formát /t/{id} místo #tournament={id} —
+ * hash se neposílá na server, takže WhatsApp boti viděli jen generický náhled.
+ * /t/** routuje Hosting na Cloud Function publicPreview (OG tagy + redirect).
+ * Staré hash odkazy fungují dál (page.store je parsuje).
+ */
 export function getTournamentPublicUrl(tournamentId: string): string {
-  const base = window.location.origin + window.location.pathname;
-  // Odstraníme trailing slash pokud existuje
-  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
-  return `${cleanBase}#tournament=${tournamentId}`;
+  return `${window.location.origin}/t/${tournamentId}`;
 }
 
 /** Vygeneruje QR kód jako data URL (PNG) */
@@ -71,11 +74,10 @@ export function parseRegistrationHashFromUrl(): { tournamentId: string } | null 
   return match ? { tournamentId: match[1] } : null;
 }
 
-/** Vrátí veřejnou URL pro sezónní zápas */
+/** Vrátí veřejnou URL pro sezónní zápas (path formát /m/{id} kvůli OG tagům,
+ *  audit 2026-06-10 — viz getTournamentPublicUrl). */
 export function getMatchPublicUrl(matchId: string): string {
-  const base = window.location.origin + window.location.pathname;
-  const cleanBase = base.endsWith('/') ? base.slice(0, -1) : base;
-  return `${cleanBase}#match=${matchId}`;
+  return `${window.location.origin}/m/${matchId}`;
 }
 
 /** Parsuje match ID z URL hashe */

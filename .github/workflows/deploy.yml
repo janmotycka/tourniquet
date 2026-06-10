@@ -59,11 +59,14 @@ jobs:
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      - name: Deploy Hosting
-        run: npx firebase-tools deploy --only hosting --project tourniquet-7a123
+      # Functions PŘED hosting — hosting rewrites (/m/**, /t/** → publicPreview)
+      # se validují proti nasazenému backendu; opačné pořadí by selhalo při
+      # prvním deployi nové funkce (audit 2026-06-10).
+      - name: Deploy Cloud Functions
+        run: npx firebase-tools deploy --only functions --project tourniquet-7a123
 
       - name: Deploy Database Rules
         run: npx firebase-tools deploy --only database --project tourniquet-7a123
 
-      - name: Deploy Cloud Functions
-        run: npx firebase-tools deploy --only functions --project tourniquet-7a123
+      - name: Deploy Hosting
+        run: npx firebase-tools deploy --only hosting --project tourniquet-7a123
