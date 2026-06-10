@@ -364,6 +364,7 @@ export const de: Record<TranslationKey, string> = {
   'sidebar.admin': 'Admin',
   'sidebar.logout': 'Abmelden',
   'sidebar.upgrade': 'Premium-Upgrade',
+  'sidebar.support': 'TORQ unterstützen',
   'topbar.search': 'Suchen...',
   'topbar.openMenu': 'Menü öffnen',
 
@@ -1074,7 +1075,7 @@ export const de: Record<TranslationKey, string> = {
   'match.away': '✈️ Auswärts',
   'match.list.title': '📋 Spiele',
   'match.list.newMatch': 'Neu',
-  'match.list.limitReachedToast': 'Free-Limit erreicht ({max} Spiele). Upgrade auf Premium oder älteres Spiel löschen.',
+  'match.list.limitReachedToast': 'Limit von {max} Spielen erreicht. Schreib mir an jan@torq.cz und ich erhöhe es kostenlos.',
   'match.list.quickMatch': 'Schnellspiel',
   'match.list.quickMatchHint': 'Sofort starten — ohne Aufstellung, ohne Setup. Für Freundschaftsspiele.',
   'match.list.quickMatchPrompt': 'Gegen wen spielt ihr? (leer lassen wenn unbekannt)',
@@ -1715,6 +1716,10 @@ export const de: Record<TranslationKey, string> = {
   'settings.profile': 'Profil',
   'settings.coach': 'Trainer',
   'settings.subscription': 'Abonnement',
+  'settings.supportTitle': 'TORQ unterstützen',
+  'settings.supportDesc': 'TORQ ist in der Beta und alle Funktionen sind kostenlos. Wenn dir die App hilft, kannst du den Betrieb mit einem freiwilligen Beitrag unterstützen — er hilft bei Serverkosten und Weiterentwicklung.',
+  'settings.supportBtn': 'Beitragen',
+  'settings.supportContact': 'Ideen und Feedback:',
   'settings.premiumActive': '⭐ Premium aktiv',
   'settings.premiumDesc': 'Sie haben Zugriff auf alle Funktionen ohne Einschränkungen.',
   'settings.endsAt': 'Endet',
@@ -1815,7 +1820,9 @@ export const de: Record<TranslationKey, string> = {
   'terms.s6Text': 'Bedingungen können aktualisiert werden. Über wesentliche Änderungen informieren wir Sie per E-Mail oder In-App-Benachrichtigung. Durch die weitere Nutzung der App nach Änderungen stimmen Sie den neuen Bedingungen zu. Kontakt: info@torq.cz.',
 
   // ─── Feature Gate ─────────────────────────────────────────────────────────
-  'gate.limitReached': 'Kostenloses Limit erreicht',
+  'gate.limitReached': 'Beta-Limit erreicht',
+  'gate.betaContactDesc': 'TORQ ist in der Beta — Limits halten die Kosten im Rahmen. Brauchst du mehr? Schreib mir und ich erhöhe dein Limit kostenlos.',
+  'gate.betaContactBtn': 'E-Mail an jan@torq.cz',
   'gate.limitDesc': 'Der kostenlose Plan erlaubt maximal {count} {label}.',
   'gate.upgradeDesc': 'Testen Sie Premium 30 Tage kostenlos, danach {price}.',
   'gate.tryFree': '⭐ 30 Tage kostenlos testen',

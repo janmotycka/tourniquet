@@ -19,6 +19,7 @@ import { useLayoutMode } from '../hooks/useLayoutMode';
 import { ADMIN_UID } from '../constants/admin';
 import { PageHeader } from '../components/ui';
 import { shouldHideStripeUpgrade } from '../utils/platform';
+import { PREMIUM_ENABLED, DONATE_URL, isDonateEnabled } from '../types/feature-flags';
 import type { Sport } from '../types/sport.types';
 import { ENABLED_SPORTS } from '../types/sport.types';
 
@@ -397,11 +398,14 @@ export function SettingsPage({ navigate }: Props) {
                         </div>
                       );
                     })()}
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--warning)', marginTop: 4 }}>
-                      {t('settings.premiumOffer', { price: t('subscription.price') })}
-                    </div>
+                    {PREMIUM_ENABLED && (
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--warning)', marginTop: 4 }}>
+                        {t('settings.premiumOffer', { price: t('subscription.price') })}
+                      </div>
+                    )}
                   </>
                 )}
+                {PREMIUM_ENABLED && (<>
                 <button
                   onClick={() => setFeaturesOpen(o => !o)}
                   style={{
@@ -428,12 +432,52 @@ export function SettingsPage({ navigate }: Props) {
                     {'\u2022'} {t('settings.premiumFeature4')}
                   </div>
                 </div>
+                </>)}
               </div>
-              {/* Subscribe gating:
+              {/* Audit 2026-06-10: PREMIUM_ENABLED=false \u2192 m\u00edsto prodeje Premium
+                  dobrovoln\u00e1 podpora projektu + kontakt. Stripe flow z\u016fst\u00e1v\u00e1
+                  v k\u00f3du (flag=true ho vr\u00e1t\u00ed beze zm\u011bn). */}
+              {!PREMIUM_ENABLED ? (
+                <div style={{
+                  background: 'var(--surface-var)', borderRadius: 12,
+                  padding: '14px 16px', border: '1px solid var(--border)',
+                  display: 'flex', flexDirection: 'column', gap: 10,
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                    \u2615 {t('settings.supportTitle')}
+                  </div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                    {t('settings.supportDesc')}
+                  </div>
+                  {isDonateEnabled() && (
+                    <a
+                      href={DONATE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'block', textAlign: 'center', textDecoration: 'none',
+                        background: 'var(--primary)', color: '#fff',
+                        fontWeight: 700, fontSize: 15,
+                        padding: '12px', borderRadius: 12,
+                        boxShadow: 'var(--shadow-sm)',
+                      }}
+                    >
+                      \u2615 {t('settings.supportBtn')}
+                    </a>
+                  )}
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
+                    {t('settings.supportContact')}{' '}
+                    <a href="mailto:jan@torq.cz" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                      jan@torq.cz
+                    </a>
+                  </div>
+                </div>
+              ) :
+              /* Subscribe gating (PREMIUM_ENABLED=true):
                   1. iOS App Store rule 3.1.1: skryté Stripe upgrade tlačítko
                   2. Simple mode: Premium nemá smysl (user má vše unlimited)
-                     → místo tlačítka ukážeme info „přepni na Pokročilý" */}
-              {appMode === 'simple' ? (
+                     → místo tlačítka ukážeme info „přepni na Pokročilý" */
+              appMode === 'simple' ? (
                 <div style={{
                   background: 'var(--surface-var)', color: 'var(--text-muted)',
                   fontSize: 13, lineHeight: 1.5,

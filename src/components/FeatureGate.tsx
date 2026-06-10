@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useSubscriptionStore } from '../store/subscription.store';
 import { useI18n } from '../i18n';
+import { PREMIUM_ENABLED } from '../types/feature-flags';
 
 interface Props {
   /** How many resources the user already has */
@@ -24,7 +25,41 @@ export function FeatureGate({ currentCount, maxAllowed, children, onUpgrade, fea
     return <>{children}</>;
   }
 
-  // Free user exceeded limit
+  // Audit 2026-06-10: PREMIUM_ENABLED=false → limit zůstává (anti-abuse),
+  // ale místo prodejní copy poctivá beta zpráva s kontaktem. Nikdo neuvízne:
+  // napíše mail a limit mu (ručně, admin panel) navýšíme.
+  if (!PREMIUM_ENABLED) {
+    return (
+      <div style={{
+        background: 'var(--surface-var)',
+        borderRadius: 16, padding: 20,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+        border: '1px solid var(--border)',
+      }}>
+        <div style={{ fontSize: 32 }}>🔒</div>
+        <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', textAlign: 'center' }}>
+          {t('gate.limitReached')}
+        </div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.5 }}>
+          {t('gate.limitDesc', { count: String(maxAllowed), label: featureLabel ?? '' })}
+          <br />
+          {t('gate.betaContactDesc')}
+        </div>
+        <a
+          href="mailto:jan@torq.cz?subject=TORQ%20beta%20%E2%80%94%20nav%C3%BD%C5%A1en%C3%AD%20limitu"
+          style={{
+            background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 14,
+            padding: '10px 24px', borderRadius: 12, marginTop: 2,
+            textDecoration: 'none', boxShadow: 'var(--shadow-sm)',
+          }}
+        >
+          ✉️ {t('gate.betaContactBtn')}
+        </a>
+      </div>
+    );
+  }
+
+  // Free user exceeded limit (PREMIUM_ENABLED=true → prodejní gate)
   return (
     <div style={{
       background: 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)',

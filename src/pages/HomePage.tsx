@@ -15,6 +15,7 @@ import { useMyPlayersStore } from '../modules/tennis/store/myPlayers.store';
 import { useSimpleSquadsStore } from '../store/simpleSquads.store';
 import { OnboardingWizard, isOnboarded } from '../components/onboarding/OnboardingWizard';
 import { shouldHideStripeUpgrade } from '../utils/platform';
+import { PREMIUM_ENABLED } from '../types/feature-flags';
 import { TRAINING_ENABLED } from '../types/feature-flags';
 
 interface Props { navigate: (p: Page) => void; }
@@ -466,8 +467,9 @@ export function HomePage({ navigate }: Props) {
             <EmptyRow text={t('home.activityEmpty') || 'Zatím žádné novinky'} />
             {/* Premium teaser — skrytý na iOS (Apple 3.1.1) + v Simple mode
                 (audit 2026-04-29 P0.5: Simple mode má všechno zdarma, banner
-                by byl rozporný se Settings copy "vše zdarma"). */}
-            {!isPremium() && !shouldHideStripeUpgrade() && !isSimpleMode && (
+                by byl rozporný se Settings copy "vše zdarma").
+                Audit 2026-06-10: za PREMIUM_ENABLED flagem (beta = bez upsellu). */}
+            {PREMIUM_ENABLED && !isPremium() && !shouldHideStripeUpgrade() && !isSimpleMode && (
               <button
                 onClick={() => navigate({ name: 'settings' })}
                 style={{
@@ -700,8 +702,9 @@ export function HomePage({ navigate }: Props) {
       </button>
 
       {/* Upgrade CTA banner for free users — skrytý na iOS (Apple 3.1.1 rule)
-          + v Simple mode (audit 2026-04-29 P0.5: Simple = vše zdarma). */}
-      {!isPremium() && !shouldHideStripeUpgrade() && !isSimpleMode && (
+          + v Simple mode (audit 2026-04-29 P0.5: Simple = vše zdarma).
+          Audit 2026-06-10: za PREMIUM_ENABLED flagem (beta = bez upsellu). */}
+      {PREMIUM_ENABLED && !isPremium() && !shouldHideStripeUpgrade() && !isSimpleMode && (
         <button
           onClick={() => navigate({ name: 'settings' })}
           style={{

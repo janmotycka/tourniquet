@@ -24,6 +24,7 @@ import { subscribeToSingleMatch } from '../../services/match.firebase';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useAuth } from '../../context/AuthContext';
 import { GdprGuideModal } from '../../components/match/GdprGuideModal';
+import { FACR_REPORT_ENABLED } from '../../types/feature-flags';
 
 interface Props {
   matchId: string;
@@ -842,12 +843,11 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
               );
             })()}
 
-          {/* FAČR report — Advanced/klubová feature (oficiální zápis pro českou
-              fotbalovou asociaci). Skryté v Simple módu — laik / učitel TV ho
-              nepotřebuje. Audit 2026-04-29: skryté i pro Quick match (rychlý
-              zápas / přátelák) i v Advanced módu — bez kompletní sestavy
-              s pozicemi nemá FAČR co reportovat. */}
-          {currentMatch.status === 'finished' && !isSimpleMode && !currentMatch.isQuickMatch && (
+          {/* FAČR report — copy-paste pomocník pro is.fotbal.cz (žádná reálná
+              integrace). Audit 2026-06-10: za feature flagem FACR_REPORT_ENABLED
+              — pro beta skryto, aby nesliboval víc než umí. Skryté v Simple módu
+              a pro Quick match (bez kompletní sestavy není co reportovat). */}
+          {FACR_REPORT_ENABLED && currentMatch.status === 'finished' && !isSimpleMode && !currentMatch.isQuickMatch && (
             <div style={{
               background: 'var(--surface)', borderRadius: 14, padding: '12px 14px',
               border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10,

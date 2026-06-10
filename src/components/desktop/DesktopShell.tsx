@@ -6,7 +6,7 @@ import { useSubscriptionStore } from '../../store/subscription.store';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { ClubSwitcher } from '../clubs/ClubSwitcher';
 import { ADMIN_UID } from '../../constants/admin';
-import { TRAINING_ENABLED } from '../../types/feature-flags';
+import { TRAINING_ENABLED, PREMIUM_ENABLED } from '../../types/feature-flags';
 
 // ─── DesktopShell ─────────────────────────────────────────────────────────────
 // Persistent sidebar + topbar layout for the desktop mode.
@@ -393,8 +393,10 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
           )}
         </nav>
 
-        {/* Upgrade CTA */}
-        {!isPremium() && (
+        {/* Upgrade CTA (PREMIUM_ENABLED) / Podpora projektu (beta).
+            Audit 2026-06-10: bez Premium prodeje — sidebar nabízí jen decentní
+            "Podpořit TORQ" link do Settings (kde je donate + kontakt). */}
+        {PREMIUM_ENABLED && !isPremium() ? (
           <div style={{ padding: '0 12px 12px' }}>
             <button
               onClick={() => navigate({ name: 'settings' })}
@@ -413,7 +415,26 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
               </span>
             </button>
           </div>
-        )}
+        ) : !PREMIUM_ENABLED ? (
+          <div style={{ padding: '0 12px 12px' }}>
+            <button
+              onClick={() => navigate({ name: 'settings' })}
+              style={{
+                width: '100%',
+                background: 'var(--surface-var)',
+                border: '1px solid var(--border)',
+                borderRadius: 12, padding: '10px 14px', textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}
+            >
+              <span style={{ fontSize: 18 }}>☕</span>
+              <span style={{ fontWeight: 600, fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.3 }}>
+                {t('sidebar.support')}
+              </span>
+            </button>
+          </div>
+        ) : null}
 
         {/* User footer */}
         <div style={{

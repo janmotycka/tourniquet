@@ -374,6 +374,7 @@ export const cs = {
   'sidebar.admin': 'Admin',
   'sidebar.logout': 'Odhlásit',
   'sidebar.upgrade': 'Upgrade na Premium',
+  'sidebar.support': 'Podpořit TORQ',
   'topbar.search': 'Hledat...',
   'topbar.openMenu': 'Otevřít menu',
 
@@ -1085,7 +1086,7 @@ export const cs = {
   'match.away': '✈️ Venkovní',
   'match.list.title': '📋 Zápasy',
   'match.list.newMatch': 'Nový',
-  'match.list.limitReachedToast': 'Dosáhl jsi limitu {max} zápasů na free plánu. Upgraduj na premium nebo smaž starý zápas.',
+  'match.list.limitReachedToast': 'Dosáhl jsi limitu {max} zápasů. Napiš mi na jan@torq.cz, rád ti ho navýším.',
   'match.list.quickMatch': 'Rychlý zápas',
   'match.list.quickMatchHint': 'Okamžitě start — bez sestavy a nastavení. Pro přátelák nebo plácek.',
   'match.list.quickMatchPrompt': 'Proti komu hrajete? (nech prázdné pokud nevíš)',
@@ -1729,6 +1730,10 @@ export const cs = {
   'settings.profile': 'Profil',
   'settings.coach': 'Trenér',
   'settings.subscription': 'Předplatné',
+  'settings.supportTitle': 'Podpoř TORQ',
+  'settings.supportDesc': 'TORQ je v beta verzi a všechny funkce jsou zdarma. Pokud ti aplikace pomáhá, můžeš provoz podpořit dobrovolným příspěvkem — pomůže s náklady na servery a další vývoj.',
+  'settings.supportBtn': 'Přispět na provoz',
+  'settings.supportContact': 'Nápady a připomínky:',
   'settings.premiumActive': '⭐ Premium aktivní',
   'settings.premiumDesc': 'Máte přístup ke všem funkcím bez omezení.',
   'settings.endsAt': 'Skončí',
@@ -1829,7 +1834,9 @@ export const cs = {
   'terms.s6Text': 'Podmínky mohou být aktualizovány. O významných změnách vás informujeme e-mailem nebo notifikací v aplikaci. Pokračováním v používání aplikace po změně souhlasíte s novými podmínkami. Kontakt: info@torq.cz.',
 
   // ─── Feature Gate ─────────────────────────────────────────────────────────
-  'gate.limitReached': 'Dosažen limit zdarma',
+  'gate.limitReached': 'Dosažen limit beta verze',
+  'gate.betaContactDesc': 'TORQ je v beta — limity drží náklady na uzdě. Potřebuješ víc? Napiš mi a limit ti zdarma navýším.',
+  'gate.betaContactBtn': 'Napsat na jan@torq.cz',
   'gate.limitDesc': 'Bezplatný plán umožňuje max {count} {label}.',
   'gate.upgradeDesc': 'Vyzkoušejte Premium 30 dní zdarma, pak {price}.',
   'gate.tryFree': '⭐ Vyzkoušet 30 dní zdarma',
