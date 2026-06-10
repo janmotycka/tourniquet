@@ -445,6 +445,19 @@
       }
     },
 
+    // ─── First-party analytika — anonymní denní čítače (audit 2026-06-10) ────
+    // Zápis: kdokoli (i nepřihlášený divák public view), ALE jen increment +1
+    // a klíče dle regexu — abuse maximálně nafoukne čítač. Žádná osobní data.
+    // Čtení: jen admin (AdminPage dashboard).
+    "analytics": {
+      ".read": "auth != null && auth.uid === 'EmIOqHuZVaWVbWN0imh6D1cttAf1'",
+      "$day": {
+        "$event": {
+          ".write": "$day.matches(/^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) && $event.matches(/^[a-z0-9_]+$/) && newData.exists() && newData.isNumber() && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() + 1)"
+        }
+      }
+    },
+
     // ─── Rate limiting state — admin SDK only (audit 2026-05-23 S-7) ─────────
     // Server-side counter pro PIN brute force protection. Client NESMÍ číst/psát —
     // jediné modifikace přes Cloud Functions (rate-limiter.ts).

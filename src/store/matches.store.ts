@@ -20,6 +20,7 @@ import {
 } from '../services/match.firebase';
 import { generatePinSalt, hashPin } from '../utils/pin-hash';
 import { logger } from '../utils/logger';
+import { track } from '../services/analytics';
 import { useToastStore } from './toast.store';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../firebase';
@@ -363,6 +364,7 @@ export const useMatchesStore = create<MatchesState>()(
         set(state => ({ matches: [match, ...state.matches] }));
         logger.debug(`[Matches] Created match ${match.id}, firebaseUid: ${get().firebaseUid}, total: ${get().matches.length}`);
         syncMatchAndTrack(get().firebaseUid, match, set);
+        track('match_created');
         return match;
       },
 
@@ -437,6 +439,7 @@ export const useMatchesStore = create<MatchesState>()(
         }));
         const m = get().matches.find(x => x.id === id);
         if (m) syncMatchAndTrack(get().firebaseUid, m, set);
+        track('match_started');
       },
 
       finishMatch: (id) => {
@@ -461,6 +464,7 @@ export const useMatchesStore = create<MatchesState>()(
         }));
         const fm = get().matches.find(x => x.id === id);
         if (fm) syncMatchAndTrack(get().firebaseUid, fm, set);
+        track('match_finished');
       },
 
       pauseMatch: (id) => {

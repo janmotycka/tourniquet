@@ -8,6 +8,7 @@ import { TennisTeamPublicView } from '../../modules/tennis/components/TennisTeam
 import { TennisSinglesPublicView } from '../../modules/tennis/components/TennisSinglesPublicView';
 import { OfficialLinkButton } from '../../components/ui';
 import { spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
+import { track } from '../../services/analytics';
 
 // ─── Wake Lock hook ─────────────────────────────────────────────────────────
 
@@ -257,6 +258,11 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
     });
     return unsub;
   }, [matchId]);
+
+  // Analytika: divácká návštěva (anonymní denní čítač, audit 2026-06-10)
+  useEffect(() => {
+    track('public_match_view', { oncePerSession: true });
+  }, []);
 
   // Live timer
   useEffect(() => {
@@ -1034,6 +1040,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
             </div>
             <a
               href={(typeof window !== 'undefined' ? window.location.origin : 'https://torq.cz') + '/?ref=public-match#mode=simple'}
+              onClick={() => track('viral_match_cta_click')}
               style={{
                 display: 'inline-block', padding: `${spacing.md}px ${spacing.xl + spacing.sm}px`,
                 borderRadius: radius.md,
@@ -1077,6 +1084,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
             </div>
             <a
               href={(typeof window !== 'undefined' ? window.location.origin : 'https://torq.cz') + '/?ref=public-match#mode=simple'}
+              onClick={() => track('viral_match_cta_click')}
               style={{
                 display: 'inline-block', padding: `${spacing.sm}px ${spacing.xl}px`,
                 borderRadius: radius.md,

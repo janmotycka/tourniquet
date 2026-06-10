@@ -20,6 +20,7 @@ import { ADMIN_UID } from '../constants/admin';
 import { PageHeader } from '../components/ui';
 import { shouldHideStripeUpgrade } from '../utils/platform';
 import { PREMIUM_ENABLED, DONATE_URL, isDonateEnabled } from '../types/feature-flags';
+import { track } from '../services/analytics';
 import type { Sport } from '../types/sport.types';
 import { ENABLED_SPORTS } from '../types/sport.types';
 
@@ -454,6 +455,7 @@ export function SettingsPage({ navigate }: Props) {
                       href={DONATE_URL}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={() => track('donate_click')}
                       style={{
                         display: 'block', textAlign: 'center', textDecoration: 'none',
                         background: 'var(--primary)', color: '#fff',

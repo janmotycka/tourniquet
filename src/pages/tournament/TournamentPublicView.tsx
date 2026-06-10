@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Page } from '../../App';
 import { logger } from '../../utils/logger';
+import { track } from '../../services/analytics';
 import { useTournamentStore } from '../../store/tournament.store';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
 import type { Tournament } from '../../types/tournament.types';
@@ -88,6 +89,11 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
     );
     return unsubscribe;
   }, [tournamentId]);
+
+  // Analytika: divácká návštěva turnaje (anonymní denní čítač, audit 2026-06-10)
+  useEffect(() => {
+    track('public_tournament_view', { oncePerSession: true });
+  }, []);
 
   // Subscribe na MVP hlasy (pro awards sekci — "Hráč, který zaujal diváky")
   useEffect(() => {
@@ -556,9 +562,10 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
         {/* TORQ branding */}
         <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
           <a
-            href="https://torq.cz"
+            href="https://torq.cz/?ref=powered_by_tournament"
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => track('viral_tournament_cta_click')}
             style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
           >
             ⚡ Powered by <strong style={{ color: 'var(--primary)' }}>TORQ</strong> · torq.cz
@@ -804,9 +811,8 @@ function FinishedBanner({ tournament, isGuest }: { tournament: Tournament; isGue
         {/* Promo — only for guests */}
         {isGuest && (
           <a
-            href="https://torq.cz"
-            target="_blank"
-            rel="noopener noreferrer"
+            href={(typeof window !== 'undefined' ? window.location.origin : 'https://torq.cz') + '/?ref=public_tournament#mode=simple'}
+            onClick={() => track('viral_tournament_cta_click')}
             style={{
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 16px', textDecoration: 'none',

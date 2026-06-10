@@ -5,6 +5,7 @@ import type { Tournament, Match, Goal, CreateTournamentInput, TournamentSettings
 import { generateRoundRobinSchedule, generateGroupsKnockoutSchedule, generatePureKnockoutSchedule, advanceTeamsFromGroups, generateId, computeMatchStartTime, parseStartDateTime, recalculateMatchTimes } from '../utils/tournament-schedule';
 import { TEAM_COLORS } from '../utils/team-colors';
 import { logger } from '../utils/logger';
+import { track } from '../services/analytics';
 import { sanitizeTournamentInput, clampNumber, LIMITS } from '../utils/validation';
 import {
   saveTournamentToFirebase,
@@ -613,6 +614,7 @@ export const useTournamentStore = create<TournamentState>()(
           }
         });
 
+        track('tournament_created');
         return tournament;
       },
 

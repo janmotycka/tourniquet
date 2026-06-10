@@ -1065,9 +1065,132 @@ function StatsTab({ stats, onRefresh }: { stats: SystemStats | null; onRefresh: 
         </div>
       )}
 
+      {/* First-party analytika — viral funnel (audit 2026-06-10) */}
+      <AnalyticsSection cardStyle={cardStyle} sectionTitle={sectionTitle} />
+
       <div style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'right' }}>
         {t('admin.stats.generatedAt')}: {new Date(stats.generatedAt).toLocaleString()}
       </div>
+    </div>
+  );
+}
+
+// ─── First-party analytika (audit 2026-06-10) ───────────────────────────────
+// Čte /analytics/{YYYY-MM-DD} (posledních 14 dní) — anonymní denní čítače
+// zapisované klientem (services/analytics.ts). Rules: read jen admin.
+
+const FUNNEL_EVENTS: { key: string; emoji: string }[] = [
+  { key: 'public_match_view', emoji: '👀' },
+  { key: 'public_tournament_view', emoji: '🏟️' },
+  { key: 'viral_match_cta_click', emoji: '🖱️' },
+  { key: 'viral_tournament_cta_click', emoji: '🖱️' },
+  { key: 'ref_public_match', emoji: '🧲' },
+  { key: 'ref_public_tournament', emoji: '🧲' },
+  { key: 'ref_registration', emoji: '🧲' },
+  { key: 'app_open', emoji: '🚪' },
+  { key: 'match_created', emoji: '⚽' },
+  { key: 'match_started', emoji: '▶️' },
+  { key: 'match_finished', emoji: '🏁' },
+  { key: 'tournament_created', emoji: '🏆' },
+  { key: 'donate_click', emoji: '☕' },
+];
+
+function AnalyticsSection({ cardStyle, sectionTitle }: {
+  cardStyle: React.CSSProperties;
+  sectionTitle: React.CSSProperties;
+}) {
+  const { t } = useI18n();
+  const [days, setDays] = useState<Record<string, Record<string, number>> | null>(null);
+
+  useEffect(() => {
+    // Realtime subscribe na celý /analytics uzel — pro beta objem (jednotky
+    // dní × desítky klíčů) je to levné; až poroste, přepneme na range query.
+    const r = dbRef(db, 'analytics');
+    const unsub = onValue(r, snap => {
+      setDays((snap.val() as Record<string, Record<string, number>>) ?? {});
+    }, () => setDays({}));
+    return () => unsub();
+  }, []);
+
+  const { dayKeys, eventKeys, totals } = useMemo(() => {
+    const all = days ?? {};
+    // Filtr na <= dnes — rules pustí i fiktivní budoucí datumy ('9999-12-31'),
+    // které by jinak vytlačily reálná data z 14denního okna (review finding).
+    const today = new Date().toISOString().slice(0, 10);
+    const dk = Object.keys(all).filter(d => d <= today).sort().reverse().slice(0, 14);
+    // Sloupce: známé funnel eventy první (v definovaném pořadí), pak neznámé.
+    const present = new Set<string>();
+    for (const d of dk) for (const e of Object.keys(all[d] ?? {})) present.add(e);
+    const known = FUNNEL_EVENTS.map(f => f.key).filter(k => present.has(k));
+    const unknown = [...present].filter(k => !known.includes(k)).sort();
+    const ek = [...known, ...unknown];
+    const tot: Record<string, number> = {};
+    for (const e of ek) tot[e] = dk.reduce((s, d) => s + (all[d]?.[e] ?? 0), 0);
+    return { dayKeys: dk, eventKeys: ek, totals: tot };
+  }, [days]);
+
+  if (days === null) return null;
+
+  return (
+    <div style={cardStyle}>
+      <div style={sectionTitle}>📈 {t('admin.analytics.title')}</div>
+      {dayKeys.length === 0 ? (
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+          {t('admin.analytics.empty')}
+        </div>
+      ) : (
+        <>
+          {/* Souhrn 14 dní */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 6, marginBottom: 12 }}>
+            {eventKeys.map(e => {
+              const meta = FUNNEL_EVENTS.find(f => f.key === e);
+              return (
+                <div key={e} style={{
+                  padding: '6px 10px', borderRadius: 8, background: 'var(--surface-var)',
+                  fontSize: 11, display: 'flex', justifyContent: 'space-between', gap: 6,
+                }}>
+                  <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {meta?.emoji ?? '·'} {e}
+                  </span>
+                  <span style={{ fontWeight: 700 }}>{totals[e]}</span>
+                </div>
+              );
+            })}
+          </div>
+          {/* Tabulka per den */}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', fontSize: 11, minWidth: '100%' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '4px 8px', color: 'var(--text-muted)', fontWeight: 700 }}>
+                    {t('admin.analytics.day')}
+                  </th>
+                  {eventKeys.map(e => (
+                    <th key={e} title={e} style={{ textAlign: 'right', padding: '4px 6px', color: 'var(--text-muted)', fontWeight: 700, maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {FUNNEL_EVENTS.find(f => f.key === e)?.emoji ?? ''} {e.replace(/^(public_|viral_|ref_)/, '')}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {dayKeys.map(d => (
+                  <tr key={d} style={{ borderTop: '1px solid var(--border)' }}>
+                    <td style={{ padding: '4px 8px', fontWeight: 700, whiteSpace: 'nowrap' }}>{d.slice(5)}</td>
+                    {eventKeys.map(e => {
+                      const v = days[d]?.[e] ?? 0;
+                      return (
+                        <td key={e} style={{ textAlign: 'right', padding: '4px 6px', color: v > 0 ? 'var(--text)' : 'var(--text-muted)', fontWeight: v > 0 ? 700 : 400 }}>
+                          {v || '·'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }

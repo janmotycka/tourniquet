@@ -233,6 +233,26 @@ export function RegistrationFormPage({ tournamentId }: Props) {
               👤 {coachName.trim()} · {coachPhone.trim()}
             </p>
           </div>
+
+          {/* Audit 2026-06-10 (growth audit #5): konverzní hook — registrovaný
+              trenér je cizí trenér s rukou na klice. Nabídneme mu vlastní TORQ
+              přes anonymní deep-link flow (stejný pattern jako viral banner). */}
+          <a
+            href={(typeof window !== 'undefined' ? window.location.origin : 'https://torq.cz') + '/?ref=registration#mode=simple'}
+            style={{
+              display: 'block', width: '100%', boxSizing: 'border-box',
+              marginTop: 8, padding: '14px 16px', borderRadius: 14,
+              background: 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)',
+              color: '#fff', textDecoration: 'none', textAlign: 'center',
+            }}
+          >
+            <div style={{ fontWeight: 800, fontSize: 14 }}>
+              {t('registration.tryTorqTitle')}
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.9, marginTop: 4, lineHeight: 1.4 }}>
+              {t('registration.tryTorqDesc')}
+            </div>
+          </a>
         </div>
         <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 16 }}>
           TORQ ⚽ torq.cz

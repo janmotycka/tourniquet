@@ -22,6 +22,7 @@ import { useContactsStore } from './store/contacts.store';
 import { useMatchesStore } from './store/matches.store';
 import { useSimpleSquadsStore } from './store/simpleSquads.store';
 import { logger } from './utils/logger';
+import { track, sanitizeEventKey } from './services/analytics';
 import { useTemplatesStore } from './store/templates.store';
 import { useClubsStore } from './store/clubs.store';
 import { useTrainingsStore } from './store/trainings.store';
@@ -224,6 +225,12 @@ function AppRouter() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid, user?.isAnonymous, memberClubIdsKey, subscribeMatches]);
 
+  // Analytika: start přihlášené session (1× per session, audit 2026-06-10)
+  useEffect(() => {
+    if (!user) return;
+    track('app_open', { oncePerSession: true });
+  }, [user]);
+
   // Když prohlížeč obnoví spojení → retry pending match syncs (offline write queue)
   useEffect(() => {
     const handleOnline = () => {
@@ -279,6 +286,16 @@ function AppRouter() {
       setAppModeFromUrl('advanced');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Audit 2026-06-10 (growth audit P1): změřit přistání s ?ref=… — dosud se
+  // parametr nastavoval, ale neměřil → viral funnel byl slepý. Track běží
+  // PŘED auth efektem níže (ten ref z URL maže). 1× per session.
+  useEffect(() => {
+    try {
+      const ref = new URLSearchParams(window.location.search).get('ref');
+      if (ref) track(`ref_${sanitizeEventKey(ref)}`, { oncePerSession: true });
+    } catch { /* analytika nikdy nesmí rozbít app */ }
   }, []);
 
   // Audit 2026-04-24 (Martina viral loop test):
