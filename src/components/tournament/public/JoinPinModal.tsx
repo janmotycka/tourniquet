@@ -56,7 +56,7 @@ export function JoinPinModal({ joinPin, setJoinPin, joinError, setJoinError, joi
             width: '100%', textAlign: 'center',
             fontSize: 28, fontWeight: 800, letterSpacing: 12,
             padding: '14px 12px', borderRadius: 14,
-            border: joinError ? '2px solid #C62828' : '2px solid var(--border)',
+            border: joinError ? '2px solid var(--danger)' : '2px solid var(--border)',
             background: 'var(--bg)', color: 'var(--text)',
             outline: 'none', caretColor: 'var(--primary)',
             transition: 'border-color .2s',

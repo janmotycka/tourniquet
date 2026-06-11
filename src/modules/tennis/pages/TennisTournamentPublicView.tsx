@@ -88,7 +88,7 @@ export function TennisTournamentPublicView({ tournamentId, navigate }: Props) {
             color: '#fff', fontWeight: 700, border: 'none', cursor: 'pointer',
           }}
         >
-          ← {t('common.back')}
+          {t('common.back')}
         </button>
       </div>
     );

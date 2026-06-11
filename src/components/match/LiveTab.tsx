@@ -928,7 +928,6 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
       {/* Away coach info — vysvětli omezení (nemá svou sestavu, jen score) */}
       {isAwayView && match.status === 'live' && (
         <div style={{
-          margin: '8px 16px 0',
           padding: '8px 12px', borderRadius: 10,
           background: 'var(--surface-var)', border: '1px solid var(--border)',
           fontSize: 11.5, color: 'var(--text-muted)', lineHeight: 1.4,
@@ -1102,7 +1101,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
       {/* Period end banner — viditelný signál že uběhla doba periody */}
       {match.status === 'live' && isPeriodOvertime && (
         <div style={{
-          background: 'linear-gradient(135deg, #FF6F00 0%, #E65100 100%)',
+          background: 'var(--warning-gradient)',
           color: '#fff', borderRadius: 14,
           padding: '10px 14px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
@@ -1231,7 +1230,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
       {alertActive && match.status === 'live' && hasBench && (() => {
         return (
           <div style={{
-            background: 'linear-gradient(135deg, #FF6F00 0%, #E65100 100%)',
+            background: 'var(--warning-gradient)',
             borderRadius: 16, padding: '12px 10px 10px',
             boxShadow: '0 0 0 2px #E65100, 0 6px 20px rgba(230,81,0,.35)',
             animation: 'pulse 1.4s ease-in-out infinite',
@@ -1594,7 +1593,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
                 onClick={() => { vibrate(); setCardModal(true); }}
                 style={{
                   flex: 1, padding: '10px', borderRadius: 12, fontWeight: 700, fontSize: 12,
-                  background: '#FFF9C4', color: '#F9A825',
+                  background: 'var(--card-yellow-light)', color: 'var(--card-yellow)',
                 }}
               >
                 {t('match.detail.cardBtn')}

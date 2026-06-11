@@ -403,7 +403,7 @@ export function ClubMembersPage({ navigate }: Props) {
                         title={t('clubs.members.remove')}
                         style={{
                           padding: '6px 8px', borderRadius: 8, fontSize: 11,
-                          background: '#ffebee', color: '#c62828',
+                          background: 'var(--danger-light)', color: 'var(--danger)',
                         }}
                       >×</button>
                     </div>
@@ -451,7 +451,7 @@ export function ClubMembersPage({ navigate }: Props) {
                       onClick={() => handleRevokeInvite(inv.id)}
                       style={{
                         padding: '6px 10px', borderRadius: 8, fontSize: 11,
-                        background: '#ffebee', color: '#c62828',
+                        background: 'var(--danger-light)', color: 'var(--danger)',
                       }}
                     >
                       {t('clubs.members.revokeInvite')}
@@ -469,7 +469,7 @@ export function ClubMembersPage({ navigate }: Props) {
             disabled={busy}
             onClick={handleLeave}
             style={{
-              padding: '12px 16px', borderRadius: 12, background: '#ffebee', color: '#c62828',
+              padding: '12px 16px', borderRadius: 12, background: 'var(--danger-light)', color: 'var(--danger)',
               fontWeight: 700, fontSize: 14,
             }}
           >

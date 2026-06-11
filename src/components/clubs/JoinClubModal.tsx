@@ -148,7 +148,7 @@ export function JoinClubModal({ inviteId }: Props) {
 
           {error && (
             <div style={{
-              padding: '10px 12px', borderRadius: 10, background: '#ffebee', color: '#c62828',
+              padding: '10px 12px', borderRadius: 10, background: 'var(--danger-light)', color: 'var(--danger)',
               fontSize: 12, fontWeight: 600, textAlign: 'center',
             }}>
               {error}

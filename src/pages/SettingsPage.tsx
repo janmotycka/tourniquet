@@ -101,9 +101,9 @@ export function SettingsPage({ navigate }: Props) {
 
   const statusLabels: Record<string, { label: string; color: string; bg: string }> = {
     free:      { label: t('settings.statusFree'),      color: '#5D4037', bg: '#EFEBE9' },
-    active:    { label: t('settings.statusActive'),    color: '#1B5E20', bg: 'var(--success-light)' },
+    active:    { label: t('settings.statusActive'),    color: 'var(--success)', bg: 'var(--success-light)' },
     past_due:  { label: t('settings.statusPastDue'),   color: 'var(--warning)', bg: 'var(--warning-light)' },
-    cancelled: { label: t('settings.statusCancelled'), color: '#B71C1C', bg: 'var(--danger-light)' },
+    cancelled: { label: t('settings.statusCancelled'), color: 'var(--danger)', bg: 'var(--danger-light)' },
   };
   const st = statusLabels[subscription.status] ?? statusLabels.free;
 
@@ -311,7 +311,7 @@ export function SettingsPage({ navigate }: Props) {
                 <div style={{ fontWeight: 700, fontSize: 15, color: '#1B5E20' }}>
                   {t('settings.premiumActive')}
                 </div>
-                <div style={{ fontSize: 13, color: 'var(--success)', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 13, color: '#2E7D32', lineHeight: 1.5 }}>
                   {t('settings.premiumDesc')}
                 </div>
                 {subscription.currentPeriodEnd && (
@@ -340,7 +340,7 @@ export function SettingsPage({ navigate }: Props) {
                 background: 'linear-gradient(135deg, #FFF3E0 0%, #FFE0B2 100%)',
                 borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 8,
               }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--warning)' }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#E65100' }}>
                   {t('settings.freePlan')}
                 </div>
                 {/* Audit 2026-04-26 (user screenshot): subscription panel ukazoval
@@ -736,9 +736,11 @@ export function SettingsPage({ navigate }: Props) {
                   📋 {t('settings.exportRosterCsv')}
                 </button>
               )}
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
-                {t('settings.exportRosterCsvDesc')}
-              </p>
+              {clubs.length > 0 && (
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t('settings.exportRosterCsvDesc')}
+                </p>
+              )}
 
               {/* Smazani uctu */}
               <div style={{
@@ -748,15 +750,15 @@ export function SettingsPage({ navigate }: Props) {
                 <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--warning)' }}>
                   {t('settings.deleteAccount')}
                 </div>
-                <p style={{ fontSize: 12, color: '#BF360C', lineHeight: 1.5, margin: 0 }}>
+                <p style={{ fontSize: 12, color: 'var(--warning)', lineHeight: 1.5, margin: 0 }}>
                   {t('settings.deleteAccountDesc')}
                 </p>
                 <a
                   href={`mailto:privacy@torq.cz?subject=${encodeURIComponent(t('settings.deleteAccountSubject'))}`}
                   style={{
-                    background: '#FFF', color: 'var(--warning)', fontWeight: 600,
+                    background: 'var(--surface)', color: 'var(--warning)', fontWeight: 600,
                     fontSize: 13, padding: '10px', borderRadius: 10, textAlign: 'center',
-                    textDecoration: 'none', border: '1.5px solid #FFCC80',
+                    textDecoration: 'none', border: '1.5px solid var(--warning)',
                     display: 'block',
                   }}
                 >

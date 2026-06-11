@@ -187,8 +187,8 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
         {/* Blocked banner */}
         {blocked && (
           <div style={{
-            background: 'var(--warning-light)', border: '2px solid #E65100', borderRadius: 12, padding: '14px 16px',
-            fontSize: 13, color: '#BF360C', fontWeight: 600,
+            background: 'var(--warning-light)', border: '2px solid var(--warning)', borderRadius: 12, padding: '14px 16px',
+            fontSize: 13, color: 'var(--warning)', fontWeight: 600,
           }}>
             <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 4 }}>⛔ {t('auth.accountBlocked')}</div>
             {blockReason && <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 6 }}>{blockReason}</div>}

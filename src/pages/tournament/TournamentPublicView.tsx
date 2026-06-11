@@ -423,7 +423,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
                     return (
                       <div key={i} style={{
                         display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,.7)',
+                        padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,.7)', color: '#5D4037',
                       }}>
                         <span style={{ fontSize: 14, flexShrink: 0 }}>🏆</span>
                         {team?.color && (
@@ -448,7 +448,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
                     return (
                       <div key={`scorer-${i}`} style={{
                         display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,.7)',
+                        padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,.7)', color: '#5D4037',
                       }}>
                         <span style={{ fontSize: 14, flexShrink: 0 }}>⚽</span>
                         {scorerTeam?.color && (
@@ -475,7 +475,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: 8,
                       padding: '6px 10px', borderRadius: 8,
-                      background: 'rgba(255,255,255,.7)',
+                      background: 'rgba(255,255,255,.7)', color: '#5D4037',
                     }}>
                       <span style={{ fontSize: 14, flexShrink: 0 }}>⭐</span>
                       {(() => {
@@ -735,7 +735,7 @@ function FinishedBanner({ tournament, isGuest }: { tournament: Tournament; isGue
   };
 
   return (
-    <div style={{ padding: '12px 16px 0', flexShrink: 0 }}>
+    <div style={{ padding: '12px 16px', flexShrink: 0 }}>
       <div style={{
         borderRadius: 14, overflow: 'hidden',
         border: '1.5px solid var(--border)', background: 'var(--surface)',
@@ -817,7 +817,7 @@ function FinishedBanner({ tournament, isGuest }: { tournament: Tournament; isGue
               display: 'flex', alignItems: 'center', gap: 10,
               padding: '10px 16px', textDecoration: 'none',
               borderTop: '1px solid var(--border)',
-              background: 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
+              background: 'var(--primary-gradient)',
               color: '#fff',
             }}
           >

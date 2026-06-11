@@ -248,7 +248,7 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
   }, [currentMatch]);
 
   const headerSubtitle = isLive
-    ? `⏱ ${formatTime(headerElapsed)} ● ${t('match.live')}`
+    ? `⏱ ${formatTime(headerElapsed)} ${t('match.live')}`
     : currentMatch ? `${formatDate(currentMatch.date)} · ${currentMatch.kickoffTime}` : '';
 
   // Multi-trainer soft lock — oba hooks jsou null-safe (zvládají undefined match).
@@ -771,7 +771,7 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
               const isTournamentDay = sameDayMatches.length >= 3;
               return (
                 <div style={{
-                  background: 'linear-gradient(135deg, var(--primary) 0%, #0D47A1 100%)',
+                  background: 'var(--primary-gradient)',
                   borderRadius: 14, padding: '14px 16px',
                   display: 'flex', flexDirection: 'column', gap: 10,
                   marginBottom: 4,
@@ -797,7 +797,7 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
                       onClick={() => navigate({ name: 'match-list' })}
                       style={{
                         flex: 1, padding: '10px 12px', borderRadius: 10, border: 'none',
-                        background: '#fff', color: 'var(--primary)',
+                        background: '#fff', color: '#1A237E',
                         fontSize: 13, fontWeight: 800, cursor: 'pointer',
                       }}
                     >
@@ -823,19 +823,6 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
                         }}
                       >
                         🔁 {t('match.detail.sameLineupBtn')}
-                      </button>
-                    )}
-                    {!currentMatch.isQuickMatch && isTournamentDay && (
-                      <button
-                        onClick={() => navigate({ name: 'match-list' })}
-                        style={{
-                          flex: 1, padding: '10px 12px', borderRadius: 10,
-                          background: 'rgba(255,255,255,0.18)', color: '#fff',
-                          border: '1px solid rgba(255,255,255,0.35)',
-                          fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                        }}
-                      >
-                        🏁 {t('match.detail.tournamentDayBtn')}
                       </button>
                     )}
                   </div>

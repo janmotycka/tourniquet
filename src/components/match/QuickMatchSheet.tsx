@@ -983,7 +983,7 @@ export function QuickMatchSheet({
                 max={99}
                 style={{
                   ...compactInp,
-                  width: 48, textAlign: 'center', padding: '8px 2px', flexShrink: 0,
+                  width: 48, textAlign: 'center', padding: '10px 2px', flexShrink: 0,
                   borderColor: jerseyDuplicate ? 'var(--danger)' : 'var(--border)',
                 }}
               />
@@ -1003,7 +1003,7 @@ export function QuickMatchSheet({
                 placeholder={t('match.quickSheet.birthYearPlaceholder')}
                 style={{
                   ...compactInp,
-                  width: 60, textAlign: 'center', padding: '8px 2px', flexShrink: 0,
+                  width: 60, textAlign: 'center', padding: '10px 2px', flexShrink: 0,
                 }}
               />
             </div>

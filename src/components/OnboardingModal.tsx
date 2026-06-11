@@ -33,7 +33,7 @@ const MODULES: ModuleCard[] = [
     emoji: '🏆',
     titleKey: 'onboarding.tournamentTitle',
     descKey: 'onboarding.tournamentDesc',
-    color: 'var(--warning)',
+    color: '#E65100',
     bg: 'linear-gradient(135deg, #FFF3E0, #FFE0B2)',
     page: { name: 'tournament-list' },
   },

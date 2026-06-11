@@ -23,7 +23,7 @@ const STATUS_ORDER: AttendanceStatus[] = ['present', 'absent', 'excused'];
 const STATUS_STYLE: Record<AttendanceStatus, { bg: string; color: string; icon: string }> = {
   present: { bg: 'var(--success-light)', color: 'var(--success)', icon: '✅' },
   absent:  { bg: 'var(--danger-light)', color: 'var(--danger)', icon: '❌' },
-  excused: { bg: '#FFF8E1', color: '#F9A825', icon: '🟡' },
+  excused: { bg: 'var(--card-yellow-light)', color: 'var(--card-yellow)', icon: '🟡' },
 };
 
 function nextStatus(s: AttendanceStatus | undefined): AttendanceStatus {
@@ -122,9 +122,9 @@ export function AttendanceSheet({ players, ageCategory, initial, onSave, onClose
             <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--danger)' }}>{counts.absent}</div>
             <div style={{ fontSize: 10, color: 'var(--danger)' }}>{t('training.attendance.absent')}</div>
           </div>
-          <div style={{ flex: 1, textAlign: 'center', padding: 8, borderRadius: 10, background: '#FFF8E1' }}>
-            <div style={{ fontWeight: 800, fontSize: 18, color: '#F9A825' }}>{counts.excused}</div>
-            <div style={{ fontSize: 10, color: '#F9A825' }}>{t('training.attendance.excused')}</div>
+          <div style={{ flex: 1, textAlign: 'center', padding: 8, borderRadius: 10, background: 'var(--card-yellow-light)' }}>
+            <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--card-yellow)' }}>{counts.excused}</div>
+            <div style={{ fontSize: 10, color: 'var(--card-yellow)' }}>{t('training.attendance.excused')}</div>
           </div>
         </div>
 

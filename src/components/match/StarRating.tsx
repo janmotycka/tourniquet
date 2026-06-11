@@ -7,7 +7,7 @@ export function StarRating({ value, onChange }: { value: number; onChange: (v: 1
           onClick={() => onChange(star)}
           style={{
             fontSize: 24, lineHeight: 1, padding: 2, borderRadius: 4,
-            color: star <= value ? '#FFB300' : '#ccc',
+            color: star <= value ? 'var(--star)' : 'var(--border)',
             background: 'none', border: 'none',
           }}
         >

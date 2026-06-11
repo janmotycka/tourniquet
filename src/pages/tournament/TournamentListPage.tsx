@@ -16,9 +16,9 @@ interface Props { navigate: (p: Page) => void; }
 
 function getStatusLabels(t: (key: string, params?: Record<string, string | number>) => string): Record<string, { label: string; color: string; bg: string }> {
   return {
-    draft:    { label: t('tournament.statusDraft'),    color: '#5D4037', bg: 'var(--warning-light)' },
-    active:   { label: t('tournament.statusActive'),   color: '#1B5E20', bg: 'var(--success-light)' },
-    finished: { label: t('tournament.statusFinished'), color: '#4A148C', bg: '#F3E5F5' },
+    draft:    { label: t('tournament.statusDraft'),    color: 'var(--warning)', bg: 'var(--warning-light)' },
+    active:   { label: t('tournament.statusActive'),   color: 'var(--success)', bg: 'var(--success-light)' },
+    finished: { label: t('tournament.statusFinished'), color: 'var(--dorost)', bg: 'var(--dorost-light)' },
   };
 }
 

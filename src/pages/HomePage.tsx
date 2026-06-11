@@ -292,7 +292,7 @@ export function HomePage({ navigate }: Props) {
         {hasLive && (
           <section style={{
             background: 'var(--surface)',
-            border: '1.5px solid #C62828',
+            border: '1.5px solid var(--danger)',
             borderRadius: 16,
             padding: '18px 22px',
             marginBottom: 24,
@@ -560,7 +560,7 @@ export function HomePage({ navigate }: Props) {
             background: 'var(--surface)',
             borderRadius: 16,
             padding: '14px 16px 16px',
-            border: '1.5px solid #C62828',
+            border: '1.5px solid var(--danger)',
             boxShadow: '0 0 0 4px rgba(198, 40, 40, 0.08)',
             display: 'flex', flexDirection: 'column', gap: 12,
           }}
@@ -770,7 +770,7 @@ export function HomePage({ navigate }: Props) {
           style={{
             background: isTennis
               ? 'linear-gradient(135deg, #00695C 0%, #00897B 100%)'
-              : 'linear-gradient(135deg, #E65100 0%, #FF6F00 100%)',
+              : 'var(--warning-gradient)',
             borderRadius: 22, padding: '24px',
             display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
             boxShadow: isTennis
@@ -961,7 +961,7 @@ export function HomePage({ navigate }: Props) {
           <button
             onClick={() => navigate({ name: 'tournament-wizard' })}
             style={{
-              background: 'linear-gradient(135deg, #E65100 0%, #FF6F00 100%)',
+              background: 'var(--warning-gradient)',
               borderRadius: 22, padding: '24px',
               display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
               boxShadow: '0 4px 16px rgba(230,81,0,.25)', width: '100%',
@@ -1086,7 +1086,7 @@ export function HomePage({ navigate }: Props) {
 
       {/* PWA install prompt */}
       {canInstall && (
-        <div style={{ padding: '0 20px 8px', textAlign: 'center' }}>
+        <div style={{ padding: '0 0 8px', textAlign: 'center' }}>
           <button
             onClick={install}
             style={{

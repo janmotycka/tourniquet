@@ -97,7 +97,7 @@ export function MvpVoting({ tournamentId, teams }: Props) {
               background: 'none', border: 'none', fontSize: 12, color: 'var(--primary)',
               fontWeight: 600, cursor: 'pointer', padding: '4px 8px',
             }}
-          >← {t('common.back')}</button>
+          >{t('common.back')}</button>
         )}
       </div>
 

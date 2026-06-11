@@ -523,9 +523,10 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '8px 10px',
-                  borderBottom: '1px solid var(--border)',
                   background: 'transparent',
-                  border: 'none', borderTop: idx === 0 ? 'none' : '1px dashed var(--border)',
+                  border: 'none',
+                  borderTop: idx === 0 ? 'none' : '1px dashed var(--border)',
+                  borderBottom: '1px solid var(--border)',
                   width: '100%', textAlign: 'left',
                   cursor: benchers.length > 0 ? 'pointer' : 'not-allowed',
                   opacity: benchers.length > 0 ? 1 : 0.5,
@@ -595,8 +596,8 @@ function PlayerEditor({ match }: { match: SeasonMatch }) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     width: '100%', padding: '10px 4px',
-                    borderBottom: '1px solid var(--border)',
                     background: 'transparent', border: 'none',
+                    borderBottom: '1px solid var(--border)',
                     cursor: 'pointer', textAlign: 'left',
                   }}
                 >
@@ -772,7 +773,7 @@ export function LineupTab({ match }: { match: SeasonMatch }) {
               color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer',
             }}
           >
-            ← {t('common.back')}
+            {t('common.back')}
           </button>
         )}
         <PlayerEditor match={match} />

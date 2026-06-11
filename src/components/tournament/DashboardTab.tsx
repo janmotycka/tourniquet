@@ -270,7 +270,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
           pavouka a sdílet odkaz rodičům. */}
       {isSimpleMode && (
         <div style={{
-          background: 'linear-gradient(135deg, #E65100 0%, #FF6F00 100%)',
+          background: 'var(--warning-gradient)',
           borderRadius: 16, padding: '14px 16px',
           display: 'flex', flexDirection: 'column', gap: 10,
           color: '#fff',
@@ -661,7 +661,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                   onClick={() => handleRejectWithConfirm(regId, reg)}
                   style={{
                     padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                    background: 'var(--danger-light)', color: '#D32F2F', border: '1px solid #FFCDD2',
+                    background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid var(--danger)',
                     cursor: 'pointer',
                   }}
                 >
@@ -684,7 +684,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                 </span>
                 <button
                   onClick={() => setApprovedTeam(null)}
-                  style={{ background: 'none', border: 'none', fontSize: 14, color: '#666', cursor: 'pointer', padding: '2px' }}
+                  style={{ background: 'none', border: 'none', fontSize: 14, color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
                 >✕</button>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -805,7 +805,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
 
             // Status dot color & action button config
             const dotColor = isAccepted ? '#4CAF50' : isSubmitted ? '#1976D2' : hasRosterToken ? '#FFA726' : '#BDBDBD';
-            const actionBg = isSubmitted && !isAccepted ? 'var(--info-light)' : isAccepted ? 'var(--success-light)' : hasRosterToken ? 'var(--warning-light)' : '#F5F5F5';
+            const actionBg = isSubmitted && !isAccepted ? 'var(--info-light)' : isAccepted ? 'var(--success-light)' : hasRosterToken ? 'var(--warning-light)' : 'var(--surface-var)';
             const actionColor = isSubmitted && !isAccepted ? 'var(--info)' : isAccepted ? 'var(--success)' : hasRosterToken ? 'var(--warning)' : 'var(--text-muted)';
             const actionLabel = isAccepted
               ? `✅ ${playerCount} ${t('dashboard.players')}`
@@ -1194,7 +1194,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                     onClick={() => setAddTeamCategory(null)}
                     style={{ padding: '6px', fontSize: 12, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
                   >
-                    ← {t('common.back')}
+                    {t('common.back')}
                   </button>
                 </div>
               </div>
@@ -1250,7 +1250,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                   onClick={() => setAddTeamCategory(null)}
                   style={{ padding: '6px', fontSize: 12, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 6 }}
                 >
-                  ← {t('common.back')}
+                  {t('common.back')}
                 </button>
               </div>
             )}
@@ -1512,7 +1512,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                 onClick={confirmReject}
                 style={{
                   padding: '12px', borderRadius: 12, fontSize: 14, fontWeight: 700,
-                  background: 'var(--danger-light)', color: '#D32F2F', border: '1px solid #FFCDD2', cursor: 'pointer',
+                  background: 'var(--danger-light)', color: 'var(--danger)', border: '1px solid var(--danger)', cursor: 'pointer',
                 }}
               >
                 ✕ {t('registration.reject')}
