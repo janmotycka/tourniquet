@@ -29,6 +29,13 @@ function now(): string {
   return new Date().toISOString();
 }
 
+// Tombstones smazaných zápasů (data-integrity audit 2026-06-16, lens resurrection):
+// deleteMatch maže zápas lokálně + asynchronně z Firebase. Než delete doputuje na
+// server, realtime subscription může doručit ještě STARÝ snapshot se zápasem a merge
+// by ho vzkřísil. Dokud delete neproběhne, držíme id tady a merge ho přeskočí.
+// Module-level (ne v persistu) — krátkodobé, přežít reload nemusí.
+const matchTombstones = new Set<string>();
+
 // ─── Firebase sync helper ─────────────────────────────────────────────────────
 
 async function syncMatchAndTrack(uid: string | null, match: SeasonMatch, storeSetter: (fn: (s: MatchesState) => Partial<MatchesState>) => void): Promise<void> {
@@ -47,7 +54,18 @@ async function syncMatchAndTrack(uid: string | null, match: SeasonMatch, storeSe
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.error('[Firebase] Match sync failed:', msg);
-    // Add to pending queue for retry
+    // Terminální chyba (permission denied — např. zápis do scope, kde uživatel
+    // není člen) se retry nikdy nepodaří. Dropni ho z fronty, ať nespamuje retry
+    // a nevisí věčně červený banner (audit 2026-06-16). Zápas zůstává lokálně.
+    const terminal = /permission[_ ]?denied|permission denied|unauthor/i.test(msg);
+    if (terminal) {
+      storeSetter(s => ({
+        syncError: null,
+        pendingSync: s.pendingSync.filter(id => id !== match.id),
+      }));
+      return;
+    }
+    // Transientní chyba (offline, network) → fronta pro retry.
     storeSetter(s => ({
       syncError: `Sync selhal: ${msg.slice(0, 80)}`,
       pendingSync: s.pendingSync.includes(match.id) ? s.pendingSync : [...s.pendingSync, match.id],
@@ -62,6 +80,13 @@ interface MatchesState {
   firebaseUid: string | null;
   syncError: string | null;
   pendingSync: string[]; // match IDs waiting to be synced
+  /**
+   * True jakmile realtime subscription doručila první snapshot ze serveru.
+   * Retry fronty se spustí až poté — aby se offline fronta reconciliovala
+   * proti čerstvému serveru a nepřepsala zápas smazaný na jiném zařízení
+   * (data-integrity audit 2026-06-16). Nepersistuje se (reset každý boot).
+   */
+  hasServerSnapshot: boolean;
 
   // Firebase
   setFirebaseUid: (uid: string | null) => void;
@@ -139,17 +164,24 @@ export const useMatchesStore = create<MatchesState>()(
       firebaseUid: null,
       syncError: null,
       pendingSync: [],
+      hasServerSnapshot: false,
 
       // ── Firebase ──────────────────────────────────────────────────────────
 
       setFirebaseUid: (uid) => {
         const prevUid = get().firebaseUid;
         if (!uid) {
-          // Logout — clear cached matches to prevent data leaking to next user
-          set({ firebaseUid: null, matches: [], syncError: null });
+          // Logout — clear cached matches to prevent data leaking to next user.
+          // pendingSync taky — fronta patří odhlášenému uživateli a jeho matches
+          // už nejsou v paměti, takže by stejně byla nesynchronizovatelná.
+          set({ firebaseUid: null, matches: [], syncError: null, pendingSync: [], hasServerSnapshot: false });
         } else if (prevUid && prevUid !== uid) {
-          // Different account — clear stale data
-          set({ firebaseUid: uid, matches: [], syncError: null });
+          // Přepnutí účtu A→B BEZ mezikroku logout (vzácné — onAuthStateChanged
+          // normálně jde A→null→B). Fronta i matches patří účtu A a pod B jsou
+          // nesynchronizovatelné (jiný scope), proto je čistíme. Pozn.: anon→plný
+          // upgrade sem NEPADÁ — anon nemá nastavený matches.firebaseUid
+          // (prevUid=null), takže se vezme else větev a matches se zachovají.
+          set({ firebaseUid: uid, matches: [], syncError: null, pendingSync: [], hasServerSnapshot: false });
         } else {
           set({ firebaseUid: uid });
         }
@@ -257,7 +289,9 @@ export const useMatchesStore = create<MatchesState>()(
         const firebaseIds = new Set(matches.map(m => m.id));
         const localOnly = localMatches.filter(m => !firebaseIds.has(m.id));
         logger.debug(`[Matches] Loaded ${matches.length} from Firebase, ${localOnly.length} local-only, total: ${matches.length + localOnly.length}`);
-        set({ matches: [...matches, ...localOnly], firebaseUid: uid, pendingSync: [] });
+        // Nereset pendingSync — fronta offline zápisů musí přežít (audit
+        // 2026-06-16). Subscription merge frontu prune-uje proti serveru sám.
+        set({ matches: [...matches, ...localOnly], firebaseUid: uid, syncError: null, hasServerSnapshot: true });
       },
 
       /**
@@ -269,8 +303,9 @@ export const useMatchesStore = create<MatchesState>()(
         logger.debug('[Matches] subscribeToFirebase started, scopes:', scopeIds.join(','));
         // První scope by měl být vždy auth uid (legacy self-scope).
         if (scopeIds[0]) set({ firebaseUid: scopeIds[0] });
+        let firstSnapshot = true;
         const unsubscribe = subscribeToMatchesMultiScope(scopeIds, (firebaseMatches) => {
-          const { matches: localMatches } = get();
+          const localMatches = get().matches;
           const fbById = new Map(firebaseMatches.map(m => [m.id, m]));
           const localById = new Map(localMatches.map(m => [m.id, m]));
 
@@ -284,6 +319,7 @@ export const useMatchesStore = create<MatchesState>()(
           const merged: SeasonMatch[] = [];
           let localOnlyCount = 0;
           allIds.forEach(id => {
+            if (matchTombstones.has(id)) return; // právě mazaný — nevzkřísit
             const fb = fbById.get(id);
             const local = localById.get(id);
             if (fb && local) {
@@ -296,15 +332,37 @@ export const useMatchesStore = create<MatchesState>()(
             }
           });
 
+          // Prune fronty: ID zápasů, které už v merged nejsou (smazané server-side
+          // na jiném zařízení), drop — jinak by retry navždy skipoval a banner
+          // „čeká na sync" visel donekonečna (audit 2026-06-16).
+          const mergedIds = new Set(merged.map(m => m.id));
+          // Funkční updater — prune čte ČERSTVÝ pendingSync v okamžiku set(), ne
+          // snapshot z začátku callbacku. Tím se neztratí souběžné odebrání ID,
+          // které právě dokončilo sync (retry-double-write audit 2026-06-16).
           logger.debug(`[Matches] Subscription update: ${firebaseMatches.length} from Firebase, ${localOnlyCount} local-only preserved`);
-          set({ matches: merged });
+          set(s => ({
+            matches: merged,
+            hasServerSnapshot: true,
+            pendingSync: s.pendingSync.filter(pid => mergedIds.has(pid)),
+          }));
+
+          // Po PRVNÍM reconciliovaném snapshotu flushni offline frontu — teď už
+          // lokální stav odpovídá serveru, takže retry pushne jen skutečně
+          // local-only/editované zápasy a přeskočí ty smazané jinde (žádná
+          // resurrection — viz boot-flush-race audit 2026-06-16).
+          if (firstSnapshot) {
+            firstSnapshot = false;
+            get().retryPendingSync();
+          }
         });
         return unsubscribe;
       },
 
       retryPendingSync: () => {
-        const { firebaseUid, pendingSync, matches } = get();
-        if (!firebaseUid || pendingSync.length === 0) return;
+        const { firebaseUid, pendingSync, matches, hasServerSnapshot } = get();
+        // Gate na hasServerSnapshot — bez reconciliace proti serveru by retry mohl
+        // přepsat zápas smazaný na jiném zařízení (audit 2026-06-16).
+        if (!firebaseUid || !hasServerSnapshot || pendingSync.length === 0) return;
         for (const matchId of pendingSync) {
           const match = matches.find(m => m.id === matchId);
           if (match) syncMatchAndTrack(firebaseUid, match, set);
@@ -382,10 +440,21 @@ export const useMatchesStore = create<MatchesState>()(
         const uid = get().firebaseUid;
         // Zjisti clubId před smazáním ze state (potřebujeme pro delete z klubového scope).
         const existing = get().matches.find(m => m.id === id);
-        set(state => ({ matches: state.matches.filter(m => m.id !== id) }));
+        // Tombstone, dokud Firebase delete nedoběhne — brání resurrection, kdyby
+        // subscription mezitím doručila ještě starý snapshot se zápasem.
+        matchTombstones.add(id);
+        // Odebrat i z fronty — jinak by persistovaný pendingSync držel ID
+        // smazaného zápasu navždy (retry by ho jen přeskakoval).
+        set(state => ({
+          matches: state.matches.filter(m => m.id !== id),
+          pendingSync: state.pendingSync.filter(pid => pid !== id),
+        }));
         if (uid) {
           deleteMatchFromFirebase(uid, id, existing?.clubId)
-            .catch(err => logger.error('[Firebase] Delete match failed', err));
+            .catch(err => logger.error('[Firebase] Delete match failed', err))
+            .finally(() => { matchTombstones.delete(id); });
+        } else {
+          matchTombstones.delete(id); // bez serveru není co vzkřísit
         }
       },
 
@@ -923,7 +992,12 @@ export const useMatchesStore = create<MatchesState>()(
     {
       name: 'trenink-matches',
       storage: createJSONStorage(() => safeStorage),
-      partialize: (state) => ({ matches: state.matches }),
+      // pendingSync MUSÍ být persistovaný — jinak se offline fronta zápisů po
+      // killu appky (na mobilu běžné) vynuluje a zápas zaznamenaný u hřiště bez
+      // signálu se nikdy nesyncne do cloudu (data-loss audit 2026-06-16). Retry
+      // po reopenu řeší App.tsx boot effect + ConnectionStatus, jakmile je
+      // firebaseUid nastaven.
+      partialize: (state) => ({ matches: state.matches, pendingSync: state.pendingSync }),
     }
   )
 );

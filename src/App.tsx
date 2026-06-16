@@ -236,6 +236,11 @@ function AppRouter() {
     return () => window.removeEventListener('online', handleOnline);
   }, [retryPendingSync]);
 
+  // Pozn.: flush persistované offline fronty po reopenu řeší matches store sám —
+  // subscribeToFirebase spustí retryPendingSync až po PRVNÍM serverovém snapshotu
+  // (reconciliace), takže se nepřepíše zápas smazaný na jiném zařízení. Eager
+  // retry odsud by tu reconciliaci obešel (boot-flush-race audit 2026-06-16).
+
   // Po přihlášení + existuje joinIntent → přesměrovat zpět na public view.
   // joinIntent hned vynulovat — jinak by efekt reaktivně přefíroval (a znovu
   // pushnul history entry) při každém popstate, který obnoví stav s živým
