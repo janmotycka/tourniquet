@@ -132,7 +132,7 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
     if (url.searchParams.has('join')) {
       url.searchParams.delete('join');
       url.searchParams.delete('role');
-      history.replaceState(null, '', url.pathname + url.search + url.hash);
+      history.replaceState(history.state, '', url.pathname + url.search + url.hash);
     }
 
     if (adminJoin && !isTournamentOwner && !hasJoined) {

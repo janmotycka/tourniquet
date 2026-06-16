@@ -51,7 +51,7 @@ export function JoinMatchPairingModal({ scopeId, matchId, joinToken, navigate }:
 
   const clearHash = () => {
     try {
-      history.replaceState(null, '', window.location.pathname + window.location.search);
+      history.replaceState(history.state, '', window.location.pathname + window.location.search);
     } catch { /* ignore */ }
   };
 

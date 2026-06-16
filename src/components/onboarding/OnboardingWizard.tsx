@@ -370,7 +370,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
       // Vyčistit hash, ať se to neopakuje při navigaci
       const url = new URL(window.location.href);
       url.hash = '';
-      window.history.replaceState(null, '', url.pathname + url.search);
+      window.history.replaceState(history.state, '', url.pathname + url.search);
     } catch { /* noop */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

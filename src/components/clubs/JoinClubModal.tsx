@@ -38,7 +38,7 @@ export function JoinClubModal({ inviteId }: Props) {
       const url = new URL(window.location.href);
       url.searchParams.delete('join');
       url.searchParams.delete('id');
-      history.replaceState(null, '', url.pathname + url.search + (url.hash === '#club' ? '' : url.hash));
+      history.replaceState(history.state, '', url.pathname + url.search + (url.hash === '#club' ? '' : url.hash));
     } catch {
       // ignore
     }

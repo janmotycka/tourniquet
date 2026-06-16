@@ -155,16 +155,11 @@ function AppRouter() {
   const isTennisMode = preferredSport === 'tennis';
   const isTennisIndividual = isTennisMode && tennisUserType === 'individual';
 
+  // Audit 2026-06-11: URL/hash + history entry teď řeší store.setPage centrálně
+  // (pageToUrl + pushState) — kvůli hardware back na Androidu. navigate už jen
+  // deleguje + scrollne nahoru.
   const navigate = (p: Page) => {
-    if (p.name === 'tournament-public') {
-      window.location.hash = `tournament=${p.tournamentId}`;
-    } else if (p.name === 'match-public') {
-      window.location.hash = `match=${p.matchId}`;
-    } else if (window.location.hash.startsWith('#tournament=') || window.location.hash.startsWith('#match=')) {
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
     setPage(p);
-    // Scroll na začátek stránky při navigaci
     window.scrollTo(0, 0);
   };
 
@@ -241,10 +236,14 @@ function AppRouter() {
     return () => window.removeEventListener('online', handleOnline);
   }, [retryPendingSync]);
 
-  // Po přihlášení + existuje joinIntent → přesměrovat zpět na public view
+  // Po přihlášení + existuje joinIntent → přesměrovat zpět na public view.
+  // joinIntent hned vynulovat — jinak by efekt reaktivně přefíroval (a znovu
+  // pushnul history entry) při každém popstate, který obnoví stav s živým
+  // intentem (audit 2026-06-11, lens deeplink-boot).
   useEffect(() => {
     if (user && joinIntent) {
       navigate({ name: 'tournament-public', tournamentId: joinIntent.tournamentId });
+      setJoinIntent(null);
     }
   // navigate záměrně není v deps — volá jen setPage (stabilní useState setter)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -257,7 +256,7 @@ function AppRouter() {
       showToast('success', t('app.premiumActivated'), 6000);
       const url = new URL(window.location.href);
       url.searchParams.delete('payment');
-      history.replaceState(null, '', url.pathname + url.search + url.hash);
+      history.replaceState(history.state, '', url.pathname + url.search + url.hash);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -275,7 +274,7 @@ function AppRouter() {
       setAppModeFromUrl(mode);
       const url = new URL(window.location.href);
       url.searchParams.delete('mode');
-      history.replaceState(null, '', url.pathname + url.search + url.hash);
+      history.replaceState(history.state, '', url.pathname + url.search + url.hash);
     }
     // Stejný handling pro hash `#mode=simple` (používá viral banner na
     // MatchPublicView). Nechceme url.search, ale hash.
@@ -326,7 +325,7 @@ function AppRouter() {
       try {
         const url = new URL(window.location.href);
         url.searchParams.delete('ref');
-        history.replaceState(null, '', url.pathname + url.search + url.hash);
+        history.replaceState(history.state, '', url.pathname + url.search + url.hash);
       } catch { /* noop */ }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -339,10 +338,13 @@ function AppRouter() {
   }, [page.name]);
 
   // Po přihlášení z login stránky přesměruj na home
-  // (musí být PŘED early returns — React hooks nesmí měnit pořadí mezi rendery)
+  // (musí být PŘED early returns — React hooks nesmí měnit pořadí mezi rendery).
+  // replace, ne push: 'login' je tranzientní stránka — kdyby v historii zůstala,
+  // hardware back by na ni skočil, efekt by ji znovu přesměroval na home a back
+  // by uvázl ve smyčce login↔home (audit 2026-06-11, 3 lensy).
   useEffect(() => {
     if (user && page.name === 'login') {
-      setPage({ name: 'home' });
+      setPage({ name: 'home' }, { replace: true });
     }
   }, [user, page.name, setPage]);
 
