@@ -31,15 +31,14 @@ export function isTrainingEnabled(): boolean {
  * beta zprávu s kontaktem. Subscription store + Cloud Functions zůstávají
  * v kódu nedotčené (existing premium users fungují dál).
  *
- * FACR_REPORT_ENABLED — "Hlášení pro FAČR" je jen copy-paste pomocník pro
- * is.fotbal.cz (žádná reálná integrace). Pro beta skryto, aby nesliboval
- * víc než umí. Kód (match-facr-report.ts) zůstává.
- *
  * DONATE_URL — odkaz "Podpořit TORQ" (Stripe Payment Link / Buy Me a Coffee).
  * Prázdný string = donate tlačítka se nezobrazují (jen kontaktní email).
+ *
+ * Pozn. (audit 2026-07-09): FACR_REPORT_ENABLED smazán i s kódem
+ * (match-facr-report.ts) — copy-paste pomocník bez reálné integrace,
+ * mimo produktové jádro. Git historie ho uchová.
  */
 export const PREMIUM_ENABLED = false;
-export const FACR_REPORT_ENABLED = false;
 export const DONATE_URL = '';
 
 /** Helper — true když má smysl zobrazit donate tlačítko. */

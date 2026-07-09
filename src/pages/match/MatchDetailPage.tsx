@@ -14,7 +14,6 @@ import { useLayoutMode } from '../../hooks/useLayoutMode';
 import { useClubsStore } from '../../store/clubs.store';
 import { PageHeader, OfficialLinkButton } from '../../components/ui';
 import { useToastStore } from '../../store/toast.store';
-import { generateFacrTextReport, exportFacrReportPdf } from '../../utils/match-facr-report';
 import { generateMatchSummaryText, generateNominationText } from '../../utils/match-summary';
 import { generateTennisTeamSummaryText } from '../../modules/tennis/utils/tennis-team';
 import { getMatchPublicUrl } from '../../utils/qr-code';
@@ -24,7 +23,6 @@ import { subscribeToSingleMatch } from '../../services/match.firebase';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useAuth } from '../../context/AuthContext';
 import { GdprGuideModal } from '../../components/match/GdprGuideModal';
-import { FACR_REPORT_ENABLED } from '../../types/feature-flags';
 
 interface Props {
   matchId: string;
@@ -121,26 +119,6 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
     const next = (currentMatch.lineupVisibility ?? 'atStart') === 'always' ? 'atStart' : 'always';
     updateMatch(matchId, { lineupVisibility: next });
   }, [matchId, currentMatch, updateMatch]);
-
-  const handleCopyFacrText = useCallback(async () => {
-    if (!currentMatch) return;
-    try {
-      const text = generateFacrTextReport(currentMatch, clubDisplayName);
-      await navigator.clipboard.writeText(text);
-      useToastStore.getState().show('success', t('match.detail.facrCopied'));
-    } catch {
-      useToastStore.getState().show('error', t('match.detail.facrCopied'));
-    }
-  }, [currentMatch, clubDisplayName, t]);
-
-  const handleDownloadFacrPdf = useCallback(async () => {
-    if (!currentMatch) return;
-    try {
-      await exportFacrReportPdf(currentMatch, clubDisplayName, t, locale);
-    } catch {
-      /* PDF generation failed silently */
-    }
-  }, [currentMatch, clubDisplayName, t, locale]);
 
   // Post-match summary — krátký, WhatsApp-friendly.
   // Link vždy — ať si rodič může kliknout na detail. Pokud zápas ještě není
@@ -830,42 +808,6 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
               );
             })()}
 
-          {/* FAČR report — copy-paste pomocník pro is.fotbal.cz (žádná reálná
-              integrace). Audit 2026-06-10: za feature flagem FACR_REPORT_ENABLED
-              — pro beta skryto, aby nesliboval víc než umí. Skryté v Simple módu
-              a pro Quick match (bez kompletní sestavy není co reportovat). */}
-          {FACR_REPORT_ENABLED && currentMatch.status === 'finished' && !isSimpleMode && !currentMatch.isQuickMatch && (
-            <div style={{
-              background: 'var(--surface)', borderRadius: 14, padding: '12px 14px',
-              border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10,
-              marginBottom: 4,
-            }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
-                {t('match.detail.facrReportTitle')}
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button
-                  onClick={handleCopyFacrText}
-                  style={{
-                    flex: '1 1 140px', padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                    background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer',
-                  }}
-                >
-                  📋 {t('match.detail.facrCopyText')}
-                </button>
-                <button
-                  onClick={handleDownloadFacrPdf}
-                  style={{
-                    flex: '1 1 140px', padding: '10px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                    background: 'var(--surface-var)', color: 'var(--text)', border: '1px solid var(--border)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  📄 {t('match.detail.facrDownloadPdf')}
-                </button>
-              </div>
-            </div>
-          )}
           {/* Audit 2026-05-27: Reset/Reopen jen pro vlastníka zápasu (isOwner).
              Spectator (cizí klubový zápas) NESMÍ smazat/reopenout kolegovi data
              — destruktivní akce mimo canEdit gate byly data-loss risk. */}

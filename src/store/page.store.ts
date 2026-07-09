@@ -1,6 +1,7 @@
 /**
  * Store pro navigační stav aplikace.
- * Extrahováno z AppRouter, aby bylo přístupné i pro OnboardingModal.
+ * Extrahováno z AppRouter, aby bylo přístupné i mimo React strom (modaly,
+ * onboarding).
  */
 
 import { create } from 'zustand';
