@@ -31,9 +31,10 @@ describe('formatDate', () => {
     expect(result).toContain('15');
   });
 
-  it('formats ISO date string in English locale', () => {
-    const result = formatDate('2025-06-15T10:00:00Z', 'en');
-    expect(result).toContain('2025');
-    expect(result).toContain('15');
+  it('formats month name in Czech', () => {
+    // EN/DE lokalizace odstraněna 2026-07-09 (ČR-only fokus) — formatDate
+    // přijímá jen 'cs'; test drží kontrakt českého názvu měsíce.
+    const result = formatDate('2025-06-15T10:00:00Z', 'cs');
+    expect(result).toContain('červn');
   });
 });

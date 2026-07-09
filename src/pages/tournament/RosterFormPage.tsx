@@ -11,7 +11,7 @@ import type { Tournament, Team, RosterSubmission, CustomerBilling } from '../../
 import { subscribeToPublicTournament } from '../../services/tournament.firebase';
 import { submitRoster, loadRoster } from '../../services/roster.firebase';
 import { useAuth } from '../../context/AuthContext';
-import { useI18n, getDateLocale } from '../../i18n';
+import { useI18n, getDateLocale, type Locale } from '../../i18n';
 import { generateId } from '../../utils/id';
 import { logger } from '../../utils/logger';
 import { colorSwatch } from '../../utils/team-colors';
@@ -1044,13 +1044,13 @@ function TournamentInfoCard({ tournament, showInfo, setShowInfo, showRules, setS
   pdfExporting: boolean;
   setPdfExporting: (v: boolean) => void;
   t: (key: string, params?: Record<string, string | number>) => string;
-  locale: string;
+  locale: Locale;
 }) {
   const s = tournament.settings;
 
   // Date formatting
   const dateStr = s.startDate
-    ? new Date(s.startDate + 'T00:00:00').toLocaleDateString(getDateLocale(locale as 'cs' | 'en' | 'de'), {
+    ? new Date(s.startDate + 'T00:00:00').toLocaleDateString(getDateLocale(locale), {
         weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
       })
     : '—';
@@ -1067,7 +1067,7 @@ function TournamentInfoCard({ tournament, showInfo, setShowInfo, showRules, setS
     setPdfExporting(true);
     try {
       const { exportTournamentPdf } = await import('../../utils/tournament-pdf');
-      await exportTournamentPdf(tournament, t, locale as 'cs' | 'en' | 'de');
+      await exportTournamentPdf(tournament, t, locale);
     } catch (err) {
       logger.error('[RosterForm] PDF export failed:', err);
     } finally {

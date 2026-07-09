@@ -14,7 +14,7 @@
 import { useState, useMemo } from 'react';
 import type { Page } from '../../../App';
 import { useTournamentStore } from '../../../store/tournament.store';
-import { useI18n, getDateLocale } from '../../../i18n';
+import { useI18n, getDateLocale, type Locale } from '../../../i18n';
 import { PageHeader } from '../../../components/ui';
 import type { Tournament } from '../../../types/tournament.types';
 
@@ -121,7 +121,7 @@ function TournamentCard({
 }: {
   tournament: Tournament;
   onClick: () => void;
-  locale: 'cs' | 'en' | 'de';
+  locale: Locale;
   t: (key: string, params?: Record<string, string | number>) => string;
 }) {
   const date = new Date(tournament.settings.startDate + 'T00:00:00').toLocaleDateString(

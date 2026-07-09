@@ -3,12 +3,22 @@
 # Skip v CI (Github Actions běží tyhle kroky zvlášť)
 [ -n "$CI" ] && exit 0
 
+# Pozor: `cmd | tail` + `$?` testuje exit TAILU, ne cmd — proto výstup do
+# souboru a exit kontrolujeme přímo (bug odhalen 2026-07-09: commit prošel
+# s TS chybami).
 echo "🔍 Pre-commit: TS check..."
-npx tsc -b --noEmit 2>&1 | tail -5
-if [ $? -ne 0 ]; then echo "❌ TS check failed"; exit 1; fi
+if ! npx tsc -b --noEmit > /tmp/torq-precommit-tsc.log 2>&1; then
+  tail -15 /tmp/torq-precommit-tsc.log
+  echo "❌ TS check failed"
+  exit 1
+fi
 
 echo "🧪 Pre-commit: tests..."
-npx vitest run --reporter=dot 2>&1 | tail -5
-if [ $? -ne 0 ]; then echo "❌ Tests failed"; exit 1; fi
+if ! npx vitest run --reporter=dot > /tmp/torq-precommit-test.log 2>&1; then
+  tail -20 /tmp/torq-precommit-test.log
+  echo "❌ Tests failed"
+  exit 1
+fi
+tail -3 /tmp/torq-precommit-test.log
 
 echo "✅ Pre-commit OK"

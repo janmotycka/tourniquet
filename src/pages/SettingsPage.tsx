@@ -12,7 +12,6 @@ import { useContactsStore } from '../store/contacts.store';
 import { useUserPrefsStore } from '../store/userPrefs.store';
 import { useToastStore } from '../store/toast.store';
 import { useI18n, getCurrencyForLocale, getDateLocale } from '../i18n';
-import type { Locale } from '../i18n';
 import { useTheme } from '../theme/ThemeContext';
 import type { ThemePreference } from '../theme/ThemeContext';
 import { useLayoutMode } from '../hooks/useLayoutMode';
@@ -54,7 +53,7 @@ export function SettingsPage({ navigate }: Props) {
     await ensureActiveClubMatchesSport(sp);
   };
   const showToast = useToastStore(s => s.show);
-  const { t, locale, setLocale } = useI18n();
+  const { t, locale } = useI18n();
   const { theme, setTheme } = useTheme();
   const { isDesktop } = useLayoutMode();
 
@@ -528,28 +527,6 @@ export function SettingsPage({ navigate }: Props) {
         {/* 3. Preferences — Language + Theme merged */}
         <div style={cardStyle}>
           <h2 style={{ fontWeight: 700, fontSize: 16 }}>{t('settings.preferences')}</h2>
-
-          {/* Language */}
-          <div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{t('settings.language')}</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {([['cs', '🇨🇿 Čeština'], ['en', '🇬🇧 English'], ['de', '🇩🇪 Deutsch']] as [Locale, string][]).map(([loc, label]) => (
-                <button
-                  key={loc}
-                  onClick={() => setLocale(loc)}
-                  style={{
-                    flex: 1, padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: 14,
-                    background: locale === loc ? 'var(--primary)' : 'var(--surface-var)',
-                    color: locale === loc ? '#fff' : 'var(--text)',
-                    border: locale === loc ? 'none' : '1.5px solid var(--border)',
-                    transition: 'all .15s',
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {/* Theme */}
           <div>

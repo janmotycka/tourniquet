@@ -33,7 +33,7 @@ type FeedItem =
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function LandingPage({ navigate, onLogin }: Props) {
-  const { t, locale, setLocale } = useI18n();
+  const { t } = useI18n();
   const { user } = useAuth();
   const isLoggedOut = !user;
   const [tournaments, setTournaments] = useState<CatalogEntry[]>([]);
@@ -500,31 +500,6 @@ export function LandingPage({ navigate, onLogin }: Props) {
         fontSize: 12, color: 'var(--text-muted)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
       }}>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {([
-            { loc: 'cs' as const, flag: '🇨🇿' },
-            { loc: 'en' as const, flag: '🇬🇧' },
-            { loc: 'de' as const, flag: '🇩🇪' },
-          ]).map(({ loc, flag }) => (
-            <button
-              key={loc}
-              onClick={() => setLocale(loc)}
-              aria-label={`Language: ${loc.toUpperCase()}`}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                padding: '4px 6px',
-                borderRadius: 6,
-                fontSize: 20,
-                opacity: locale === loc ? 1 : 0.4,
-                cursor: 'pointer',
-                transition: 'opacity .15s',
-              }}
-            >
-              {flag}
-            </button>
-          ))}
-        </div>
         <span>TORQ · torq.cz</span>
       </div>
     </div>
