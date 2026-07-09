@@ -35,6 +35,8 @@ export type AnalyticsEvent =
   | 'tournament_created'
   | 'public_match_view'         // divák otevřel public zápas (1× per session)
   | 'public_tournament_view'    // divák otevřel public turnaj (1× per session)
+  | 'public_match_share'        // divák sdílel public zápas dál (rodič→rodič viral)
+  | 'public_tournament_share'   // divák/pořadatel sdílel public turnaj dál
   | 'viral_match_cta_click'     // klik na viral banner v public zápase
   | 'viral_tournament_cta_click'
   | 'donate_click'

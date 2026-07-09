@@ -2569,6 +2569,8 @@ export const cs = {
   'matchPublic.noEvents': 'Zatím žádné události',
   'matchPublic.notifOn': 'Zapnout upozornění na góly',
   'matchPublic.notifOff': 'Vypnout upozornění',
+  'matchPublic.share': 'Sdílet zápas',
+  'matchPublic.shareCopied': 'Odkaz zkopírován',
   'matchPublic.unknownPlayer': 'Neznámý hráč',
   'matchPublic.opponentGoal': 'Gól soupeře',
   'matchPublic.ownGoal': 'vlastňák',

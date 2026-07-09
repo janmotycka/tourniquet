@@ -2549,6 +2549,8 @@ export const en: Record<TranslationKey, string> = {
   'matchPublic.noEvents': 'No events yet',
   'matchPublic.notifOn': 'Enable goal notifications',
   'matchPublic.notifOff': 'Disable notifications',
+  'matchPublic.share': 'Share match',
+  'matchPublic.shareCopied': 'Link copied',
   'matchPublic.unknownPlayer': 'Unknown player',
   'matchPublic.opponentGoal': 'Opponent goal',
   'matchPublic.ownGoal': 'own goal',

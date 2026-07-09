@@ -2549,6 +2549,8 @@ export const de: Record<TranslationKey, string> = {
   'matchPublic.noEvents': 'Noch keine Ereignisse',
   'matchPublic.notifOn': 'Tor-Benachrichtigungen aktivieren',
   'matchPublic.notifOff': 'Benachrichtigungen deaktivieren',
+  'matchPublic.share': 'Spiel teilen',
+  'matchPublic.shareCopied': 'Link kopiert',
   'matchPublic.unknownPlayer': 'Unbekannter Spieler',
   'matchPublic.opponentGoal': 'Gegnertor',
   'matchPublic.ownGoal': 'Eigentor',

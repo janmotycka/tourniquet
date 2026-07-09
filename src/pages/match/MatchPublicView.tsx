@@ -9,6 +9,7 @@ import { TennisSinglesPublicView } from '../../modules/tennis/components/TennisS
 import { OfficialLinkButton } from '../../components/ui';
 import { spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 import { track } from '../../services/analytics';
+import { getMatchPublicUrl } from '../../utils/qr-code';
 
 // ─── Wake Lock hook ─────────────────────────────────────────────────────────
 
@@ -234,6 +235,31 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
     try { localStorage.setItem('torq-viral-dismissed-at', String(Date.now())); } catch { /* noop */ }
   };
   const { requestPermission, notify, supported: notifSupported } = useGoalNotifications(notificationsOn);
+
+  // ── Share — rodič→rodič viral (audit 2026-07-09: public view neměl share
+  // tlačítko, nejsilnější virální hrana byla slepá). Native share sheet na
+  // mobilu, clipboard fallback na desktopu. /m/{id} formát kvůli OG tagům.
+  const [shareCopied, setShareCopied] = useState(false);
+  const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleShare = useCallback(async () => {
+    if (!match) return;
+    const url = getMatchPublicUrl(matchId);
+    const home = match.isHome ? (match.clubName || t('matchPublic.us')) : match.opponent;
+    const away = match.isHome ? match.opponent : (match.clubName || t('matchPublic.us'));
+    const text = `⚽ ${home} ${match.homeScore}:${match.awayScore} ${away}`;
+    track('public_match_share');
+    if (typeof navigator.share === 'function') {
+      try { await navigator.share({ title: `${home} – ${away}`, text, url }); } catch { /* zrušeno uživatelem */ }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      if (shareCopiedTimerRef.current) clearTimeout(shareCopiedTimerRef.current);
+      shareCopiedTimerRef.current = setTimeout(() => setShareCopied(false), 2000);
+    } catch { /* noop */ }
+  }, [match, matchId, t]);
+  useEffect(() => () => { if (shareCopiedTimerRef.current) clearTimeout(shareCopiedTimerRef.current); }, []);
 
   // ── Wake Lock — auto-enable for live matches ──
   const isLiveMatch = match?.status === 'live';
@@ -551,6 +577,39 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
           ←
         </button>
 
+        {/* Share — vždy viditelné vpravo (rodič přeposílá dalším rodičům).
+            Audit 2026-07-09: strategicky nejdůležitější tlačítko na stránce —
+            rodiče jsou distribuce i budoucí monetizace. */}
+        <button
+          type="button"
+          onClick={handleShare}
+          aria-label={t('matchPublic.share')}
+          title={shareCopied ? t('matchPublic.shareCopied') : t('matchPublic.share')}
+          style={{
+            position: 'absolute', right: spacing.md, top: spacing.md, zIndex: 5,
+            width: 36, height: 36,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: (isLive || isFinished) ? 'rgba(255,255,255,.15)' : 'var(--surface-var)',
+            borderRadius: radius.md,
+            fontSize: fontSize.lg, lineHeight: 1,
+            color: headerTextColor,
+            border: 'none', cursor: 'pointer', backdropFilter: 'blur(4px)',
+            transition: 'background .15s',
+          }}
+        >
+          {shareCopied ? '✓' : '📤'}
+        </button>
+        {shareCopied && (
+          <div style={{
+            position: 'absolute', right: spacing.md, top: spacing.md + 42, zIndex: 5,
+            background: 'rgba(0,0,0,.75)', color: '#fff',
+            fontSize: fontSize.xs, fontWeight: fontWeight.medium,
+            padding: '4px 10px', borderRadius: radius.sm, whiteSpace: 'nowrap',
+          }}>
+            {t('matchPublic.shareCopied')}
+          </div>
+        )}
+
         {/* Notification toggle */}
         {notifSupported && isLive && (
           <button
@@ -567,7 +626,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               }
             }}
             style={{
-              position: 'absolute', right: spacing.md, top: spacing.md,
+              position: 'absolute', right: spacing.md + 46, top: spacing.md,
               background: notificationsOn ? 'rgba(255,255,255,.25)' : 'rgba(255,255,255,.12)',
               borderRadius: radius.md, padding: `${spacing.xs + 2}px ${spacing.sm + 2}px`,
               fontWeight: fontWeight.bold, fontSize: fontSize.base, color: '#fff',

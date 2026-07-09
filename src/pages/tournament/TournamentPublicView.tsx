@@ -718,17 +718,20 @@ function FinishedBanner({ tournament, isGuest }: { tournament: Tournament; isGue
 
   const handleWhatsApp = () => {
     const text = buildSummary();
+    track('public_tournament_share');
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleFacebook = () => {
     const url = getPublicUrl();
+    track('public_tournament_share');
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank', 'width=600,height=400');
   };
 
   const handleNativeShare = async () => {
     const text = buildSummary();
     const url = getPublicUrl();
+    track('public_tournament_share');
     try {
       await navigator.share({ title: tournament.name, text, url });
     } catch { /* user cancelled */ }
