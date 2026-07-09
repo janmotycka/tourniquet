@@ -31,10 +31,10 @@
  *     - Vlastní pravidla / rozvrh
  *   - Stále jediný flow, jen s "Pokročilé" zaškrtnutým
  *
- * Persona C — Power user s vlastním rozvrhem:
- *   - Pokud potřebuje vlastní pořadí zápasů, custom bracket → fall-through
- *     na CreateTournamentPage (manual) přes "Manuální nastavení" odkaz
- *     na konci Pokročilé sekce. Nezahazujeme existing investment.
+ * Pozn. (audit 2026-07-09): plánovaný „Manuální nastavení" fall-through pro
+ * power users nikdy nevznikl a legacy create stránky (Choice/Quick/Create/
+ * Planner) byly po konsolidaci smazané jako nedosažitelný kód — wizard je
+ * jediná cesta. Custom pořadí zápasů řeší editace rozvrhu v detailu turnaje.
  */
 
 import { useState, useEffect, useMemo } from 'react';

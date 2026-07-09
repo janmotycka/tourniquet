@@ -619,9 +619,7 @@ function findModuleForPage(modules: NavModule[], pageName: Page['name']): string
     'generator': 'training',
     'training': 'training',
     'manual-builder': 'training',
-    'tournament-create': 'tournament',
     'tournament-create-choice': 'tournament',
-    'tournament-planner': 'tournament',
     'tournament-detail': 'tournament',
     'match-create': 'match',
     'match-detail': 'match',
@@ -641,8 +639,6 @@ function buildBreadcrumb(page: Page, t: (k: string) => string): string[] {
     case 'calendar':          return [t('sidebar.calendar')];
     case 'tournament-list':          return [t('home.tournament')];
     case 'tournament-create-choice': return [t('home.tournament'), 'Nový'];
-    case 'tournament-create':        return [t('home.tournament'), 'Nový ručně'];
-    case 'tournament-planner':       return [t('home.tournament'), 'Navrhnout formát'];
     case 'tournament-detail':        return [t('home.tournament'), 'Detail'];
     case 'clubs':             return [t('sidebar.clubs')];
     case 'match-list':        return [t('home.match')];

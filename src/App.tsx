@@ -38,8 +38,6 @@ const ExerciseLibraryPage = lazy(() => import('./pages/ExerciseLibraryPage').the
 const ManualBuilderPage = lazy(() => import('./pages/ManualBuilderPage').then(m => ({ default: m.ManualBuilderPage })));
 const CalendarPage = lazy(() => import('./pages/CalendarPage').then(m => ({ default: m.CalendarPage })));
 const TournamentListPage = lazy(() => import('./pages/tournament/TournamentListPage').then(m => ({ default: m.TournamentListPage })));
-const CreateTournamentPage = lazy(() => import('./pages/tournament/CreateTournamentPage').then(m => ({ default: m.CreateTournamentPage })));
-const TournamentPlannerPage = lazy(() => import('./pages/tournament/TournamentPlannerPage').then(m => ({ default: m.TournamentPlannerPage })));
 const TournamentWizardPage = lazy(() => import('./pages/tournament/TournamentWizardPage').then(m => ({ default: m.TournamentWizardPage })));
 const TournamentDetailPage = lazy(() => import('./pages/tournament/TournamentDetailPage').then(m => ({ default: m.TournamentDetailPage })));
 const ClubsPage = lazy(() => import('./pages/tournament/ClubsPage').then(m => ({ default: m.ClubsPage })));
@@ -83,10 +81,7 @@ export type Page =
   | { name: 'manual-builder' }
   | { name: 'calendar' }
   | { name: 'tournament-list' }
-  | { name: 'tournament-create-choice' }
-  | { name: 'tournament-create' }
-  | { name: 'tournament-quick' }
-  | { name: 'tournament-planner' }
+  | { name: 'tournament-create-choice' } // alias na wizard (tenis list naviguje sem)
   | { name: 'tournament-wizard' }
   | { name: 'tournament-detail'; tournamentId: string }
   | { name: 'tournament-public'; tournamentId: string }
@@ -452,15 +447,14 @@ function AppRouter() {
           : <TournamentListPage navigate={navigate} />
       )}
       {/* Tournament create flow — sjednoceno (audit 2026-04-26):
-          Pro fotbal vede vše na nový TournamentWizardPage (3-step wizard).
-          Legacy routes (`tournament-create-choice`, `tournament-quick`)
-          přesměrovávají do wizardu pro backward compat (existing odkazy,
-          deep-linky, deprecated nav).
-          `tournament-create` (manual) + `tournament-planner` zůstávají
-          jako fall-through pro power users — wizard k nim odkazuje
-          z "Pokročilé" sekce.
-          Tenis a florbal mají vlastní create flow (TennisCreateTournamentPage).
-          Pro tenis: choice/quick/planner → tennis create (zachováno). */}
+          Pro fotbal vede vše na TournamentWizardPage (3-step wizard).
+          Audit 2026-07-09 (osekání): mrtvý create-flow smazán — ChoicePage a
+          QuickPage byly orphaned (nikde neimportované), CreateTournamentPage
+          a PlannerPage zombie (naroutované, ale žádná navigace na ně nevedla;
+          wizardův slibovaný „Manuální nastavení" odkaz nikdy nevznikl).
+          `tournament-create-choice` zůstává jako alias na wizard — naviguje
+          na něj tenisový list (zmizí s tenisovým modulem).
+          Tenis a florbal mají vlastní create flow (TennisCreateTournamentPage). */}
       {page.name === 'tournament-wizard' && (
         isTennisMode
           ? <TennisCreateTournamentPage navigate={navigate} />
@@ -470,21 +464,6 @@ function AppRouter() {
         isTennisMode
           ? <TennisCreateTournamentPage navigate={navigate} />
           : <TournamentWizardPage navigate={navigate} />
-      )}
-      {page.name === 'tournament-quick' && (
-        isTennisMode
-          ? <TennisCreateTournamentPage navigate={navigate} />
-          : <TournamentWizardPage navigate={navigate} />
-      )}
-      {page.name === 'tournament-create' && (
-        isTennisMode
-          ? <TennisCreateTournamentPage navigate={navigate} />
-          : <CreateTournamentPage navigate={navigate} />
-      )}
-      {page.name === 'tournament-planner' && (
-        isTennisMode
-          ? <TennisCreateTournamentPage navigate={navigate} />
-          : <TournamentPlannerPage navigate={navigate} />
       )}
       {page.name === 'tournament-detail' && (
         isTennisMode
