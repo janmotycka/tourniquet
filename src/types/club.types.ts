@@ -26,18 +26,6 @@ export const AGE_CATEGORIES_BY_SPORT = {
     'U13', 'U14', 'U15', 'U17', 'U19',
     'Dorost', 'Muži', 'Muži B', 'Ženy',
   ] as AgeCategory[],
-  tennis: [
-    'Minitenis',
-    'Babytenis',
-    'Mladší žactvo',
-    'Starší žactvo',
-    'Dorost (tenis)',
-    'Dospělí (tenis)',
-  ] as AgeCategory[],
-  floorball: [
-    'U7', 'U9', 'U11', 'U13', 'U15', 'U17', 'U19',
-    'Dorost', 'Muži', 'Muži B', 'Ženy',
-  ] as AgeCategory[],
 };
 
 // ─── Historie kategorií ────────────────────────────────────────────────────

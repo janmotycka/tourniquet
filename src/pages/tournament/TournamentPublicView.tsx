@@ -26,7 +26,6 @@ import {
 import { MvpVoting } from '../../components/tournament/public/MvpVoting';
 import { ChatPollsList } from '../../components/tournament/public/ChatPollsList';
 import { OfficialLinkButton } from '../../components/ui';
-import { TennisTournamentPublicView } from '../../modules/tennis/pages/TennisTournamentPublicView';
 import { translateAwardTitle } from '../../components/tournament/SettingsTab';
 
 interface Props {
@@ -103,7 +102,6 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
 
   // Preferujeme Firebase data, fallback na lokální (pro případ offline)
   const tournament = firebaseTournament ?? localTournament;
-  const isTennisTournament = !!(tournament && (tournament.sport ?? 'football') === 'tennis');
 
   // ── Join as referee flow ────────────────────────────────────────────────────
   const { user, signInAnonymously } = useAuth();
@@ -223,10 +221,6 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
   // Tenis turnaj → deleguj na tenisový public view (oddělené UI).
   // Rodiče tenisových hráčů nemají vidět fotbalové sekce (chat, MVP, ...).
   // Delegaci děláme až za všechny hooky (React rules of hooks).
-  if (isTennisTournament) {
-    return <TennisTournamentPublicView tournamentId={tournamentId} navigate={navigate} />;
-  }
-
   const timeSince = Math.round((Date.now() - lastRefresh.getTime()) / 1000);
   const timeSinceLabel = timeSince < 10
     ? t('tournament.public.justNow')

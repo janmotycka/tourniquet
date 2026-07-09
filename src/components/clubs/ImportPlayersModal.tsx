@@ -48,7 +48,7 @@ const FIELD_LABELS: Record<ImportField, string> = {
 
 export function ImportPlayersModal({ club, onClose, onImport }: Props) {
   const { t } = useI18n();
-  const clubSport = (club.sport ?? 'football') as 'football' | 'tennis';
+  const clubSport = club.sport ?? 'football';
   const availableCategories = AGE_CATEGORIES_BY_SPORT[clubSport];
   const [workbook, setWorkbook] = useState<ParsedWorkbook | null>(null);
   const [activeSheetIdx, setActiveSheetIdx] = useState(0);

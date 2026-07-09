@@ -442,7 +442,7 @@ export function TournamentDetailPage({ tournamentId, navigate }: Props) {
           </IconButton>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 style={{ fontWeight: 800, fontSize: 17, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {tournament.sport === 'tennis' ? '🎾' : '🏆'} {tournament.name}
+              🏆 {tournament.name}
             </h1>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
               {STATUS_LABELS[tournament.status]} · {tournament.teams.length} {t('tournament.detail.teamsCount')}

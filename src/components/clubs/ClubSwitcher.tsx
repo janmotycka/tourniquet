@@ -111,9 +111,6 @@ export function ClubSwitcher({ navigate }: Props) {
         }}>
           {activeClub?.name || '—'}
         </span>
-        {activeClub?.sport === 'tennis' && (
-          <span style={{ fontSize: 14, marginLeft: 2 }} title="Tenis">🎾</span>
-        )}
         <span style={{ fontSize: 10, opacity: 0.6 }}>▼</span>
         {myRole === 'owner' && (
           <span style={{

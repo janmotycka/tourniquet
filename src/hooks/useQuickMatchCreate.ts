@@ -80,11 +80,9 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
     const timeStr = preset?.kickoffTime
       ?? `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
     // Audit 2026-04-24 (P2.3): preset volitelný. Fallback = 15 min 1 perioda 5+1.
-    // Audit 2026-04-25: Florbal default 4+1.
     const durationMinutes = preset?.durationMinutes ?? 15;
     const periods = preset?.periods ?? 1;
-    const isFloorball = preferredSport === 'floorball';
-    const matchFormat = preset?.matchFormat ?? (isFloorball ? '4+1' : '5+1');
+    const matchFormat = preset?.matchFormat ?? '5+1';
     const periodDurationMinutes = Math.max(1, Math.round(durationMinutes / periods));
 
     // Audit 2026-05-22: sub assistant podporuje auto-rozdělení.
@@ -113,7 +111,7 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       isCaptain: entry.isCaptain,
     }));
     const match = createMatch({
-      sport: isFloorball ? 'floorball' : 'football',
+      sport: 'football',
       matchType: 'single',
       clubId: activeClub?.id ?? 'individual-quick',
       // Audit 2026-05-06: explicit myTeamName z presetu má prioritu před

@@ -59,11 +59,9 @@ export function QuickMatchPage({ navigate, prefillFromMatchId, prefillSquadId }:
     }));
   }, [matches, prefillFromMatchId, prefillSquadId, squads]);
 
-  // Audit 2026-05-25: tlačítko "Plný zápas se sestavou" odebráno pro football/floorball
-  // — Quick flow už pokrývá veškerou funkčnost (lineup editor v match-detail tabu Sestava
-  // umožňuje doplnit pozice, kapitány, attendance po vytvoření). CreateMatchPage zůstává
-  // jako fallback **jen pro tennis team zápasy** (sub-matches), kam routuje App.tsx
-  // přímo (match-create) bez nutnosti přepínat z Quick.
+  // Audit 2026-05-25 + 2026-07-09: Quick je JEDINÝ create flow — lineup editor
+  // v match-detail tabu Sestava doplní pozice/kapitány/attendance po vytvoření.
+  // (CreateMatchPage smazána s multi-sport moduly.)
   return (
     <QuickMatchSheet
       mode="page"

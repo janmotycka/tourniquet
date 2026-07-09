@@ -54,8 +54,6 @@ export function EditMatchSheet({ match, onClose }: Props) {
   const [periodDuration, setPeriodDuration] = useState(match.periodDurationMinutes);
   const [matchFormat, setMatchFormat] = useState<MatchFormat>(match.matchFormat ?? '7+1');
   const [ageCategory, setAgeCategory] = useState<string>(match.ageCategory ?? '');
-  const [officialResultsUrl, setOfficialResultsUrl] = useState(match.officialResultsUrl ?? '');
-  const isTennis = (match.sport ?? 'football') === 'tennis';
 
   const structuralLocked = match.status !== 'planned';
 
@@ -71,7 +69,6 @@ export function EditMatchSheet({ match, onClose }: Props) {
       opponent: opponent.trim() || match.opponent,
       venue: venue.trim() || undefined,
       competition: competition.trim(),
-      officialResultsUrl: officialResultsUrl.trim() || undefined,
     };
     if (!structuralLocked) {
       patch.isHome = isHome;
@@ -205,32 +202,6 @@ export function EditMatchSheet({ match, onClose }: Props) {
               </datalist>
             )}
           </div>
-
-          {/* Official results URL — pro tenis (ČTenis odkaz na oficiální zápis). */}
-          {isTennis && (
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
-                🔗 {t('match.edit.officialResultsUrl')}
-              </label>
-              <input
-                type="url"
-                inputMode="url"
-                autoComplete="url"
-                value={officialResultsUrl}
-                onChange={e => setOfficialResultsUrl(e.target.value)}
-                placeholder="https://cztenis.cz/…"
-                style={{
-                  width: '100%', padding: '10px', borderRadius: 10,
-                  border: '1.5px solid var(--border)', fontSize: 13,
-                  background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box',
-                  fontFamily: 'ui-monospace, monospace',
-                }}
-              />
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
-                {t('match.edit.officialResultsUrlHint')}
-              </div>
-            </div>
-          )}
 
           {/* Home/Away — jen pokud planned */}
           {!structuralLocked && (

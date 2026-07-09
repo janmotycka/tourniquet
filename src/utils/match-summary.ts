@@ -21,13 +21,7 @@
 
 import type { SeasonMatch, MatchCard } from '../types/match.types';
 
-/** Sport-specific emoji pro share / summary texty.
- *  Audit 2026-04-25: florbal má 🏑 místo univerzálního ⚽. */
-function sportEmoji(match: { sport?: string }): string {
-  if (match.sport === 'floorball') return '🏑';
-  if (match.sport === 'tennis') return '🎾';
-  return '⚽';
-}
+
 
 interface SummaryOptions {
   match: SeasonMatch;
@@ -165,7 +159,7 @@ export function generateMatchSummaryText(
   lines.push(header);
 
   // Skóre / matchup (sport-specific emoji)
-  const sportIcon = sportEmoji(match);
+  const sportIcon = '⚽';
   if (match.status === 'planned') {
     lines.push(`${sportIcon} *${homeTeam} ${labels.vs} ${awayTeam}*`);
   } else {
@@ -286,18 +280,13 @@ export function generateMatchSocialText(
         upcoming: 'Let\'s go!',
       };
 
-  // Sport-specific hashtags (audit 2026-04-25 — florbal má vlastní)
-  const isFloorball = match.sport === 'floorball';
-  const isTennis = match.sport === 'tennis';
-  const hashtags = lang === 'cs'
-    ? (isFloorball ? '#florbal #mladez' : isTennis ? '#tenis #mladez' : '#fotbal #mladez')
-    : lang === 'de'
-      ? (isFloorball ? '#floorball #jugend' : isTennis ? '#tennis #jugend' : '#fussball #jugend')
-      : (isFloorball ? '#floorball #youth' : isTennis ? '#tennis #youth' : '#soccer #youth');
+  const hashtags = lang === 'cs' ? '#fotbal #mladez'
+    : lang === 'de' ? '#fussball #jugend'
+    : '#soccer #youth';
 
   const lines: string[] = [];
 
-  const sportIcon = sportEmoji(match);
+  const sportIcon = '⚽';
   if (match.status === 'finished' || match.status === 'live') {
     lines.push(`${sportIcon} ${homeTeam} ${match.homeScore}:${match.awayScore} ${awayTeam} ${resultEmoji}`);
     const caption = ourScore > theirScore ? captions.win
@@ -380,7 +369,7 @@ export function generateNominationText(
 
   const lines: string[] = [];
   lines.push(labels.header);
-  lines.push(`${sportEmoji(match)} *${homeTeam} vs ${awayTeam}*`);
+  lines.push(`${'⚽'} *${homeTeam} vs ${awayTeam}*`);
 
   // Meta line
   const metaBits: string[] = [];

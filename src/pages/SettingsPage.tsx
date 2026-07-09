@@ -20,8 +20,6 @@ import { PageHeader } from '../components/ui';
 import { shouldHideStripeUpgrade } from '../utils/platform';
 import { PREMIUM_ENABLED, DONATE_URL, isDonateEnabled } from '../types/feature-flags';
 import { track } from '../services/analytics';
-import type { Sport } from '../types/sport.types';
-import { ENABLED_SPORTS } from '../types/sport.types';
 
 interface Props { navigate: (p: Page) => void; }
 
@@ -38,20 +36,11 @@ export function SettingsPage({ navigate }: Props) {
   const trainings = useTrainingsStore(s => s.savedTrainings);
   const contacts = useContactsStore(s => s.contacts);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
-  const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
-  const tennisUserType = useUserPrefsStore(s => s.tennisUserType);
-  const setTennisUserType = useUserPrefsStore(s => s.setTennisUserType);
   const appMode = useUserPrefsStore(s => s.appMode);
   const simpleSquads = useSimpleSquadsStore(s => s.squads);
   const deleteSquad = useSimpleSquadsStore(s => s.deleteSquad);
   const updateSquad = useSimpleSquadsStore(s => s.updateSquad);
   const confirmAsk = useConfirmStore(s => s.ask);
-  const ensureActiveClubMatchesSport = useClubsStore(s => s.ensureActiveClubMatchesSport);
-  // Wrapper — po změně sportu přepne aktivní klub na klub daného sportu.
-  const handleSportSwitch = async (sp: Sport) => {
-    setPreferredSport(sp);
-    await ensureActiveClubMatchesSport(sp);
-  };
   const showToast = useToastStore(s => s.show);
   const { t, locale } = useI18n();
   const { theme, setTheme } = useTheme();
@@ -216,81 +205,6 @@ export function SettingsPage({ navigate }: Props) {
           </div>
         )}
 
-        {/* 1.5 Sport preference — Audit 2026-04-25: pro public launch fokus
-            na fotbal. Sport picker je viditelný JEN pokud:
-            (a) ENABLED_SPORTS má víc než 1 (až rozšíříme), NEBO
-            (b) user už má aktivní jiný sport (graceful degradation —
-                neházíme stávající tenis/florbal users z aplikace) */}
-        {(ENABLED_SPORTS.length > 1 || !ENABLED_SPORTS.includes(preferredSport)) && (
-        <div style={cardStyle}>
-          <h2 style={{ fontWeight: 700, fontSize: 16 }}>🎯 {t('settings.sport')}</h2>
-          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
-            {t('settings.sportDesc')}
-          </p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {/* Vždy ukážeme všechny 3 sporty pokud sem už user dorazil
-                (= má disabled sport aktivní) — aby si mohl přepnout zpět
-                na fotbal. Pokud je tu nový user (nemělo by se stát díky
-                gating výše), uvidí jen ENABLED. */}
-            {(['football', 'tennis', 'floorball'] as const)
-              .filter(sp => ENABLED_SPORTS.includes(sp) || sp === preferredSport)
-              .map(sp => {
-              const isActive = preferredSport === sp;
-              return (
-                <button
-                  key={sp}
-                  onClick={() => void handleSportSwitch(sp)}
-                  style={{
-                    flex: 1, padding: '14px 10px', borderRadius: 12, fontWeight: 700, fontSize: 14,
-                    background: isActive ? 'var(--primary)' : 'var(--surface-var)',
-                    color: isActive ? '#fff' : 'var(--text-muted)',
-                    border: isActive ? 'none' : '1.5px solid var(--border)',
-                    cursor: 'pointer',
-                    display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center',
-                  }}
-                >
-                  <span style={{ fontSize: 28 }}>
-                    {sp === 'football' ? '⚽' : sp === 'tennis' ? '🎾' : '🏑'}
-                  </span>
-                  <span>{t(`sport.${sp}`)}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Tennis sub-mód — klubový vs individuální */}
-          {preferredSport === 'tennis' && (
-            <div style={{ marginTop: 10, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
-                {t('settings.tennisUserType')}
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {(['club', 'individual'] as const).map(type => {
-                  const active = tennisUserType === type;
-                  return (
-                    <button
-                      key={type}
-                      onClick={() => setTennisUserType(type)}
-                      style={{
-                        flex: 1, padding: '12px 10px', borderRadius: 10, fontWeight: 700, fontSize: 12,
-                        background: active ? (type === 'club' ? '#1565C0' : '#6A1B9A') : 'var(--surface-var)',
-                        color: active ? '#fff' : 'var(--text-muted)',
-                        border: active ? 'none' : '1.5px solid var(--border)',
-                        cursor: 'pointer',
-                        display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center',
-                      }}
-                    >
-                      <span style={{ fontSize: 22 }}>{type === 'club' ? '🏟' : '👤'}</span>
-                      <span>{t(`tennisTypePicker.${type}Title`)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-        )}
-
         {/* 2. Subscription */}
         <div style={{ ...cardStyle, gap: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -361,15 +275,12 @@ export function SettingsPage({ navigate }: Props) {
                         skryté Tréninky (tenis modul je nepoužívá). */}
                     {(() => {
                       const limits = getLimits();
-                      const isTennis = preferredSport === 'tennis';
                       const tournamentsForSport = tournaments.filter(tt => (tt.sport ?? 'football') === preferredSport);
                       const matchesForSport = matches.filter(m => (m.sport ?? 'football') === preferredSport);
                       const items = [
                         { label: t('settings.usageTournaments'), count: tournamentsForSport.length, max: limits.maxTournaments },
                         { label: t('settings.usageMatches'), count: matchesForSport.length, max: limits.maxMatches },
-                        ...(isTennis ? [] : [
-                          { label: t('settings.usageTrainings'), count: trainings.length, max: limits.maxSavedTrainings },
-                        ]),
+                        { label: t('settings.usageTrainings'), count: trainings.length, max: limits.maxSavedTrainings },
                       ];
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>

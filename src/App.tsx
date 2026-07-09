@@ -26,7 +26,6 @@ import { track, sanitizeEventKey } from './services/analytics';
 import { useTemplatesStore } from './store/templates.store';
 import { useClubsStore } from './store/clubs.store';
 import { useTrainingsStore } from './store/trainings.store';
-import { useMyPlayersStore } from './modules/tennis/store/myPlayers.store';
 import type { TrainingUnit } from './types/training.types';
 
 // ─── Lazy-loaded stránky (sekundární, ne na kritické cestě) ─────────────────
@@ -42,23 +41,10 @@ const TournamentWizardPage = lazy(() => import('./pages/tournament/TournamentWiz
 const TournamentDetailPage = lazy(() => import('./pages/tournament/TournamentDetailPage').then(m => ({ default: m.TournamentDetailPage })));
 const ClubsPage = lazy(() => import('./pages/tournament/ClubsPage').then(m => ({ default: m.ClubsPage })));
 const MatchListPage = lazy(() => import('./pages/match/MatchListPage').then(m => ({ default: m.MatchListPage })));
-const CreateMatchPage = lazy(() => import('./pages/match/CreateMatchPage').then(m => ({ default: m.CreateMatchPage })));
 const QuickMatchPage = lazy(() => import('./pages/match/QuickMatchPage').then(m => ({ default: m.QuickMatchPage })));
 const MatchDetailPage = lazy(() => import('./pages/match/MatchDetailPage').then(m => ({ default: m.MatchDetailPage })));
 const MatchStatsPage = lazy(() => import('./pages/match/MatchStatsPage').then(m => ({ default: m.MatchStatsPage })));
 
-// Tennis module pages — čistě tenisové, neřeší fotbal.
-const TennisMatchListPage = lazy(() => import('./modules/tennis/pages/TennisMatchListPage').then(m => ({ default: m.TennisMatchListPage })));
-const TennisCreateMatchPage = lazy(() => import('./modules/tennis/pages/TennisCreateMatchPage').then(m => ({ default: m.TennisCreateMatchPage })));
-const TennisMatchDetailPage = lazy(() => import('./modules/tennis/pages/TennisMatchDetailPage').then(m => ({ default: m.TennisMatchDetailPage })));
-const TennisClubsPage = lazy(() => import('./modules/tennis/pages/TennisClubsPage').then(m => ({ default: m.TennisClubsPage })));
-const TennisTournamentListPage = lazy(() => import('./modules/tennis/pages/TennisTournamentListPage').then(m => ({ default: m.TennisTournamentListPage })));
-const TennisCreateTournamentPage = lazy(() => import('./modules/tennis/pages/TennisCreateTournamentPage').then(m => ({ default: m.TennisCreateTournamentPage })));
-const TennisTournamentDetailPage = lazy(() => import('./modules/tennis/pages/TennisTournamentDetailPage').then(m => ({ default: m.TennisTournamentDetailPage })));
-const TennisMyPlayersPage = lazy(() => import('./modules/tennis/pages/TennisMyPlayersPage').then(m => ({ default: m.TennisMyPlayersPage })));
-const TennisIndividualCreateMatchPage = lazy(() => import('./modules/tennis/pages/TennisIndividualCreateMatchPage').then(m => ({ default: m.TennisIndividualCreateMatchPage })));
-const TennisPlayerDetailPage = lazy(() => import('./modules/tennis/pages/TennisPlayerDetailPage').then(m => ({ default: m.TennisPlayerDetailPage })));
-// TennisTournamentPublicView loaded via TournamentPublicView wrapper (sport-aware delegation)
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const ClubMembersPage = lazy(() => import('./pages/ClubMembersPage').then(m => ({ default: m.ClubMembersPage })));
@@ -81,7 +67,6 @@ export type Page =
   | { name: 'manual-builder' }
   | { name: 'calendar' }
   | { name: 'tournament-list' }
-  | { name: 'tournament-create-choice' } // alias na wizard (tenis list naviguje sem)
   | { name: 'tournament-wizard' }
   | { name: 'tournament-detail'; tournamentId: string }
   | { name: 'tournament-public'; tournamentId: string }
@@ -90,12 +75,10 @@ export type Page =
   | { name: 'clubs' }
   | { name: 'club-members' }
   | { name: 'match-list' }
-  | { name: 'match-create' }
   | { name: 'match-quick'; prefillFromMatchId?: string; prefillSquadId?: string }
   | { name: 'match-detail'; matchId: string; initialTab?: 'live' | 'lineup' | 'ratings' }
   | { name: 'match-public'; matchId: string }
   | { name: 'match-stats' }
-  | { name: 'tennis-player'; playerId: string }
   | { name: 'settings' }
   | { name: 'admin' }
   | { name: 'privacy-policy' }
@@ -104,12 +87,7 @@ export type Page =
 // ─── Fallback spinner pro Suspense ──────────────────────────────────────────
 
 function PageSpinner() {
-  // Ikona se adaptuje podle sportu — fotbalový spinner by byl rušivý v tenis módu.
-  // Audit 2026-04-25: + florbal varianta.
-  const preferredSport = useUserPrefsStore(s => s.preferredSport);
-  const icon = preferredSport === 'tennis' ? '🎾'
-    : preferredSport === 'floorball' ? '🏑'
-    : '⚽';
+  const icon = '⚽';
   return (
     <div style={{
       flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -141,14 +119,8 @@ function AppRouter() {
   const setClubsFirebaseUid = useClubsStore(s => s.setFirebaseUid);
   const subscribeTrainings = useTrainingsStore(s => s.subscribeToFirebase);
   const setTrainingsFirebaseUid = useTrainingsStore(s => s.setFirebaseUid);
-  const setMyPlayersFirebaseUid = useMyPlayersStore(s => s.setFirebaseUid);
 
   const { page, setPage, joinIntent, setJoinIntent, adminJoin, setAdminJoin, adminJoinRole, setAdminJoinRole, clubJoinIntent, matchPairingIntent } = usePageStore();
-  // Top-level sport + tenisový sub-mód (klubový × individuální).
-  const preferredSport = useUserPrefsStore(s => s.preferredSport);
-  const tennisUserType = useUserPrefsStore(s => s.tennisUserType);
-  const isTennisMode = preferredSport === 'tennis';
-  const isTennisIndividual = isTennisMode && tennisUserType === 'individual';
 
   // Audit 2026-06-11: URL/hash + history entry teď řeší store.setPage centrálně
   // (pageToUrl + pushState) — kvůli hardware back na Androidu. navigate už jen
@@ -182,8 +154,6 @@ function AppRouter() {
         // Realtime subscribe pro tréninky (sync mezi zařízeními)
         const unsubscribeTrainings = subscribeTrainings(user.uid);
         const unsubscribeStatus = subscribeToStatus(user.uid);
-        // MyPlayers (tenisový individuální mód) — realtime subscribe
-        setMyPlayersFirebaseUid(user.uid);
         // Simple squads — lehké soupisky pro Simple mode (McDonald's cup scénář)
         const unsubscribeSimpleSquads = subscribeSimpleSquads(user.uid);
         return () => {
@@ -191,7 +161,6 @@ function AppRouter() {
           unsubscribeTrainings();
           unsubscribeStatus();
           unsubscribeSimpleSquads();
-          setMyPlayersFirebaseUid(null);
         };
       }
     } else {
@@ -200,9 +169,8 @@ function AppRouter() {
       setSimpleSquadsFirebaseUid(null);
       setClubsFirebaseUid(null);
       setTrainingsFirebaseUid(null);
-      setMyPlayersFirebaseUid(null);
     }
-  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, subscribeTournaments, setMatchesFirebaseUid, subscribeSimpleSquads, setSimpleSquadsFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, subscribeTrainings, setTrainingsFirebaseUid, setMyPlayersFirebaseUid]);
+  }, [user, loadFromFirebase, setFirebaseUid, subscribeToStatus, loadContacts, subscribeTournaments, setMatchesFirebaseUid, subscribeSimpleSquads, setSimpleSquadsFirebaseUid, loadTemplates, loadClubs, setClubsFirebaseUid, subscribeTrainings, setTrainingsFirebaseUid]);
 
   // Matches subscription musí reagovat na změnu klubového členství —
   // když user vstoupí do sdíleného klubu, musíme začít poslouchat jeho matches.
@@ -441,76 +409,27 @@ function AppRouter() {
       {page.name === 'library' && <ExerciseLibraryPage navigate={navigate} />}
       {page.name === 'manual-builder' && <ManualBuilderPage navigate={navigate} />}
       {page.name === 'calendar' && <CalendarPage navigate={navigate} />}
-      {page.name === 'tournament-list' && (
-        isTennisMode
-          ? <TennisTournamentListPage navigate={navigate} />
-          : <TournamentListPage navigate={navigate} />
-      )}
-      {/* Tournament create flow — sjednoceno (audit 2026-04-26):
-          Pro fotbal vede vše na TournamentWizardPage (3-step wizard).
-          Audit 2026-07-09 (osekání): mrtvý create-flow smazán — ChoicePage a
-          QuickPage byly orphaned (nikde neimportované), CreateTournamentPage
-          a PlannerPage zombie (naroutované, ale žádná navigace na ně nevedla;
-          wizardův slibovaný „Manuální nastavení" odkaz nikdy nevznikl).
-          `tournament-create-choice` zůstává jako alias na wizard — naviguje
-          na něj tenisový list (zmizí s tenisovým modulem).
-          Tenis a florbal mají vlastní create flow (TennisCreateTournamentPage). */}
-      {page.name === 'tournament-wizard' && (
-        isTennisMode
-          ? <TennisCreateTournamentPage navigate={navigate} />
-          : <TournamentWizardPage navigate={navigate} />
-      )}
-      {page.name === 'tournament-create-choice' && (
-        isTennisMode
-          ? <TennisCreateTournamentPage navigate={navigate} />
-          : <TournamentWizardPage navigate={navigate} />
-      )}
+      {page.name === 'tournament-list' && <TournamentListPage navigate={navigate} />}
+      {/* Tournament create — sjednoceno na TournamentWizardPage (audit 2026-04-26);
+          mrtvý legacy create-flow smazán 2026-07-09. */}
+      {page.name === 'tournament-wizard' && <TournamentWizardPage navigate={navigate} />}
       {page.name === 'tournament-detail' && (
-        isTennisMode
-          ? <TennisTournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
-          : <TournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
+        <TournamentDetailPage tournamentId={page.tournamentId} navigate={navigate} />
       )}
-      {/* Clubs route — v tenisovém individuálním módu ukáže TennisMyPlayersPage
-          (místo klubu spravujeme flat list sledovaných hráčů). */}
-      {page.name === 'clubs' && (
-        isTennisIndividual
-          ? <TennisMyPlayersPage navigate={navigate} />
-          : isTennisMode
-            ? <TennisClubsPage navigate={navigate} />
-            : <ClubsPage navigate={navigate} />
-      )}
+      {page.name === 'clubs' && <ClubsPage navigate={navigate} />}
       {page.name === 'club-members' && <ClubMembersPage navigate={navigate} />}
-      {page.name === 'match-list' && (
-        isTennisMode
-          ? <TennisMatchListPage navigate={navigate} />
-          : <MatchListPage navigate={navigate} />
-      )}
-      {page.name === 'match-create' && (
-        isTennisIndividual
-          ? <TennisIndividualCreateMatchPage navigate={navigate} />
-          : isTennisMode
-            ? <TennisCreateMatchPage navigate={navigate} />
-            : <CreateMatchPage navigate={navigate} />
-      )}
-      {/* match-quick = full page wrapper kolem QuickMatchSheet (audit 2026-04-29).
-          Tenis nemá rychlý zápas, fallback na match-create.
+      {page.name === 'match-list' && <MatchListPage navigate={navigate} />}
+      {/* match-quick = full page wrapper kolem QuickMatchSheet (audit 2026-04-29)
+          — jediný create flow pro zápas (CreateMatchPage smazána 2026-07-09).
           prefillFromMatchId — pokud uvedeno, předvyplní soupisku z minulého
           zápasu (rychlé „další zápas se stejnou sestavou"). */}
       {page.name === 'match-quick' && (
-        isTennisMode
-          ? <CreateMatchPage navigate={navigate} />
-          : <QuickMatchPage navigate={navigate} prefillFromMatchId={page.prefillFromMatchId} prefillSquadId={page.prefillSquadId} />
+        <QuickMatchPage navigate={navigate} prefillFromMatchId={page.prefillFromMatchId} prefillSquadId={page.prefillSquadId} />
       )}
       {page.name === 'match-detail' && (
-        isTennisMode
-          ? <TennisMatchDetailPage matchId={page.matchId} navigate={navigate} />
-          : <MatchDetailPage matchId={page.matchId} navigate={navigate} initialTab={page.initialTab} />
+        <MatchDetailPage matchId={page.matchId} navigate={navigate} initialTab={page.initialTab} />
       )}
-      {/* match-stats je zatím jen fotbalová (tenisové statistiky budou mít vlastní metriky).
-          Tenisový user sem nedorazí přes UI — sidebar mu match-stats vůbec nenabízí. */}
-      {page.name === 'match-stats' && !isTennisMode && <MatchStatsPage navigate={navigate} />}
-      {page.name === 'match-stats' && isTennisMode && <TennisMatchListPage navigate={navigate} />}
-      {page.name === 'tennis-player' && <TennisPlayerDetailPage playerId={page.playerId} navigate={navigate} />}
+      {page.name === 'match-stats' && <MatchStatsPage navigate={navigate} />}
       {page.name === 'settings' && <SettingsPage navigate={navigate} />}
       {page.name === 'admin' && <AdminPage />}
       {page.name === 'privacy-policy' && <PrivacyPolicyPage navigate={navigate} />}

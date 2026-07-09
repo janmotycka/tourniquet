@@ -9,13 +9,11 @@ import { LineupTab } from '../../components/match/LineupTab';
 import { RatingsTab } from '../../components/match/RatingsTab';
 import { ShareMatchSheet } from '../../components/match/ShareMatchSheet';
 import { EditMatchSheet } from '../../components/match/EditMatchSheet';
-import { TennisTeamTab } from '../../modules/tennis/components/TennisTeamTab';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
 import { useClubsStore } from '../../store/clubs.store';
 import { PageHeader, OfficialLinkButton } from '../../components/ui';
 import { useToastStore } from '../../store/toast.store';
 import { generateMatchSummaryText, generateNominationText } from '../../utils/match-summary';
-import { generateTennisTeamSummaryText } from '../../modules/tennis/utils/tennis-team';
 import { getMatchPublicUrl } from '../../utils/qr-code';
 import { useMatchLock } from '../../hooks/useMatchLock';
 import { useMatchPerspective } from '../../hooks/useMatchPerspective';
@@ -74,31 +72,6 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
   const activeClub = useClubsStore(s => s.clubs.find(c => c.id === currentMatch?.clubId));
   const clubDisplayName = currentMatch?.clubName || activeClub?.name || t('match.detail.us');
 
-  // Sport guard — pokud zápas patří jinému sportu než aktivnímu preferred sport,
-  // PŘEPNI sport automaticky (audit 2026-05-27: dříve tichý redirect na match-list,
-  // kde zápas nebyl vidět (taky sport-filtered) → dead-end "zápas zmizel". Teď
-  // přepneme preferred sport + toast, zápas zůstane otevřený a funkční.
-  const guardPreferredSport = useUserPrefsStore(s => s.preferredSport);
-  const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
-  useEffect(() => {
-    if (!currentMatch) return;
-    const matchSport = currentMatch.sport ?? 'football';
-    if (matchSport !== guardPreferredSport) {
-      // Tennis má vlastní detail page (TennisMatchDetailPage v App.tsx routeru),
-      // takže football detail page tennis match nikdy nezobrazí — redirect.
-      if (matchSport === 'tennis') {
-        navigate({ name: 'match-list' });
-        return;
-      }
-      // Football ↔ floorball — přepni sport, zápas zůstane viditelný.
-      setPreferredSport(matchSport);
-      useToastStore.getState().show('info', t('match.detail.sportSwitched', {
-        sport: matchSport === 'floorball' ? t('sport.floorball') : t('sport.football'),
-      }));
-      return;
-    }
-  }, [currentMatch, navigate, guardPreferredSport, setPreferredSport, t]);
-
   // Audit 2026-05-25: GDPR guide modal — rozšíření J-2 consent gate.
   // Pokud trenér publikuje poprvé s lineup, ukáže se modal s tipy jak
   // získat souhlas rodičů + šablona pro stanovy klubu + confirm button.
@@ -126,17 +99,6 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
   const buildSummaryText = useCallback((): string | null => {
     if (!currentMatch) return null;
     const publicUrl = getMatchPublicUrl(currentMatch.id);
-    // Tennis team match → vlastní formát
-    if (currentMatch.sport === 'tennis' && currentMatch.matchType === 'team') {
-      const players = activeClub?.players ?? [];
-      return generateTennisTeamSummaryText({
-        match: currentMatch,
-        clubDisplayName,
-        playerNameResolver: (id: string) => players.find(p => p.id === id)?.name ?? null,
-        publicUrl,
-        lang: locale,
-      });
-    }
     return generateMatchSummaryText({
       match: currentMatch,
       clubDisplayName,
@@ -426,14 +388,11 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
         />
         <div style={{ padding: '0 16px 10px' }}>
 
-        {/* Tab bar + edit.
-            Tenis team match nemá klasický lineup/hodnocení tabs (sub-matches nesou svoje
-            hráče + skóre jsou v sub-match řádcích). Schováváme je. */}
+        {/* Tab bar + edit. */}
         {(() => {
-          const isTennisTeam = currentMatch.sport === 'tennis' && currentMatch.matchType === 'team';
           // V Simple módu zobrazujeme jen 'live' tab — sestavu a hodnocení laik
           // nepotřebuje, matou ho (vyžadují klubovou vazbu, ratings atd.).
-          const tabs = (isTennisTeam || isSimpleMode)
+          const tabs = isSimpleMode
             ? ([['live', isLive ? `● ${t('match.detail.tabLive')}` : t('match.detail.tabMatch')]] as const)
             : ([['live', isLive ? `● ${t('match.detail.tabLive')}` : t('match.detail.tabMatch')], ['lineup', t('match.detail.tabLineup')], ['ratings', t('match.detail.tabRatings')]] as const);
           return (
@@ -614,12 +573,6 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
           aria-disabled={!canEdit}
         >
         {(() => {
-          const isTennisTeam = currentMatch.sport === 'tennis' && currentMatch.matchType === 'team';
-          // Tenis družstva — vždy render TennisTeamTab bez ohledu na `tab` state
-          // (lineup/ratings nejsou relevantní — jejich UI je v TennisTeamTabu).
-          if (isTennisTeam) {
-            return <TennisTeamTab match={currentMatch} clubDisplayName={clubDisplayName} />;
-          }
           if (tab === 'live') return <LiveTab match={currentMatch} navigate={navigate} />;
           // Pro paired away coach-e — lineup/ratings patří druhému trenérovi;
           // nezobrazujeme data soupeře, jen vysvětlující placeholder.
@@ -689,11 +642,8 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
             </div>
           )}
 
-          {/* Post-match summary — WhatsApp-friendly. Pro tenisové družstva je dostupné,
-              jakmile je aspoň jeden sub-match rozhodnutý (živé průběžné skóre). */}
-          {(currentMatch.status === 'finished' ||
-            (currentMatch.sport === 'tennis' && currentMatch.matchType === 'team' &&
-             (currentMatch.subMatches ?? []).some(s => s.winner !== null))) && (
+          {/* Post-match summary — WhatsApp-friendly. */}
+          {currentMatch.status === 'finished' && (
             <div style={{
               background: 'var(--success-light)',
               border: '1px solid var(--success-light)',
@@ -739,7 +689,6 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
               klubu. Při 3+ zápasech za den rozšíříme CTA o druhé tlačítko
               „🏁 Ukázat dnešní den" — vede na filtered match-list. */}
           {currentMatch.status === 'finished' &&
-            !(currentMatch.sport === 'tennis') &&
             !currentMatch.pairing?.awayCoachUid && (() => {
               const sameDayMatches = matches.filter(m =>
                 m.date === currentMatch.date &&

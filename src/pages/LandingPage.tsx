@@ -597,7 +597,7 @@ function TournamentCard({
           <span style={{
             fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
             background: 'var(--warning-light)', color: 'var(--warning)', flexShrink: 0,
-          }}>{entry.sport === 'tennis' ? '🎾' : '🏆'}</span>
+          }}>🏆</span>
           <span style={{
             fontSize: 14, fontWeight: 700, color: 'var(--text)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',

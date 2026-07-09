@@ -505,15 +505,9 @@ export function MatchListPage({ navigate }: Props) {
   // přátelák / plácek bez sestavy). Quick flow pokrývá veškerou funkčnost
   // — pozice / kapitán / attendance se dolaďují v match-detail tabu Sestava.
   // Konzistentní s tournament wizardem (full page flow, bez bottom sheetu).
-  // Tenis: rychlý zápas nemá smysl (různá pravidla, sub-matches pro týmy),
-  // pošle rovnou na CreateMatchPage který obsahuje tennis-specific flow.
-  // Audit 2026-05-25: link "Plný zápas se sestavou" z QuickMatchSheet odebrán
-  // pro football/floorball — Quick je teď jediný flow.
+  // Audit 2026-05-25 + 2026-07-09: Quick je jediný create flow
+  // (CreateMatchPage smazána s multi-sport moduly).
   const handleNewMatchCta = () => {
-    if (preferredSport === 'tennis') {
-      navigate({ name: 'match-create' });
-      return;
-    }
     navigate({ name: 'match-quick' });
   };
 

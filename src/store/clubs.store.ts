@@ -250,7 +250,7 @@ export const useClubsStore = create<ClubsState>((set, get) => ({
   ensureActiveClubMatchesSport: async (sport) => {
     const { activeClubId, clubs } = get();
     const active = activeClubId ? clubs.find(c => c.id === activeClubId) : undefined;
-    const activeSport = (active?.sport ?? 'football') as 'football' | 'tennis';
+    const activeSport = active?.sport ?? 'football';
     if (active && activeSport === sport) return; // už sedí
     // Najdi první klub daného sportu (legacy bez sportu = football).
     const candidate = clubs.find(c => (c.sport ?? 'football') === sport);
@@ -304,7 +304,7 @@ export const useClubsStore = create<ClubsState>((set, get) => ({
       }
     }
 
-    // Nastav sport (default 'football', ale pokud vytváříme v tenis módu, je 'tennis').
+    // Nastav sport (default 'football').
     if (input.sport) {
       try {
         await updateSharedClub(res.clubId, { sport: input.sport });

@@ -1639,11 +1639,7 @@ export function TournamentWizardPage({ navigate }: Props) {
 
       const tournament = await createTournament({
         name: draft.name.trim(),
-        sport: preferredSport === 'tennis'
-          ? 'tennis'
-          : preferredSport === 'floorball'
-            ? 'floorball'
-            : 'football',
+        sport: 'football',
         teams,
         pinHash,
         pinSalt,
@@ -1902,14 +1898,8 @@ export function TournamentWizardPage({ navigate }: Props) {
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {(() => {
-                    // Smart category options podle sportu (z club.types AGE_CATEGORIES_BY_SPORT,
-                    // ale zjednodušené na nejčastější pro amaterské turnaje).
-                    const options =
-                      preferredSport === 'tennis'
-                        ? ['Minitenis', 'Babytenis', 'Mladší žactvo', 'Starší žactvo', 'Dorost (tenis)', 'Dospělí (tenis)']
-                        : preferredSport === 'floorball'
-                        ? ['U7', 'U9', 'U11', 'U13', 'U15', 'U17', 'Dorost', 'Muži', 'Ženy']
-                        : ['U7', 'U9', 'U11', 'U13', 'U15', 'U17', 'Dorost', 'Muži', 'Ženy'];
+                    // Nejčastější kategorie pro amatérské turnaje.
+                    const options = ['U7', 'U9', 'U11', 'U13', 'U15', 'U17', 'Dorost', 'Muži', 'Ženy'];
                     const allOptions = ['', ...options];
                     return allOptions.map(opt => {
                       const isActive = draft.category === opt;

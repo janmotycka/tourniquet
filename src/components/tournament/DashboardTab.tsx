@@ -1266,7 +1266,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
                   onChange={setAddTeamName}
                   placeholder={t('dashboard.teamNamePlaceholder')}
                   style={{ marginBottom: 10 }}
-                  sport={(tournament.sport ?? 'football') as 'football' | 'tennis'}
+                  sport={tournament.sport ?? 'football'}
                 />
                 <button
                   onClick={async () => {

@@ -25,7 +25,6 @@ import { useAuth } from '../../context/AuthContext';
 import { useClubsStore } from '../../store/clubs.store';
 import { useToastStore } from '../../store/toast.store';
 import type { Sport } from '../../types/sport.types';
-import { ENABLED_SPORTS } from '../../types/sport.types';
 import { AGE_CATEGORIES_BY_SPORT, type AgeCategory } from '../../types/club.types';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { resizeLogoToBase64 } from '../clubs/resize-logo';
@@ -113,7 +112,7 @@ interface Props {
 // default je advanced, progressive disclosure v formulářích). Florbal stále
 // auto-set 'simple' protože nemá klub. Deep-link #mode=simple zachován pro
 // viral akvizici z MatchPublicView.
-type Step = 'welcome' | 'sport' | 'club' | 'done';
+type Step = 'welcome' | 'club' | 'done';
 
 // ─── Component ─────────────────────────────────────────────────────────────
 export function OnboardingWizard({ navigate, onComplete }: Props) {
@@ -331,31 +330,15 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   };
 
   // ─── Step indicator ───────────────────────────────────────────────────
-  const showProgress = step === 'sport' || step === 'club';
+  const showProgress = step === 'club';
   const stepIndex = step === 'welcome' ? 0
-    : step === 'sport' ? 1
-    : step === 'club' ? 2
-    : 3;
+    : step === 'club' ? 1
+    : 2;
 
   // Pomocníci z userPrefs pro sport picker step
   const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
   const markSportOnboardingShown = useUserPrefsStore(s => s.markSportOnboardingShown);
   const setAppMode = useUserPrefsStore(s => s.setAppMode);
-  const handleSportPick = (sport: 'football' | 'tennis' | 'floorball') => {
-    setPreferredSport(sport);
-    markSportOnboardingShown();
-    // Florbal je Simple-only modul (nemá klub) — auto-set 'simple'.
-    if (sport === 'floorball') {
-      setAppMode('simple');
-      if (user?.uid) markOnboarded(user.uid, sport);
-      setStep('done');
-      return;
-    }
-    // Audit 2026-05-22: mode picker smazán — default 'advanced'.
-    // Progressive disclosure ve formulářích nahrazuje globální volbu.
-    setAppMode('advanced');
-    setStep('club');
-  };
 
   // Hash-based akvizice z viral CTA (MatchPublicView): `#mode=simple`
   // aktivuje Simple mód, označí onboarding jako hotový a vyčistí hash.
@@ -410,25 +393,12 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
       }}>
         <button
           onClick={() => {
-            // Audit 2026-04-25: Pokud je v ENABLED_SPORTS jen jeden sport,
-            // skipujeme sport picker a auto-vybereme. Public launch =
-            // jen fotbal — picker by jen mátl novou cílovku.
-            if (ENABLED_SPORTS.length === 1) {
-              const onlySport = ENABLED_SPORTS[0];
-              setPreferredSport(onlySport);
-              markSportOnboardingShown();
-              if (onlySport === 'floorball') {
-                useUserPrefsStore.getState().setAppMode('simple');
-                if (user?.uid) markOnboarded(user.uid, onlySport);
-                setStep('done');
-              } else {
-                // Audit 2026-05-22: 'mode' step smazán, jdeme rovnou na club
-                useUserPrefsStore.getState().setAppMode('advanced');
-                setStep('club');
-              }
-              return;
-            }
-            setStep('sport');
+            // Jediný sport (fotbal) — auto-výběr, rovnou na klub
+            // (sport picker smazán s multi-sport moduly, audit 2026-07-09).
+            setPreferredSport('football');
+            markSportOnboardingShown();
+            setAppMode('advanced');
+            setStep('club');
           }}
           style={btnPrimary}
         >
@@ -456,13 +426,8 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
             <button
               type="button"
               onClick={() => {
-                // Audit 2026-04-25 (user feedback): zpět navigace v onboardingu.
-                // mode → welcome (přehodnocení „chci to vůbec?")
-                // club → mode (přehodnocení Advanced vs Simple)
-                // sport → welcome (kdyby ENABLED_SPORTS narostl v budoucnu)
-                // Audit 2026-05-22: 'mode' step smazán, club → welcome přímo
+                // Zpět navigace: club → welcome (audit 2026-04-25)
                 if (step === 'club') setStep('welcome');
-                else if (step === 'sport') setStep('welcome');
               }}
               aria-label={t('common.back')}
               style={{
@@ -491,59 +456,6 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
         {/* Step content (scroll inside) */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           {step === 'welcome' && welcomeView}
-
-          {/* ── Step 1: Sport picker ── */}
-          {step === 'sport' && (
-            <div style={{
-              flex: 1, display: 'flex', flexDirection: 'column',
-              padding: `${spacing.xl}px ${spacing.lg}px ${spacing.lg}px`,
-              gap: spacing.lg,
-              animation: 'torq-onb-in .35s ease-out',
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 56, marginBottom: spacing.md }}>🎯</div>
-                <h2 style={{ margin: 0, fontWeight: 900, fontSize: 22, color: 'var(--text)' }}>
-                  {t('sportPicker.title')}
-                </h2>
-                <p style={{
-                  margin: `${spacing.sm}px auto 0`, color: 'var(--text-muted)',
-                  fontSize: fontSize.sm, lineHeight: 1.5, maxWidth: 320,
-                }}>
-                  {t('sportPicker.desc')}
-                </p>
-              </div>
-              {/* 3 sport tiles — fotbal, tenis, florbal (audit 2026-04-25).
-                  Florbal po výběru rovnou skipne mode picker (je Simple-only). */}
-              <div style={{ display: 'flex', gap: 8, marginTop: spacing.md, flexWrap: 'wrap' }}>
-                {(['football', 'tennis', 'floorball'] as const).map(sp => (
-                  <button
-                    key={sp}
-                    onClick={() => handleSportPick(sp)}
-                    style={{
-                      flex: '1 1 30%', minWidth: 90,
-                      padding: '20px 8px', borderRadius: 16,
-                      background: 'var(--surface-var)',
-                      border: `2px solid ${preferredSport === sp ? 'var(--primary)' : 'var(--border)'}`,
-                      cursor: 'pointer',
-                      display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center',
-                      transition: 'all .15s',
-                    }}
-                  >
-                    <span style={{ fontSize: 42 }}>
-                      {sp === 'football' ? '⚽' : sp === 'tennis' ? '🎾' : '🏑'}
-                    </span>
-                    <span style={{ fontWeight: 800, fontSize: 14 }}>{t(`sport.${sp}`)}</span>
-                  </button>
-                ))}
-              </div>
-              <p style={{
-                fontSize: fontSize.xs, color: 'var(--text-muted)',
-                textAlign: 'center', marginTop: spacing.sm, lineHeight: 1.4,
-              }}>
-                {t('sportPicker.hintLater')}
-              </p>
-            </div>
-          )}
 
           {/* ── Step 2: Mode picker (Simple vs Advanced) ── */}
           {/* ── Step 3: Mode picker SMAZÁN (audit 2026-05-22) — progressive
@@ -831,7 +743,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                     // QuickMatchPage (quick match full page) — nezasekne se
                     // na prázdném match-listu, ale vytvoří zápas hned.
                     // Power user (Advanced) jde na full match-create.
-                    goNext({ name: isSimpleMode ? 'match-quick' : 'match-create' });
+                    goNext({ name: 'match-quick' });
                   }}
                 />
                 <NextStepCard

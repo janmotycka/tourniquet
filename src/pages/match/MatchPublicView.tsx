@@ -4,8 +4,6 @@ import { subscribeToPublicMatch } from '../../services/match.firebase';
 import { formatDate } from '../../components/match/match-utils';
 import { useI18n } from '../../i18n';
 import { useLayoutMode } from '../../hooks/useLayoutMode';
-import { TennisTeamPublicView } from '../../modules/tennis/components/TennisTeamPublicView';
-import { TennisSinglesPublicView } from '../../modules/tennis/components/TennisSinglesPublicView';
 import { OfficialLinkButton } from '../../components/ui';
 import { spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 import { track } from '../../services/analytics';
@@ -450,32 +448,6 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
       : 'var(--surface)';
 
   const headerTextColor = (isLive || isFinished) ? '#fff' : 'var(--text)';
-
-  // Tennis matches — completely different layout (no goals/cards/lineup).
-  // Rodiče tenisových hráčů vidí čistě tenisový UI.
-  if (match.sport === 'tennis') {
-    const clubName = match.clubName || t('matchPublic.us');
-    const wrapperStyle: React.CSSProperties = {
-      minHeight: '100dvh', background: 'var(--bg)',
-      display: 'flex', flexDirection: 'column', width: '100%',
-      maxWidth: isDesktop ? 560 : undefined,
-      alignSelf: isDesktop ? 'center' : undefined,
-      boxShadow: isDesktop ? 'var(--shadow-lg)' : undefined,
-    };
-    if (match.matchType === 'team') {
-      return (
-        <div style={wrapperStyle}>
-          <TennisTeamPublicView match={match} clubDisplayName={clubName} />
-        </div>
-      );
-    }
-    // Singles (default)
-    return (
-      <div style={wrapperStyle}>
-        <TennisSinglesPublicView match={match} clubDisplayName={clubName} />
-      </div>
-    );
-  }
 
   return (
     <div style={{

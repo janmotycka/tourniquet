@@ -8,7 +8,7 @@
  * Vrací smart defaults na základě:
  * - **lastMatch** — posledně vytvořený zápas (formát, soutěž, periods, atd.)
  * - **activeClub** — kategorie, název týmu
- * - **preferredSport** — sport-aware fallbacks (4+1 floorball, 5+1 fotbal)
+ * - **preferredSport** — filtr zápasů podle sportu (dnes jen fotbal)
  *
  * Použití:
  *   const defaults = useMatchSmartDefaults();
@@ -83,8 +83,7 @@ export function useMatchSmartDefaults(): MatchSmartDefaults {
     })[0];
   }, [allMatches, preferredSport]);
 
-  const isFloorball = preferredSport === 'floorball';
-  const defaultFormat: MatchFormat = isFloorball ? '4+1' : '5+1';
+  const defaultFormat: MatchFormat = '5+1';
 
   // Format hint label — pro UX banner („14. 5.")
   const lastMatchLabel = useMemo(() => {

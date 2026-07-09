@@ -53,14 +53,8 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
   const { t } = useI18n();
   const { user, logout } = useAuth();
   const isPremium = useSubscriptionStore(s => s.isPremium);
-  const preferredSport = useUserPrefsStore(s => s.preferredSport);
-  const tennisUserType = useUserPrefsStore(s => s.tennisUserType);
   const appMode = useUserPrefsStore(s => s.appMode);
-  const isTennis = preferredSport === 'tennis';
-  const isTennisIndividual = isTennis && tennisUserType === 'individual';
   const isSimpleMode = appMode === 'simple';
-  // Audit 2026-04-25: Florbal je vždy Simple-only — žádný training/klub/stats.
-  const isFloorball = preferredSport === 'floorball';
 
   // Dashboard is standalone at the top (not a module).
   const dashboardItem: NavItem = { icon: '🏠', labelKey: 'sidebar.dashboard', page: 'home', target: { name: 'home' } };
@@ -72,7 +66,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
     // Training — skryt v tenisu, ve florbalu, v simple módu A pre-release
     // (TRAINING_ENABLED=false). Až ověříme core flow s reálnými trenéry,
     // postupně otevřeme — viz feature-flags.ts.
-    ...(!TRAINING_ENABLED || isTennis || isFloorball || isSimpleMode ? [] : [{
+    ...(!TRAINING_ENABLED || isSimpleMode ? [] : [{
       key: 'training',
       labelKey: 'home.training',
       icon: '⚽',
@@ -88,7 +82,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
     // Tournament — v individuálním tenisovém módu skryto (user turnaje neorganizuje).
     // V simple módu jde rovnou na rychlý turnaj z HomePage, sidebar ho nezobrazuje (držíme minimalismus).
     // Florbal: jen Quick Tournament, žádný full tournament-list v sidebaru.
-    ...(isTennisIndividual || isSimpleMode || isFloorball ? [] : [{
+    ...(isSimpleMode ? [] : [{
       key: 'tournament',
       labelKey: 'home.tournament',
       icon: '🏆',
@@ -99,14 +93,14 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
     {
       key: 'match',
       labelKey: 'home.match',
-      icon: isTennis ? '🎾' : isFloorball ? '🏑' : '📋',
-      color: isFloorball ? '#00897B' : 'var(--info)',
-      colorBg: isFloorball ? 'rgba(0,137,123,0.10)' : 'rgba(21, 101, 192, 0.10)',
+      icon: '📋',
+      color: 'var(--info)',
+      colorBg: 'rgba(21, 101, 192, 0.10)',
       // Tenis module: jen match-list (statistiky mají jiné metriky, zatím neimplementováno).
       // Simple mode: jen match-list (žádné agregované statistiky).
       // Florbal: jen match-list (Simple-only modul).
-      items: (isTennis || isSimpleMode || isFloorball) ? [
-        { icon: isTennis ? '🎾' : isFloorball ? '🏑' : '📋', labelKey: 'sidebar.matches', page: 'match-list' as Page['name'], target: { name: 'match-list' } as Page },
+      items: isSimpleMode ? [
+        { icon: '📋', labelKey: 'sidebar.matches', page: 'match-list' as Page['name'], target: { name: 'match-list' } as Page },
       ] : [
         { icon: '📋', labelKey: 'sidebar.matches',    page: 'match-list',  target: { name: 'match-list' } },
         { icon: '📊', labelKey: 'sidebar.matchStats', page: 'match-stats', target: { name: 'match-stats' } },
@@ -114,15 +108,15 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
     },
     // Klub / Moji hráči — v individuálním módu má jinou ikonu + label.
     // V simple módu i ve florbalu se úplně skrývá (nemá klub).
-    ...(isSimpleMode || isFloorball ? [] : [{
+    ...(isSimpleMode ? [] : [{
       key: 'club',
-      labelKey: isTennisIndividual ? 'tennisIndividual.home.myPlayers' : 'home.club',
-      icon: isTennisIndividual ? '👤' : '🏟',
+      labelKey: 'home.club',
+      icon: '🏟',
       color: '#4A148C',
       colorBg: 'rgba(74, 20, 140, 0.10)',
       single: {
-        icon: isTennisIndividual ? '👤' : '🏟',
-        labelKey: isTennisIndividual ? 'tennisIndividual.home.myPlayers' : 'sidebar.clubs',
+        icon: '🏟',
+        labelKey: 'sidebar.clubs',
         page: 'clubs' as Page['name'],
         target: { name: 'clubs' } as Page,
       },
@@ -240,12 +234,12 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
         }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10,
-            background: isTennis ? '#1565C0' : 'var(--primary)',
+            background: 'var(--primary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: '#fff', fontSize: 20,
-          }}>{isTennis ? '🎾' : '⚽'}</div>
+          }}>⚽</div>
           <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: 0.5 }}>
-            TORQ{isTennis && <span style={{ fontSize: 10, opacity: 0.65, marginLeft: 4, fontWeight: 600 }}>· TENNIS</span>}
+            TORQ
           </span>
         </div>
 
@@ -526,7 +520,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
           </div>
 
           {/* Active club switcher (shared workspaces) — skryt v simple módu (žádný klub) */}
-          {!isSimpleMode && !isFloorball && <ClubSwitcher navigate={navigate} />}
+          {!isSimpleMode && <ClubSwitcher navigate={navigate} />}
         </header>
 
         {/* Content area — pages render here */}
@@ -619,9 +613,7 @@ function findModuleForPage(modules: NavModule[], pageName: Page['name']): string
     'generator': 'training',
     'training': 'training',
     'manual-builder': 'training',
-    'tournament-create-choice': 'tournament',
     'tournament-detail': 'tournament',
-    'match-create': 'match',
     'match-detail': 'match',
   };
   return extraMap[pageName] ?? null;
@@ -638,11 +630,9 @@ function buildBreadcrumb(page: Page, t: (k: string) => string): string[] {
     case 'manual-builder':    return [t('home.training'), 'Builder'];
     case 'calendar':          return [t('sidebar.calendar')];
     case 'tournament-list':          return [t('home.tournament')];
-    case 'tournament-create-choice': return [t('home.tournament'), 'Nový'];
     case 'tournament-detail':        return [t('home.tournament'), 'Detail'];
     case 'clubs':             return [t('sidebar.clubs')];
     case 'match-list':        return [t('home.match')];
-    case 'match-create':      return [t('home.match'), 'Nový'];
     case 'match-detail':      return [t('home.match'), 'Detail'];
     case 'match-stats':       return [t('home.match'), t('sidebar.matchStats')];
     case 'settings':          return [t('sidebar.settings')];

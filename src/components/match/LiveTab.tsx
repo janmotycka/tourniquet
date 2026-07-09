@@ -1553,7 +1553,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
                 letterSpacing: 0.5,
               }}
             >
-              {match.sport === 'tennis' ? `🎾 ${t('match.detail.ourSetBtn')}` : `⚽ ${t('match.detail.ourGoalBtn')}`}
+              {`⚽ ${t('match.detail.ourGoalBtn')}`}
             </button>
             <button
               onPointerDown={() => handleGoalPointerDown('theirs')}
@@ -1569,7 +1569,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
                 letterSpacing: 0.5,
               }}
             >
-              {match.sport === 'tennis' ? `🎾 ${t('match.detail.opponentSetBtn')}` : `⚽ ${t('match.detail.opponentGoalBtn')}`}
+              {`⚽ ${t('match.detail.opponentGoalBtn')}`}
             </button>
           </div>
 

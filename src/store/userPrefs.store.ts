@@ -2,7 +2,7 @@
  * UserPrefsStore — per-user klientské preference, které nejsou kritické pro sync.
  *
  * Uchovává:
- * - `preferredSport` — primární sport trenéra ('football' | 'tennis')
+ * - `preferredSport` — primární sport trenéra (dnes jen 'football')
  *   Určuje jaká sada modulů/UI se na Home a v menu ukáže.
  *   Lze kdykoliv přepnout v Settings.
  *
@@ -14,16 +14,6 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { safeStorage } from '../utils/safe-storage';
 import type { Sport } from '../types/sport.types';
-
-/**
- * Typ tenisového uživatele:
- * - 'club' — klubový trenér (oddíl, roster, ČTenis družstva)
- * - 'individual' — individuální trenér nebo rodič (moji hráči napříč kluby)
- *
- * Ptáme se jen pro tennis sport; fotbal má implicitně 'club'.
- * null = dotaz ještě neproběhl (ukážeme picker).
- */
-export type TennisUserType = 'club' | 'individual';
 
 /**
  * Režim aplikace:
@@ -42,8 +32,6 @@ interface UserPrefsState {
   preferredSport: Sport;
   /** Zobrazit onboarding sport picker? Default true, po prvním výběru false. */
   sportOnboardingShown: boolean;
-  /** Tenisový sub-mód. null = ještě nevybráno (ukáže se picker). */
-  tennisUserType: TennisUserType | null;
   /**
    * Režim aplikace (jednoduchý vs. pokročilý).
    * Audit 2026-05-22: smazán globální toggle ze Settings — místo toho
@@ -55,7 +43,6 @@ interface UserPrefsState {
 
   setPreferredSport: (sport: Sport) => void;
   markSportOnboardingShown: () => void;
-  setTennisUserType: (type: TennisUserType) => void;
   setAppMode: (mode: AppMode) => void;
   /** Reset pro testy / pokud user se chce znovu dostat k sport pickeru. */
   reset: () => void;
@@ -66,16 +53,14 @@ export const useUserPrefsStore = create<UserPrefsState>()(
     (set) => ({
       preferredSport: 'football',
       sportOnboardingShown: false,
-      tennisUserType: null,
       // Audit 2026-05-22: default 'advanced' pro nové users — toggle smazán
       // ze Settings, progressive disclosure uvnitř formulářů.
       appMode: 'advanced',
 
       setPreferredSport: (sport) => set({ preferredSport: sport, sportOnboardingShown: true }),
       markSportOnboardingShown: () => set({ sportOnboardingShown: true }),
-      setTennisUserType: (type) => set({ tennisUserType: type }),
       setAppMode: (mode) => set({ appMode: mode }),
-      reset: () => set({ preferredSport: 'football', sportOnboardingShown: false, tennisUserType: null, appMode: 'advanced' }),
+      reset: () => set({ preferredSport: 'football', sportOnboardingShown: false, appMode: 'advanced' }),
     }),
     {
       name: 'torq-user-prefs',

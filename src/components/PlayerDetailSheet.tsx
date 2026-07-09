@@ -185,7 +185,7 @@ export function PlayerDetailSheet({ player, club, stats, onClose, onEdit, onMove
                   display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10,
                   paddingTop: 10, borderTop: '1px solid var(--border)',
                 }}>
-                  {AGE_CATEGORIES_BY_SPORT[(club.sport ?? 'football') as 'football' | 'tennis'].map(cat => {
+                  {AGE_CATEGORIES_BY_SPORT[club.sport ?? 'football'].map(cat => {
                     const isCurrent = cat === player.ageCategory;
                     return (
                       <button

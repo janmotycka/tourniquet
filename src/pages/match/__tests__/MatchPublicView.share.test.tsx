@@ -47,14 +47,6 @@ vi.mock('../../../hooks/useLayoutMode', () => ({
   useLayoutMode: () => ({ isDesktop: false }),
 }));
 
-// Tenisové public views mají hluboký import chain — pro tento test irelevantní
-vi.mock('../../../modules/tennis/components/TennisTeamPublicView', () => ({
-  TennisTeamPublicView: () => null,
-}));
-vi.mock('../../../modules/tennis/components/TennisSinglesPublicView', () => ({
-  TennisSinglesPublicView: () => null,
-}));
-
 import { MatchPublicView } from '../MatchPublicView';
 
 describe('MatchPublicView share', () => {
