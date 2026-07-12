@@ -11,7 +11,6 @@ import { useLayoutMode } from '../hooks/useLayoutMode';
 import { DesktopPage } from '../components/desktop/DesktopPage';
 import { ClubSwitcher } from '../components/clubs/ClubSwitcher';
 import { useClubsStore } from '../store/clubs.store';
-import { useSimpleSquadsStore } from '../store/simpleSquads.store';
 import { OnboardingWizard, isOnboarded } from '../components/onboarding/OnboardingWizard';
 import { shouldHideStripeUpgrade } from '../utils/platform';
 import { PREMIUM_ENABLED } from '../types/feature-flags';
@@ -24,10 +23,6 @@ export function HomePage({ navigate }: Props) {
   const isPremium = useSubscriptionStore(s => s.isPremium);
   const { t } = useI18n();
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
-  const appMode = useUserPrefsStore(s => s.appMode);
-  const setAppMode = useUserPrefsStore(s => s.setAppMode);
-  // Simple squads — pro „My party" sekci v Simple módu (P1.8)
-  const simpleSquads = useSimpleSquadsStore(s => s.squads);
   const ensureActiveClubMatchesSport = useClubsStore(s => s.ensureActiveClubMatchesSport);
   // Aktivní klub vždy v rámci zvoleného sportu — fotbal a tenis se nemíchají.
   // Pokud aktivní ID ukazuje na klub jiného sportu, fallback na první klub
@@ -56,21 +51,6 @@ export function HomePage({ navigate }: Props) {
     }
   }, [user?.uid, clubCount, preferredSport]);
 
-  // ─── App mode auto-migrace pro existing users ────────────────────────────
-  // Existing user (má kluby / zápasy) dostane automaticky 'advanced' mode.
-  // Noví uživatelé projdou onboarding mode pickerem.
-  const matchesCount = useMatchesStore(s => s.matches.length);
-  useEffect(() => {
-    if (appMode !== null) return; // už nastavené — nezasahovat
-    if (!user?.uid) return;
-    // Legacy user: má existující data → Advanced
-    if (clubCount > 0 || matchesCount > 0) {
-      setAppMode('advanced');
-    }
-    // Noví s žádnými daty nechají null a projde onboarding
-  }, [appMode, user?.uid, clubCount, matchesCount, setAppMode]);
-
-  const isSimpleMode = appMode === 'simple';
 
   // Když aktivní klub nepatří aktuálnímu sportu (legacy state), přepni.
   // Např. user měl fotbalový klub aktivní a v Settings přepnul na tenis.
@@ -123,7 +103,7 @@ export function HomePage({ navigate }: Props) {
       <>
       {wizard}
       <DesktopPage
-        title={t(isSimpleMode ? 'home.greetingSimple' : 'home.greeting')}
+        title={t('home.greeting')}
         subtitle={user?.displayName ?? user?.email ?? t('home.loggedIn')}
       >
         {/* ─── Live now — prominent only when something is live ──────────── */}
@@ -307,7 +287,7 @@ export function HomePage({ navigate }: Props) {
                 (audit 2026-04-29 P0.5: Simple mode má všechno zdarma, banner
                 by byl rozporný se Settings copy "vše zdarma").
                 Audit 2026-06-10: za PREMIUM_ENABLED flagem (beta = bez upsellu). */}
-            {PREMIUM_ENABLED && !isPremium() && !shouldHideStripeUpgrade() && !isSimpleMode && (
+            {PREMIUM_ENABLED && !isPremium() && !shouldHideStripeUpgrade() && (
               <button
                 onClick={() => navigate({ name: 'settings' })}
                 style={{
@@ -356,7 +336,7 @@ export function HomePage({ navigate }: Props) {
             : '⚽'}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{t(isSimpleMode ? 'home.greetingSimple' : 'home.greeting')}</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', lineHeight: 1.2 }}>{t('home.greeting')}</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {user?.displayName ?? user?.email ?? t('home.loggedIn')}
           </p>
@@ -378,7 +358,7 @@ export function HomePage({ navigate }: Props) {
 
       {/* Active club switcher — jen pro klubové uživatele s víc než 1 klubem.
           V individuálním tenisovém módu klubový switcher nedává smysl. */}
-      {!isSimpleMode && clubCount > 1 && <ClubSwitcher navigate={navigate} />}
+      {clubCount > 1 && <ClubSwitcher navigate={navigate} />}
 
 
       {/* ─── LIVE NOW — currently running matches & tournaments ──────────── */}
@@ -533,7 +513,7 @@ export function HomePage({ navigate }: Props) {
       {/* Upgrade CTA banner for free users — skrytý na iOS (Apple 3.1.1 rule)
           + v Simple mode (audit 2026-04-29 P0.5: Simple = vše zdarma).
           Audit 2026-06-10: za PREMIUM_ENABLED flagem (beta = bez upsellu). */}
-      {PREMIUM_ENABLED && !isPremium() && !shouldHideStripeUpgrade() && !isSimpleMode && (
+      {PREMIUM_ENABLED && !isPremium() && !shouldHideStripeUpgrade() && (
         <button
           onClick={() => navigate({ name: 'settings' })}
           style={{
@@ -562,7 +542,7 @@ export function HomePage({ navigate }: Props) {
         {/* ⚽ Training — jen fotbal + advanced mode. Florbal nemá knihovnu cviků.
             Audit 2026-04-29: dočasně skryté (TRAINING_ENABLED=false) pro
             pre-release fokus na zápasy + turnaje + klub. */}
-        {TRAINING_ENABLED && !isSimpleMode && (
+        {TRAINING_ENABLED && (
           <button
             onClick={() => navigate({ name: 'training-home' })}
             style={{
@@ -588,8 +568,8 @@ export function HomePage({ navigate }: Props) {
           </button>
         )}
 
-        {/* 🏆 Tournament — v simple módu skryto (má vlastní quick kartu). */}
-        {!isSimpleMode && (
+        {/* 🏆 Tournament */}
+        {(
         <button
           onClick={() => navigate({ name: 'tournament-list' })}
           style={{
@@ -617,193 +597,8 @@ export function HomePage({ navigate }: Props) {
         </button>
         )}
 
-        {/* Moje party — zobrazí se nad Match card v Simple módu, pokud user
-            má uloženou alespoň jednu. Audit 2026-04-24 (Honza): „po prvním
-            zápase je parta uložená, ale při druhém ji musím hledat v sheetu."
-            Chip-row nahoře = 1 tap → rovnou QuickMatchSheet s pre-pickutou partou. */}
-        {isSimpleMode && simpleSquads.length > 0 && (
-          <div style={{
-            background: 'var(--surface)',
-            borderRadius: 16, padding: '12px 14px',
-            border: '1px solid var(--border)',
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              marginBottom: 8,
-            }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
-                👥 {t('home.mySquads')}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                {t('home.mySquadsHint')}
-              </div>
-            </div>
-            <div style={{
-              display: 'flex', gap: 6, overflowX: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              paddingBottom: 2,
-            }}>
-              {simpleSquads
-                .slice()
-                .sort((a, b) => (b.usageCount ?? 0) - (a.usageCount ?? 0))
-                .slice(0, 6)
-                .map(squad => (
-                  <button
-                    key={squad.id}
-                    onClick={() => navigate({ name: 'match-quick', prefillSquadId: squad.id })}
-                    style={{
-                      flexShrink: 0,
-                      padding: '8px 12px', borderRadius: 10,
-                      background: 'var(--primary-light)',
-                      color: 'var(--primary)',
-                      border: '1px solid var(--primary)',
-                      fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <span>👥</span>
-                    <span>{squad.name}</span>
-                    <span style={{ opacity: 0.65, fontWeight: 500 }}>
-                      ({squad.players.length})
-                    </span>
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
 
-        {/* Nedávná aktivita — STRATEG.C: user (strategic prompt) říká
-            „historie zápasů a turnajů je hodnota". V Simple módu ukážeme
-            max 3 poslední finished zápasy + 1 poslední turnaj.
-            Tento blok nahrazuje prázdný prostor mezi party a match cardem
-            pokud user už něco odehrál — vrací mu to pocit „je tu má data". */}
-        {isSimpleMode && (matches.some(m => m.status === 'finished') || tournaments.length > 0) && (
-          <div style={{
-            background: 'var(--surface)',
-            borderRadius: 16, padding: '12px 14px',
-            border: '1px solid var(--border)',
-          }}>
-            <div style={{
-              fontWeight: 700, fontSize: 13, color: 'var(--text)',
-              marginBottom: 8,
-            }}>
-              📚 {t('home.recentActivity')}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {/* Poslední turnaj (pokud nějaký) */}
-              {tournaments.slice(0, 1).map(tour => (
-                <button
-                  key={`t-${tour.id}`}
-                  onClick={() => navigate({ name: 'tournament-detail', tournamentId: tour.id })}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    padding: '8px 10px', borderRadius: 10,
-                    background: 'rgba(230, 81, 0, 0.08)',
-                    border: '1px solid rgba(230, 81, 0, 0.25)',
-                    cursor: 'pointer', textAlign: 'left',
-                  }}
-                >
-                  <span style={{ fontSize: 18, flexShrink: 0 }}>🏆</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontWeight: 700, fontSize: 13, color: 'var(--text)',
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}>
-                      {tour.name}
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                      {tour.teams.length} {t('home.recentTeams')} · {t(tour.status === 'finished' ? 'home.recentFinished' : 'home.recentOngoing')}
-                    </div>
-                  </div>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
-                </button>
-              ))}
-              {/* Poslední 3 dohrané zápasy */}
-              {matches
-                .filter(m => m.status === 'finished')
-                .slice(0, 3)
-                .map(m => {
-                  const home = m.isHome ? (m.clubName || t('matchPublic.us')) : m.opponent;
-                  const away = m.isHome ? m.opponent : (m.clubName || t('matchPublic.us'));
-                  return (
-                    <button
-                      key={`m-${m.id}`}
-                      onClick={() => navigate({ name: 'match-detail', matchId: m.id })}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '8px 10px', borderRadius: 10,
-                        background: 'var(--surface-var)',
-                        border: '1px solid var(--border)',
-                        cursor: 'pointer', textAlign: 'left',
-                      }}
-                    >
-                      <span style={{ fontSize: 16, flexShrink: 0 }}>⚽</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          fontWeight: 700, fontSize: 13, color: 'var(--text)',
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        }}>
-                          {home} <b style={{ color: 'var(--primary)' }}>{m.homeScore}:{m.awayScore}</b> {away}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                          {m.date}
-                        </div>
-                      </div>
-                      <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
-                    </button>
-                  );
-                })}
-            </div>
-            {(matches.filter(m => m.status === 'finished').length > 3 || tournaments.length > 1) && (
-              <button
-                onClick={() => navigate({ name: 'match-list' })}
-                style={{
-                  width: '100%', marginTop: 8,
-                  padding: '6px', borderRadius: 8,
-                  background: 'transparent', color: 'var(--primary)',
-                  border: 'none', cursor: 'pointer',
-                  fontSize: 11, fontWeight: 600,
-                }}
-              >
-                {t('home.recentMore')} →
-              </button>
-            )}
-          </div>
-        )}
 
-        {/* 🏆 Jednoduchý turnaj — Audit 2026-04-25: Public launch focus.
-            User explicit: „pořádáme turnaje, tady je největší šance rozšířit
-            mezi další trenéry". Turnaj má proto VRCHNÍ pozici v Simple módu
-            — největší organická akviziční smyčka (organizátor pozve další
-            trenéry / rodiče → ti vidí app → se sami stanou trenéry).
-            Stejná velikost jako match card pro vizuální paritu. */}
-        {isSimpleMode && (
-          <button
-            onClick={() => navigate({ name: 'tournament-wizard' })}
-            style={{
-              background: 'var(--warning-gradient)',
-              borderRadius: 22, padding: '24px',
-              display: 'flex', flexDirection: 'column', gap: 12, textAlign: 'left',
-              boxShadow: '0 4px 16px rgba(230,81,0,.25)', width: '100%',
-              color: '#fff',
-            }}
-          >
-            <div style={{ fontSize: 44 }}>🏆</div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.quickTournament')}</div>
-              <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-                {t('home.quickTournamentDesc')}
-              </div>
-            </div>
-            <div style={{
-              background: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: '10px 16px',
-              fontWeight: 700, fontSize: 15, textAlign: 'center',
-            }}>
-              + {t('home.quickTournamentCta')}
-            </div>
-          </button>
-        )}
 
         {/* ⚽ Zápas — sekundární CTA pod tournament v Simple módu. V Advanced
             módu je to primární cesta (sezónní zápasy). */}
@@ -822,7 +617,7 @@ export function HomePage({ navigate }: Props) {
           <div>
             <div style={{ fontWeight: 800, fontSize: 22, lineHeight: 1.2 }}>{t('home.match')}</div>
             <div style={{ fontSize: 14, opacity: 0.85, marginTop: 4, lineHeight: 1.5 }}>
-              {isSimpleMode ? t('home.matchDescSimple') : t('home.matchDesc')}
+              {t('home.matchDesc')}
             </div>
           </div>
           <div style={{
@@ -833,8 +628,8 @@ export function HomePage({ navigate }: Props) {
           </div>
         </button>
 
-        {/* 🏟 Klub — jen v advanced módu. */}
-        {!isSimpleMode && (
+        {/* 🏟 Klub */}
+        {(
         <button
           onClick={() => navigate({ name: 'clubs' })}
           style={{
@@ -863,30 +658,6 @@ export function HomePage({ navigate }: Props) {
         </button>
         )}
 
-        {/* Upgrade teaser — jen v simple módu, zve k Advanced funkcím */}
-        {isSimpleMode && (
-          <button
-            onClick={() => navigate({ name: 'settings' })}
-            style={{
-              background: 'var(--surface)',
-              border: '1.5px dashed var(--border)',
-              borderRadius: 16, padding: '16px 18px',
-              display: 'flex', alignItems: 'center', gap: 12,
-              textAlign: 'left', cursor: 'pointer',
-            }}
-          >
-            <div style={{ fontSize: 28 }}>⚙️</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
-                {t('home.upgradeTeaserTitle')}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>
-                {t('home.upgradeTeaserDesc')}
-              </div>
-            </div>
-            <div style={{ fontSize: 18, color: 'var(--text-muted)' }}>›</div>
-          </button>
-        )}
 
       </div>
 

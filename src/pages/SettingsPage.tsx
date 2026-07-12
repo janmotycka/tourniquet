@@ -36,7 +36,6 @@ export function SettingsPage({ navigate }: Props) {
   const trainings = useTrainingsStore(s => s.savedTrainings);
   const contacts = useContactsStore(s => s.contacts);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
-  const appMode = useUserPrefsStore(s => s.appMode);
   const simpleSquads = useSimpleSquadsStore(s => s.squads);
   const deleteSquad = useSimpleSquadsStore(s => s.deleteSquad);
   const updateSquad = useSimpleSquadsStore(s => s.updateSquad);
@@ -146,13 +145,12 @@ export function SettingsPage({ navigate }: Props) {
           </div>
         </div>
 
-        {/* 1.4 Režim aplikace — smazáno (audit 2026-05-22). Místo globálního
-            toggle teď user dostane všechny funkce přes progressive disclosure
-            uvnitř formuláře (Quick match collapsibles). Stávající users
-            zůstávají na svém appMode (kompatibilita), nový default = advanced. */}
+        {/* Režim aplikace (simple/advanced) kompletně smazán — audit 2026-05-22
+            odstranil toggle, audit 2026-07-10 celý appMode fork. Progressive
+            disclosure ve formulářích ho nahrazuje. */}
 
-        {/* 1.45 Uložené party (Simple mode) */}
-        {appMode === 'simple' && simpleSquads.length > 0 && (
+        {/* 1.45 Uložené party (rychlé soupisky pro Quick match) */}
+        {simpleSquads.length > 0 && (
           <div style={cardStyle}>
             <h2 style={{ fontWeight: 700, fontSize: 16 }}>👥 {t('settings.squadsTitle')}</h2>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
@@ -262,11 +260,7 @@ export function SettingsPage({ navigate }: Props) {
                     o tenisu (skrytém). Nyní se v Simple módu ukáže jen
                     krátká friendly zpráva bez usage bars. Advanced ponechává
                     původní behavior (limity, bars, premium offer). */}
-                {appMode === 'simple' ? (
-                  <div style={{ fontSize: 13, color: '#BF360C', lineHeight: 1.5 }}>
-                    {t('settings.freePlanDescSimple')}
-                  </div>
-                ) : (
+                {(
                   <>
                     <div style={{ fontSize: 13, color: '#BF360C', lineHeight: 1.5 }}>
                       {t('settings.freePlanDesc')}
@@ -386,19 +380,8 @@ export function SettingsPage({ navigate }: Props) {
                 </div>
               ) :
               /* Subscribe gating (PREMIUM_ENABLED=true):
-                  1. iOS App Store rule 3.1.1: skryté Stripe upgrade tlačítko
-                  2. Simple mode: Premium nemá smysl (user má vše unlimited)
-                     → místo tlačítka ukážeme info „přepni na Pokročilý" */
-              appMode === 'simple' ? (
-                <div style={{
-                  background: 'var(--surface-var)', color: 'var(--text-muted)',
-                  fontSize: 13, lineHeight: 1.5,
-                  padding: '14px', borderRadius: 12, textAlign: 'center',
-                  border: '1px solid var(--border)',
-                }}>
-                  {t('settings.simpleNoPremiumHint')}
-                </div>
-              ) : shouldHideStripeUpgrade() ? (
+                  iOS App Store rule 3.1.1: skryté Stripe upgrade tlačítko */
+              shouldHideStripeUpgrade() ? (
                 <div style={{
                   background: 'var(--surface-var)', color: 'var(--text-muted)',
                   fontSize: 13, lineHeight: 1.5,

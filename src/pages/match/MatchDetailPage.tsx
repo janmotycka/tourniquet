@@ -18,7 +18,6 @@ import { getMatchPublicUrl } from '../../utils/qr-code';
 import { useMatchLock } from '../../hooks/useMatchLock';
 import { useMatchPerspective } from '../../hooks/useMatchPerspective';
 import { subscribeToSingleMatch } from '../../services/match.firebase';
-import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useAuth } from '../../context/AuthContext';
 import { GdprGuideModal } from '../../components/match/GdprGuideModal';
 
@@ -194,13 +193,12 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
   // Multi-trainer soft lock — oba hooks jsou null-safe (zvládají undefined match).
   // V Simple módu (laik/učitel TV) lock úplně vypínáme — nepotřebuje řešit
   // „Spravuji" / „Převzít řízení" bannery, matou ho.
-  const isSimpleMode = useUserPrefsStore(s => s.appMode === 'simple');
   const lock = useMatchLock(currentMatch);
   const perspective = useMatchPerspective(currentMatch);
   const isClubMatch = !!(currentMatch?.clubId && !currentMatch.clubId.startsWith('individual-'));
   const isPairedAwayCoach = perspective.role === 'away';
   const isPairedMatch = !!(currentMatch?.pairing?.awayCoachUid);
-  const needsLock = (isClubMatch || isPairedMatch) && !isSimpleMode;
+  const needsLock = isClubMatch || isPairedMatch;
 
   // Audit 2026-05-25 J-6: Spectator mode pro klubový workspace.
   // Vlastník zápasu = trenér který ho vytvořil. Ostatní klubu vidí read-only
@@ -212,7 +210,7 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
   const isSpectator = !!(
     isClubMatch && matchCreatorUid && myUid &&
     matchCreatorUid !== myUid &&
-    !isPairedAwayCoach && !isSimpleMode
+    !isPairedAwayCoach
   );
   const isOwner = !isSpectator;
 
@@ -392,9 +390,7 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
         {(() => {
           // V Simple módu zobrazujeme jen 'live' tab — sestavu a hodnocení laik
           // nepotřebuje, matou ho (vyžadují klubovou vazbu, ratings atd.).
-          const tabs = isSimpleMode
-            ? ([['live', isLive ? `● ${t('match.detail.tabLive')}` : t('match.detail.tabMatch')]] as const)
-            : ([['live', isLive ? `● ${t('match.detail.tabLive')}` : t('match.detail.tabMatch')], ['lineup', t('match.detail.tabLineup')], ['ratings', t('match.detail.tabRatings')]] as const);
+          const tabs = ([['live', isLive ? `● ${t('match.detail.tabLive')}` : t('match.detail.tabMatch')], ['lineup', t('match.detail.tabLineup')], ['ratings', t('match.detail.tabRatings')]] as const);
           return (
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           {tabs.map(([key, label]) => (
@@ -715,7 +711,7 @@ export function MatchDetailPage({ matchId, navigate, initialTab }: Props) {
                       <div style={{ fontSize: 11.5, opacity: 0.85, marginTop: 2 }}>
                         {isTournamentDay
                           ? t('match.detail.tournamentDayDesc')
-                          : (isSimpleMode ? t('match.detail.nextMatchCtaDescSimple') : t('match.detail.nextMatchCtaDesc'))}
+                          : t('match.detail.nextMatchCtaDesc')}
                       </div>
                     </div>
                   </div>

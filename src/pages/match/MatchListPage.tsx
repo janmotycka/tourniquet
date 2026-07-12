@@ -496,8 +496,6 @@ export function MatchListPage({ navigate }: Props) {
   const allMatches = useMatchesStore(s => s.matches);
   const deleteMatch = useMatchesStore(s => s.deleteMatch);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
-  const appMode = useUserPrefsStore(s => s.appMode);
-  const isSimpleMode = appMode === 'simple';
   const activeClubId = useClubsStore(s => s.activeClubId);
 
   // ── Nový zápas ─────────────────────────────────────────────────────────────
@@ -600,16 +598,13 @@ export function MatchListPage({ navigate }: Props) {
         title={t('match.list.title')}
         subtitle={t('match.list.matchesLabel')}
         secondaryActions={
-          // Statistiky v simple módu neexistují (bez klubu, bez lineupu).
-          !isSimpleMode ? (
-            <button
-              onClick={() => navigate({ name: 'match-stats' })}
-              style={desktopSecondaryButtonStyle}
-              title={t('matchStats.title')}
-            >
-              <span>📊</span> {t('matchStats.title')}
-            </button>
-          ) : null
+          <button
+            onClick={() => navigate({ name: 'match-stats' })}
+            style={desktopSecondaryButtonStyle}
+            title={t('matchStats.title')}
+          >
+            <span>📊</span> {t('matchStats.title')}
+          </button>
         }
         primaryAction={
           <button
@@ -667,7 +662,7 @@ export function MatchListPage({ navigate }: Props) {
           <DesktopEmptyState
             icon="⚽"
             title={t('match.list.noMatchesYet')}
-            description={t(isSimpleMode ? 'match.list.noMatchesYetDescSimple' : 'match.list.noMatchesYetDesc')}
+            description={t('match.list.noMatchesYetDesc')}
             action={
               <button
                 onClick={handleNewMatchCta}
@@ -718,8 +713,7 @@ export function MatchListPage({ navigate }: Props) {
           onBack={() => navigate({ name: 'home' })}
           action={
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {/* Statistiky: v simple módu se nezobrazují (žádný klub / lineup) */}
-              {!isSimpleMode && (
+              {(
                 <button
                   onClick={() => navigate({ name: 'match-stats' })}
                   style={{
@@ -815,7 +809,7 @@ export function MatchListPage({ navigate }: Props) {
             <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>{t('match.list.noMatchesYet')}</div>
             <div style={{ fontSize: 14, textAlign: 'center', lineHeight: 1.5, color: 'var(--text-muted)', maxWidth: 280 }}>
               {/* Audit 2026-04-29 (A2): Simple variant pro mobile (desktop už ho měl). */}
-              {t(isSimpleMode ? 'match.list.noMatchesYetDescSimple' : 'match.list.noMatchesYetDesc')}
+              {t('match.list.noMatchesYetDesc')}
             </div>
             <button
               onClick={handleNewMatchCta}

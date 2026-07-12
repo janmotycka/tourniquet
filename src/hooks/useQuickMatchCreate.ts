@@ -38,7 +38,6 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
   const clubs = useClubsStore(s => s.clubs);
   const activeClubId = useClubsStore(s => s.activeClubId);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
-  const appMode = useUserPrefsStore(s => s.appMode);
   const getLimits = useSubscriptionStore(s => s.getLimits);
   const showToast = useToastStore(s => s.show);
   const { user } = useAuth();
@@ -61,8 +60,7 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
 
     // Audit 2026-05-23 J-3: limit check v hook (ne jen v UI button).
     // Dříve šel obejít přes deep-link nebo "Stejná sestava" CTA.
-    // Simple mode má unlimited (komentář v subscription.types.ts).
-    if (appMode !== 'simple') {
+    {
       const limits = getLimits();
       const matchesForSport = matches.filter(m => (m.sport ?? 'football') === preferredSport);
       if (matchesForSport.length >= limits.maxMatches) {
@@ -151,5 +149,5 @@ export function useQuickMatchCreate(navigate: (p: Page) => void) {
       // user může doplnit sestavu a startovat ručně přes „Spustit zápas".
       navigate({ name: 'match-detail', matchId: match.id, initialTab: 'lineup' });
     }
-  }, [clubs, activeClubId, preferredSport, appMode, matches, getLimits, showToast, createMatch, startMatch, navigate, t, user]);
+  }, [clubs, activeClubId, preferredSport, matches, getLimits, showToast, createMatch, startMatch, navigate, t, user]);
 }

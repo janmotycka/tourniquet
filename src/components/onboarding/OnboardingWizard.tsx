@@ -121,8 +121,6 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   const createClub = useClubsStore(s => s.createClub);
   const showToast = useToastStore(s => s.show);
   const preferredSport = useUserPrefsStore(s => s.preferredSport);
-  const appMode = useUserPrefsStore(s => s.appMode);
-  const isSimpleMode = appMode === 'simple';
 
   // Deep-link akvizice (viral loop z MatchPublicView): když user přijde s
   // hash `#mode=simple` (nebo `?ref=public-match#mode=simple`), rovnou
@@ -133,7 +131,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash || '';
       if (hash.includes('mode=simple')) {
-        return 'done'; // auto-skipujeme — useEffect níže nastaví appMode
+        return 'done'; // auto-skip — viral deep-link jde rovnou na hotovo
       }
     }
     return 'welcome';
@@ -338,7 +336,6 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
   // Pomocníci z userPrefs pro sport picker step
   const setPreferredSport = useUserPrefsStore(s => s.setPreferredSport);
   const markSportOnboardingShown = useUserPrefsStore(s => s.markSportOnboardingShown);
-  const setAppMode = useUserPrefsStore(s => s.setAppMode);
 
   // Hash-based akvizice z viral CTA (MatchPublicView): `#mode=simple`
   // aktivuje Simple mód, označí onboarding jako hotový a vyčistí hash.
@@ -347,7 +344,6 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
     if (typeof window === 'undefined') return;
     const hash = window.location.hash || '';
     if (!hash.includes('mode=simple')) return;
-    setAppMode('simple');
     if (user?.uid) markOnboarded(user.uid, preferredSport);
     try {
       // Vyčistit hash, ať se to neopakuje při navigaci
@@ -397,7 +393,6 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
             // (sport picker smazán s multi-sport moduly, audit 2026-07-09).
             setPreferredSport('football');
             markSportOnboardingShown();
-            setAppMode('advanced');
             setStep('club');
           }}
           style={btnPrimary}
@@ -705,7 +700,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                   margin: '6px auto 0', color: 'var(--text-muted)',
                   fontSize: fontSize.base, lineHeight: 1.5, maxWidth: 360,
                 }}>
-                  {t(isSimpleMode ? 'onboarding.done.subtitleSimple' : 'onboarding.done.subtitle')}
+                  {t('onboarding.done.subtitle')}
                 </p>
               </div>
 
@@ -717,27 +712,17 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                 {t('onboarding.done.whatsNext')}
               </div>
 
-              {/* Next-step karty — v Simple módu jen dvě relevantní (zápas
-                  a rychlý turnaj); Importovat hráče = Advanced jen. Audit
-                  2026-04-24 (Honza): laik neví co je „klub" ani „importovat
-                  hráče", zmatek → skryt. */}
-              {/* Next-step karty — v Simple módu jen dvě relevantní (zápas
-                  a rychlý turnaj); Importovat hráče = Advanced jen. Audit
-                  2026-04-24 (Honza): laik neví co je „klub" ani „importovat
-                  hráče", zmatek → skryt. */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: spacing.sm + 2 }}>
-                {!isSimpleMode && (
-                  <NextStepCard
-                    emoji="📥"
-                    label={t('onboarding.done.importPlayers')}
-                    desc={t('onboarding.done.importPlayersDesc')}
-                    onClick={() => goNext({ name: 'clubs' })}
-                  />
-                )}
+                <NextStepCard
+                  emoji="📥"
+                  label={t('onboarding.done.importPlayers')}
+                  desc={t('onboarding.done.importPlayersDesc')}
+                  onClick={() => goNext({ name: 'clubs' })}
+                />
                 <NextStepCard
                   emoji="⚽"
                   label={t('onboarding.done.createMatch')}
-                  desc={t(isSimpleMode ? 'onboarding.done.createMatchDescSimple' : 'onboarding.done.createMatchDesc')}
+                  desc={t('onboarding.done.createMatchDesc')}
                   onClick={() => {
                     // Audit 2026-04-29 (P0.4): Simple mode jde rovnou na
                     // QuickMatchPage (quick match full page) — nezasekne se

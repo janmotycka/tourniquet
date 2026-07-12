@@ -11,7 +11,6 @@ import type {
 } from '../types/subscription.types';
 import { FREE_LIMITS, PREMIUM_LIMITS } from '../types/subscription.types';
 import type { PriceCurrency } from '../types/subscription.types';
-import { useUserPrefsStore } from './userPrefs.store';
 import { logger } from '../utils/logger';
 
 // ─── State interface ──────────────────────────────────────────────────────────
@@ -141,8 +140,6 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         // Pro Advanced je free plán 1 turnaj / 5 tréninků / 10 zápasů (viz
         // FREE_LIMITS v subscription.types.ts).
         if (get().isPremium()) return PREMIUM_LIMITS;
-        const appMode = useUserPrefsStore.getState().appMode;
-        if (appMode === 'simple') return PREMIUM_LIMITS;
         return FREE_LIMITS;
       },
 

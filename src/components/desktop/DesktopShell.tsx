@@ -3,7 +3,6 @@ import type { Page } from '../../App';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../i18n';
 import { useSubscriptionStore } from '../../store/subscription.store';
-import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { ClubSwitcher } from '../clubs/ClubSwitcher';
 import { ADMIN_UID } from '../../constants/admin';
 import { TRAINING_ENABLED, PREMIUM_ENABLED } from '../../types/feature-flags';
@@ -53,8 +52,6 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
   const { t } = useI18n();
   const { user, logout } = useAuth();
   const isPremium = useSubscriptionStore(s => s.isPremium);
-  const appMode = useUserPrefsStore(s => s.appMode);
-  const isSimpleMode = appMode === 'simple';
 
   // Dashboard is standalone at the top (not a module).
   const dashboardItem: NavItem = { icon: '🏠', labelKey: 'sidebar.dashboard', page: 'home', target: { name: 'home' } };
@@ -66,7 +63,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
     // Training — skryt v tenisu, ve florbalu, v simple módu A pre-release
     // (TRAINING_ENABLED=false). Až ověříme core flow s reálnými trenéry,
     // postupně otevřeme — viz feature-flags.ts.
-    ...(!TRAINING_ENABLED || isSimpleMode ? [] : [{
+    ...(!TRAINING_ENABLED ? [] : [{
       key: 'training',
       labelKey: 'home.training',
       icon: '⚽',
@@ -82,7 +79,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
     // Tournament — v individuálním tenisovém módu skryto (user turnaje neorganizuje).
     // V simple módu jde rovnou na rychlý turnaj z HomePage, sidebar ho nezobrazuje (držíme minimalismus).
     // Florbal: jen Quick Tournament, žádný full tournament-list v sidebaru.
-    ...(isSimpleMode ? [] : [{
+    ...([{
       key: 'tournament',
       labelKey: 'home.tournament',
       icon: '🏆',
@@ -99,16 +96,14 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
       // Tenis module: jen match-list (statistiky mají jiné metriky, zatím neimplementováno).
       // Simple mode: jen match-list (žádné agregované statistiky).
       // Florbal: jen match-list (Simple-only modul).
-      items: isSimpleMode ? [
-        { icon: '📋', labelKey: 'sidebar.matches', page: 'match-list' as Page['name'], target: { name: 'match-list' } as Page },
-      ] : [
+      items: [
         { icon: '📋', labelKey: 'sidebar.matches',    page: 'match-list',  target: { name: 'match-list' } },
         { icon: '📊', labelKey: 'sidebar.matchStats', page: 'match-stats', target: { name: 'match-stats' } },
       ],
     },
     // Klub / Moji hráči — v individuálním módu má jinou ikonu + label.
     // V simple módu i ve florbalu se úplně skrývá (nemá klub).
-    ...(isSimpleMode ? [] : [{
+    ...([{
       key: 'club',
       labelKey: 'home.club',
       icon: '🏟',
@@ -520,7 +515,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
           </div>
 
           {/* Active club switcher (shared workspaces) — skryt v simple módu (žádný klub) */}
-          {!isSimpleMode && <ClubSwitcher navigate={navigate} />}
+          <ClubSwitcher navigate={navigate} />
         </header>
 
         {/* Content area — pages render here */}

@@ -17,7 +17,6 @@ import { useConfirmStore } from '../../store/confirm.store';
 import { useMatchesStore } from '../../store/matches.store';
 import { useAuth } from '../../context/AuthContext';
 import { useClubsStore } from '../../store/clubs.store';
-import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { generateMatchShareImage } from '../../utils/match-share-image';
 import { generateMatchSummaryText, generateMatchSocialText } from '../../utils/match-summary';
 import { SharePreviewModal } from './SharePreviewModal';
@@ -40,13 +39,11 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
   const [pairingBusy, setPairingBusy] = useState(false);
   const [pairingData, setPairingData] = useState<{ pin: string; joinUrl: string } | null>(null);
   const [imageSharing, setImageSharing] = useState(false);
-  const isSimpleMode = useUserPrefsStore(s => s.appMode === 'simple');
   const [previewData, setPreviewData] = useState<{ blob: Blob; text: string; fileName: string } | null>(null);
   // Audit 2026-04-24 (Honza): v Simple módu QR + URL zabírá fold, hlavní
   // CTA („Poslat rodičům do WhatsApp") je níž. Sbalíme do „Další možnosti".
   // Honza: „pro dědu bez WhatsAppu bych chtěl QR" → zůstává dostupné, jen
   // ne na primárním místě.
-  const [simpleMoreOpen, setSimpleMoreOpen] = useState(false);
   const createMatchPairingInvite = useMatchesStore(s => s.createMatchPairingInvite);
   const revokeMatchPairingInvite = useMatchesStore(s => s.revokeMatchPairingInvite);
   const unlinkMatchPairing = useMatchesStore(s => s.unlinkMatchPairing);
@@ -56,7 +53,6 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
   const pairing = match.pairing;
   const isPaired = !!(pairing?.awayCoachUid);
   const hasActiveInvite = !!(pairing?.joinToken && !isPaired);
-  const isFinished = match.status === 'finished';
 
   const url = getMatchPublicUrl(match.id);
   const home = match.isHome ? clubDisplayName : match.opponent;
@@ -76,17 +72,6 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
     return () => { cancelled = true; };
   }, [match.id, isPublic]);
 
-  // Audit 2026-04-24 (Honza laik): V Simple módu otevřel Share sheet a viděl
-  // prázdnou obrazovku se zprávou „Zapni toggle pro sdílení" → zavřel app.
-  // Simple user nerozumí koncepci „public matche", nechce to řešit. Proto při
-  // otevření sheetu v Simple módu rovnou zapneme public (user už stiskl share
-  // tlačítko, takže je to implicitní souhlas). Advanced user dál vidí toggle.
-  useEffect(() => {
-    if (isSimpleMode && !isPublic) {
-      onTogglePublic();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Esc closes
   useEffect(() => {
@@ -297,9 +282,8 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
         </div>
 
         <div style={{ padding: '0 18px' }}>
-          {/* ─── Cross-team pairing section ─────────────────────────────────
-              V Simple módu skryto — laik nemá opozičního klubového trenéra. */}
-          {!isSimpleMode && (
+          {/* ─── Cross-team pairing section ───────────────────────────────── */}
+          {(
           <div style={{
             background: isPaired ? 'var(--success-light)' : 'var(--primary-light)',
             borderRadius: 14, padding: '12px 14px', marginBottom: 14,
@@ -452,9 +436,8 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
           </div>
           )}
 
-          {/* Public toggle — v Simple módu je skrytý (auto-enable on mount,
-              user nemusí rozumět konceptu "public match") */}
-          {!isSimpleMode && (
+          {/* Public toggle */}
+          {(
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
             background: isPublic ? 'var(--primary-light)' : 'var(--surface-var)',
@@ -539,9 +522,8 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
 
           {isPublic ? (
             <>
-              {/* QR + URL — v Advanced nad primárním CTA, v Simple pod
-                  „Další možnosti" (ať hlavní zelené tlačítko drží fold). */}
-              {!isSimpleMode && (
+              {/* QR + URL nad primárním CTA */}
+              {(
                 <>
                   {/* QR code */}
                   <div style={{
@@ -623,39 +605,12 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
                 <span style={{ fontSize: 20 }}>{imageSharing ? '⏳' : '💬'}</span>
                 {imageSharing
                   ? t('matchShare.generatingImage')
-                  : (isSimpleMode ? t('matchShare.shareSimpleCta') : t('matchShare.shareAsImage'))}
+                  : t('matchShare.shareAsImage')}
               </button>
 
-              {/* Social media CTA — jen v Simple módu (Advanced user ma jiné
-                  cesty). STRATEG.B: amatérský trenér / rodič-organizátor často
-                  postuje na Instagram nebo Facebook — generujeme krátký
-                  emoji-heavy text a otevřeme nativní share sheet přes
-                  SharePreviewModal. User si vybere kam (IG/FB/cokoli). */}
-              {isSimpleMode && isFinished && (
-                <button
-                  onClick={() => handleOpenSharePreview('social')}
-                  disabled={imageSharing}
-                  style={{
-                    width: '100%', marginBottom: 10,
-                    padding: '12px', borderRadius: 12,
-                    background: imageSharing
-                      ? 'var(--surface-var)'
-                      : 'linear-gradient(135deg, #833AB4 0%, #C13584 50%, #E1306C 100%)',
-                    color: imageSharing ? 'var(--text-muted)' : '#fff',
-                    border: 'none', cursor: imageSharing ? 'default' : 'pointer',
-                    fontWeight: 700, fontSize: 13,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  }}
-                >
-                  <span style={{ fontSize: 17 }}>📲</span>
-                  {t('matchShare.shareSocialCta')}
-                </button>
-              )}
 
-              {/* Share buttons — textová/link varianta (pro fallback + desktop).
-                  V Simple módu skryté: laik chce jedno zelené tlačítko, ne tři
-                  varianty. Kdo chce copy-link, má QR kód nad tím. */}
-              {!isSimpleMode && (
+              {/* Share buttons — textová/link varianta (fallback + desktop) */}
+              {(
               <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
                 <button
                   onClick={handleWhatsApp}
@@ -699,79 +654,6 @@ export function ShareMatchSheet({ match, clubDisplayName, isPublic, onTogglePubl
               </div>
               )}
 
-              {/* Simple mode: „Další možnosti" collapsible — QR pro
-                  děda-bez-WhatsAppu, plain URL pro staré emaily. */}
-              {isSimpleMode && (
-                <div style={{ marginBottom: 14 }}>
-                  <button
-                    type="button"
-                    onClick={() => setSimpleMoreOpen(v => !v)}
-                    aria-expanded={simpleMoreOpen}
-                    style={{
-                      width: '100%', padding: '10px 12px', borderRadius: 10,
-                      background: 'var(--surface-var)', color: 'var(--text-muted)',
-                      border: '1px solid var(--border)', cursor: 'pointer',
-                      fontSize: 12, fontWeight: 600,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    }}
-                  >
-                    {simpleMoreOpen ? '▲' : '▼'} {t('matchShare.simpleMore')}
-                  </button>
-                  {simpleMoreOpen && (
-                    <div style={{
-                      marginTop: 10, padding: '14px',
-                      background: 'var(--surface-var)', borderRadius: 12,
-                      border: '1px solid var(--border)',
-                      display: 'flex', flexDirection: 'column', gap: 12,
-                    }}>
-                      {/* QR pro offline sharing (dědeček, hřiště) */}
-                      <div style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                      }}>
-                        <div style={{
-                          width: 140, height: 140, borderRadius: 12,
-                          background: '#fff', border: '1px solid var(--border)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          padding: 6, boxSizing: 'border-box',
-                        }}>
-                          {qrDataUrl ? (
-                            <img src={qrDataUrl} alt="QR" style={{ width: '100%', height: '100%', display: 'block' }} />
-                          ) : (
-                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>…</div>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
-                          {t('matchShare.qrHint')}
-                        </div>
-                      </div>
-                      {/* URL + copy */}
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <input
-                          readOnly
-                          value={url}
-                          onFocus={e => e.currentTarget.select()}
-                          style={{
-                            flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 10,
-                            border: '1px solid var(--border)', background: 'var(--surface)',
-                            fontSize: 11, color: 'var(--text)', fontFamily: 'monospace',
-                          }}
-                        />
-                        <button
-                          onClick={handleCopyLink}
-                          aria-label={t('matchShare.copyLink')}
-                          style={{
-                            padding: '0 12px', borderRadius: 10, border: 'none',
-                            background: linkCopied ? 'var(--success)' : 'var(--primary)',
-                            color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                          }}
-                        >
-                          {linkCopied ? '✓' : '📋'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Info text */}
               <div style={{

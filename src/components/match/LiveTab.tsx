@@ -5,7 +5,6 @@ import { formatToStarterCount } from '../../types/match.types';
 import { useMatchesStore } from '../../store/matches.store';
 import { useConfirmStore } from '../../store/confirm.store';
 import { useClubsStore } from '../../store/clubs.store';
-import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useI18n } from '../../i18n';
 import { computeElapsed, formatTime, computePlayingTime, computeCurrentStretch } from './match-utils';
 import { GoalModal } from './GoalModal';
@@ -515,7 +514,6 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
   const { t } = useI18n();
   // Simple mode = laik bez klubu: skrýváme karty/střídání/VEO/playing-time tracker
   // (laik chce jen skóre + tlačítka, žádné fotbalové pokročilosti).
-  const isSimpleMode = useUserPrefsStore(s => s.appMode === 'simple');
   // Název klubu — z match dat, nebo z aktivního klubu v store.
   // V Simple módu je `clubName` vždy prázdný → fallback "naši" (t('match.detail.us')).
   const activeClub = useClubsStore(s => s.clubs.find(c => c.id === match.clubId));
@@ -829,8 +827,8 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
   const hasBench = match.lineup.some(p => !p.isStarter);
   // V Simple módu skrýváme karty i střídání (laik/McDonald's Cup scénář je nechce —
   // dělá jen skóre a má jednu sestavu). Toggly v settings jsou taky skryté níž.
-  const showCards = enabledPanels.has('cards') && !isSimpleMode;
-  const showSubs = enabledPanels.has('subs') && hasBench && !isSimpleMode;
+  const showCards = enabledPanels.has('cards');
+  const showSubs = enabledPanels.has('subs') && hasBench;
 
   // Remember if hint was already shown
   const [hintDismissed] = useState(() => {
@@ -1733,7 +1731,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
           {/* ── Panel settings — only show toggle, not always visible.
               V Simple módu je celé nastavení skryté (jediné přepínače jsou karty/střídání,
               a ty v laik režimu nedává smysl nabízet). */}
-          {!isSimpleMode && (
+          {(
             <>
               <button
                 onClick={() => setShowSettings(s => !s)}
@@ -1771,7 +1769,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
       {/* ── Playing time tracker ──
           V Simple módu skryté: synthetické playerIds, žádný smysl vysledovat fair-play,
           a laik to nečte. */}
-      {!isSimpleMode && match.status !== 'planned' && match.lineup.length > 0 && (() => {
+      {match.status !== 'planned' && match.lineup.length > 0 && (() => {
         const elapsedMin = Math.max(0, Math.floor(elapsed / 60));
         const playingTime = computePlayingTime(match, elapsedMin);
         const maxTime = Math.max(1, elapsedMin);
@@ -1997,7 +1995,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
       {/* ── VEO recording ──
           V Simple módu skryté: VEO je pokročilá klubová feature (kamerový systém na hřišti),
           laik z McDonald's Cupu ji nemá ani nepotřebuje. */}
-      {!isSimpleMode && (match.veoUrl ? (
+      {(match.veoUrl ? (
         <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 15 }}>🎥</span>

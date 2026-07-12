@@ -5,7 +5,6 @@ import { ThemeProvider } from './theme/ThemeContext';
 import { LoginPage } from './pages/LoginPage';
 import { LandingPage } from './pages/LandingPage';
 import { HomePage } from './pages/HomePage';
-import { useUserPrefsStore } from './store/userPrefs.store';
 import { ToastContainer } from './components/ToastContainer';
 import { CookieConsent } from './components/CookieConsent';
 import { ConnectionStatus } from './components/ConnectionStatus';
@@ -229,31 +228,10 @@ function AppRouter() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Zpracování ?mode=simple nebo ?mode=advanced — deep link pro marketing.
-  // Example: torq.cz/?mode=simple → nový uživatel rovnou dostane simple mode,
-  // přeskočí mode picker v onboardingu (jde rovnou na club nebo done).
-  const setAppModeFromUrl = useUserPrefsStore(s => s.setAppMode);
-  const currentAppMode = useUserPrefsStore(s => s.appMode);
-  useEffect(() => {
-    if (currentAppMode !== null) return; // už rozhodnuto — nepřepisovat
-    const params = new URLSearchParams(window.location.search);
-    const mode = params.get('mode');
-    if (mode === 'simple' || mode === 'advanced') {
-      setAppModeFromUrl(mode);
-      const url = new URL(window.location.href);
-      url.searchParams.delete('mode');
-      history.replaceState(history.state, '', url.pathname + url.search + url.hash);
-    }
-    // Stejný handling pro hash `#mode=simple` (používá viral banner na
-    // MatchPublicView). Nechceme url.search, ale hash.
-    const hash = window.location.hash || '';
-    if (hash.includes('mode=simple') && currentAppMode === null) {
-      setAppModeFromUrl('simple');
-    } else if (hash.includes('mode=advanced') && currentAppMode === null) {
-      setAppModeFromUrl('advanced');
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Pozn. (audit 2026-07-10): globální simple/advanced režim smazán —
+  // progressive disclosure ve formulářích ho nahradila už 2026-05-22.
+  // Hash `#mode=simple` z viral bannerů dál funguje jako deep-link marker
+  // (anonymní auto-signin + skip onboardingu níže), jen už nepřepíná UI.
 
   // Audit 2026-06-10 (growth audit P1): změřit přistání s ?ref=… — dosud se
   // parametr nastavoval, ale neměřil → viral funnel byl slepý. Track běží

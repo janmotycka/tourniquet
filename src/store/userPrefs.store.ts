@@ -15,35 +15,14 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { safeStorage } from '../utils/safe-storage';
 import type { Sport } from '../types/sport.types';
 
-/**
- * Režim aplikace:
- * - 'simple' — jen zápasy + turnaje + sdílení s rodiči. Pro laiky / učitele TV /
- *   amatérský turnaj. Žádné kluby, sestavy, tréninky, statistiky.
- * - 'advanced' — plný trenérský nástroj: kluby s hráči, tréninky, sestavy,
- *   hodnocení, FAČR export, multi-trainer workspace, cross-team pairing.
- *
- * null = ještě nezvoleno (onboarding ho vybere).
- * Lze kdykoli přepnout v Settings.
- */
-export type AppMode = 'simple' | 'advanced';
-
 interface UserPrefsState {
   /** Výchozí sport pro přihlášeného trenéra. Default 'football'. */
   preferredSport: Sport;
   /** Zobrazit onboarding sport picker? Default true, po prvním výběru false. */
   sportOnboardingShown: boolean;
-  /**
-   * Režim aplikace (jednoduchý vs. pokročilý).
-   * Audit 2026-05-22: smazán globální toggle ze Settings — místo toho
-   * progressive disclosure uvnitř formulářů (collapsibles). Nový default
-   * = 'advanced' (= všechny featury dostupné). Existing users zůstávají
-   * na svém uloženém appMode (kompatibilita s isSimpleMode checks).
-   */
-  appMode: AppMode | null;
 
   setPreferredSport: (sport: Sport) => void;
   markSportOnboardingShown: () => void;
-  setAppMode: (mode: AppMode) => void;
   /** Reset pro testy / pokud user se chce znovu dostat k sport pickeru. */
   reset: () => void;
 }
@@ -53,14 +32,10 @@ export const useUserPrefsStore = create<UserPrefsState>()(
     (set) => ({
       preferredSport: 'football',
       sportOnboardingShown: false,
-      // Audit 2026-05-22: default 'advanced' pro nové users — toggle smazán
-      // ze Settings, progressive disclosure uvnitř formulářů.
-      appMode: 'advanced',
 
       setPreferredSport: (sport) => set({ preferredSport: sport, sportOnboardingShown: true }),
       markSportOnboardingShown: () => set({ sportOnboardingShown: true }),
-      setAppMode: (mode) => set({ appMode: mode }),
-      reset: () => set({ preferredSport: 'football', sportOnboardingShown: false, appMode: 'advanced' }),
+      reset: () => set({ preferredSport: 'football', sportOnboardingShown: false }),
     }),
     {
       name: 'torq-user-prefs',

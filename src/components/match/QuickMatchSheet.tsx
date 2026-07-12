@@ -161,8 +161,6 @@ export function QuickMatchSheet({
   // Audit 2026-05-17 (UX agent #1): Simple mode user (laik) má vidět jen
   // minimum — soupeř + náš tým + settings + soupiska. Detaily (datum, místo,
   // soutěž) schované za „Více možností" pokud explicitně neotevřel.
-  const appMode = useUserPrefsStore(s => s.appMode);
-  const isSimpleMode = appMode === 'simple';
   const allSquads = useSimpleSquadsStore(s => s.squads);
   const createSquad = useSimpleSquadsStore(s => s.createSquad);
   const updateSquad = useSimpleSquadsStore(s => s.updateSquad);
@@ -225,7 +223,6 @@ export function QuickMatchSheet({
   const [clubImportOpen, setClubImportOpen] = useState(false);
   // Audit 2026-05-17: v Simple módu jsou „Více možností" (datum/místo/soutěž)
   // schované za jedním klikem. Advanced má vždy vše viditelné.
-  const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
   // Audit 2026-04-29: soupiska defaultně sbalená (rychlý zápas = soupeř +
   // settings stačí). Auto-expand pokud auto-pre-pick squady přidá hráče
   // nebo pokud byla předána initialPlayers (prefill z minulého zápasu).
@@ -809,23 +806,6 @@ export function QuickMatchSheet({
         ℹ️ {t('match.quickSheet.optionalHint')}
       </div>
 
-      {/* Audit 2026-05-17 (UX agent #1): v Simple módu schovat Datum/Místo/Soutěž
-          za jedním tlačítkem „Více možností" — laik je nepotřebuje a přeplácaný
-          formulář ho odrazuje. Advanced mode = vše viditelné jako dosud. */}
-      {isSimpleMode && !showAdvancedDetails && (
-        <button
-          type="button"
-          onClick={() => setShowAdvancedDetails(true)}
-          style={{
-            padding: '10px 14px', borderRadius: 10,
-            background: 'transparent', border: '1.5px dashed var(--border)',
-            color: 'var(--text-muted)', fontSize: 13, fontWeight: 600,
-            cursor: 'pointer', textAlign: 'center',
-          }}
-        >
-          ▼ {t('match.quickSheet.moreOptions')}
-        </button>
-      )}
       {/* ── Player editor (row-based, jako v AdminRosterSheet) ─────────────
           Audit 2026-04-29 pt4: přesunut na konec — nejnáročnější část (přidávat
           hráče), trenér ji řeší naposledy. Defaultně sbalená. Auto-expand
@@ -1100,7 +1080,7 @@ export function QuickMatchSheet({
       </>)}
       </div>
 
-      {(!isSimpleMode || showAdvancedDetails) && (<>
+      {(<>
       {/* ── Datum a čas (collapsed accordion) ─────────────────────────────────
           Audit 2026-04-29 pt4: první v pořadí collapsibles — má vždy default
           preview (Dnes 19:33), user vidí že je nastaveno bez expanze. */}
@@ -1697,28 +1677,7 @@ export function QuickMatchSheet({
           trenér si pak doladí sestavu/čísla dresů/kapitána a teprve potom v
           live tabu klikne "Spustit"). SECONDARY = "Spustit hned" pro plácek/
           rychlý zápas bez prepare. Simple mode má jen jednu akci (auto-start). */}
-      {isSimpleMode ? (
-        <button
-          onClick={handleStart}
-          disabled={submitDisabled}
-          style={{
-            padding: '12px', borderRadius: 12,
-            background: submitDisabled ? 'var(--border)' : 'var(--primary)',
-            color: submitDisabled ? 'var(--text-muted)' : '#fff',
-            border: 'none',
-            fontWeight: 800, fontSize: 15,
-            cursor: submitDisabled ? 'not-allowed' : 'pointer',
-            marginTop: 4,
-            boxShadow: submitDisabled ? 'none' : 'var(--shadow-sm)',
-            opacity: submitDisabled ? 0.6 : 1,
-            transition: 'background .15s, opacity .15s',
-            minHeight: 48,
-          }}
-          title={submitDisabled ? t('match.quickSheet.opponentRequired') : undefined}
-        >
-          ⚡ {t('match.quickSheet.startCta')}
-        </button>
-      ) : (
+      {(
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
           {/* PRIMARY: Vytvořit zápas (planned) — výchozí akce pro klubový workflow */}
           <button
