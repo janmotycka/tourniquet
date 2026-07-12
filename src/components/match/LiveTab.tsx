@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { Page } from '../../App';
 import type { SeasonMatch, MatchLineupPlayer, MatchGoal } from '../../types/match.types';
 import { formatToStarterCount } from '../../types/match.types';
@@ -621,9 +621,11 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
     benchCandidates, onFieldCandidates,
   } = useSubstitutionQueue(match, elapsed, dismissedOffset);
 
-  // Pro kompatibilitu s původní SubstitutionModal — posílá první návrh
-  const suggestedOut = pairs.map(p => p.out);
-  const suggestedIn = pairs.map(p => p.in);
+  // Pro kompatibilitu s původní SubstitutionModal — posílá první návrh.
+  // useMemo: bez něj vznikala nová pole každý sekundový tick a modal
+  // se zbytečně překresloval (audit 2026-07-10, LiveTab memoizace).
+  const suggestedOut = useMemo(() => pairs.map(p => p.out), [pairs]);
+  const suggestedIn = useMemo(() => pairs.map(p => p.in), [pairs]);
 
   // Multi-select: trenér označí 1–N hráčů ven a 1–N hráčů dovnitř, pak dá "Provést"
   const [selectedOutIds, setSelectedOutIds] = useState<string[]>([]);
@@ -835,6 +837,47 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
     try { return !!localStorage.getItem('torq_goal_hint_seen'); } catch { return false; }
   });
 
+  // ─── Memoizované derived data (audit 2026-07-10) ──────────────────────────
+  // LiveTab se překresluje každou sekundu (timer tick). Výpočty závislé jen na
+  // lineup/substitutions/goals se bez memoizace opakovaly 60× za minutu.
+  const elapsedMinInt = Math.max(0, Math.floor(elapsed / 60));
+  // Kdo je právě na hřišti (pro scorer picker v undo toastu)
+  const currentOnField = useMemo(() => {
+    if (isAwayView) return [] as MatchLineupPlayer[];
+    const onFieldIds = new Set(match.lineup.filter(p => p.isStarter).map(p => p.playerId));
+    for (const sub of match.substitutions) {
+      onFieldIds.delete(sub.playerOutId);
+      onFieldIds.add(sub.playerInId);
+    }
+    return match.lineup
+      .filter(p => onFieldIds.has(p.playerId))
+      .sort((a, b) => a.jerseyNumber - b.jerseyNumber);
+  }, [match.lineup, match.substitutions, isAwayView]);
+  // Playing-time tracker — nejdražší výpočet v komponentě; přepočet 1×/min
+  // (elapsedMinInt), ne 1×/s.
+  const playingTimeView = useMemo(() => {
+    const playingTime = computePlayingTime(match, elapsedMinInt);
+    const currentlyOnField = new Set(match.lineup.filter(p => p.isStarter).map(p => p.playerId));
+    for (const sub of match.substitutions) {
+      currentlyOnField.delete(sub.playerOutId);
+      currentlyOnField.add(sub.playerInId);
+    }
+    const sortedPlayers = [...match.lineup].sort((a, b) => {
+      const aOn = currentlyOnField.has(a.playerId) ? 1 : 0;
+      const bOn = currentlyOnField.has(b.playerId) ? 1 : 0;
+      if (aOn !== bOn) return bOn - aOn;
+      return (playingTime.get(b.playerId) ?? 0) - (playingTime.get(a.playerId) ?? 0);
+    });
+    return { playingTime, currentlyOnField, sortedPlayers };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [match.lineup, match.substitutions, elapsedMinInt]);
+  // Logy — kopie+sort jen při změně dat, ne při každém ticku
+  const goalsNewestFirst = useMemo(() => [...match.goals].reverse(), [match.goals]);
+  const subsByMinute = useMemo(
+    () => [...match.substitutions].sort((a, b) => a.minute - b.minute),
+    [match.substitutions],
+  );
+
   return (
     <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <style>{`
@@ -953,19 +996,8 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
       {/* Undo / scorer picker toast */}
       {undoToast && (() => {
         const isOurs = undoToast.side === 'ours';
-        // Scorer picker má smysl jen když mám lineup (== home coach / viewer).
-        // Away coach vidí jen undo — nemá svoji sestavu v datech.
-        let currentOnField: MatchLineupPlayer[] = [];
-        if (isOurs && !isAwayView) {
-          const onFieldIds = new Set(match.lineup.filter(p => p.isStarter).map(p => p.playerId));
-          for (const sub of match.substitutions) {
-            onFieldIds.delete(sub.playerOutId);
-            onFieldIds.add(sub.playerInId);
-          }
-          currentOnField = match.lineup
-            .filter(p => onFieldIds.has(p.playerId))
-            .sort((a, b) => a.jerseyNumber - b.jerseyNumber);
-        }
+        // Scorer picker má smysl jen když mám lineup (== home coach / viewer);
+        // currentOnField je memoizovaný nahoře (away view → prázdný).
         const currentGoal = match.goals.find(g => g.id === undoToast.goalId);
         const hasScorer = !!currentGoal?.scorerId;
         // Toast se objeví NAD sticky gólovými tlačítky (v dosahu palce).
@@ -1010,7 +1042,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
             </div>
 
             {/* Inline scorer picker — jen pro náš gól, jen pokud nebyl ještě přiřazen */}
-            {isOurs && !hasScorer && currentOnField.length > 0 && (
+            {isOurs && !isAwayView && !hasScorer && currentOnField.length > 0 && (
               <>
                 <div style={{ fontSize: 11, opacity: 0.85, fontWeight: 600, marginTop: 2 }}>
                   {t('match.detail.whoScored')}
@@ -1770,22 +1802,9 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
           V Simple módu skryté: synthetické playerIds, žádný smysl vysledovat fair-play,
           a laik to nečte. */}
       {match.status !== 'planned' && match.lineup.length > 0 && (() => {
-        const elapsedMin = Math.max(0, Math.floor(elapsed / 60));
-        const playingTime = computePlayingTime(match, elapsedMin);
+        const elapsedMin = elapsedMinInt;
+        const { playingTime, currentlyOnField, sortedPlayers } = playingTimeView;
         const maxTime = Math.max(1, elapsedMin);
-        // Sort: on-field first (by minutes desc), then bench (by minutes desc)
-        // Compute who's currently on field
-        const currentlyOnField = new Set(match.lineup.filter(p => p.isStarter).map(p => p.playerId));
-        for (const sub of match.substitutions) {
-          currentlyOnField.delete(sub.playerOutId);
-          currentlyOnField.add(sub.playerInId);
-        }
-        const sortedPlayers = [...match.lineup].sort((a, b) => {
-          const aOn = currentlyOnField.has(a.playerId) ? 1 : 0;
-          const bOn = currentlyOnField.has(b.playerId) ? 1 : 0;
-          if (aOn !== bOn) return bOn - aOn;
-          return (playingTime.get(b.playerId) ?? 0) - (playingTime.get(a.playerId) ?? 0);
-        });
 
         return (
           <details style={{ background: 'var(--surface)', borderRadius: 14, overflow: 'hidden' }}>
@@ -1876,7 +1895,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
             </span>
           </summary>
           <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {[...match.goals].reverse().map(g => {
+            {goalsNewestFirst.map(g => {
               const isUnassigned = !g.isOpponentGoal && !g.isOwnGoal && !g.scorerId;
               // Z pohledu aktuálního trenéra — je to „můj" gól? (flipnuto pro away)
               const isMyGoal = perspective.isGoalMine(g);
@@ -1971,7 +1990,7 @@ export function LiveTab({ match, navigate }: { match: SeasonMatch; navigate?: (p
             </span>
           </summary>
           <div style={{ padding: '0 16px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {[...match.substitutions].sort((a, b) => a.minute - b.minute).map(s => {
+            {subsByMinute.map(s => {
               const playerOut = match.lineup.find(p => p.playerId === s.playerOutId);
               const playerIn = match.lineup.find(p => p.playerId === s.playerInId);
               return (
