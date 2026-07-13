@@ -373,8 +373,8 @@ export function SettingsPage({ navigate }: Props) {
                   )}
                   <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
                     {t('settings.supportContact')}{' '}
-                    <a href="mailto:jan@torq.cz" style={{ color: 'var(--primary)', fontWeight: 700 }}>
-                      jan@torq.cz
+                    <a href="mailto:jan@golovka.cz" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                      jan@golovka.cz
                     </a>
                   </div>
                 </div>
@@ -453,7 +453,7 @@ export function SettingsPage({ navigate }: Props) {
             {t('settings.feedbackDesc')}
           </p>
           <a
-            href={`mailto:feedback@torq.cz?subject=${encodeURIComponent(t('settings.feedbackSubject'))}`}
+            href={`mailto:feedback@golovka.cz?subject=${encodeURIComponent(t('settings.feedbackSubject'))}`}
             style={{
               background: 'var(--surface-var)', color: 'var(--text)', fontWeight: 600,
               fontSize: 15, padding: '12px', borderRadius: 12, textAlign: 'center',
@@ -625,7 +625,7 @@ export function SettingsPage({ navigate }: Props) {
                   {t('settings.deleteAccountDesc')}
                 </p>
                 <a
-                  href={`mailto:privacy@torq.cz?subject=${encodeURIComponent(t('settings.deleteAccountSubject'))}`}
+                  href={`mailto:privacy@golovka.cz?subject=${encodeURIComponent(t('settings.deleteAccountSubject'))}`}
                   style={{
                     background: 'var(--surface)', color: 'var(--warning)', fontWeight: 600,
                     fontSize: 13, padding: '10px', borderRadius: 10, textAlign: 'center',

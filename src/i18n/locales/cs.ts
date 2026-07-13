@@ -38,7 +38,7 @@ export const cs = {
   'app.premiumActivated': 'Premium aktivováno! 🎉',
 
   // ─── Onboarding ────────────────────────────────────────────────────────────
-  'onboarding.welcome': 'Vítej v TORQ!',
+  'onboarding.welcome': 'Vítej v Gólovce!',
   'onboarding.subtitle': 'Vyber, s čím chceš začít. Kdykoli se vrátíš na hlavní stránku.',
   'onboarding.trainingTitle': 'Generátor tréninků',
   'onboarding.trainingDesc': 'AI plány pro mládežnické fotbalové tréninky podle věku.',
@@ -76,7 +76,7 @@ export const cs = {
   'wizard.goToHome': 'Na hlavní stránku',
 
   // ─── PWA Install ──────────────────────────────────────────────────────────
-  'pwa.installTitle': 'Nainstaluj TORQ na plochu',
+  'pwa.installTitle': 'Nainstaluj Gólovku na plochu',
   'pwa.installDesc': 'Rychlejší přístup, funguje i offline.',
   'pwa.install': 'Instalovat',
 
@@ -91,7 +91,7 @@ export const cs = {
   'error.errorDetail': 'Detail chyby:',
 
   // ─── Login ─────────────────────────────────────────────────────────────────
-  'login.subtitle': 'Trénuj. Organizuj. Rozvíjej.',
+  'login.subtitle': 'Ťukni gól. Rodiče ho vidí živě.',
   'login.backToHome': 'Zpět na přehled',
   'login.browseLiveEvents': 'Sledovat živé události',
   'login.tabLogin': 'Přihlášení',
@@ -171,7 +171,7 @@ export const cs = {
   'sidebar.admin': 'Admin',
   'sidebar.logout': 'Odhlásit',
   'sidebar.upgrade': 'Upgrade na Premium',
-  'sidebar.support': 'Podpořit TORQ',
+  'sidebar.support': 'Podpořit Gólovku',
   'topbar.search': 'Hledat...',
   'topbar.openMenu': 'Otevřít menu',
 
@@ -863,10 +863,10 @@ export const cs = {
 
   // ─── Promo ───────────────────────────────────────────────────────────────────
   'promo.finishedTitle': 'Pořádáte vlastní turnaj?',
-  'promo.finishedDesc': 'S TORQ zvládnete živé skóre, rozpis, tabulky i QR kód pro diváky — za 5 minut.',
+  'promo.finishedDesc': 'S Gólovkou zvládnete živé skóre, rozpis, tabulky i QR kód pro diváky — za 5 minut.',
   'promo.viralTitle': 'Trénuješ taky? Udělej si vlastní',
   'promo.viralDesc': 'Zadej zápas za 30 sekund, klikej skóre a rodiče vidí live. Zdarma pro TV / amatéry.',
-  'promo.tryCta': 'Vyzkoušet TORQ →',
+  'promo.tryCta': 'Vyzkoušet Gólovku →',
   // Finished match CTA — rodič/fanoušek po skončení zápasu má největší „engage" potenciál
   'promo.viralFinishedTitle': 'Taky trénuješ? Udělej si vlastní zápas',
   'promo.viralFinishedDesc': 'Za 30 vteřin máš skóre, tlačítka na góly a link pro rodiče. Bez přihlašování, bez složitostí. Zdarma.',
@@ -883,7 +883,7 @@ export const cs = {
   'match.away': '✈️ Venkovní',
   'match.list.title': '📋 Zápasy',
   'match.list.newMatch': 'Nový',
-  'match.list.limitReachedToast': 'Dosáhl jsi limitu {max} zápasů. Napiš mi na jan@torq.cz, rád ti ho navýším.',
+  'match.list.limitReachedToast': 'Dosáhl jsi limitu {max} zápasů. Napiš mi na jan@golovka.cz, rád ti ho navýším.',
   'match.list.quickMatch': 'Rychlý zápas',
   'match.list.quickMatchHint': 'Okamžitě start — bez sestavy a nastavení. Pro přátelák nebo plácek.',
   'match.list.quickMatchPrompt': 'Proti komu hrajete? (nech prázdné pokud nevíš)',
@@ -1295,7 +1295,7 @@ export const cs = {
   'matchLock.claimFailed': 'Nepodařilo se převzít — někdo jiný byl rychlejší.',
 
   // ─── Cross-team pairing (Option B) ──────────────────────────────────────
-  'matchPairing.inviteTitle': 'Trenér soupeře má TORQ?',
+  'matchPairing.inviteTitle': 'Trenér soupeře má Gólovku?',
   'matchPairing.inviteHint': 'Pozvi ho a budete zapisovat ten samý zápas společně — oba vidíte skóre, střelce i karty v reálném čase.',
   'matchPairing.pairedTitle': 'Zápas je spárovaný',
   'matchPairing.pairedWith': 'Trenér soupeře: {name}',
@@ -1311,7 +1311,7 @@ export const cs = {
   'matchPairing.unlinkButton': 'Zrušit spárování',
   'matchPairing.confirmUnlink': 'Opravdu odpárovat trenéra soupeře? Přestane vidět zápas.',
   'matchPairing.unlinked': 'Spárování zrušeno',
-  'matchPairing.whatsappMessage': 'Ahoj! Budeme spolu hrát zápas {home} vs {away} ({date}). Máš TORQ? Otevři tenhle odkaz:\n\n{url}\n\na zadej PIN: *{pin}*\n\nPo párování budeme oba zapisovat do stejného zápisu (skóre, karty, střídání), v reálném čase.',
+  'matchPairing.whatsappMessage': 'Ahoj! Budeme spolu hrát zápas {home} vs {away} ({date}). Máš Gólovku? Otevři tenhle odkaz:\n\n{url}\n\na zadej PIN: *{pin}*\n\nPo párování budeme oba zapisovat do stejného zápisu (skóre, karty, střídání), v reálném čase.',
 
   // ─── Pairing: join flow (away coach) ────────────────────────────────────
   'matchPairing.joinTitle': 'Připojit se k zápasu',
@@ -1518,8 +1518,8 @@ export const cs = {
   'settings.profile': 'Profil',
   'settings.coach': 'Trenér',
   'settings.subscription': 'Předplatné',
-  'settings.supportTitle': 'Podpoř TORQ',
-  'settings.supportDesc': 'TORQ je v beta verzi a všechny funkce jsou zdarma. Pokud ti aplikace pomáhá, můžeš provoz podpořit dobrovolným příspěvkem — pomůže s náklady na servery a další vývoj.',
+  'settings.supportTitle': 'Podpoř Gólovku',
+  'settings.supportDesc': 'Gólovka je v beta verzi a všechny funkce jsou zdarma. Pokud ti aplikace pomáhá, můžeš provoz podpořit dobrovolným příspěvkem — pomůže s náklady na servery a další vývoj.',
   'settings.supportBtn': 'Přispět na provoz',
   'settings.supportContact': 'Nápady a připomínky:',
   'settings.premiumActive': '⭐ Premium aktivní',
@@ -1535,7 +1535,7 @@ export const cs = {
   'settings.premiumFeature3': 'Neomezené zápasy',
   'settings.premiumFeature4': 'Prioritní podpora',
   'settings.tryFree': '⭐ Vyzkoušet 30 dní zdarma',
-  'settings.iosUpgradeWebOnly': 'Premium předplatné spravujte na webu torq.cz/upgrade. Tady v iOS aplikaci platba neprobíhá (App Store pravidla).',
+  'settings.iosUpgradeWebOnly': 'Premium předplatné spravujte na webu golovka.cz/upgrade. Tady v iOS aplikaci platba neprobíhá (App Store pravidla).',
   'settings.connecting': 'Připojuji ke Stripe...',
   'settings.checkoutError': 'Nepodařilo se vytvořit platbu. Zkuste to znovu.',
   'settings.stripeError': 'Chyba při připojení ke Stripe.',
@@ -1543,7 +1543,7 @@ export const cs = {
   'settings.feedback': 'Zpětná vazba',
   'settings.feedbackDesc': 'Aplikace je ve vývoji. Pomozte nám ji vylepšit — nahlaste chybu, navrhněte funkci nebo nám napište cokoliv.',
   'settings.feedbackBtn': 'Napsat zpětnou vazbu',
-  'settings.feedbackSubject': 'TORQ — Zpětná vazba',
+  'settings.feedbackSubject': 'Gólovka — Zpětná vazba',
   'settings.logout': 'Odhlásit se',
   'settings.preferences': 'Předvolby',
   'settings.language': 'Jazyk',
@@ -1589,25 +1589,25 @@ export const cs = {
   'privacy.s1Title': '1. Jaké údaje shromažďujeme',
   'privacy.s1Text': 'Při registraci ukládáme vaše jméno, e-mailovou adresu a profilový obrázek z přihlašovací služby (Google). Při používání aplikace ukládáme data o turnajích, zápasech, trénincích a klubech, která vytvoříte.',
   'privacy.s2Title': '2. Jak údaje používáme',
-  'privacy.s2Text': 'Vaše údaje používáme výhradně k poskytování služeb aplikace TORQ — správě turnajů, tréninků a zápasů. Data neprodáváme, nepronajímáme ani nesdílíme s třetími stranami za účelem marketingu.',
+  'privacy.s2Text': 'Vaše údaje používáme výhradně k poskytování služeb aplikace Gólovka — správě turnajů, tréninků a zápasů. Data neprodáváme, nepronajímáme ani nesdílíme s třetími stranami za účelem marketingu.',
   'privacy.s3Title': '3. Ukládání a zpracování dat',
   'privacy.s3Text': 'Data jsou uložena v Google Firebase (servery EU — europe-west1). Platby zpracovává Stripe. Autentizaci zajišťuje Firebase Authentication. Všechny přenosy dat jsou šifrovány pomocí TLS.',
   'privacy.s4Title': '4. Sdílení dat',
   'privacy.s4Text': 'Turnajová data (názvy týmů, skóre) označená jako veřejná jsou přístupná divákům přes QR kód a PIN. Osobní údaje trenérů v soupiskách jsou viditelné pouze organizátorovi turnaje. Chat zprávy jsou veřejné v rámci turnaje.',
   'privacy.s5Title': '5. Vaše práva (GDPR)',
-  'privacy.s5Text': 'Máte právo na přístup ke svým údajům, opravu, přenositelnost a výmaz. Data si můžete exportovat v Nastavení → Správa dat. Pro smazání účtu nás kontaktujte na privacy@torq.cz. Na vaši žádost odpovíme do 30 dnů.',
+  'privacy.s5Text': 'Máte právo na přístup ke svým údajům, opravu, přenositelnost a výmaz. Data si můžete exportovat v Nastavení → Správa dat. Pro smazání účtu nás kontaktujte na privacy@golovka.cz. Na vaši žádost odpovíme do 30 dnů.',
   'privacy.s6Title': '6. Cookies a analytika',
   'privacy.s6Text': 'Používáme pouze technicky nezbytné cookies pro přihlášení a jazykové předvolby (localStorage). Nepoužíváme sledovací cookies ani reklamní systémy třetích stran.',
   'privacy.s7Title': '7. Uchovávání dat',
   'privacy.s7Text': 'Vaše data uchováváme po dobu existence vašeho účtu. Po smazání účtu jsou všechna data nevratně odstraněna do 30 dnů.',
   'privacy.s8Title': '8. Kontakt',
-  'privacy.s8Text': 'Máte-li dotazy ohledně ochrany osobních údajů, kontaktujte nás na privacy@torq.cz.',
+  'privacy.s8Text': 'Máte-li dotazy ohledně ochrany osobních údajů, kontaktujte nás na privacy@golovka.cz.',
 
   // ─── Terms of Service ────────────────────────────────────────────────────
   'terms.title': 'Podmínky užívání',
   'terms.lastUpdated': 'Poslední aktualizace: 1. března 2026',
   'terms.s1Title': '1. Obecná ustanovení',
-  'terms.s1Text': 'Aplikace TORQ (torq.cz) je webová platforma pro správu fotbalových tréninků a turnajů. Používáním aplikace souhlasíte s těmito podmínkami.',
+  'terms.s1Text': 'Aplikace Gólovka (golovka.cz) je webová platforma pro správu fotbalových zápasů a turnajů. Používáním aplikace souhlasíte s těmito podmínkami.',
   'terms.s2Title': '2. Uživatelský účet',
   'terms.s2Text': 'Pro používání aplikace je nutná registrace přes Google účet nebo e-mail. Jste zodpovědní za bezpečnost svého účtu a všechny aktivity pod ním provedené.',
   'terms.s3Title': '3. Předplatné a platby',
@@ -1617,12 +1617,12 @@ export const cs = {
   'terms.s5Title': '5. Dostupnost služby',
   'terms.s5Text': 'Usilujeme o maximální dostupnost, ale nezaručujeme nepřetržitý provoz. Služba může být dočasně nedostupná z důvodu údržby nebo technických problémů. Za výpadky neneseme odpovědnost za ušlý zisk.',
   'terms.s6Title': '6. Změny podmínek',
-  'terms.s6Text': 'Podmínky mohou být aktualizovány. O významných změnách vás informujeme e-mailem nebo notifikací v aplikaci. Pokračováním v používání aplikace po změně souhlasíte s novými podmínkami. Kontakt: info@torq.cz.',
+  'terms.s6Text': 'Podmínky mohou být aktualizovány. O významných změnách vás informujeme e-mailem nebo notifikací v aplikaci. Pokračováním v používání aplikace po změně souhlasíte s novými podmínkami. Kontakt: info@golovka.cz.',
 
   // ─── Feature Gate ─────────────────────────────────────────────────────────
   'gate.limitReached': 'Dosažen limit beta verze',
-  'gate.betaContactDesc': 'TORQ je v beta — limity drží náklady na uzdě. Potřebuješ víc? Napiš mi a limit ti zdarma navýším.',
-  'gate.betaContactBtn': 'Napsat na jan@torq.cz',
+  'gate.betaContactDesc': 'Gólovka je v beta — limity drží náklady na uzdě. Potřebuješ víc? Napiš mi a limit ti zdarma navýším.',
+  'gate.betaContactBtn': 'Napsat na jan@golovka.cz',
   'gate.limitDesc': 'Bezplatný plán umožňuje max {count} {label}.',
   'gate.upgradeDesc': 'Vyzkoušejte Premium 30 dní zdarma, pak {price}.',
   'gate.tryFree': '⭐ Vyzkoušet 30 dní zdarma',
@@ -1800,7 +1800,7 @@ export const cs = {
   'registration.submit': 'Přihlásit tým',
   'registration.submitting': 'Odesílám přihlášku…',
   'registration.submitSuccess': 'Přihláška přijata',
-  'registration.tryTorqTitle': '⚡ Taky vedeš tým? Vyzkoušej TORQ',
+  'registration.tryTorqTitle': '⚡ Taky vedeš tým? Vyzkoušej Gólovku',
   'registration.tryTorqDesc': 'Živé skórování zápasů, soupisky a sdílení s rodiči — zdarma, bez registrace, za 30 sekund.',
   'registration.submitSuccessDesc': 'Přihláška týmu {team} na turnaj {tournament} byla odeslána. Organizátor ji posoudí — počet míst je omezený, o výsledku budete informováni.',
   'registration.submitError': 'Přihláška se nezdařila. Zkuste to znovu.',
@@ -2374,7 +2374,7 @@ export const cs = {
   'matchPublic.live': 'LIVE',
 
   // ─── Landing / Catalog ──────────────────────────────────────────────────────
-  'landing.hero': 'Trénuj. Organizuj. Rozvíjej.',
+  'landing.hero': 'Ťukni gól. Rodiče ho vidí živě.',
   'landing.heroSub': 'Živé výsledky, tabulky, QR kódy pro rodiče — vše v jedné aplikaci.',
   'landing.loginCta': 'Přihlásit se',
   'landing.registerCta': 'Vytvořit účet zdarma',
@@ -2573,10 +2573,10 @@ export const cs = {
   'landing.format.knockout': 'Pavouk',
   'landing.title': 'Veřejné akce',
   // Public landing hero (logged-out visitors)
-  'landing.hero.title': 'TORQ — sportovní aplikace pro trenéry',
-  'landing.hero.subtitle': 'Trénuj. Organizuj. Rozvíjej.',
+  'landing.hero.title': 'Gólovka — živé skóre pro trenéry i rodiče',
+  'landing.hero.subtitle': 'Ťukni gól. Rodiče ho vidí živě.',
   'landing.hero.ctaPrimary': 'Přihlásit se / Vytvořit účet',
-  'landing.hero.ctaBackToApp': 'Zpět do TORQ',
+  'landing.hero.ctaBackToApp': 'Zpět do Gólovky',
   'landing.hero.ctaSecondary': 'Prohlédnout ukázky',
   'landing.features.tournaments': 'Turnaje',
   'landing.features.tournamentsDesc': 'Kompletní management: rozpisy, skupiny, play-off, live skóre',
@@ -2873,7 +2873,7 @@ export const cs = {
   'admin.clubRequests.rejected': 'Žádost zamítnuta',
 
   // ─── First-time onboarding wizard (HomePage modal) ──────────────────────
-  'onboarding.welcome.title': 'Vítej v TORQ!',
+  'onboarding.welcome.title': 'Vítej v Gólovce!',
   'onboarding.welcome.subtitle': 'Aplikace pro fotbalové trenéry — vytvoř turnaj nebo zápas za pár sekund. Rodiče vidí skóre, sestavu i góly naživo.',
   'onboarding.welcome.start': 'Začít',
   'onboarding.welcome.skip': 'Přeskočit',
@@ -2885,7 +2885,7 @@ export const cs = {
   'onboarding.club.logo': 'Logo',
   'onboarding.club.categories': 'Věkové kategorie (vyber své)',
   'onboarding.club.continue': 'Pokračovat',
-  'onboarding.club.alreadyInTorq': 'Tento klub už v TORQ existuje',
+  'onboarding.club.alreadyInTorq': 'Tento klub už v Gólovce existuje',
   'onboarding.club.alreadyInTorqDesc': 'Pokud chceš tento klub používat, požádej jeho správce o pozvánku (PIN kód). Nebo vytvoř klub s jiným názvem.',
   'onboarding.clubCreated': 'Klub vytvořen',
   'onboarding.done.title': 'Hotovo!',

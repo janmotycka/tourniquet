@@ -230,7 +230,7 @@ export function LandingPage({ navigate, onLogin }: Props) {
             fontSize: 'clamp(20px, 5vw, 26px)', fontWeight: 900,
             margin: 0, lineHeight: 1.2, letterSpacing: '-0.01em',
           }}>
-            TORQ
+            Gólovka
           </h1>
           <p style={{
             fontSize: 'clamp(13px, 3.2vw, 15px)', opacity: 0.9,
@@ -500,7 +500,7 @@ export function LandingPage({ navigate, onLogin }: Props) {
         fontSize: 12, color: 'var(--text-muted)',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
       }}>
-        <span>TORQ · torq.cz</span>
+        <span>Gólovka · golovka.cz</span>
       </div>
     </div>
   );

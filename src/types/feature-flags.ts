@@ -31,7 +31,7 @@ export function isTrainingEnabled(): boolean {
  * beta zprávu s kontaktem. Subscription store + Cloud Functions zůstávají
  * v kódu nedotčené (existing premium users fungují dál).
  *
- * DONATE_URL — odkaz "Podpořit TORQ" (Stripe Payment Link / Buy Me a Coffee).
+ * DONATE_URL — odkaz „Podpořit Gólovku" (Stripe Payment Link / Buy Me a Coffee).
  * Prázdný string = donate tlačítka se nezobrazují (jen kontaktní email).
  *
  * Pozn. (audit 2026-07-09): FACR_REPORT_ENABLED smazán i s kódem

@@ -2,7 +2,7 @@
  * platform.ts — runtime detekce běžícího prostředí.
  *
  * Aplikace běží ve 3 různých režimech:
- *   1. Web prohlížeč (PWA na torq.cz nebo localhost)
+ *   1. Web prohlížeč (PWA na golovka.cz nebo localhost)
  *   2. Capacitor iOS (App Store / TestFlight)
  *   3. Capacitor Android (Google Play / sideload)
  *

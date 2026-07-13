@@ -21,7 +21,7 @@ interface GenerateOptions {
   clubDisplayName: string;
   /** ISO lang pro date formátování. Default cs. */
   lang?: 'cs' | 'en' | 'de';
-  /** Klubová barva pro akcenty (hex). Default TORQ primary. */
+  /** Klubová barva pro akcenty (hex). Default Gólovka primary. */
   clubColor?: string;
 }
 
@@ -198,12 +198,12 @@ export async function generateMatchShareImage(opts: GenerateOptions): Promise<Bl
     ctx.fillText(lang === 'cs' ? 'Konec zápasu' : lang === 'de' ? 'Spielende' : 'Full time', WIDTH / 2, 460);
   }
 
-  // ── Footer: TORQ branding (sport-specific emoji) ──
+  // ── Footer: Gólovka branding (sport-specific emoji) ──
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
   ctx.font = '700 20px system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
-  ctx.fillText('⚽ torq.cz', WIDTH / 2, HEIGHT - 30);
+  ctx.fillText('⚽ golovka.cz', WIDTH / 2, HEIGHT - 30);
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {

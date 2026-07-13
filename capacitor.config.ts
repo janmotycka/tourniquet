@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 /**
- * Capacitor config — TORQ native app pro iOS + Android.
+ * Capacitor config — Gólovka native app pro iOS + Android.
  *
  * Strategie: Capacitor obaluje naši PWA do native shellu. Stejný React/Vite
  * codebase běží v WebView, ale s přístupem k native API (push, share,
@@ -18,14 +18,14 @@ import type { CapacitorConfig } from '@capacitor/cli';
  *   Premium subscription se prodává jen na webu — v iOS appce user vidí jen
  *   informaci „Premium spravuj na webu". Detekuje se přes platform.ts.
  *
- * Bundle ID (cz.torq.app):
+ * Bundle ID (cz.golovka.app):
  *   - iOS: musí matchovat App ID v Apple Developer Portal
  *   - Android: musí být unikátní v Google Play Console
  *   - Změna bundle ID po prvním releasu = nelze (nový product listing)
  */
 const config: CapacitorConfig = {
-  appId: 'cz.torq.app',
-  appName: 'TORQ',
+  appId: 'cz.golovka.app',
+  appName: 'Gólovka',
   // `dist` je výstup Vite build (vite-plugin-pwa generuje sw.js do dist/).
   // Capacitor zkopíruje dist/ do native bundle při `cap sync`.
   webDir: 'dist',
@@ -39,7 +39,7 @@ const config: CapacitorConfig = {
   // iOS-specific
   ios: {
     // Schéma URL pro deep-linking (universal links)
-    scheme: 'TORQ',
+    scheme: 'Golovka',
     // Content inset = automatic (status bar nepřekrývá content)
     contentInset: 'automatic',
   },
@@ -56,11 +56,11 @@ const config: CapacitorConfig = {
   // Plugin config
   plugins: {
     SplashScreen: {
-      // Krátký splash, fade-out, branded barvy TORQ.
+      // Krátký splash, fade-out, branded barvy Gólovky.
       launchShowDuration: 1500,
       launchAutoHide: true,
       launchFadeOutDuration: 300,
-      backgroundColor: '#1B5E20',  // TORQ primary green (matches manifest theme_color)
+      backgroundColor: '#1B5E20',  // Gólovka primary green (matches manifest theme_color)
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
       showSpinner: false,

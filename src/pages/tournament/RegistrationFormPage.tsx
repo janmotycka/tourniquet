@@ -235,10 +235,10 @@ export function RegistrationFormPage({ tournamentId }: Props) {
           </div>
 
           {/* Audit 2026-06-10 (growth audit #5): konverzní hook — registrovaný
-              trenér je cizí trenér s rukou na klice. Nabídneme mu vlastní TORQ
+              trenér je cizí trenér s rukou na klice. Nabídneme mu vlastní Gólovku
               přes anonymní deep-link flow (stejný pattern jako viral banner). */}
           <a
-            href={(typeof window !== 'undefined' ? window.location.origin : 'https://torq.cz') + '/?ref=registration#mode=simple'}
+            href={(typeof window !== 'undefined' ? window.location.origin : 'https://golovka.cz') + '/?ref=registration#mode=simple'}
             style={{
               display: 'block', width: '100%', boxSizing: 'border-box',
               marginTop: 8, padding: '14px 16px', borderRadius: 14,
@@ -255,7 +255,7 @@ export function RegistrationFormPage({ tournamentId }: Props) {
           </a>
         </div>
         <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 16 }}>
-          TORQ ⚽ torq.cz
+          Gólovka ⚽ golovka.cz
         </p>
       </div>
     );
@@ -276,12 +276,12 @@ export function RegistrationFormPage({ tournamentId }: Props) {
         <div style={{ marginTop: 24, padding: '16px 24px', borderRadius: 16, background: 'var(--card-bg)', border: '1px solid var(--border)', textAlign: 'center', maxWidth: 340 }}>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{t('registration.fullPromo')}</div>
           <a
-            href="https://torq.cz"
+            href="https://golovka.cz"
             target="_blank"
             rel="noopener noreferrer"
             style={{ fontSize: 15, fontWeight: 700, color: 'var(--primary)', textDecoration: 'none' }}
           >
-            ⚡ torq.cz
+            ⚡ golovka.cz
           </a>
         </div>
       </div>
@@ -472,7 +472,7 @@ export function RegistrationFormPage({ tournamentId }: Props) {
 
         {/* Branding */}
         <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 8, marginBottom: 16 }}>
-          TORQ ⚽ torq.cz
+          Gólovka ⚽ golovka.cz
         </p>
       </div>
     </div>

@@ -1,5 +1,5 @@
 /**
- * Canonical UI primitives for TORQ.
+ * Canonical UI primitives for Gólovka.
  *
  * Import pattern:
  * ```tsx

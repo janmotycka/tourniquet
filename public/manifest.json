@@ -1,7 +1,7 @@
 {
-  "name": "TORQ — Fotbalové turnaje a zápasy",
-  "short_name": "TORQ",
-  "description": "Pro amatérské fotbalové trenéry: vytvoř turnaj za minutu, klikej skóre na telefonu, pošli rodičům výsledek do WhatsAppu. Zdarma.",
+  "name": "Gólovka — živé skóre a turnaje",
+  "short_name": "Gólovka",
+  "description": "Živé skóre zápasů a turnajů pro mládežnický fotbal. Ťukni gól — rodiče ho vidí okamžitě. Zdarma.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

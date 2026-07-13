@@ -727,7 +727,7 @@ export async function exportTournamentPdf(
     M,
     pageH - 6,
   );
-  doc.text('TORQ · torq.cz', pageW - M, pageH - 6, { align: 'right' });
+  doc.text('Gólovka · golovka.cz', pageW - M, pageH - 6, { align: 'right' });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // DOWNLOAD

@@ -61,7 +61,7 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
           fontSize: 44, boxShadow: 'var(--shadow-lg)',
         }}>⚽</div>
         <div style={{ textAlign: 'center' }}>
-          <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)', lineHeight: 1.1 }}>TORQ</h1>
+          <h1 style={{ fontSize: 28, fontWeight: 900, color: 'var(--text)', lineHeight: 1.1 }}>Gólovka</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 4 }}>
             {t('login.subtitle')}
           </p>

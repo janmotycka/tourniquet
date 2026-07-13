@@ -1017,9 +1017,9 @@ function RosterFormPageInner({ tournamentId, teamToken }: Props) {
           </button>
         )}
 
-        {/* TORQ branding */}
+        {/* Gólovka branding */}
         <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 8, marginBottom: 16 }}>
-          TORQ ⚽ torq.cz
+          Gólovka ⚽ golovka.cz
         </p>
       </div>
     </div>

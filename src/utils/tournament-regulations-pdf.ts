@@ -441,7 +441,7 @@ export async function exportRegulationsPdf(
     });
     doc.text(`Vygenerováno: ${now}`, M, footerY);
 
-    const brand = 'TORQ \u00B7 torq.cz';
+    const brand = 'Gólovka \u00B7 golovka.cz';
     const brandW = doc.getTextWidth(brand);
     doc.text(brand, pageW - M - brandW, footerY);
   };

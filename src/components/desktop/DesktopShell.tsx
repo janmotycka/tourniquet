@@ -234,7 +234,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
             color: '#fff', fontSize: 20,
           }}>⚽</div>
           <span style={{ fontWeight: 800, fontSize: 18, letterSpacing: 0.5 }}>
-            TORQ
+            Gólovka
           </span>
         </div>
 
@@ -384,7 +384,7 @@ export function DesktopShell({ currentPage, navigate, children }: Props) {
 
         {/* Upgrade CTA (PREMIUM_ENABLED) / Podpora projektu (beta).
             Audit 2026-06-10: bez Premium prodeje — sidebar nabízí jen decentní
-            "Podpořit TORQ" link do Settings (kde je donate + kontakt). */}
+            „Podpořit Gólovku" link do Settings (kde je donate + kontakt). */}
         {PREMIUM_ENABLED && !isPremium() ? (
           <div style={{ padding: '0 12px 12px' }}>
             <button

@@ -1,4 +1,4 @@
-# 🚀 TORQ — Beta launch handover
+# 🚀 Gólovka — Beta launch handover
 
 Pro tebe (Jan), abys mohl plynule rozjet beta s 3-5 trenéry.
 
@@ -56,20 +56,20 @@ Pošli každému trenérovi tuto zprávu:
 ```
 Ahoj!
 
-Pracuju na aplikaci TORQ pro amatérské trenéry — vytvoření turnaje za
+Pracuju na aplikaci Gólovka pro amatérské trenéry — vytvoření turnaje za
 minutu, živé skórování zápasů přes telefon, sdílení s rodiči přes QR
 kód. Funguje na webu i offline (PWA).
 
 Chtěl bych ji s tebou vyzkoušet — pomohlo by mi 30 minut tvého času
 během příštího týdne. Co potřebuju:
 
-1. Otevři: https://torq.cz
+1. Otevři: https://golovka.cz
 2. Přihlas se přes Google
 3. Zkus vytvořit turnaj nebo zápas (záleží na tom co reálně používáš)
 4. Dej mi vědět co tě překvapilo / mátlo / chybělo
 
 Bugs nebo zmatky pošli mi prosím:
-- Email: jan@torq.cz
+- Email: jan@golovka.cz
 - Případně screenshot + popis co tě štvalo
 
 ⚠️ Když budeš chtít sdílet zápas přes QR/odkaz s rodiči, app se zeptá
@@ -105,7 +105,7 @@ Jan
 
 ### Pro AI agenty (Claude/ChatGPT/Perplexity)
 - ✅ `llms.txt`, rich JSON-LD (FAQ + HowTo), `<noscript>` fallback
-- ✅ TORQ je dohledatelný + AI agenty mohou doporučovat
+- ✅ Gólovka je dohledatelný + AI agenty mohou doporučovat
 
 ---
 
@@ -194,15 +194,15 @@ git push origin main
 
 ## 🔗 Quick links
 
-- **Live app**: https://torq.cz
+- **Live app**: https://golovka.cz
 - **GitHub**: https://github.com/janmotycka/tourniquet
 - **CI/CD**: https://github.com/janmotycka/tourniquet/actions
 - **Firebase Console**: https://console.firebase.google.com/project/tourniquet-7a123
 - **Sentry**: https://jan-motycka.sentry.io/issues/?project=4510997348548688
 - **AEO check**:
-  - https://torq.cz/llms.txt
-  - https://torq.cz/sitemap.xml
-  - https://torq.cz/robots.txt
+  - https://golovka.cz/llms.txt
+  - https://golovka.cz/sitemap.xml
+  - https://golovka.cz/robots.txt
 
 ---
 

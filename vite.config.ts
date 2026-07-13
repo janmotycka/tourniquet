@@ -92,9 +92,9 @@ export default defineConfig({
 
       // Web App Manifest
       manifest: {
-        name: 'TORQ – Trénink & Turnaje',
-        short_name: 'TORQ',
-        description: 'Správa fotbalových tréninků a turnajů pro mládežnické trenéry',
+        name: 'Gólovka — živé skóre a turnaje',
+        short_name: 'Gólovka',
+        description: 'Živé skóre zápasů a turnajů pro mládežnický fotbal',
         theme_color: '#1B5E20',
         background_color: '#FFFFFF',
         display: 'standalone',

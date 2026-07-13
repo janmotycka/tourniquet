@@ -29,7 +29,7 @@ if (!admin.apps.length) {
 }
 
 const ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
-const SITE = 'https://torq.cz';
+const SITE = 'https://golovka.cz';
 
 function esc(s: unknown): string {
   return String(s ?? '')
@@ -102,14 +102,14 @@ async function matchPreview(id: string): Promise<{ title: string; description: s
   let description: string;
   if (m.status === 'live') {
     title = `⚽ ${home} ${m.homeScore ?? 0}:${m.awayScore ?? 0} ${away} — ŽIVĚ`;
-    description = 'Zápas právě běží — sleduj skóre živě na TORQ.';
+    description = 'Zápas právě běží — sleduj skóre živě na Gólovce.';
   } else if (m.status === 'finished') {
     title = `⚽ ${home} ${m.homeScore ?? 0}:${m.awayScore ?? 0} ${away}`;
-    description = `Konečný výsledek${m.competition ? ` · ${m.competition}` : ''}. Sestava a průběh zápasu na TORQ.`;
+    description = `Konečný výsledek${m.competition ? ` · ${m.competition}` : ''}. Sestava a průběh zápasu na Gólovce.`;
   } else {
     title = `⚽ ${home} vs ${away}`;
     const when = [m.date, m.kickoffTime].filter(Boolean).join(' ');
-    description = `${when ? when + ' · ' : ''}Sleduj zápas živě na TORQ — skóre, sestava, góly.`;
+    description = `${when ? when + ' · ' : ''}Sleduj zápas živě na Gólovce — skóre, sestava, góly.`;
   }
   return { title, description };
 }
@@ -127,8 +127,8 @@ async function tournamentPreview(id: string): Promise<{ title: string; descripti
 
   const title = `🏆 ${name}${status === 'active' ? ' — ŽIVĚ' : ''}`;
   const description = status === 'finished'
-    ? 'Výsledky, tabulky a pavouk turnaje na TORQ.'
-    : 'Živé výsledky, tabulky a pavouk turnaje na TORQ — bez registrace.';
+    ? 'Výsledky, tabulky a pavouk turnaje na Gólovce.'
+    : 'Živé výsledky, tabulky a pavouk turnaje na Gólovce — bez registrace.';
   return { title, description };
 }
 
@@ -156,7 +156,7 @@ export const publicPreview = functions.https.onRequest(async (req, res) => {
 
     // Fallback na generické OG (neexistující ID apod.) — lidi pošleme do app,
     // ať nikdy neuvíznou na 404.
-    const title = preview?.title ?? 'TORQ — Fotbalové turnaje a zápasy';
+    const title = preview?.title ?? 'Gólovka — živé skóre a turnaje';
     const description = preview?.description
       ?? 'Živé skórování zápasů a turnajů pro amatérské trenéry. Zdarma.';
 
@@ -171,7 +171,7 @@ export const publicPreview = functions.https.onRequest(async (req, res) => {
     // I při chybě pošleme člověka do aplikace.
     res.set('Cache-Control', 'no-store');
     res.status(200).send(htmlPage({
-      title: 'TORQ — Fotbalové turnaje a zápasy',
+      title: 'Gólovka — živé skóre a turnaje',
       description: 'Živé skórování zápasů a turnajů pro amatérské trenéry. Zdarma.',
       url: SITE,
       redirect: '/',

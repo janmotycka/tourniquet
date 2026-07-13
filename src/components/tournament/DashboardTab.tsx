@@ -234,7 +234,7 @@ export function DashboardTab({ tournament, isAdmin, justCreated, onDismissCreate
       coach: reg.coachName,
       team: reg.teamName,
       tournament: tournament.name,
-      url: `https://torq.cz`,
+      url: `https://golovka.cz`,
     });
     window.open(`https://api.whatsapp.com/send?phone=${encodeURIComponent(reg.coachPhone)}&text=${encodeURIComponent(msg)}`, '_blank');
   };

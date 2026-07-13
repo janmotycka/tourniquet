@@ -553,16 +553,16 @@ function TournamentPublicViewInner({ tournamentId, navigate, onJoinIntent, joinI
             {t('tournament.public.refresh')}
           </button>
         </div>
-        {/* TORQ branding */}
+        {/* Gólovka branding */}
         <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
           <a
-            href="https://torq.cz/?ref=powered_by_tournament"
+            href="https://golovka.cz/?ref=powered_by_tournament"
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => track('viral_tournament_cta_click')}
             style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
           >
-            ⚡ Powered by <strong style={{ color: 'var(--primary)' }}>TORQ</strong> · torq.cz
+            ⚡ Powered by <strong style={{ color: 'var(--primary)' }}>Gólovka</strong> · golovka.cz
           </a>
         </div>
       </div>
@@ -808,7 +808,7 @@ function FinishedBanner({ tournament, isGuest }: { tournament: Tournament; isGue
         {/* Promo — only for guests */}
         {isGuest && (
           <a
-            href={(typeof window !== 'undefined' ? window.location.origin : 'https://torq.cz') + '/?ref=public_tournament#mode=simple'}
+            href={(typeof window !== 'undefined' ? window.location.origin : 'https://golovka.cz') + '/?ref=public_tournament#mode=simple'}
             onClick={() => track('viral_tournament_cta_click')}
             style={{
               display: 'flex', alignItems: 'center', gap: 10,

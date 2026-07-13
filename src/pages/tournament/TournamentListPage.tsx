@@ -152,7 +152,7 @@ export function TournamentListPage({ navigate }: Props) {
   // (render side-effect-free). User vidí lidskou hlášku z UI, raw error jen pro dev.
   useEffect(() => {
     if (syncError) {
-      console.warn('[TORQ sync error]', syncError);
+      console.warn('[Gólovka sync error]', syncError);
     }
   }, [syncError]);
 

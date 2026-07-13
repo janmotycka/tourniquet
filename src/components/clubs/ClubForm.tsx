@@ -209,7 +209,7 @@ export function ClubForm({
                         <span style={{
                           fontSize: 8, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
                           background: 'var(--success-light)', color: 'var(--success)',
-                        }}>TORQ</span>
+                        }}>Gólovka</span>
                       )}
                     </div>
                     {club.city && <div style={{ fontSize: fontSize.xs, color: 'var(--text-muted)' }}>{club.city}</div>}
@@ -237,7 +237,7 @@ export function ClubForm({
         </div>
       )}
 
-      {/* Warning: klub už existuje v TORQ */}
+      {/* Warning: klub už existuje v Gólovce */}
       {catalogMatch?.torqClubId && (
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: spacing.sm,
@@ -248,7 +248,7 @@ export function ClubForm({
           <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
           <div>
             <div style={{ fontWeight: fontWeight.bold, marginBottom: 2 }}>
-              Klub {catalogMatch.name} už existuje v TORQ
+              Klub {catalogMatch.name} už existuje v Gólovce
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: fontSize.xs }}>
               Pokud chceš tento klub používat, požádej stávajícího správce o pozvánku.

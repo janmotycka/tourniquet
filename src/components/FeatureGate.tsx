@@ -46,7 +46,7 @@ export function FeatureGate({ currentCount, maxAllowed, children, onUpgrade, fea
           {t('gate.betaContactDesc')}
         </div>
         <a
-          href="mailto:jan@torq.cz?subject=TORQ%20beta%20%E2%80%94%20nav%C3%BD%C5%A1en%C3%AD%20limitu"
+          href="mailto:jan@golovka.cz?subject=G%C3%B3lovka%20beta%20%E2%80%94%20nav%C3%BD%C5%A1en%C3%AD%20limitu"
           style={{
             background: 'var(--primary)', color: '#fff', fontWeight: 700, fontSize: 14,
             padding: '10px 24px', borderRadius: 12, marginTop: 2,

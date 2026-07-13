@@ -16,7 +16,7 @@
  *
  *   *Střídání:* 3
  *
- *   📡 https://torq.cz/#match=xxx
+ *   📡 https://golovka.cz/#match=xxx
  */
 
 import type { SeasonMatch, MatchCard } from '../types/match.types';
@@ -333,7 +333,7 @@ interface NominationOptions {
  *
  *   Prosím potvrďte účast v odpovědi. Sraz 30 min před výkopem.
  *
- *   📡 https://torq.cz/#match=xxx
+ *   📡 https://golovka.cz/#match=xxx
  */
 export function generateNominationText(
   opts: NominationOptions,

@@ -308,7 +308,7 @@ export async function sendWelcomeChatMessage(
 
   const msgRef = push(chatRef(tournamentId));
   await set(msgRef, {
-    authorName: '🏆 TORQ',
+    authorName: '🏆 Gólovka',
     text: welcomeText.slice(0, 500),
     createdAt: new Date().toISOString(),
   });

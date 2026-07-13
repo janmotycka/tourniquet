@@ -693,7 +693,7 @@ export function HomePage({ navigate }: Props) {
           🚧 {t('home.betaNotice')}
         </span>
         <a
-          href={`mailto:feedback@torq.cz?subject=${encodeURIComponent(t('settings.feedbackSubject'))}`}
+          href={`mailto:feedback@golovka.cz?subject=${encodeURIComponent(t('settings.feedbackSubject'))}`}
           style={{ color: 'var(--text-muted)', textDecoration: 'underline', opacity: 0.6, fontSize: 12 }}
         >
           {t('home.feedbackLink')}

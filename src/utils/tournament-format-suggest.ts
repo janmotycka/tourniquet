@@ -4,7 +4,7 @@
  * Cíl: na základě počtu týmů (a volitelně dostupného času + počtu hřišť)
  * vrátit seznam doporučených formátů s odhadem zápasů a celkových minut.
  *
- * Tohle je TORQ unique selling point — žádná konkurence (Challonge, Battlefy,
+ * Tohle je Gólovka unique selling point — žádná konkurence (Challonge, Battlefy,
  * Toornament, Tournify) nemá auto-recommendation engine podle počtu týmů.
  *
  * Audit 2026-04-26 (research-driven sjednocení):

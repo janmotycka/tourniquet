@@ -5,4 +5,4 @@ Allow: /
 # See https://llmstxt.org for the standard
 Allow: /llms.txt
 
-Sitemap: https://torq.cz/sitemap.xml
+Sitemap: https://golovka.cz/sitemap.xml

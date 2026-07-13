@@ -31,7 +31,7 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 //
 // Aktivace: VITE_ENABLE_APP_CHECK=true + VITE_RECAPTCHA_SITE_KEY (GitHub Secrets).
 // Site key musí být zaregistrovaný v https://www.google.com/recaptcha/admin
-// (typ reCAPTCHA v3) s povolenými doménami torq.cz, www.torq.cz, *.web.app, localhost.
+// (typ reCAPTCHA v3) s povolenými doménami golovka.cz, www.golovka.cz, *.web.app, localhost.
 // Odpovídající secret key je nastavený v Firebase Console → App Check → Apps.
 //
 // V development mode použij debug token (Firebase Console → App Check → Manage

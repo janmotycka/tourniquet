@@ -76,7 +76,7 @@ interface CatalogClub {
   city?: string;
   logoUrl?: string;
   logoBase64?: string;
-  torqClubId?: string;  // set when club already exists in TORQ
+  torqClubId?: string;  // set when club already exists in Gólovka katalogu
 }
 
 async function urlToBase64(url: string): Promise<string | null> {
@@ -570,7 +570,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                                 <span style={{
                                   fontSize: 8, fontWeight: 800, padding: '1px 5px', borderRadius: 4,
                                   background: 'var(--success-light)', color: 'var(--success)',
-                                }}>TORQ</span>
+                                }}>Gólovka</span>
                               )}
                             </div>
                             {c.city && <div style={{ fontSize: fontSize.xs, color: 'var(--text-muted)' }}>{c.city}</div>}
@@ -582,7 +582,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
                 </div>
               </div>
 
-              {/* Klub už existuje v TORQ — banner POD flex row, na celou šířku */}
+              {/* Klub už existuje v Gólovce — banner POD flex row, na celou šířku */}
               {selectedCatalog?.torqClubId && (
                 <div style={{
                   padding: `${spacing.md}px`,
@@ -600,7 +600,7 @@ export function OnboardingWizard({ navigate, onComplete }: Props) {
               )}
 
               {/* Color picker + Age categories — schované když user vybral
-                  klub, který už je v TORQ. Audit 2026-04-25 (user feedback):
+                  klub, který už je v Gólovce. Audit 2026-04-25 (user feedback):
                   „nemělo by mě nechat měnit logo klubu když vyberu existující
                   klub, ani nic jiného tohoto klubu". User v tomhle stavu má
                   jen jednu možnost: požádat správce o pozvánku (info v banneru

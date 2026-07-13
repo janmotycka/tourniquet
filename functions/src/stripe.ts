@@ -47,6 +47,8 @@ function getProductId(): string {
 // ─── Security: povolené return URL domény ────────────────────────────────────
 
 const ALLOWED_RETURN_ORIGINS = [
+  'https://golovka.cz',
+  'https://www.golovka.cz',
   'https://torq.cz',
   'https://www.torq.cz',
   'https://tourniquet-7a123.web.app',
@@ -54,7 +56,7 @@ const ALLOWED_RETURN_ORIGINS = [
 ];
 
 function sanitizeReturnUrl(url: string | undefined): string {
-  const fallback = 'https://torq.cz';
+  const fallback = 'https://golovka.cz';
   if (!url) return fallback;
   try {
     const parsed = new URL(url);

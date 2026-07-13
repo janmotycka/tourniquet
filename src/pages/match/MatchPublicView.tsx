@@ -1070,7 +1070,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               {t('promo.viralFinishedDesc')}
             </div>
             <a
-              href={(typeof window !== 'undefined' ? window.location.origin : 'https://torq.cz') + '/?ref=public-match#mode=simple'}
+              href={(typeof window !== 'undefined' ? window.location.origin : 'https://golovka.cz') + '/?ref=public-match#mode=simple'}
               onClick={() => track('viral_match_cta_click')}
               style={{
                 display: 'inline-block', padding: `${spacing.md}px ${spacing.xl + spacing.sm}px`,
@@ -1114,7 +1114,7 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
               {t('promo.viralDesc')}
             </div>
             <a
-              href={(typeof window !== 'undefined' ? window.location.origin : 'https://torq.cz') + '/?ref=public-match#mode=simple'}
+              href={(typeof window !== 'undefined' ? window.location.origin : 'https://golovka.cz') + '/?ref=public-match#mode=simple'}
               onClick={() => track('viral_match_cta_click')}
               style={{
                 display: 'inline-block', padding: `${spacing.sm}px ${spacing.xl}px`,
@@ -1184,12 +1184,12 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
       }}>
         <span>{t('matchPublic.footer')}</span>
         <a
-          href="https://torq.cz"
+          href="https://golovka.cz"
           target="_blank"
           rel="noopener noreferrer"
           style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
         >
-          Powered by <strong style={{ color: 'var(--primary)' }}>TORQ</strong> · torq.cz
+          Powered by <strong style={{ color: 'var(--primary)' }}>Gólovka</strong> · golovka.cz
         </a>
       </div>
     </div>

@@ -3,7 +3,7 @@
  *
  * Env proměnné:
  *   RESEND_API_KEY  — API klíč z resend.com
- *   EMAIL_FROM      — odesílací adresa (noreply@torq.cz)
+ *   EMAIL_FROM      — odesílací adresa (default Gólovka <noreply@torq.cz>, doména verifikovaná v Resend)
  */
 
 import * as functions from 'firebase-functions';
@@ -33,7 +33,9 @@ function getResend(): Resend | null {
 }
 
 function getFromAddress(): string {
-  return process.env.EMAIL_FROM || 'TORQ <noreply@torq.cz>';
+  // Odesílací doména torq.cz zůstává (verifikovaná v Resend); zobrazené jméno = Gólovka.
+  // Po verifikaci golovka.cz v Resend přepnout přes env EMAIL_FROM.
+  return process.env.EMAIL_FROM || 'Gólovka <noreply@torq.cz>';
 }
 
 // ─── 1. Notifikace při nové registraci ───────────────────────────────────────
@@ -100,9 +102,9 @@ export const onNewRegistration = functions
           <p style="margin: 4px 0;"><strong>📞 Telefon:</strong> ${escapeHtml(registration.coachPhone || '')}</p>
           ${registration.coachEmail ? `<p style="margin: 4px 0;"><strong>📧 Email:</strong> ${escapeHtml(registration.coachEmail)}</p>` : ''}
         </div>
-        <p style="color: #666;">Přejděte do <a href="https://torq.cz" style="color: #1A237E; font-weight: 700;">TORQ</a> pro schválení nebo zamítnutí přihlášky.</p>
+        <p style="color: #666;">Přejděte do <a href="https://golovka.cz" style="color: #1A237E; font-weight: 700;">Gólovky</a> pro schválení nebo zamítnutí přihlášky.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-        <p style="color: #999; font-size: 12px;">TORQ · torq.cz</p>
+        <p style="color: #999; font-size: 12px;">Gólovka · golovka.cz</p>
       </div>
     `;
 
@@ -183,7 +185,7 @@ export const rosterReminder = functions
 
         if (!rosterToken) continue;
 
-        const rosterUrl = `https://torq.cz#roster=${tournamentId}&k=${rosterToken}`;
+        const rosterUrl = `https://golovka.cz#roster=${tournamentId}&k=${rosterToken}`;
 
         const subject = `📋 Připomínka soupisky — ${tournamentName}`;
         const html = `
@@ -201,7 +203,7 @@ export const rosterReminder = functions
             </div>
             <p style="color: #666;">Děkujeme a těšíme se na turnaji! ⚽</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-            <p style="color: #999; font-size: 12px;">TORQ · torq.cz</p>
+            <p style="color: #999; font-size: 12px;">Gólovka · golovka.cz</p>
           </div>
         `;
 

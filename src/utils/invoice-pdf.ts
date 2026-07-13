@@ -380,7 +380,7 @@ export async function generateInvoicePdf(
   setFont('normal', 6.5);
   doc.setTextColor(160, 160, 160);
   doc.text(
-    `${t('invoice.generated')}: ${new Date().toLocaleDateString('cs-CZ')} · TORQ · torq.cz`,
+    `${t('invoice.generated')}: ${new Date().toLocaleDateString('cs-CZ')} · Gólovka · golovka.cz`,
     M,
     pageH - 7,
   );

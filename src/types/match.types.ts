@@ -148,7 +148,7 @@ export interface SeasonMatch {
   clubId: string;            // reference na náš klub (pro výběr hráčů)
   clubName?: string;         // název našeho klubu (pro zobrazení místo "My")
   opponent: string;          // název soupeře (display name)
-  opponentClubId?: string;   // NEW: pokud soupeř je TORQ klub (propojení statistik)
+  opponentClubId?: string;   // NEW: pokud soupeř je Gólovka klub (propojení statistik)
   opponentCatalogId?: string; // NEW: pokud soupeř je v katalogu (FAČR kluby)
   isHome: boolean;           // domácí / venkovní
   venue?: string;            // místo konání (např. "Stadion U hřbitova, Nové Město na Moravě")
