@@ -8,6 +8,7 @@ import { OfficialLinkButton } from '../../components/ui';
 import { spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 import { track } from '../../services/analytics';
 import { getMatchPublicUrl } from '../../utils/qr-code';
+import { ThemeToggleButton } from '../../components/ThemeToggleButton';
 
 // ─── Wake Lock hook ─────────────────────────────────────────────────────────
 
@@ -571,6 +572,10 @@ export function MatchPublicView({ matchId }: { matchId: string }) {
         >
           {shareCopied ? '✓' : '📤'}
         </button>
+        {/* Přepínač vzhledu — rodič z QR není přihlášený, Nastavení nemá. */}
+        <div style={{ position: 'absolute', right: spacing.md + 42, top: spacing.md, zIndex: 5 }}>
+          <ThemeToggleButton variant={(isLive || isFinished) ? 'onDark' : 'surface'} />
+        </div>
         {shareCopied && (
           <div style={{
             position: 'absolute', right: spacing.md, top: spacing.md + 42, zIndex: 5,

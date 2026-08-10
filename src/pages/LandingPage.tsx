@@ -9,6 +9,7 @@ import type { Sport } from '../types/sport.types';
 import { SPORTS, resolveSport } from '../types/sport.types';
 import { useI18n } from '../i18n';
 import { useAuth } from '../context/AuthContext';
+import { ThemeToggleButton } from '../components/ThemeToggleButton';
 
 interface Props {
   navigate: (p: Page) => void;
@@ -210,6 +211,10 @@ export function LandingPage({ navigate, onLogin }: Props) {
             }}
           >←</button>
         )}
+        {/* Nepřihlášený uživatel se do Nastavení nedostane → přepínač vzhledu musí být tady. */}
+        <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 2 }}>
+          <ThemeToggleButton variant="onDark" />
+        </div>
         <div aria-hidden style={{
           position: 'absolute', inset: 0, pointerEvents: 'none',
           background:

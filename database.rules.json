@@ -97,6 +97,9 @@
     "chat": {
       "$tournamentId": {
         ".read": true,
+        // Klient řadí zprávy podle createdAt — bez indexu Firebase stahuje
+        // celé vlákno a filtruje až v prohlížeči (warning v konzoli).
+        ".indexOn": ["createdAt"],
         "$messageId": {
           // Audit 2026-05-23 S-3: write vyžaduje auth na CREATE i DELETE.
           // Dříve `!data.exists()` šlo bez auth → bot spam unauthenticated.

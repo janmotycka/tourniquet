@@ -5,6 +5,7 @@ import { useI18n, getDateLocale } from '../../../i18n';
 import { LiveBannerTimer } from './LiveBannerTimer';
 import { Dropdown, DropdownIconCircle } from '../../ui/Dropdown';
 import type { DropdownItem } from '../../ui/Dropdown';
+import { ThemeToggleButton } from '../../ThemeToggleButton';
 
 type Tab = 'standings' | 'results' | 'scorers' | 'rules' | 'chat';
 
@@ -53,6 +54,8 @@ export function PublicHeader({
         </div>
         {/* Pravý roh: sdílení + admin/leave */}
         <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
+          {/* Rodič přišlý přes QR není přihlášený → do Nastavení se nedostane. */}
+          <ThemeToggleButton size={32} />
           <ShareDropdownButton tournamentId={tournamentId} tournament={tournament} />
           {isTournamentOwner ? (
             <button

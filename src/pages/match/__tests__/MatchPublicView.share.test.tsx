@@ -48,6 +48,15 @@ vi.mock('../../../hooks/useLayoutMode', () => ({
 }));
 
 import { MatchPublicView } from '../MatchPublicView';
+import { ThemeProvider } from '../../../theme/ThemeContext';
+
+// View obsahuje přepínač vzhledu (useTheme), takže potřebuje ThemeProvider.
+const renderView = () =>
+  render(
+    <ThemeProvider>
+      <MatchPublicView matchId="m1" />
+    </ThemeProvider>,
+  );
 
 describe('MatchPublicView share', () => {
   beforeEach(() => {
@@ -60,12 +69,12 @@ describe('MatchPublicView share', () => {
   });
 
   it('renders an always-visible share button', () => {
-    render(<MatchPublicView matchId="m1" />);
+    renderView();
     expect(screen.getByRole('button', { name: 'matchPublic.share' })).toBeTruthy();
   });
 
   it('falls back to clipboard with /m/{id} OG URL and tracks the share', async () => {
-    render(<MatchPublicView matchId="m1" />);
+    renderView();
     fireEvent.click(screen.getByRole('button', { name: 'matchPublic.share' }));
 
     await waitFor(() => {

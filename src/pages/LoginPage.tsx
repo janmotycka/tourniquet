@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
+import { ThemeToggleButton } from '../components/ThemeToggleButton';
 
 type Mode = 'login' | 'register' | 'reset';
 
@@ -52,6 +53,9 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
       padding: '32px 24px', gap: 28, minHeight: '100dvh',
       background: 'var(--bg)', position: 'relative',
     }}>
+      <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}>
+        <ThemeToggleButton />
+      </div>
       {/* Logo */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
         <div style={{
