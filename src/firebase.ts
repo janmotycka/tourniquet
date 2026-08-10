@@ -5,6 +5,15 @@ import { getFunctions } from 'firebase/functions';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 import { logger } from './utils/logger';
 
+// POZOR na authDomain (regrese 2026-08-10, login byl rozbitý):
+// Firebase Auth vkládá /__/auth/iframe z authDomain do <iframe>. Když authDomain
+// není v CSP `frame-src` (firebase.json), prohlížeč iframe zablokuje a přihlášení
+// přes Google tiše selže. Po přejmenování domény je proto nutné změnit ZÁROVEŇ:
+//   1) GitHub secret VITE_FIREBASE_AUTH_DOMAIN
+//   2) CSP frame-src ve firebase.json (nebo nechat 'self', pokud = hlavní doména)
+//   3) Google OAuth klient → Authorized JavaScript origins + redirect URI
+//      (https://<domena>/__/auth/handler)
+//   4) Firebase Auth → Authorized domains
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
