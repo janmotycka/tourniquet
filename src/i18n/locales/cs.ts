@@ -91,7 +91,7 @@ export const cs = {
   'error.errorDetail': 'Detail chyby:',
 
   // ─── Login ─────────────────────────────────────────────────────────────────
-  'login.subtitle': 'Ťukni gól. Rodiče ho vidí živě.',
+  'login.subtitle': 'Fotbal vašich dětí. Živě.',
   'login.backToHome': 'Zpět na přehled',
   'login.browseLiveEvents': 'Sledovat živé události',
   'login.tabLogin': 'Přihlášení',
@@ -2374,7 +2374,7 @@ export const cs = {
   'matchPublic.live': 'LIVE',
 
   // ─── Landing / Catalog ──────────────────────────────────────────────────────
-  'landing.hero': 'Ťukni gól. Rodiče ho vidí živě.',
+  'landing.hero': 'Fotbal vašich dětí. Živě.',
   'landing.heroSub': 'Živé výsledky, tabulky, QR kódy pro rodiče — vše v jedné aplikaci.',
   'landing.loginCta': 'Přihlásit se',
   'landing.registerCta': 'Vytvořit účet zdarma',
@@ -2574,7 +2574,7 @@ export const cs = {
   'landing.title': 'Veřejné akce',
   // Public landing hero (logged-out visitors)
   'landing.hero.title': 'Gólovka — živé skóre pro trenéry i rodiče',
-  'landing.hero.subtitle': 'Ťukni gól. Rodiče ho vidí živě.',
+  'landing.hero.subtitle': 'Fotbal vašich dětí. Živě.',
   'landing.hero.ctaPrimary': 'Přihlásit se / Vytvořit účet',
   'landing.hero.ctaBackToApp': 'Zpět do Gólovky',
   'landing.hero.ctaSecondary': 'Prohlédnout ukázky',
