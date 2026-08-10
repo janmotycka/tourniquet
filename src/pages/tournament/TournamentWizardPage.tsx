@@ -44,7 +44,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTournamentStore } from '../../store/tournament.store';
 import { useUserPrefsStore } from '../../store/userPrefs.store';
 import { useToastStore } from '../../store/toast.store';
-import { generatePinSalt, hashPin } from '../../utils/pin-hash';
+import { generatePinSalt, hashPin, generateNumericPin } from '../../utils/pin-hash';
 import { suggestFormats, type FormatSuggestion } from '../../utils/tournament-format-suggest';
 import {
   generateBracketLabels,
@@ -1630,7 +1630,7 @@ export function TournamentWizardPage({ navigate }: Props) {
       }));
 
       // Admin PIN — random, schovaný (user ho teď nepotřebuje, je v Settings turnaje)
-      const pin = String(Math.floor(100000 + Math.random() * 900000));
+      const pin = generateNumericPin(6);
       const pinSalt = generatePinSalt();
       const pinHash = await hashPin(pin, pinSalt);
 

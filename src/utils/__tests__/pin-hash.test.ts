@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   hashPin,
   generatePinSalt,
+  generateNumericPin,
   markPinVerified,
   isPinVerified,
   clearPinVerified,
@@ -55,6 +56,31 @@ describe('generatePinSalt', () => {
     const salt1 = generatePinSalt();
     const salt2 = generatePinSalt();
     expect(salt1).not.toBe(salt2);
+  });
+});
+
+// ─── generateNumericPin ──────────────────────────────────────────────────────
+
+describe('generateNumericPin', () => {
+  it('generuje 6místný PIN bez vedoucí nuly ve správném rozsahu', () => {
+    for (let i = 0; i < 300; i++) {
+      const pin = generateNumericPin(6);
+      expect(pin).toMatch(/^[1-9][0-9]{5}$/);
+      const n = Number(pin);
+      expect(n).toBeGreaterThanOrEqual(100000);
+      expect(n).toBeLessThanOrEqual(999999);
+    }
+  });
+
+  it('podporuje 4místný PIN (match pairing)', () => {
+    for (let i = 0; i < 100; i++) {
+      expect(generateNumericPin(4)).toMatch(/^[1-9][0-9]{3}$/);
+    }
+  });
+
+  it('produkuje rozmanité hodnoty (ne konstantu)', () => {
+    const set = new Set(Array.from({ length: 100 }, () => generateNumericPin(6)));
+    expect(set.size).toBeGreaterThan(90);
   });
 });
 

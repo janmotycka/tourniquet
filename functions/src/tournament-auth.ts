@@ -85,23 +85,18 @@ export const joinTournamentByPin = functions.region('europe-west1').https.onCall
   const publicData = publicSnap.val() as {
     ownerUid?: string;
     name?: string;
-    pinHash?: string;
-    pinSalt?: string;
     joinedUsers?: Record<string, unknown>;
   };
 
-  let pinHash: string | undefined;
-  let pinSalt: string | undefined;
-
-  if (pinSnap.exists()) {
-    const pinData = pinSnap.val() as { pinHash?: string; pinSalt?: string };
-    pinHash = pinData.pinHash;
-    pinSalt = pinData.pinSalt;
-  } else {
-    // Legacy fallback — staré turnaje měly pinHash v public mirror
-    pinHash = publicData.pinHash;
-    pinSalt = publicData.pinSalt;
+  // PIN se čte VÝHRADNĚ z chráněného /pin-auth (read: false). Legacy fallback
+  // na /public byl odstraněn 2026-08-10 — public mirror je světově čitelný a
+  // 6místný pinHash z něj šel offline prolomit. Staré turnaje migrovány.
+  if (!pinSnap.exists()) {
+    throw new functions.https.HttpsError('failed-precondition', 'Tournament has no PIN set');
   }
+  const pinData = pinSnap.val() as { pinHash?: string; pinSalt?: string };
+  const pinHash = pinData.pinHash;
+  const pinSalt = pinData.pinSalt;
 
   if (!pinHash) {
     throw new functions.https.HttpsError('failed-precondition', 'Tournament has no PIN set');
@@ -160,18 +155,16 @@ export const verifyTournamentPin = functions.region('europe-west1').https.onCall
     throw new functions.https.HttpsError('not-found', 'Tournament not found');
   }
 
-  let pinHash: string | undefined;
-  let pinSalt: string | undefined;
-
-  if (pinSnap.exists()) {
-    const pinData = pinSnap.val() as { pinHash?: string; pinSalt?: string };
-    pinHash = pinData.pinHash;
-    pinSalt = pinData.pinSalt;
-  } else {
-    const pub = publicSnap.val() as { pinHash?: string; pinSalt?: string };
-    pinHash = pub.pinHash;
-    pinSalt = pub.pinSalt;
+  // PIN se čte VÝHRADNĚ z chráněného /pin-auth (read: false). Legacy fallback
+  // na /public byl odstraněn 2026-08-10 — public mirror je světově čitelný a
+  // 6místný pinHash z něj šel offline prolomit. Staré turnaje migrovány do
+  // /pin-auth, pinHash/pinSalt z /public smazány.
+  if (!pinSnap.exists()) {
+    throw new functions.https.HttpsError('failed-precondition', 'Tournament has no PIN set');
   }
+  const pinData = pinSnap.val() as { pinHash?: string; pinSalt?: string };
+  const pinHash = pinData.pinHash;
+  const pinSalt = pinData.pinSalt;
 
   if (!pinHash) {
     throw new functions.https.HttpsError('failed-precondition', 'Tournament has no PIN set');

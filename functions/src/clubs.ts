@@ -135,8 +135,9 @@ async function audit(
 }
 
 function generatePin(): string {
-  // 6-místný numerický PIN
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // 6-místný numerický PIN. crypto.randomInt je kryptograficky bezpečný a
+  // uniformní — dřívější Math.random() byl predikovatelný (viz pin-hash.ts).
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 function hashPin(pin: string, salt: string): string {

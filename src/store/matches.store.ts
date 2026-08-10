@@ -18,7 +18,7 @@ import {
   deleteMatchCatalogEntry, updateMatchActiveEditor,
   writeMatchPairing, writeMatchPairingAuth,
 } from '../services/match.firebase';
-import { generatePinSalt, hashPin } from '../utils/pin-hash';
+import { generatePinSalt, hashPin, generateNumericPin } from '../utils/pin-hash';
 import { logger } from '../utils/logger';
 import { track } from '../services/analytics';
 import { useToastStore } from './toast.store';
@@ -794,7 +794,7 @@ export const useMatchesStore = create<MatchesState>()(
         if (!match) return null;
 
         // 4-digit PIN + hash + random joinToken
-        const pin = String(Math.floor(1000 + Math.random() * 9000));
+        const pin = generateNumericPin(4);
         const pinSalt = generatePinSalt();
         const pinHash = await hashPin(pin, pinSalt);
         const joinToken = generatePinSalt(); // 128-bit random token

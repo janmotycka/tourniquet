@@ -8,6 +8,28 @@ export function generatePinSalt(): string {
 }
 
 /**
+ * Vygeneruje N-místný numerický PIN kryptograficky bezpečně.
+ *
+ * Dříve se PIN generoval přes Math.floor(100000 + Math.random()*900000) —
+ * Math.random() NENÍ kryptograficky bezpečný (predikovatelný), takže šel
+ * PIN teoreticky uhodnout ze stavu generátoru. Salt už crypto používal,
+ * PIN ne. Rejection sampling zajišťuje uniformní rozdělení (prostý modulo
+ * by mírně zvýhodnil nižší hodnoty).
+ */
+export function generateNumericPin(digits = 6): string {
+  const min = 10 ** (digits - 1);
+  const range = 9 * min; // počet hodnot v [min, 10^digits − 1]
+  const maxUnbiased = Math.floor(0xffffffff / range) * range;
+  const buf = new Uint32Array(1);
+  let x: number;
+  do {
+    crypto.getRandomValues(buf);
+    x = buf[0];
+  } while (x >= maxUnbiased);
+  return String(min + (x % range));
+}
+
+/**
  * SHA-256 hash PINu se solí.
  * @param salt — pokud prázdný/undefined, hashuje bez soli (zpětná kompatibilita)
  */
