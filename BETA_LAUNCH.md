@@ -1,80 +1,89 @@
 # 🚀 Gólovka — Beta launch handover
 
-Pro tebe (Jan), abys mohl plynule rozjet beta s 3-5 trenéry.
+Pro tebe (Jan), abys mohl plynule rozjet beta s 3–5 trenéry.
 
-**Updated 2026-05-22 22:25** — po deep audit + UX research + Phase 1+2
-refactoru. Stav je solidní pro beta. Phase 3 (lineup page rewrite) v
-další session.
-
----
-
-## 🎁 Co nového po deep audit (Phase 1 + Phase 2)
-
-**2 paralelní agenti** prošli code (CreateMatchPage + QuickMatchSheet) +
-UX research (Strava, GameChanger, TeamSnap, FotMob best practices).
-Identifikovali 30+ findings. Implementoval jsem nejhodnotnější:
-
-### Quick match — kritické bug fixy
-- ✅ **Opponent validation** — Spustit zápas je teď disabled bez opponenta (min 2 znaky). Žádný DB junk.
-- ✅ **Unsaved form guard** — refresh už neztratí 18 hráčů
-- ✅ **Smart defaults z lastMatch** — format/délka/soutěž/kategorie/trackAssists se přebírá z minulého zápasu
-- ✅ **Smart defaults banner** — „💡 Předvyplněno z minulého zápasu (14. 5.). Můžeš změnit." Konec silent auto-fill.
-- ✅ **Match format dropdown** — místo 6 chips (overflow na mobile 360px), native select s edukativními labels („5+1 — malá kopaná, 6 hráčů")
-
-### Shared infrastructure (pro budoucí Phase 3)
-- ✅ `<CollapsibleSection>` shared component
-- ✅ `useMatchSmartDefaults` hook (sjednocený zdroj defaults)
-- ✅ `<MatchFormatSelect>` component (dropdown s i18n hints)
+**Updated 2026-08-10** — po rebrandu TORQ → Gólovka, přesunu na golovka.cz,
+osekání na jádro (fotbal, cs-only) a bezpečnostním auditu před betou.
+**Stav: technicky připraveno k betě.**
 
 ---
 
-## 📋 Pro tebe — co předtím udělat
+## ✅ TL;DR — co je hotové a nasazené
 
-### 1. App Check enforcement (15 min)
+| Oblast | Stav |
+|---|---|
+| Doména | **golovka.cz** live (SSL), `www` → redirect na apex |
+| Staré domény | `torq.cz` + `torqcoach.com` → **301 redirect** na golovka.cz (staré QR/odkazy fungují) |
+| Přihlášení | ✅ Google + e-mail/heslo (authDomain opraven po rebrandu) |
+| Vzhled | auto podle systému + **přepínač světlý/tmavý i pro nepřihlášené** (landing, login, veřejný turnaj/zápas) |
+| Jazyk | **jen čeština** (EN/DE odstraněny) |
+| Sport | **jen fotbal** (tenis/florbal odstraněny) |
+| Bezpečnost | ✅ audit hotový (viz níže) |
+| CI/CD | push na `main` → auto-deploy functions → database → hosting (~2–4 min) |
+| Konzole v produkci | 0 chyb |
 
-App Check verified % je teď:
-- **Realtime Database: 92%** (počkat na 95%+, pak enforce — risk že 8% legitimních usrů vypadne)
-- **Authentication: 96%** ✅ — **můžeš enforce hned**
+---
 
-**Postup:**
-1. Otevři https://console.firebase.google.com/project/tourniquet-7a123/appcheck/products
-2. U **Authentication** klikni `Monitoring...` → změň na **Enforce**
-3. Sleduj 24h, jestli někdo neztratí přístup
-4. Pokud ano → vrať na Monitoring; pokud OK → udělej totéž s **Realtime Database** (až 95%+)
+## 🔒 Bezpečnost — stav před betou
 
-### 2. Beta tester výběr (15 min)
+**Verdikt: solidní.** Audit 2026-08-10 opravil dva legacy nálezy, žádný blocker nezůstal.
 
-Vyber 3-5 trenérů kde **alespoň 2 různé scénáře:**
-- 1-2× klubový trenér (Advanced mode, sezónní zápasy, FAČR)
-- 1-2× učitel TV / amatér (Simple mode, ad-hoc turnaje)
-- 1× někdo kdo organizuje větší turnaj (8-16 týmů)
+- ✅ Žádný nechráněný zápis do DB (`.write: true`)
+- ✅ Admin Cloud Functions kontrolují `ADMIN_UID`
+- ✅ PIN: rate-limit (10 pokusů/10 min → blok 30 min), server-side ověření
+- ✅ **PIN hashe jen v `/pin-auth` (`.read:false`)** — legacy leak z `/public` opraven (migrace + cleanup + odstraněn server fallback)
+- ✅ **PIN se generuje kryptograficky** (`crypto`, ne `Math.random()`)
+- ✅ App Check na **Authentication = Enforced**
+- ✅ PII dětí chráněné: ve `/public` jen jméno+dres (záměr pro rodiče), **ročník narození nikde**; kontakt na trenéra strippován (GDPR)
+- ✅ Žádný Stripe secret v repu (přes Google Secret Manager)
 
-### 3. Beta zpráva — copy-paste šablona
+### ⚠️ App Check na Realtime Database — ZÁMĚRNĚ NECHÁNO VYPNUTÉ
+Nezapínat pro betu. Klientský App Check init je v `try/catch` a **v anonymním okně / s ad-blockerem** reCAPTCHA selže → klient jede bez tokenu. Enforced RTDB by takové uživatele **odmítl** = výpadek pro část trenérů/rodičů. Bezpečnostní pravidla jsou dostatečná vrstva. Zvážit až po betě a jen s monitoringem odmítnutých requestů.
 
-Pošli každému trenérovi tuto zprávu:
+---
+
+## 📋 Co ještě potřebuje TVOJE ruce (nejde bez tvých účtů)
+
+Nic z toho není blocker bety — jsou to poslední kusy leštění.
+
+### 1. Rozeslat beta zprávu trenérům (šablona níže) — **jediný krok k rozjezdu**
+
+### 2. E-mailová doména (volitelné, kosmetika)
+Notifikační maily teď chodí z `Gólovka <noreply@torq.cz>` (funkční, verifikováno v Resend; tělo i odkazy už jsou golovka.cz). Chceš-li i odesílací adresu na golovka.cz:
+1. V Resendu přidej doménu `golovka.cz` → dá ti DNS záznamy (SPF/DKIM)
+2. Přidej je do Active24 DNS
+3. Nastav env `EMAIL_FROM=Gólovka <noreply@golovka.cz>` u funkcí
+→ Řekni a udělám kroky 1–3 s tebou (Resend + DNS).
+
+### 3. Podpora / donate (až budeš chtít monetizovat)
+`DONATE_URL` v `src/types/feature-flags.ts` je prázdný → tlačítko „Podpořit Gólovku" skryté. Až vytvoříš Stripe Payment Link, pošli mi URL a odemknu ho (jeden řádek).
+
+---
+
+## 📨 Beta zpráva — copy-paste šablona
+
+Vyber 3–5 trenérů, ideálně 2 různé scénáře (klubový trenér vs. učitel TV / ad-hoc turnaj, a někdo s větším turnajem 8–16 týmů).
 
 ```
 Ahoj!
 
 Pracuju na aplikaci Gólovka pro amatérské trenéry — vytvoření turnaje za
-minutu, živé skórování zápasů přes telefon, sdílení s rodiči přes QR
-kód. Funguje na webu i offline (PWA).
+minutu, živé skórování zápasů přes telefon a sdílení s rodiči přes QR kód
+(rodiče vidí výsledky živě, bez registrace). Funguje na webu i offline (PWA).
 
-Chtěl bych ji s tebou vyzkoušet — pomohlo by mi 30 minut tvého času
-během příštího týdne. Co potřebuju:
+Chtěl bych ji s tebou vyzkoušet — pomohlo by mi 30 minut tvého času během
+příštího týdne:
 
 1. Otevři: https://golovka.cz
-2. Přihlas se přes Google
-3. Zkus vytvořit turnaj nebo zápas (záleží na tom co reálně používáš)
-4. Dej mi vědět co tě překvapilo / mátlo / chybělo
+2. Přihlas se (Google nebo e-mail)
+3. Zkus vytvořit turnaj nebo zápas — podle toho, co reálně používáš
+4. Dej mi vědět, co tě překvapilo / mátlo / chybělo
 
-Bugs nebo zmatky pošli mi prosím:
-- Email: jan@golovka.cz
-- Případně screenshot + popis co tě štvalo
+Bugs nebo zmatky pošli prosím na jan@golovka.cz (klidně screenshot + popis).
 
-⚠️ Když budeš chtít sdílet zápas přes QR/odkaz s rodiči, app se zeptá
-na GDPR souhlas (musíš mít souhlas od rodičů nezletilých hráčů).
-Pokud souhlas nemáš, neaktivuj „Zveřejnit" — výsledky pošli ručně.
+⚠️ Když budeš chtít sdílet zápas přes QR/odkaz s rodiči, app se zeptá na
+GDPR souhlas (musíš mít souhlas rodičů nezletilých hráčů). Bez souhlasu
+„Zveřejnit" neaktivuj — výsledky pošli ručně.
 
 Díky moc!
 Jan
@@ -82,157 +91,80 @@ Jan
 
 ---
 
-## 🔍 Co aplikace **už umí**
+## 🔍 Co aplikace umí (aktuální)
 
-### Pro trenéra
-- ✅ Vytvořit turnaj (2-32 týmů, 3 formáty)
-- ✅ Vytvořit zápas (Quick match s smart defaults z minula)
-- ✅ Živé skóre (góly, karty žluté/červené, střídání, půlčasy)
-- ✅ Asistent střídání (auto-alert + auto-split starters/bench)
-- ✅ Captain selector
-- ✅ Track assists toggle
-- ✅ Klubový roster (správa hráčů, věkové kategorie U6-U19)
-- ✅ Sdílení s asistenty trenéra
-- ✅ Statistiky hráčů (góly, asistence, hodnocení)
-- ✅ FAČR export PDF
-- ✅ Offline mode (PWA)
-- ✅ Multi-language (cs/en/de)
-- ✅ Unsaved form guard (refresh už neztratí data)
+**Pro trenéra:** turnaj (2–32 týmů, 3 formáty) · quick match se smart defaults · živé skóre (góly, karty, střídání, půlčasy) · asistent střídání · kapitán · asistence toggle · klubový roster (U6–U19) · sdílení s asistenty · statistiky hráčů · offline PWA.
 
-### Pro rodiče
-- ✅ Sledování zápasu naživo přes QR kód / odkaz
-- ✅ Žádná registrace, žádný download
+**Pro rodiče:** sledování zápasu i turnaje naživo přes QR/odkaz — **bez registrace**, s tabulkou, střelci, diskuzí, reakcemi a anketami.
 
-### Pro AI agenty (Claude/ChatGPT/Perplexity)
-- ✅ `llms.txt`, rich JSON-LD (FAQ + HowTo), `<noscript>` fallback
-- ✅ Gólovka je dohledatelný + AI agenty mohou doporučovat
+**Pro AI/SEO:** `llms.txt`, JSON-LD (WebApplication + FAQ), `<noscript>` fallback, sitemap.
 
 ---
 
-## ⚠️ Známé limitace (k pravdivému sdělení trenérům)
+## ⚠️ Známé limitace (řekni trenérům pravdivě)
 
-### Nejde teď
-- ❌ **Stripe placení** — premium plán existuje jako limit, ale není jak koupit
-- ❌ **Walkover one-tap** (pro turnaj kdy tým nepřijde, musíš ručně dát skóre 0:0)
-- ❌ **Bracket spojnice** v live view (vidíš jen tabulkou)
-- ❌ **Manual seed override** ve wizardu (jen automatic)
-- ❌ **iOS/Android App Store** — zatím jen PWA (Capacitor wrappery připraveny, nepublikováno)
-
-### Zatím skryté za feature flag
-- ❌ **Modul tréninků** (`TRAINING_ENABLED = false`) — připravený, ale chce ověřit core flow
-- ❌ **Tenis a florbal** (`ENABLED_SPORTS = ['football']`) — kód existuje
-
-### Pre-release legal
-- ⚠️ **Privacy Policy + ToS** — stránky existují, ale nemáš revizi od právníka
-- ⚠️ **Account deletion** — jen email request (GDPR-compliant manuálně)
+- ❌ **Placení** — premium existuje jako limit, ale není jak koupit (Stripe MVP až později)
+- ❌ **Walkover one-tap** — když tým nepřijde, dej skóre ručně
+- ❌ **Bracket spojnice** v live view (vidíš tabulkou)
+- ❌ **App Store** — zatím jen PWA (Capacitor wrappery připraveny, nepublikováno)
+- ❌ **Modul tréninků** — za feature flagem (`TRAINING_ENABLED=false`), čeká na ověření jádra
+- ⚠️ **Privacy Policy + ToS** — stránky existují, bez revize právníkem
+- ⚠️ **Smazání účtu** — přes e-mail request (GDPR-compliant manuálně)
 
 ---
 
-## 📊 Co měřit během beta
+## 📊 Co měřit během beta (kontroluj v pondělí)
 
-### Týdenní metriky (kontroluj v pondělí)
-1. **Aktivní users** v Firebase Auth — kolik se přihlásilo
+1. **Aktivní users** ve Firebase Auth
 2. **Sentry errors** — https://jan-motycka.sentry.io/issues/?project=4510997348548688
-3. **App Check %** — chceš 95%+ pro safe enforcement
-4. **Manuální feedback** — co tě trenéři řeknou
+3. **Manuální feedback** od trenérů
 
-### Co znamená "úspěch beta"
-- 3+ trenérů app **používá víc než 1×** (retention)
-- 1+ trenér ji použije při **reálném zápase nebo turnaji**
-- 0 P0 bugů (crashes, data loss, broken UI)
+**Úspěch beta:** 3+ trenéři app použijí víc než 1× · 1+ ji použije při reálném zápase/turnaji · 0 P0 bugů (crash / ztráta dat / rozbité UI).
+
+**Nejcennější otázka teď:** cizí trenér (`janecekjirka`) si v dubnu nachystal turnaj škol (11 týmů, 55 zápasů) a **ani jednou v něm neskóroval**. Zeptej se ho proč — jediný reálný datový bod od cizího uživatele.
 
 ---
 
-## 🐛 Když se objeví bug
+## 🐛 Bug triage & hotfix
 
-### Triage pravidla
-1. **P0 — data loss / crash / login broken** → fix do 24h
-2. **P1 — feature broken pro vícero trenérů** → fix do týdne
-3. **P2 — UX friction, malé bugy** → next sprint
+| Priorita | Co | SLA |
+|---|---|---|
+| P0 | ztráta dat / crash / rozbité přihlášení | do 24 h |
+| P1 | feature rozbitý pro víc trenérů | do týdne |
+| P2 | UX friction, malé bugy | next sprint |
 
-### Hotfix flow
 ```bash
-# 1. Lokálně oprav
-# 2. Pre-commit (TS + tests prošlo)
-git add . && git commit -m "fix(area): description"
+# oprav lokálně → pre-commit (TS + testy) → push → CI deploy ~2–4 min
+git add . && git commit -m "fix(area): popis"
 git push origin main
-
-# CI automaticky deployuje (~2 min)
-# Smoke test na produkci přes incognito browser
+# smoke test na produkci v anonymním okně
 ```
 
 ---
 
-## 📞 Co když ti někdo z trenérů řekne…
+## 📞 Když ti trenér řekne…
 
-| Co řeknou | Co odpovědět |
+| Řeknou | Odpověz |
 |---|---|
-| „Nejde to nainstalovat" | „PWA — v Chromu klikni `⋮` → `Přidat na plochu`. Není to App Store." |
-| „Funguje to offline?" | „Ano, ale poprvé musíš být online aby si app cachla." |
-| „Můžu mít víc klubů?" | „Free plan: 3 osobní kluby. Pro víc je premium plán brzy." |
-| „Mohou to vidět rodiče bez registrace?" | „Ano — zapni v zápase `Sdílet`, dostaneš QR + odkaz." |
-| „Co když nemám aktivní klub?" | „Quick match funguje i bez klubu — Simple mode flow." |
-| „Nepoběží mi to na iOS?" | „PWA funguje na všech iOS od 16+. Push notifikace omezené." |
-| „Dělají se i tréninkové cvičení?" | „Brzy — feature flag teď schovaný, čekáme na ověření core flow." |
-
----
-
-## 🎯 Po týdnu beta — co dělat
-
-### Pokud bylo OK (0-2 P0 bugů, retention ≥ 50%)
-1. **App Check enforcement** (pokud nejsi už hotov)
-2. **Rozšíření beta na 10-20 trenérů**
-3. **Stripe MVP** pokud chceš premium platit
-4. **Začít plánovat marketing landing page**
-
-### Pokud bylo špatně (≥ 3 P0 bugů nebo nikdo to nepoužije)
-1. **Identifikuj root cause** — onboarding? Mobile UX? Konkrétní feature?
-2. **Iterace 2 týdny** — fix top 3 problémů
-3. **Re-beta s těmi samými trenéry**
+| „Nejde nainstalovat" | „PWA — v Chromu `⋮` → `Přidat na plochu`. Není to App Store." |
+| „Funguje offline?" | „Ano, ale poprvé musíš být online, ať se app cachne." |
+| „Vidí to rodiče bez registrace?" | „Ano — v zápase/turnaji zapni `Sdílet`, dostaneš QR + odkaz." |
+| „Nemám klub, půjde to?" | „Quick match funguje i bez klubu." |
+| „Poběží na iOS?" | „PWA na iOS 16+. Push notifikace omezené." |
+| „Dělají se tréninky?" | „Brzy — feature zatím skrytá, ověřujeme jádro." |
 
 ---
 
 ## 🔗 Quick links
 
-- **Live app**: https://golovka.cz
+- **Live**: https://golovka.cz
 - **GitHub**: https://github.com/janmotycka/tourniquet
 - **CI/CD**: https://github.com/janmotycka/tourniquet/actions
-- **Firebase Console**: https://console.firebase.google.com/project/tourniquet-7a123
+- **Firebase**: https://console.firebase.google.com/project/tourniquet-7a123
 - **Sentry**: https://jan-motycka.sentry.io/issues/?project=4510997348548688
-- **AEO check**:
-  - https://golovka.cz/llms.txt
-  - https://golovka.cz/sitemap.xml
-  - https://golovka.cz/robots.txt
 
 ---
 
-## 📊 Stav po této session (2026-05-24)
+_Good luck! Cokoliv překvapivého z bety — dobré, špatné, neutrální — pošli, iterujeme podle reálné zpětné vazby._
 
-| | |
-|---|---|
-| Branch `main` | latest |
-| Last deploy | success |
-| Tests | 245/245 |
-| Sentry errors 14d | 1 (handled, 0 users affected) |
-| App Check RTDB | 92% verified (target 95%+) |
-| App Check Auth | 96% verified ✅ ready to enforce |
-| AEO assets | ✅ llms.txt, JSON-LD (3 schemas), noscript, sitemap |
-| Console errors v produkci | 0 |
-| Public test data | ✅ Cleaned |
-| Security RTDB rules | ✅ S-2, S-3, S-4, S-5 fixed |
-| PIN brute force | ✅ S-7 server-side rate limit (10 fail/10min → block 30min) |
-| GDPR consent gate | ✅ J-2 modal před prvním Zveřejnit |
-| Quick→Lineup edit flow | ✅ J-1 sticky Spustit zápas v LineupTab |
-| Match creation paywall | ✅ J-3 limit check v useQuickMatchCreate |
-| Sport switch guard | ✅ J-4 redirect pro mismatch |
-| Squad chip navigation | ✅ J-5 prefillSquadId |
-| Captain display | ✅ J-7 "C" badge v LineupTab |
-| Tournament free limit | ✅ J-8 bumped 1 → 3 |
-| npm audit | ✅ 0 vulnerabilities (root) |
-| Pending user actions | ⚠️ Viz SECURITY_MIGRATION.md (Stripe key rotation) |
-
----
-
-_Good luck! Pokud někdo z beta ti řekne něco překvapivého — slušné, špatné, neutrální — pošli mi to. Můžeme iterovat cíleně podle reálné zpětné vazby._
-
-_— Jan & Claude, 2026-05-24_
+_— Jan & Claude, 2026-08-10_
