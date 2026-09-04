@@ -1593,7 +1593,7 @@ export const cs = {
   'privacy.s3Title': '3. Ukládání a zpracování dat',
   'privacy.s3Text': 'Data jsou uložena v Google Firebase (servery EU — europe-west1). Platby zpracovává Stripe. Autentizaci zajišťuje Firebase Authentication. Všechny přenosy dat jsou šifrovány pomocí TLS.',
   'privacy.s4Title': '4. Sdílení dat',
-  'privacy.s4Text': 'Turnajová data (názvy týmů, skóre) označená jako veřejná jsou přístupná divákům přes QR kód a PIN. Osobní údaje trenérů v soupiskách jsou viditelné pouze organizátorovi turnaje. Chat zprávy jsou veřejné v rámci turnaje.',
+  'privacy.s4Text': 'Turnajová data (názvy týmů, skóre, jména a čísla dresů hráčů) jsou přístupná komukoli, kdo má odkaz nebo QR kód turnaje — bez hesla či PINu. Osobní údaje trenérů v soupiskách jsou viditelné pouze organizátorovi turnaje. Zprávy v diskuzi jsou veřejné v rámci turnaje.',
   'privacy.s5Title': '5. Vaše práva (GDPR)',
   'privacy.s5Text': 'Máte právo na přístup ke svým údajům, opravu, přenositelnost a výmaz. Data si můžete exportovat v Nastavení → Správa dat. Pro smazání účtu nás kontaktujte na privacy@golovka.cz. Na vaši žádost odpovíme do 30 dnů.',
   'privacy.s6Title': '6. Cookies a analytika',

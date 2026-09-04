@@ -12,6 +12,7 @@ import type { Tournament, RegistrationSubmission } from '../../types/tournament.
 import { subscribeToPublicTournament } from '../../services/tournament.firebase';
 import { submitRegistration } from '../../services/registration.firebase';
 import { useI18n } from '../../i18n';
+import { useAuth } from '../../context/AuthContext';
 import { logger } from '../../utils/logger';
 import { getDateLocale } from '../../i18n';
 
@@ -58,6 +59,15 @@ interface Props {
 // ─── Main export ────────────────────────────────────────────────────────────
 
 export function RegistrationFormPage({ tournamentId }: Props) {
+  // Audit 2026-08-10: zápis do /registrations nově vyžaduje auth (dřív šel
+  // první zápis bez přihlášení → bot spam falešnými přihláškami). Trenéra
+  // z veřejného odkazu přihlásíme anonymně — stejný vzor jako RosterFormPage.
+  const { user, signInAnonymously } = useAuth();
+  useEffect(() => {
+    if (!user) {
+      void signInAnonymously();
+    }
+  }, [user, signInAnonymously]);
   const { t, locale } = useI18n();
 
   // ── Tournament loading ──────────────────────────────────────────────────
