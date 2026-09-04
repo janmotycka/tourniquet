@@ -233,7 +233,9 @@ export function LoginPage({ onBack }: { onBack?: () => void } = {}) {
         {mode === 'login' && (
           <button
             onClick={() => { setMode('reset'); setError(''); setResetSent(false); }}
-            style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}
+            // background: 'none' — bez něj <button> dědí šedé výchozí pozadí
+            // prohlížeče a roztáhne se na celou šířku (audit 2026-09-04).
+            style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             {t('login.forgotLink')}
           </button>
