@@ -30,6 +30,12 @@ if (!admin.apps.length) {
 
 const ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
 const SITE = 'https://golovka.cz';
+// Staré domény (torq.cz, torqcoach.com) opět servírují obsah, aby se na nich
+// mohla aktualizovat zamrzlá PWA (viz public/legacy-redirect.js). Sdílené
+// /m/ a /t/ odkazy (staré QR kódy) ale dostanou skutečný 301 na golovka.cz —
+// /m/ a /t/ jsou v navigateFallbackDenylist, takže jdou vždy na síť → sem.
+const LEGACY_HOSTS = new Set(['torq.cz', 'www.torq.cz', 'torqcoach.com', 'www.torqcoach.com']);
+
 
 function esc(s: unknown): string {
   return String(s ?? '')
@@ -133,6 +139,13 @@ async function tournamentPreview(id: string): Promise<{ title: string; descripti
 }
 
 export const publicPreview = functions.https.onRequest(async (req, res) => {
+  const legacyHost = String(req.get('x-forwarded-host') || req.get('host') || '').split(':')[0].toLowerCase();
+  if (LEGACY_HOSTS.has(legacyHost)) {
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.redirect(301, `${SITE}${req.originalUrl}`);
+    return;
+  }
+
   try {
     const match = req.path.match(/^\/(m|t)\/([^/]+)\/?$/);
     const kind = match?.[1];
