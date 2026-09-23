@@ -2,8 +2,9 @@
 
 Pro tebe (Jan), abys mohl plynule rozjet beta s 3–5 trenéry.
 
-**Updated 2026-08-10** — po rebrandu TORQ → Gólovka, přesunu na golovka.cz,
-osekání na jádro (fotbal, cs-only) a bezpečnostním auditu před betou.
+**Updated 2026-09-23** — po rebrandu TORQ → Gólovka, přesunu na golovka.cz,
+osekání na jádro (fotbal, cs-only), bezpečnostním auditu a incidentu
+23. 9. (zamrzlé TORQ PWA + nefunkční katalog zápasů — obojí opraveno).
 **Stav: technicky připraveno k betě.**
 
 ---
@@ -13,7 +14,7 @@ osekání na jádro (fotbal, cs-only) a bezpečnostním auditu před betou.
 | Oblast | Stav |
 |---|---|
 | Doména | **golovka.cz** live (SSL), `www` → redirect na apex |
-| Staré domény | `torq.cz` + `torqcoach.com` → **301 redirect** na golovka.cz (staré QR/odkazy fungují) |
+| Staré domény | `torq.cz` + `torqcoach.com` **servírují obsah** a `legacy-redirect.js` je přesměruje na golovka.cz (zachová cestu); `/m/` a `/t/` dostanou 301 z funkce. NE „Redirect“ doména — viz incident 23. 9. |
 | Přihlášení | ✅ Google + e-mail/heslo (authDomain opraven po rebrandu) |
 | Vzhled | auto podle systému + **přepínač světlý/tmavý i pro nepřihlášené** (landing, login, veřejný turnaj/zápas) |
 | Jazyk | **jen čeština** (EN/DE odstraněny) |
@@ -33,14 +34,20 @@ osekání na jádro (fotbal, cs-only) a bezpečnostním auditu před betou.
 - ✅ PIN: rate-limit (10 pokusů/10 min → blok 30 min), server-side ověření
 - ✅ **PIN hashe jen v `/pin-auth` (`.read:false`)** — legacy leak z `/public` opraven (migrace + cleanup + odstraněn server fallback)
 - ✅ **PIN se generuje kryptograficky** (`crypto`, ne `Math.random()`)
-- ✅ App Check na **Authentication = Enforced**
+- ⚠️ App Check na **Authentication = Monitoring** (vypnuto 23. 9., viz níže)
 - ✅ PII dětí chráněné: ve `/public` jen jméno+dres (záměr pro rodiče), **ročník narození nikde**; kontakt na trenéra strippován (GDPR)
 - ✅ Žádný Stripe secret v repu (přes Google Secret Manager)
 
-### ⚠️ App Check na Realtime Database — ZÁMĚRNĚ NECHÁNO VYPNUTÉ
-Nezapínat pro betu. Klientský App Check init je v `try/catch` a **v anonymním okně / s ad-blockerem** reCAPTCHA selže → klient jede bez tokenu. Enforced RTDB by takové uživatele **odmítl** = výpadek pro část trenérů/rodičů. Bezpečnostní pravidla jsou dostatečná vrstva. Zvážit až po betě a jen s monitoringem odmítnutých requestů.
+### ⚠️ App Check na Realtime Database i Authentication — ZÁMĚRNĚ VYPNUTÉ (Monitoring)
+Nezapínat pro betu. Auth bylo Enforced do 23. 9.: reálný uživatel ze zamrzlé TORQ PWA (neposílá token) dostal tvrdý lockout `auth/firebase-app-check-token-is-invalid` bez jakéhokoli vysvětlení v UI. Re-enforce až budou v App Check metrikách „unknown origin“ + „outdated client“ requesty ~0. Klientský App Check init je v `try/catch` a **v anonymním okně / s ad-blockerem** reCAPTCHA selže → klient jede bez tokenu. Enforced RTDB by takové uživatele **odmítl** = výpadek pro část trenérů/rodičů. Bezpečnostní pravidla jsou dostatečná vrstva. Zvážit až po betě a jen s monitoringem odmítnutých requestů.
 
 ---
+
+## 🚨 Incident 2026-09-23 — co se stalo a co z toho plyne
+
+**1. Zamrzlé TORQ PWA (Sentry TORQ-WEB-Q).** Firebase „Redirect“ doména vrací 301 i na `/sw.js`, a prohlížeč service worker přes cross-origin redirect **nikdy neaktualizuje**. Každý, kdo si nainstaloval TORQ PWA před 10. 8., tak zůstal navždy ve starém buildu na origin torq.cz — a ten build neposílá App Check token. Fix: `public/legacy-redirect.js` + 301 v `publicPreview` (commit 28f6420) a **torq.cz/torqcoach.com přepnuté zpět na „Serve traffic“** (Hosting → Domains → ⋮ → Edit). Kolik zamrzlých klientů ještě žije, ukazují App Check metriky → „outdated client requests“.
+
+**2. Katalog zápasů nikdy nefungoval (Sentry TORQ-WEB-P).** Pravidlo `/match-catalog` mělo užší schéma než klient + `"$other": false` → každý zápis padal. Veřejný odkaz `/m/` fungoval, zápas jen chyběl v seznamu na landingu. Fix: schéma = `MatchCatalogEntry`, + `clubId` a klubová oprávnění (commit 9e7d873). **Poučení:** při změně typu veřejného mirroru vždy sáhnout i do `database.rules.json` (grep `"$other"`).
 
 ## 📋 Co ještě potřebuje TVOJE ruce (nejde bez tvých účtů)
 
@@ -117,7 +124,8 @@ Jan
 
 1. **Aktivní users** ve Firebase Auth
 2. **Sentry errors** — https://jan-motycka.sentry.io/issues/?project=4510997348548688
-3. **Manuální feedback** od trenérů
+3. **App Check metriky** (Console → App Check → APIs) — „outdated client“ = zamrzlé staré PWA, „unknown origin“ = klienti bez tokenu; až obojí ~0, jde Auth zase Enforce
+4. **Manuální feedback** od trenérů
 
 **Úspěch beta:** 3+ trenéři app použijí víc než 1× · 1+ ji použije při reálném zápase/turnaji · 0 P0 bugů (crash / ztráta dat / rozbité UI).
 
