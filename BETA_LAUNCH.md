@@ -14,7 +14,7 @@ osekání na jádro (fotbal, cs-only), bezpečnostním auditu a incidentu
 | Oblast | Stav |
 |---|---|
 | Doména | **golovka.cz** live (SSL), `www` → redirect na apex |
-| Staré domény | `torq.cz` + `torqcoach.com` **servírují obsah** a `legacy-redirect.js` je přesměruje na golovka.cz (zachová cestu); `/m/` a `/t/` dostanou 301 z funkce. NE „Redirect“ doména — viz incident 23. 9. |
+| Staré domény | ⚠️ `torq.cz` + `torqcoach.com` **MUSÍ být „Serve traffic"** (ne „Redirect") — kód pro migraci je nasazený (`legacy-redirect.js` je přesměruje na golovka.cz se zachováním cesty; `/m/`,`/t/` dostanou 301 z funkce), ale přepnutí v konzoli je ruční krok — viz incident 23. 9. |
 | Přihlášení | ✅ Google + e-mail/heslo (authDomain opraven po rebrandu) |
 | Vzhled | auto podle systému + **přepínač světlý/tmavý i pro nepřihlášené** (landing, login, veřejný turnaj/zápas) |
 | Jazyk | **jen čeština** (EN/DE odstraněny) |
@@ -45,7 +45,7 @@ Nezapínat pro betu. Auth bylo Enforced do 23. 9.: reálný uživatel ze zamrzl�
 
 ## 🚨 Incident 2026-09-23 — co se stalo a co z toho plyne
 
-**1. Zamrzlé TORQ PWA (Sentry TORQ-WEB-Q).** Firebase „Redirect“ doména vrací 301 i na `/sw.js`, a prohlížeč service worker přes cross-origin redirect **nikdy neaktualizuje**. Každý, kdo si nainstaloval TORQ PWA před 10. 8., tak zůstal navždy ve starém buildu na origin torq.cz — a ten build neposílá App Check token. Fix: `public/legacy-redirect.js` + 301 v `publicPreview` (commit 28f6420) a **torq.cz/torqcoach.com přepnuté zpět na „Serve traffic“** (Hosting → Domains → ⋮ → Edit). Kolik zamrzlých klientů ještě žije, ukazují App Check metriky → „outdated client requests“.
+**1. Zamrzlé TORQ PWA (Sentry TORQ-WEB-Q).** Firebase „Redirect“ doména vrací 301 i na `/sw.js`, a prohlížeč service worker přes cross-origin redirect **nikdy neaktualizuje**. Každý, kdo si nainstaloval TORQ PWA před 10. 8., tak zůstal navždy ve starém buildu na origin torq.cz — a ten build neposílá App Check token. Fix: `public/legacy-redirect.js` + 301 v `publicPreview` (commit 28f6420) — **a ručně přepnout torq.cz i torqcoach.com zpět na „Serve traffic"** (Hosting → Domains → ⋮ → Edit → „Serve traffic from this domain" → Done). Claude Code tenhle klik blokuje (harness kategorie DNS/Domain), musí ho udělat Jan. Ověření po přepnutí: `curl -sI https://torq.cz/sw.js` → 200 a `curl -sL -o /dev/null -w '%{url_effective}' https://torq.cz/t/1z0x1j4s2v5v3j6s` → golovka.cz. Kolik zamrzlých klientů ještě žije, ukazují App Check metriky → „outdated client requests“.
 
 **2. Katalog zápasů nikdy nefungoval (Sentry TORQ-WEB-P).** Pravidlo `/match-catalog` mělo užší schéma než klient + `"$other": false` → každý zápis padal. Veřejný odkaz `/m/` fungoval, zápas jen chyběl v seznamu na landingu. Fix: schéma = `MatchCatalogEntry`, + `clubId` a klubová oprávnění (commit 9e7d873). **Poučení:** při změně typu veřejného mirroru vždy sáhnout i do `database.rules.json` (grep `"$other"`).
 
