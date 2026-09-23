@@ -425,6 +425,8 @@ function toMatchCatalogEntry(match: SeasonMatch, ownerUid: string): MatchCatalog
   };
   // ageCategory + venue + sport jen pokud vyplněné (Firebase odmítá undefined)
   if (match.ageCategory) entry.ageCategory = match.ageCategory;
+  // Klubový zápas (ne 'individual-*') → clubId, aby katalog mohl upravit i jiný trenér klubu.
+  if (match.clubId && !match.clubId.startsWith('individual-')) entry.clubId = match.clubId;
   if (match.venue) entry.venue = match.venue;
   if (match.sport) entry.sport = match.sport;
   return entry;

@@ -326,6 +326,7 @@ export interface MatchCatalogEntry {
   ownerUid: string;
   updatedAt: string;
   ageCategory?: string;       // věková kategorie (U9, Muži, ...) pro filtry na landingu
+  clubId?: string;            // klubový zápas → katalog smí upravit každý člen klubu (pravidla)
 }
 
 // ─── Store input ──────────────────────────────────────────────────────────────

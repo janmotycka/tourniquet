@@ -354,21 +354,45 @@
     // Čtení: kdokoli; Zápis: vlastník záznamu
     // Audit 2026-05-23 S-4: přidán validate per pole — storage abuse mitigation
     // (dříve RTDB akceptoval libovolné struktury až 32MB per write).
+    // ─── Katalog zápasů (landing feed) ───────────────────────────────────────
+    // Audit 2026-09-23 (Sentry TORQ-WEB-P): staré schéma povolovalo jen 7 polí
+    // + "$other": false, ale klient (toMatchCatalogEntry) zapisuje id, isHome,
+    // kickoffTime, homeScore, awayScore, updatedAt… → KAŽDÝ zápis do katalogu
+    // padal na permission_denied a veřejné zápasy se nikdy neobjevily na
+    // landingu. Schéma nyní odpovídá typu MatchCatalogEntry.
+    // Klubový zápas nese clubId → upsert smí každý člen klubu (stejný model
+    // jako /matches/{clubId}); clubId nelze při update přepsat na cizí klub.
     "match-catalog": {
       ".read": true,
       "$matchId": {
         ".write": "auth != null && (
-          !data.exists() && newData.child('ownerUid').val() === auth.uid
-          || data.exists() && data.child('ownerUid').val() === auth.uid
+          (!data.exists() && newData.child('ownerUid').val() === auth.uid
+            && (!newData.hasChild('clubId')
+                || root.child('clubs').child(newData.child('clubId').val()).child('members').child(auth.uid).exists()))
+          || (data.exists() && data.child('ownerUid').val() === auth.uid)
+          || (data.exists() && data.hasChild('clubId')
+              && root.child('clubs').child(data.child('clubId').val()).child('members').child(auth.uid).exists()
+              && (!newData.exists() || newData.child('clubId').val() === data.child('clubId').val()))
         )",
-        "ownerUid":  { ".validate": "newData.isString() && newData.val().length <= 128" },
-        "name":      { ".validate": "newData.isString() && newData.val().length <= 200" },
-        "clubName":  { ".validate": "newData.isString() && newData.val().length <= 100" },
-        "opponent":  { ".validate": "newData.isString() && newData.val().length <= 100" },
-        "status":    { ".validate": "newData.isString() && (newData.val() === 'planned' || newData.val() === 'live' || newData.val() === 'finished')" },
-        "date":      { ".validate": "newData.isString() && newData.val().length <= 30" },
-        "sport":     { ".validate": "newData.isString() && newData.val().length <= 30" },
-        "$other":    { ".validate": false }
+        ".validate": "newData.hasChildren(['id', 'ownerUid', 'status', 'date'])",
+        "id":          { ".validate": "newData.isString() && newData.val() === $matchId" },
+        "ownerUid":    { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+        "clubId":      { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 128" },
+        "name":        { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "clubName":    { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "opponent":    { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "isHome":      { ".validate": "newData.isBoolean()" },
+        "venue":       { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "date":        { ".validate": "newData.isString() && newData.val().length <= 30" },
+        "kickoffTime": { ".validate": "newData.isString() && newData.val().length <= 10" },
+        "competition": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "status":      { ".validate": "newData.isString() && (newData.val() === 'planned' || newData.val() === 'live' || newData.val() === 'finished')" },
+        "homeScore":   { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999" },
+        "awayScore":   { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 999" },
+        "updatedAt":   { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "ageCategory": { ".validate": "newData.isString() && newData.val().length <= 30" },
+        "sport":       { ".validate": "newData.isString() && newData.val().length <= 30" },
+        "$other":      { ".validate": false }
       }
     },
 
