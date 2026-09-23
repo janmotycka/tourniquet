@@ -34,7 +34,10 @@ const SITE = 'https://golovka.cz';
 // mohla aktualizovat zamrzlá PWA (viz public/legacy-redirect.js). Sdílené
 // /m/ a /t/ odkazy (staré QR kódy) ale dostanou skutečný 301 na golovka.cz —
 // /m/ a /t/ jsou v navigateFallbackDenylist, takže jdou vždy na síť → sem.
-const LEGACY_HOSTS = new Set(['torq.cz', 'www.torq.cz', 'torqcoach.com', 'www.torqcoach.com']);
+const LEGACY_HOSTS = new Set([
+  'torq.cz', 'www.torq.cz', 'torqcoach.com', 'www.torqcoach.com',
+  'tourniquet-7a123.web.app', 'tourniquet-7a123.firebaseapp.com',
+]);
 
 
 function esc(s: unknown): string {

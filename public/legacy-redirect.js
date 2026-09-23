@@ -10,7 +10,10 @@
 // a přesměruje na golovka.cz se zachováním cesty. Na golovka.cz je no-op.
 // Externí soubor (ne inline) kvůli CSP script-src 'self'.
 (function () {
-  var LEGACY = { 'torq.cz': 1, 'www.torq.cz': 1, 'torqcoach.com': 1, 'www.torqcoach.com': 1 };
+  // Firebase default domény: v březnu 2026 jediné, co existovalo → staré PWA/záložky.
+  // Preview kanály (*--xyz.web.app) se neshodují → zůstávají funkční.
+  var LEGACY = { 'torq.cz': 1, 'www.torq.cz': 1, 'torqcoach.com': 1, 'www.torqcoach.com': 1,
+                 'tourniquet-7a123.web.app': 1, 'tourniquet-7a123.firebaseapp.com': 1 };
   if (!LEGACY[location.hostname]) return;
   var target = 'https://golovka.cz' + location.pathname + location.search + location.hash;
   var done = false;
