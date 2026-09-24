@@ -11,13 +11,31 @@ import { logger } from './utils/logger'
 // ─── Global error handlers ──────────────────────────────────────────────────
 // Zachytí neošetřené Promise rejects a JS chyby a zobrazí toast uživateli
 
+// Chyby z browser rozšíření (MetaMask, wallety, překladače…) nejsou naše —
+// nezobrazovat uživateli toast „Unexpected error" ani je neposílat do Sentry.
+// (Sentry 2026-09-24: „Failed to connect to MetaMask" z chrome-extension://.)
+const EXT_URL = /(?:chrome|moz|safari(?:-web)?)-extension:\/\//;
+const EXT_MSG = /MetaMask|extension not found|\bethereum\b/i;
+function isExtensionNoise(reason: unknown, filename?: string): boolean {
+  if (filename && EXT_URL.test(filename)) return true;
+  if (reason instanceof Error) {
+    if (EXT_URL.test(reason.stack ?? '')) return true;
+    if (EXT_MSG.test(reason.message)) return true;
+  } else if (typeof reason === 'string' && EXT_MSG.test(reason)) {
+    return true;
+  }
+  return false;
+}
+
 window.addEventListener('unhandledrejection', (event) => {
+  if (isExtensionNoise(event.reason)) return;
   const msg = event.reason instanceof Error ? event.reason.message : String(event.reason);
   logger.error('[Global] Unhandled rejection:', msg);
   useToastStore.getState().show('error', `Unexpected error: ${msg.slice(0, 120)}`, 6000);
 });
 
 window.addEventListener('error', (event) => {
+  if (isExtensionNoise(event.error ?? event.message, event.filename)) return;
   logger.error('[Global] Uncaught error:', event.message);
   useToastStore.getState().show('error', `Error: ${event.message.slice(0, 120)}`, 6000);
 });
